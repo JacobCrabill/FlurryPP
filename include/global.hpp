@@ -22,6 +22,7 @@
 #include <vector>
 #include <stdio.h>
 
+//#include "matrix.hpp"
 
 //! Prints the error message, the stack trace, and exits
 #define FatalError(s) {                                             \
@@ -46,3 +47,6 @@ struct point
 {
   double x, y, z;
 };
+
+template <typename T>
+typedef vector<vector<double>> matrix;

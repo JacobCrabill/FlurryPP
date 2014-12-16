@@ -26,7 +26,10 @@ public:
   int nDims; // should probably just go in Geo? Or not needed once eType set?
   int nNodes;
   int nSpts, nFpts; //! # of solution points, flux points
-  vector<point> loc_spts;
+
+  vector<point> loc_spts; //! Location of solution points in parent domain
+  vector<point> loc_dpts; //! Location of flux points in parent domain
+  vector<point> nodes; //! Location of mesh nodes in physical space
 
   mesh *Mesh; //! Pointer to mesh object to which ele 'belongs'
 
@@ -39,14 +42,14 @@ public:
 private:
   // Solution Variables
   // Still undecided on how this will be stored - double*, vector<double>, something custom?
-  double* U_spts; //! Solution at solution points
-  double* U_fpts; //! Solution at flux points
-  double* F_spts; //! Solution at solution points
-  double* F_fpts; //! Solution at flux points
+  vector<vector<double>> U_spts; //! Solution at solution points
+  vector<vector<double>> U_fpts; //! Solution at flux points
+  vector<vector<double>> F_spts; //! Solution at solution points
+  vector<vector<double>> F_fpts; //! Solution at flux points
   
   // Transform Variables
-  double* detJac_spts;  //! Determinant of transformation Jacobian at each solution point
-  double* detJac_fpts;  //! Determinant of transformation Jacobian at each solution point
+  vector<double> detJac_spts;  //! Determinant of transformation Jacobian at each solution point
+  vector<double> detJac_fpts;  //! Determinant of transformation Jacobian at each solution point
   vector<vector<vector<double>>> Jac_spts;  //! Transformation Jacobian [matrix] at each solution point
   vector<vector<vector<double>>> Jac_fpts;  //! Transformation Jacobian [matrix] at each flux point
   

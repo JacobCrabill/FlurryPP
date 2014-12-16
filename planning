@@ -1,0 +1,30 @@
+==== Structure Possibilities ====
+Option 1) Element-local  *** Leaning towards this ***
+--Each element stores its own solution data in, say, a vector<vector<double>>
+--Each element has either a) a set of operator matrices, or b) a set of pointers to shared operator matrices
+--The solver would just tell each element to apply its operator; there would be no global matrix-vector operations
+--The inters class would operate like in HiFiLES
+>>> Pros:
+  + Super easy to modify, add & remove elements
+  + Easy to parallelize
+  + Easy to understand
+>>> Cons:
+  - Slower - (probabl) no possibility of global BLAS calls
+  - More memory usage & overhead?
+
+Option 2) Global Arrays
+--There would be a global solution array (or one for each ele type, like HiFiLES)
+--There would not really be an ele class; just routines to set up operators & transforms for each ele type
+----If an eles class were to even store pointers to the global solution arrays, it would be a huge
+    memory overhead, so not worth it
+--This would allow for (massive?) speedup through the use of BLAS
+
+
+??? Question - just how much slower is HiFiLES on CPU's when using BLAS vs. for-loops? Food for thought
+Test this out: acl-aphrodite, viscous cylinder test case, p=3, FE, 500 iterations,
+no plotting whatsoever, and no residual calculation:
+ATLAS_BLAS: 6.06 s
+NO_BLAS: 7.03 s
+---> BLAS provided ~14% reduction in calculation time - less than I expected, hmm...
+maybe the global structure still helped, even without (directly) accounting for cache structure.
+After all, even without BLAS, the arrays are still stored in contiguous memory.  Hmm...

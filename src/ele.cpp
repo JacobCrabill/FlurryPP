@@ -48,7 +48,7 @@ void ele::calc_jacobian(void)
     // Calculate shape derivatives [in the future, should pre-calculate & store]
     switch(eType) {
     case TRI:
-      FatalError("Triangular elemnts not yet implemented.");
+      dshape_tri(loc_spts[spt], dtemp);
 
     case QUAD:
       dshape_quad(loc_spts[spt], dtemp);
@@ -68,6 +68,7 @@ void ele::calc_jacobian(void)
     if (nDims==2) {
       detJac_spts[spt] = Jac_spts[spt][0][0]*Jac_spts[spt][1][1]-Jac_spts[spt][1][0]*Jac_spts[spt][0][1];
     }
+    if (detJac_spts[spt]<0) FatalError("Negative Jacobian at solution points.");
   }
 
   /* --- Calculate Transformation at Flux Points --- */
@@ -75,7 +76,7 @@ void ele::calc_jacobian(void)
     // Calculate shape derivatives [in the future, should pre-calculate & store]
     switch(eType) {
     case TRI:
-      FatalError("Triangular elemnts not yet implemented.");
+      dshape_tri(loc_fpts[fpt], dtemp);
 
     case QUAD:
       dshape_quad(loc_fpts[fpt], dtemp);
@@ -95,5 +96,6 @@ void ele::calc_jacobian(void)
     if (nDims==2) {
       detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
     }
+    if (detJac_spts[spt]<0) FatalError("Negative Jacobian at solution points.");
   }
 }

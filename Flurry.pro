@@ -17,3 +17,6 @@ HEADERS += include/global.hpp \
 		   include/operators.hpp \
     include/mesh.hpp \
     include/output.hpp
+
+DISTFILES += \
+    README.md
