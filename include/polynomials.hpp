@@ -55,4 +55,4 @@ double eval_dubiner_basis_2d(point &in_rs, int in_mode, int in_basis_order);
 double eval_dr_dubiner_basis_2d(point &in_rs, int in_mode, int in_basis_order);
 
 //! Evaluate the s derivative of the Dubiner basis for triangles
-double eval_ds_dubiner_basis_2d(double in_r, double in_s, int in_mode, int in_basis_order);
+double eval_ds_dubiner_basis_2d(point &in_rs, int in_mode, int in_basis_order);

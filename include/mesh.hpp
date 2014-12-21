@@ -7,7 +7,7 @@ public:
   //! Default constructor
   mesh();
 
-  mesh.setup();
+  void setup();
 
   //! Default destructor
   ~mesh();

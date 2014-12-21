@@ -14,11 +14,17 @@
  */
 #pragma once
 
+// Advance declaration to avoid class definition priority conflicts
+class face;
+
 #include "global.hpp"
 #include "mesh.hpp"
+#include "matrix.hpp"
 
 class ele
 {
+friend class face;
+
 public:
   int ID, IDg; //! IDg will be for MPI (if I ever get to that; for now, just a reminder!)
   int eType;
@@ -42,11 +48,12 @@ public:
 private:
   // Solution Variables
   // Still undecided on how this will be stored - double*, vector<double>, something custom?
-  vector<vector<double>> U_spts; //! Solution at solution points
-  vector<vector<double>> U_fpts; //! Solution at flux points
-  vector<vector<double>> F_spts; //! Solution at solution points
-  vector<vector<double>> F_fpts; //! Solution at flux points
-  
+  vector<vector<double>> U_spts;  //! Solution at solution points
+  vector<vector<double>> U_fpts;  //! Solution at flux points
+  vector<matrix<double>> F_spts;  //! Flux at solution points
+  vector<matrix<double>> F_fpts;  //! Flux at flux points
+  vector<vector<double>> Fn_fpts; //! Interface flux at flux points
+
   // Transform Variables
   vector<double> detJac_spts;  //! Determinant of transformation Jacobian at each solution point
   vector<double> detJac_fpts;  //! Determinant of transformation Jacobian at each solution point
@@ -54,5 +61,7 @@ private:
   vector<vector<vector<double>>> Jac_fpts;  //! Transformation Jacobian [matrix] at each flux point
   
   // Misc.
-
+  /* NOTE: Can't have a pointer to an array<>, but can get a double* using
+   * double* blah = norm_fpts.data() */
+  vector<array<double,3>> norm_fpts;
 };

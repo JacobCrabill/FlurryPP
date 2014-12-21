@@ -318,7 +318,7 @@ double eval_dr_dubiner_basis_2d(point &in_rs, int in_mode, int in_basis_order)
 
 // helper method to evaluate d/ds of scalar dubiner basis
 
-double eval_ds_dubiner_basis_2d(double in_r, double in_s, int in_mode, int in_basis_order)
+double eval_ds_dubiner_basis_2d(point &in_rs, int in_mode, int in_basis_order)
 {
   double ds_dubiner_basis_2d;
 
@@ -331,7 +331,7 @@ double eval_ds_dubiner_basis_2d(double in_r, double in_s, int in_mode, int in_ba
       double jacobi_0, jacobi_1, jacobi_2, jacobi_3, jacobi_4;
       array<double> ab;
 
-      ab=rs_to_ab(in_r,in_s);
+      ab=rs_to_ab(in_rs.x,in_rs.y);
 
 
       mode = 0;

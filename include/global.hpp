@@ -20,9 +20,12 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <array>
 #include <stdio.h>
 
 //#include "matrix.hpp"
+
+using namespace std;
 
 //! Prints the error message, the stack trace, and exits
 #define FatalError(s) {                                             \
@@ -35,12 +38,17 @@ extern double pi;
 
 /** enumeration for element type */
 enum ETYPE {
-    TRI     = 0,
-    QUAD    = 1,
-    TET     = 2,
-    PRISM   = 3,
-    HEX     = 4,
-    PYRAMID = 5
+  TRI     = 0,
+  QUAD    = 1,
+  TET     = 2,
+  PRISM   = 3,
+  HEX     = 4,
+  PYRAMID = 5
+};
+
+enum MESH_TYPE {
+  READ_MESH   = 0,
+  CREATE_MESH = 1
 };
 
 struct point
