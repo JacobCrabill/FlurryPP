@@ -12,7 +12,9 @@ SOURCES += src/global.cpp \
     src/face.cpp \
     src/flux.cpp \
     geo.cpp \
-    src/geo.cpp
+    src/geo.cpp \
+    src/matrix.cpp \
+    src/flurry.cpp
 		   
 HEADERS += include/global.hpp \
            include/input.hpp \
@@ -23,7 +25,9 @@ HEADERS += include/global.hpp \
     include/output.hpp \
     include/face.hpp \
     include/flux.hpp \
-    geo.hpp
+    geo.hpp \
+    include/matrix.hpp \
+    include/flurry.hpp
 
 DISTFILES += \
     README.md

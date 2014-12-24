@@ -13,13 +13,98 @@
  */
 
 #include "../include/input.hpp"
+#include <sstream>
 
+void fileReader::openFile(string fileName) {
+  this->fileName = fileName;
+  optFile.open(fileName.c_str(), ifstream::in);
+}
 
 void fileReader::getScalarOpt(string optName, fileReader::T &opt, fileReader::T defaultVal)
 {
+  if (!optFile.is_open()) {
+    optFile.open(fileName.c_str());
+    if (!optFile.is_open())
+      FatalError("Cannont open input file for reading.");
+  }
 
+  // Rewind to the start of the file
+  optFile.seekg(0,optFile.beg);
+
+  // Search for the given string
+  size_t start, end;
+  string str;
+  while (!optFile.eof()) {
+    getline(optFile,str);
+
+    // Remove any leading whitespace & search for option string
+    start = str.find_first_not_of(" ");
+    if (!str.compare(start,optName.length(),optName)) {
+
+      // Find start/end of scalar value
+      start += optName.length()+1;
+      end = str.find_first_of(" ");
+      if (end==string::npos) {
+        end = string.length();
+      }
+
+      // Put scalar into stringstream for conversion
+      if (!(stringstream(str.substr(start,end-start)) >> opt)) {
+        cout << "WARNING: Unable to assign value to option " << optName << endl;
+        cout << "Using default value of " << defaultVal << " instead." << endl;
+        opt = defaultVal;
+      }
+
+      return;
+    }
+  }
+
+  opt = defaultVal;
 }
 
+void fileReader::getScalarOpt(string optName, fileReader::T &opt)
+{
+  if (!optFile.is_open()) {
+    optFile.open(fileName.c_str());
+    if (!optFile.is_open())
+      FatalError("Cannont open input file for reading.");
+  }
+
+  // Rewind to the start of the file
+  optFile.seekg(0,optFile.beg);
+
+  // Search for the given string
+  size_t start, end;
+  string str;
+  while (!optFile.eof()) {
+    getline(optFile,str);
+
+    // Remove any leading whitespace & search for option string
+    start = str.find_first_not_of(" ");
+    if (!str.compare(start,optName.length(),optName)) {
+
+      // Find start/end of scalar value
+      start += optName.length()+1;
+      end = str.find_first_of(" ");
+      if (end==string::npos) {
+        end = string.length();
+      }
+
+      // Put scalar into stringstream for conversion
+      if (!(stringstream(str.substr(start,end-start)) >> opt)) {
+        cerr << "WARNING: Unable to assign value to option " << optName << endl;
+        string errMsg = "Required option not set: " + optName;
+        FatalError(errMsg)
+      }
+
+      return;
+    }
+  }
+
+  // Option was not found; throw error & exit
+  string errMsg = "Required option not found: " + optName;
+  FatalError(errMsg)
+}
 
 void input::readInputFile(char *filename)
 {

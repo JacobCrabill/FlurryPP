@@ -50,6 +50,8 @@ public:
   void getVectorVal(string optName, vector<T> &opt);
 
 private:
+  ifstream optFile;
+  string fileName;
 
 };
 

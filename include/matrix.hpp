@@ -19,6 +19,8 @@
 
 #include <vector>
 
+using namespace std;
+
 template <typename T>
 class matrix
 {
@@ -42,11 +44,13 @@ public:
   /* --- Member Functions --- */
   void setup(int inDim0, int inDim1);
 
-  //! Multiplies the oper by the matrix A and stores the result in B
+  //! Multiplies the matrix by the matrix A and stores the result in B
   void timesMatrix(matrix<T> &A, matrix<T> &B);
 
-  //! Multiplies the oper by the vector A and stores the result in B
+  //! Multiplies the matrix by the vector A and stores the result in B
   void timesVector(vector<T> &A, vector<T> &B);
+
+  void insertRow(vector<T> &vec, int rowRum = -1);
 
   T& operator[](int inDim0, int inDim1);
 

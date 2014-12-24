@@ -36,14 +36,22 @@ public:
   vector<point> loc_spts; //! Location of solution points in parent domain
   vector<point> loc_dpts; //! Location of flux points in parent domain
   vector<point> nodes; //! Location of mesh nodes in physical space
+  vector<int> nodeID; //! Global ID's of element's nodes
+  vector<int> faceID; //! Global ID's of element's faces
+  vector<bool> bndFace; //! Tag for faces on a boundary
 
   mesh *Mesh; //! Pointer to mesh object to which ele 'belongs'
+  geo* Geo; //! same as ^ - need to get rid of one
 
+  //! Default constructor
+  ele();
+
+  //! Alternate constructor (think I'll delete this)
   ele(int in_eType, int in_order, int in_ID, vector<int> &in_nodes, mesh *in_Mesh);
 
   void setup(int in_eType, int in_order, int in_ID, vector<double> &xy);
 
-  void calc_jacobian(void);
+  void calcTransforms(void);
 
 private:
   // Solution Variables

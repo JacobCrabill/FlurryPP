@@ -29,12 +29,13 @@ ele::ele(int in_eType, int in_order, int in_ID, vector<int> &in_nodes, mesh *in_
   ID = in_ID;
   Mesh = in_Mesh;
 
-  for (vector<int>::iterator it : in_nodes)
-    nodes.insert(*it);
+  nodes.clear();
+  for (auto &n: in_nodes)
+    nodes.push_back(n);
 
 }
 
-void ele::calc_jacobian(void)
+void ele::calcTransforms(void)
 {
   int spt, fpt, dim1, dim2;
 

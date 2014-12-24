@@ -16,6 +16,7 @@
 
 #include "global.hpp"
 #include "input.hpp"
+#include "solver.hpp"
 
 class geo
 {
@@ -31,7 +32,7 @@ public:
   processConnectivity();
 
   //! Create the elements and faces needed for the simulation
-  setupElesFaces();
+  setupElesFaces(solver* Solver);
 
   /* === Helper Routines === */
 
@@ -41,19 +42,22 @@ public:
   //! Create a simple Cartesian mesh from input parameters
   createMesh();
 
+  createQuadMesh(); // or lump into createMesh()
+  createTriMesh();
+
   ~geo();
 
 private:
 
   input *params;
   int nDims, nFields;
-  int nEles, nVerts;
+  int nEles, nVerts, nFaces;
 
   // Basic [essential] Connectivity Data
   matrix<int> c2v;
-  matrix<double> xv;
+  vector<point> xv;
 
   // Additional Connectivity Data
-  matrix<int> c2e, e2c, e2v, v2e, v2v, v2nv, v2c, v2nc, c2nv;
+  matrix<int> c2e, e2c, e2v, v2e, v2v, v2nv, v2c, v2nc, c2nv, c2ne;
   vector<int> bndPts, bndFaces;
 };

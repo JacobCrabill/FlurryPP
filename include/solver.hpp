@@ -22,12 +22,18 @@
 
 class solver
 {
+friend class geo; // Probably only needed if I make eles, opers private?
+
 public:
+  /* === Member Variables === */
   //! Map from eType to element-specific operator
   map<int,oper> opers;
 
-  //!
+  //! Vector of all eles handled by this solver
   vector<ele> eles;
+
+  //! Vector of all faces handled by this solver
+  vector<ele> faces;
 
   /* === Setup Functions === */
   solver();
@@ -96,6 +102,9 @@ public:
   /* === Functions Related to Overset Grids === */
 
 private:
+  //! Pointer to the parameters object for the current solution
+  input *params;
+
   //! Set of all element types present in current simulation
   set<int> eTypes;
 

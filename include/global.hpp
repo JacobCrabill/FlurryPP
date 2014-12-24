@@ -19,11 +19,12 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <cstddef>    // std::size_t
 #include <vector>
 #include <array>
 #include <stdio.h>
 
-//#include "matrix.hpp"
+#include "matrix.hpp"
 
 using namespace std;
 
@@ -55,6 +56,3 @@ struct point
 {
   double x, y, z;
 };
-
-template <typename T>
-typedef vector<vector<double>> matrix;

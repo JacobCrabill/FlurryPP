@@ -15,6 +15,11 @@
 
 #include "../include/solver.hpp"
 
+void solver::initialize(input *params)
+{
+  this->params = params;
+}
+
 void solver::calcResidual(void)
 {
   extrapolateU();
