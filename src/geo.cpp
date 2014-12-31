@@ -36,7 +36,7 @@ geo::setup(input* _params)
 geo::processConnectivity()
 {
   /* --- Setup Edges --- */
-  vector<int*> e2v;
+  matrix<int> e2v1, e2v;
   int iep1, ne = 0;
   for (int e=0; e<nEles; e++) {
     for (int ie=0; ie<c2nv(e); ie++) {
@@ -44,10 +44,71 @@ geo::processConnectivity()
       iep1 = (ie+1)%c2nv(e);
       edge[0] = c2v[e][ie];
       edge[1] = c2v[e][iep1];
-      e2v.insert(edge)
+      e2v1.insertRow(edge);
     }
   }
 
+  // --- Just for nDims==2 ---
+  // Get just the unique edges
+  // iE is of length [original e2v] with range [final e2v]
+  //[e2v,~,iE] = unique(e2v);
+  vector<int> iE;
+  e2v1.unique(e2v,iE);
+  nEdges = e2v.size();
+
+  vector<int> ie;
+  vector<int> intEdges, bndEdges; // Setup something more permanent...
+  int nIntEdges = 0;
+  int nBndEdges = 0;
+  for (int i=0; i<iE.size(); i++) {
+    if (iE[i]!=-1) {
+      ie = findEq(iE,iE[i]);
+      if (ie.size()>2) {
+        string errMsg = "More than 2 cells for edge " + to_string(i);
+        FatalError(errMsg);
+      }
+      else if (ie.size()==2) {
+        // Internal Edge which has not yet been added
+        intEdges[nIntEdges] = iE[i];
+        nIntEdges++;
+      }
+      else if (ie.size()==1) {
+        // Boundary Edge
+        bndEdges[nBndEdges] = iE[i];
+        nBndEdges++;
+      }
+
+      // Mark edges as completed
+      vecAssign(iE,ie,-1);
+    }
+  }
+
+
+  /* --- Setup Edge Normals? --- */
+
+  /* --- Setup Cell-To-Edge, Edge-To-Cell --- */
+  int ie, ie2;
+  int *ie1 = new int(2);
+  for (int ic=0; ic<nEles; ic++) {
+    for (int j=0; j<c2ne(ic); j++) {
+      int jp1 = (j+1)%(c2ne(ic));
+      edge[0] = c2v[ic][j];
+      edge[1] = c2v[ic][jp1];
+      // Copied from Matlab - need c++ version
+      ie1 = findEq(e2v.getCol(0),edge[0]);
+      ie2 = findFirst((e2v.getRows(ie1)).getCol(1),edge[1]);
+      ie = ie1[ie2];
+
+      c2e[ic][j] = ie;
+      if (e2c[ie][0] == -1) {
+        // No cell yet assigned to edge; put on left
+        e2c[ie][0] = ic;
+      }else{
+        // Put cell on right
+        e2c[ie][1] = ic;
+      }
+    }
+  }
 }
 
 geo::setupElesFaces(solver *Solver)

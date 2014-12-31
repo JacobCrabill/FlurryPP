@@ -23,6 +23,7 @@
 #include <vector>
 #include <array>
 #include <stdio.h>
+#include <algorithm>
 
 #include "matrix.hpp"
 
@@ -56,3 +57,37 @@ struct point
 {
   double x, y, z;
 };
+
+/*! Find all values in vec equal to val */
+template<typename T>
+vector<int> findEq(const vector<T> &vec, T val)
+{
+  vector<int> out;
+
+  for (unsigned int i=0; i<vec.size(); i++) {
+    if (vec[i]==val) out.push_back(i);
+  }
+
+  return out;
+}
+
+template<typename T>
+int findFirst(const vector<int> &vec, T val)
+{
+  if (vec.size()==0) return -1;
+
+  for (int i=0; i<(int)vec.size(); i++) {
+    if (vec[i]==val) return i;
+  }
+
+  // If not found...
+  return -1;
+}
+
+/*! Assign a value to vector vec at indices indicated in ind */
+template<typename T>
+void vecAssign(vector<T> &vec, vector<int> &ind, T val)
+{
+  for (auto& i:ind) vec[i] = val;
+}
+

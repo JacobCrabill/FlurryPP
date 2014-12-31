@@ -12,48 +12,83 @@
  * Copyright (C) 2014 Jacob Crabill.
  *
  */
-#pragma once
+#include "../include/matrix.hpp"
 
-#include "global.hpp"
-
-
-matrix::matrix()
+template<typename T>
+matrix<T>::matrix()
 {
+  data.resize(0);
   dim0 = 0;
   dim1 = 0;
 }
 
-
-matrix::matrix(int inDim0, int inDim1)
+template<typename T>
+matrix<T>::matrix(unsigned int inDim0, unsigned int inDim1)
 {
   data.resize(inDim0);
   for (auto& x: data) x.resize(inDim1);
 }
 
-void matrix::setup(int inDim0, int inDim1)
+template<typename T>
+matrix::matrix(const matrix<T> &inMatrix)
+{
+  data = inMatrix.data;
+  dim0 = inMatrix.dim0;
+  dim1 = inMatrix.dim1;
+}
+
+template<typename T>
+matrix<T> matrix::operator=(const matrix<T> &inMatrix)
+{
+  data = inMatrix.data;
+  dim0 = inMatrix.dim0;
+  dim1 = inMatrix.dim1;
+  return *this;
+}
+
+template<typename T>
+matrix<T> matrix::operator=(const subMatrix<T> &inSubMatrix)
+{
+  data = inSubMatrix.data;
+  dim0 = inSubMatrix.dim0;
+  dim1 = inSubMatrix.dim1;
+  return *this;
+}
+
+template<typename T>
+void matrix<T>::setup(unsigned int inDim0, unsigned int inDim1)
 {
   data.resize(inDim0);
   for (auto& x: data) x.resize(inDim1);
 }
 
-T& matrix::operator[](int inDim0, int inDim1)
+template<typename T>
+vector<T>& matrix<T>::operator[](int inDim0)
 {
-  if (inDim0<dim0 && inDim1<dim1) return data[inDim0][inDim1];
+  if (inDim0<(int)dim0) return data[inDim0];
 }
 
-
-void matrix::initialize_to_zero()
+template<typename T>
+subMatrix<T> matrix<T>::operator[](vector<int> &iRows)
 {
-  for (int idim=0; idim<dim0; idim++)
-    for (int jdim=0; jdim<dim1; jdim++)
+  subMatrix<T> subMat(this,iRows);
+  for (auto& i:iRows) subMat.insertRow(data[i]);
+  return subMat;
+}
+
+template<typename T>
+void matrix<T>::initialize_to_zero()
+{
+  for (unsigned int idim=0; idim<dim0; idim++)
+    for (unsigned int jdim=0; jdim<dim1; jdim++)
       data[idim][jdim] = 0;
 }
 
 
 template <typename T>
-void matrix::timesMatrix(matrix<T> &A, matrix<T> &B)
+void matrix<T>::timesMatrix(matrix<T> &A, matrix<T> &B)
 {
-  int i, j, k, p;
+  unsigned int i, j, k, p;
   p = A.dim1;
 
   if (A.dim0 != dim1) FatalError("Incompatible matrix sizes!");
@@ -71,9 +106,9 @@ void matrix::timesMatrix(matrix<T> &A, matrix<T> &B)
 }
 
 template <typename T>
-void matrix::timesVector(vector<T> &A, vector<T> &B)
+void matrix<T>::timesVector(vector<T> &A, vector<T> &B)
 {
-  int i, j;
+  unsigned int i, j;
 
   if (A.size() != dim1) FatalError("Incompatible vector size");
   if (B.size() != dim1) B.resize(dim1);
@@ -84,4 +119,131 @@ void matrix::timesVector(vector<T> &A, vector<T> &B)
       B[i] += data[i][j]*A[j];
     }
   }
+}
+
+template<typename T>
+void matrix::insertRow(vector<T> &vec, int rowNum)
+{
+  if (rowNum==-1 || rowNum==(int)dim0) {
+    // Default action - add to end
+    data.push_back(vec);
+  }else{
+    // Insert at specified location
+    vector<vector<T>>::iterator it = data.begin();
+    data.insert(it+rowNum,vec);
+  }
+
+  dim0++;
+}
+
+template<typename T>
+matrix<T> matrix<T>::getRows(vector<int> ind)
+{
+  matrix<T> out;
+  for (auto& i:ind) out.insertRow(data[i]);
+  return out;
+}
+
+template<typename T>
+vector<T> matrix<T>::getCol(int col)
+{
+  vector<T> out;
+  for (auto row:data) out.push_back(row[col]);
+  return  out;
+}
+
+template<typename T>
+void matrix<T>::unique(matrix<T> &out, vector<int> &iRow)
+{
+  out.setup(0,0);
+
+  // Setup vector for rows of final matrix that map to each row of initial matrix
+  iRow.resize(dim0);
+  iRow.assign(dim0,-1);
+
+  /* --- For each row in the matrix, compare to all
+     previous rows to get first unique occurence --- */
+  for (unsigned int i=0; i<dim0; i++) {
+    for (unsigned int j=0; j<i; j++) {
+      if (equal(data[i].begin(),data[i].end(),data[j].begin())) {
+        iRow[i] = j;
+        break;
+      }
+    }
+
+    // If no duplicate found, put in 'out' matrix
+    if (iRow[i]==-1) {
+      out.push_back(data[i]);
+      iRow[i] = i;
+    }
+  }
+}
+
+template<typename T>
+vector<vector<T> > matrix<T>::getData(void)
+{
+  return data;
+}
+
+
+/* --------------------------- SubMatrix Functions -------------------------- */
+
+template<typename T>
+subMatrix<T>::subMatrix()
+{
+
+}
+
+template<typename T>
+subMatrix<T>::subMatrix(matrix<T> *inMat, vector<int> iRows)
+{
+  this->data.clear();
+  for (auto& row:iRows) this->data.push_back((*inMat)[row]);
+
+  this->dim0 = iRows.size();
+  this->dim1 = inMat->dim1;
+  this->mat = inMat;
+
+  rows = iRows;
+  for (int col=0; col<this->data[0].size(); col++) cols.push_back(col);
+}
+
+template<typename T>
+subMatrix<T>::subMatrix(matrix<T>* inMat, vector<int> &inRows, vector<int> &inCols)
+{
+  this->data = inMat->data;
+  this->dim0 = inMat->dim0;
+  this->dim1 = inMat->dim1;
+  this->mat = inMat;
+
+  rows = inRows;
+  cols = inCols;
+}
+
+template<typename T>
+subMatrix<T> subMatrix<T>::operator=(subMatrix<T>& inSubMatrix)
+{
+  this->data = inSubMatrix.data;
+  this->dim0 = inSubMatrix.dim0;
+  this->dim1 = inSubMatrix.dim1;
+  this->mat = inSubMatrix.mat;
+  return *this;
+}
+
+template<typename T>
+subMatrix<T> subMatrix<T>::operator=(matrix<T>& inMatrix)
+{
+  this->data = inMatrix.getData();
+  this->dim0 = inMatrix.getDim0();
+  this->dim1 = inMatrix.getDim1();
+
+  if (mat!=NULL) {
+    for (int row=0; row<rows.size(); row++) {
+    for (int col=0; col<cols.size(); col++) {
+        (*mat)[rows[row]][cols[col]] = this->data[row][col];
+      }
+    }
+  }
+
+  return *this;
 }

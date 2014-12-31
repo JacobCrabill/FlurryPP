@@ -30,4 +30,5 @@ HEADERS += include/global.hpp \
     include/flurry.hpp
 
 DISTFILES += \
-    README.md
+    README.md \
+    planning
