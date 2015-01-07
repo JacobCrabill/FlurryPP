@@ -79,6 +79,9 @@ public:
   int nDims;
   double dt;
   int iterMax;
+  int initIter;
+  int restartIter;
+  int restart;
   int plot_freq;
   int restart_freq;
 

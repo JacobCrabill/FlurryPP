@@ -16,9 +16,11 @@
 #include "../include/face.hpp"
 #include "../include/flux.hpp"
 
-face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R)
+face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
 {
   int fptStartL, fptEndL, fptStartR, fptEndR, i;
+
+  ID = gID;
 
   nDims = params->nDims;
   nFields = params->nFields;

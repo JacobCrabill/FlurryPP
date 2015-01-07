@@ -9,7 +9,7 @@ Option 1) Element-local  *** Leaning towards this ***
   + Easy to parallelize
   + Easy to understand
 >>> Cons:
-  - Slower - (probabl) no possibility of global BLAS calls
+  - Slower - (probably) no possibility of global BLAS calls
   - More memory usage & overhead?
 
 Option 2) Global Arrays

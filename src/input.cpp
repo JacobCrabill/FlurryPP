@@ -123,6 +123,10 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("ic_type",ic_type,0);
   opts.getScalarValue("test_case",test_case,0);
 
+  opts.getScalarValue("iterMax",iterMax);
+  opts.getScalarValue("restart",restart,0);
+  opts.getScalarValue("restartIter",restartIter);
+
   opts.getScalarValue("mesh_type",mesh_type,0);
   opts.getScalarValue("mesh_file_name",mesh_file_name);
   opts.getScalarValue("nx",nx,10);
@@ -135,10 +139,13 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("spts_type_tri",spts_type_tri,"Legendre");
   opts.getScalarValue("spts_type_quad",spts_type_quad,"Legendre");
 
-
-  // Basic value-getter:
-  //opts.getScalarValue("",);
-
   /* --- Cleanup ---- */
   opts.closeFile();
+
+  /* --- Additional Processing --- */
+  if (restart) {
+    initIter = restartIter;
+  }else{
+    initIter = 0;
+  }
 }

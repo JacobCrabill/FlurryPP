@@ -14,9 +14,11 @@
  */
 
 #include <map>
+#include <set>
 
 #include "global.hpp"
 #include "ele.hpp"
+#include "face.hpp"
 #include "operators.hpp"
 #include "input.hpp"
 
@@ -26,8 +28,8 @@ friend class geo; // Probably only needed if I make eles, opers private?
 
 public:
   /* === Member Variables === */
-  //! Map from eType to element-specific operator
-  map<int,oper> opers;
+  //! Map from eType to order to element- & order-specific operator
+  map<int, map<int,oper> > opers;
 
   //! Vector of all eles handled by this solver
   vector<ele> eles;
@@ -38,13 +40,17 @@ public:
   /* === Setup Functions === */
   solver();
 
-  initialize(input *params);
+  void initialize(input *params);
 
-  setupOperators();
+  void setupOperators();
 
   ~solver();
 
   /* === Functions Related to Basic FR Process === */
+
+  //! Perform one full step of computation
+  void calcResidual(void);
+
   //! Extrapolate the solution to the flux points
   void extrapolateU(void);
 
@@ -62,7 +68,7 @@ public:
 
   /*! For viscous calculations, extrapolate the corrected gradient of the solution
    *  from the solution points to the flux points */
-  void extrpolateGradU(void);
+  void extrapolateGradU(void);
 
   //! Calculate the viscous flux at the solution points
   void calcViscousFlux_spts(void);
@@ -100,6 +106,7 @@ public:
   void add_ele(int eType, int order);
 
   /* === Functions Related to Overset Grids === */
+
 
 private:
   //! Pointer to the parameters object for the current solution

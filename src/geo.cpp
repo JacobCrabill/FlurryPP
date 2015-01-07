@@ -30,6 +30,8 @@ geo::setup(input* _params)
   default:
     FatalError("Mesh type not recognized.")
   }
+
+  processConnectivity();
 }
 
 
@@ -94,7 +96,7 @@ geo::processConnectivity()
       int jp1 = (j+1)%(c2ne(ic));
       edge[0] = c2v[ic][j];
       edge[1] = c2v[ic][jp1];
-      // Copied from Matlab - need c++ version
+
       ie1 = findEq(e2v.getCol(0),edge[0]);
       ie2 = findFirst((e2v.getRows(ie1)).getCol(1),edge[1]);
       ie = ie1[ie2];
@@ -109,6 +111,8 @@ geo::processConnectivity()
       }
     }
   }
+
+
 }
 
 geo::setupElesFaces(solver *Solver)
@@ -139,6 +143,18 @@ geo::setupElesFaces(solver *Solver)
     }
 
     eles[e] = tmp;
+  }
+
+  // Setup the faces
+  face tmpF;
+  int fid1, fid2;
+  for (int i=0; i<nFaces; i++) {
+    // Find local face ID of global face
+    fid1 = findFirst(c2e[e2c[i][0]],i);
+    fid2 = findFirst(c2e[e2c[i][1]],i);
+    tmpF.setupFace(&eles[e2c[i][0]],&eles[e2c[i][1]],fid1,fid2,i);
+
+    faces[i] = tmpF;
   }
 
   // Final Step - Assign eles, faces to Solver

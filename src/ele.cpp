@@ -19,6 +19,7 @@
 
 #include "../include/ele.hpp"
 #include "../include/polynomials.hpp"
+#include "../include/flux.hpp"
 
 using namespace std;
 
@@ -33,6 +34,47 @@ ele::ele(int in_eType, int in_order, int in_ID, vector<int> &in_nodes, mesh *in_
   for (auto &n: in_nodes)
     nodes.push_back(n);
 
+}
+
+ele::initialize()
+{
+  int fpt, face;
+
+  switch(eType) {
+  case(TRI):
+    for (fpt=0; fpt<nFpts; fpt++) {
+      face = fpt%(nFpts/3);
+      switch(face) {
+      case(0):
+        tNorm_fpts[fpt][0] = 0;
+        tNorm_fpts[fpt][1] = -1;
+      case(1):
+        tNorm_fpts[fpt][0] = 1.0/sqrt(2);
+        tNorm_fpts[fpt][1] = 1.0/sqrt(2);
+      case(2):
+        tNorm_fpts[fpt][0] = -1;
+        tNorm_fpts[fpt][1] = 0;
+      }
+    }
+  case(QUAD):
+    for (fpt=0; fpt<nFpts; fpt++) {
+      face = fpt%(nFpts/3);
+      switch(face) {
+      case(0):
+        tNorm_fpts[fpt][0] = 0;
+        tNorm_fpts[fpt][1] = -1;
+      case(1):
+        tNorm_fpts[fpt][0] = 1;
+        tNorm_fpts[fpt][1] = 0;
+      case(2):
+        tNorm_fpts[fpt][0] = 0;
+        tNorm_fpts[fpt][1] = 1;
+      case(2):
+        tNorm_fpts[fpt][0] = -1;
+        tNorm_fpts[fpt][1] = 0;
+      }
+    }
+  }
 }
 
 void ele::calcTransforms(void)
@@ -98,5 +140,19 @@ void ele::calcTransforms(void)
       detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
     }
     if (detJac_spts[spt]<0) FatalError("Negative Jacobian at solution points.");
+  }
+}
+
+void ele::calcInviscidFlux_spts()
+{
+  for (int spt=0; spt<nSpts; spt++) {
+    inviscidFlux(U_spts[spt], F_spts[spt], params);
+  }
+}
+
+void ele::calcViscousFlux_spts()
+{
+  for (int spt=0; spt<nSpts; spt++) {
+    viscousFlux(U_spts[spt], dU_spts[spt], F_spts[spt], params);
   }
 }

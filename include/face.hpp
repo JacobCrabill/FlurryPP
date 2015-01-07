@@ -26,7 +26,7 @@ public:
   face();
 
   /*! Setup access to the left & right elements' data */
-  setupFace(ele *eL, ele *eR, int locF_L, int locF_R);
+  setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID);
 
   /*! Calculate the common inviscid flux on the face */
   calcInviscidFlux();
@@ -35,6 +35,8 @@ public:
   calcViscousFlux();
 
   ~face();
+
+  int ID; //! Global ID of face
 
 private:
   int nFptsL, nFptsR;

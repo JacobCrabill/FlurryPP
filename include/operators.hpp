@@ -37,17 +37,23 @@ public:
   // Create a map<int,double*> (?) to get access to the correct operator
   // i.e. somthing like: div_flux_spts_tri = oper.get_oper_div[TRI]
 
-  map<int,matrix<double>*> get_oper_div_spts;
+  void apply_grad_spts(matrix<double> &U_spts, vector<matrix<double> > &dU_spts);
+  void apply_spts_fpts();
+
+  const matrix<double>& get_oper_div_spts();
+  const matrix<double>& get_oper_spts_fpts();
+
+  //map<int,matrix<double>*> get_oper_div_spts;
   map<int,matrix<double>*> get_oper_grad_spts;
-  map<int,matrix<double>*> get_oper_spts_fpts;
+  //map<int,matrix<double>*> get_oper_spts_fpts;
   map<int,matrix<double>*> get_oper_correct;
+
+private:
+  mesh *Mesh;
+  int nDims, eType, order;
 
   matrix<double> opp_spts_to_fpts;
   matrix<double> opp_grad_spts;
   matrix<double> opp_div_spts;
   matrix<double> opp_correction;
-
-private:
-  mesh *Mesh;
-  int nDims;
 }

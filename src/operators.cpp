@@ -33,6 +33,7 @@ oper::setup_operators(int eType, int order, mesh *inMesh)
   // Set up each operator
   setup_extrapolate_spts_fpts(loc_spts, loc_fpts, eType, order);
 
+  setup_grad_spts(loc_spts, eType, order);
 }
 
 oper::setup_extrapolate_spts_fpts(vector<point> loc_spts, vector<point> loc_fpts, int eType, int order)
@@ -74,13 +75,13 @@ oper::setup_interpolate(vector<point> &pts_from, vector<point> &pts_to, matrix<d
     for (ptA=0; ptA<nPtsFrom; ptA++) {
       switch(eType) {
       case(TRI):
-        opp_interp.data[ptB][ptA] = eval_dubiner_basis_2d(pts_to[ptB],ptA,order);
+        opp_interp[ptB][ptA] = eval_dubiner_basis_2d(pts_to[ptB],ptA,order);
 
       case(QUAD):
         // First, get the i and j ID of the pt [tensor-product element]
         iptA = mod(ptA,nPtsFrom/(order+1));
         jptA = floor(ptA/(order+1));
-        opp_interp.data[ptB][ptA] = Lagrange(pts_from,pts_to[ptB].x,iptA) * Lagrange(pts_from,pts_to[ptB].y,jptA);
+        opp_interp[ptB][ptA] = Lagrange(pts_from,pts_to[ptB].x,iptA) * Lagrange(pts_from,pts_to[ptB].y,jptA);
 
       default:
         FatalError("Element type not yet supported.");
@@ -100,8 +101,8 @@ oper::setup_grad_spts(vector<point> loc_spts, int eType, int order)
   switch(eType) {
   case(TRI):
     for (spt=0; spt<nSpts; spt++) {
-      opp_grad_spts.data[0][spt] = eval_dr_dubiner_basis_2d(loc_spts[spt],spt,order);
-      opp_grad_spts.data[1][spt] = eval_ds_dubiner_basis_2d(loc_spts[spt],spt,order);
+      opp_grad_spts[0][spt] = eval_dr_dubiner_basis_2d(loc_spts[spt],spt,order);
+      opp_grad_spts[1][spt] = eval_ds_dubiner_basis_2d(loc_spts[spt],spt,order);
     }
 
   case(QUAD):
@@ -109,11 +110,28 @@ oper::setup_grad_spts(vector<point> loc_spts, int eType, int order)
     for (spt=0; spt<nSpts; spt++) {
       ispt = mod(ptA,nPtsFrom/(order+1));
       jspt = floor(ptA/(order+1));
-      opp_grad_spts.data[0][spt] = dLagrange(loc_spts_1D,loc_spts_1D[spt].x,iptA) * Lagrange(loc_spts_1D,loc_spts_1D[spt].y,jptA);
-      opp_grad_spts.data[1][spt] = Lagrange(loc_spts_1D,loc_spts_1D[spt].x,iptA) * dLagrange(loc_spts_1D,loc_spts_1D[spt].y,jptA);
+      opp_grad_spts[0][spt] = dLagrange(loc_spts_1D,loc_spts_1D[spt].x,iptA) * Lagrange(loc_spts_1D,loc_spts_1D[spt].y,jptA);
+      opp_grad_spts[1][spt] = Lagrange(loc_spts_1D,loc_spts_1D[spt].x,iptA) * dLagrange(loc_spts_1D,loc_spts_1D[spt].y,jptA);
     }
 
   default:
     FatalError("Element type not yet supported.");
   }
+}
+
+
+void oper::apply_grad_spts(matrix<double> &U_spts, vector<matrix<double>> &dU_spts)
+{
+  opp_grad_spts.timesMatrix(U_spts,dU_spts);
+}
+
+void oper::apply_spts_fpts(matrix<double> &U_spts, matrix<double> &U_fpts)
+{
+  opp_spts_to_fpts.timesMatrix(U_spts,U_fpts);
+}
+
+
+const matrix<double> &oper::get_oper_div_spts()
+{
+  return opp_div_spts;
 }

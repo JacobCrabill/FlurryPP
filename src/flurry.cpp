@@ -22,8 +22,32 @@ int main(int argc, char *argv[]) {
   geo Geo;
   solver Solver;
 
+  int iter;
+
+  /* Read input file & set simulation parameters */
   params.readInputFile(argv[1]);
+
+  /* Setup the mesh and connectivity for the simulation */
   Geo.setup(&params);
+
+  /* Prepare the solver for computation */
   Solver.initialize(&params);
+
+  /* Setup the FR elements & faces which will be computed on */
   Geo.setupElesFaces(&Solver);
+
+  /* Setup the FR operators for computation */
+  Solver.setupOperators();
+
+  /* Write initial data file */
+  writeData(Solver,params,0);
+
+  /* --- Calculation Loop --- */
+  for (iter=params.initIter; iter<params.iterMax; iter++) {
+
+    Solver.calcResidual();
+
+    if ((iter+1)%params.plot_freq == 0) writeData(Solver,params,iter);
+
+  }
 }

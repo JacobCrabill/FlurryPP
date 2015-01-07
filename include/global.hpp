@@ -58,7 +58,7 @@ struct point
   double x, y, z;
 };
 
-/*! Find all values in vec equal to val */
+/*! Find indices of all values in vec equal to val */
 template<typename T>
 vector<int> findEq(const vector<T> &vec, T val)
 {
@@ -71,6 +71,7 @@ vector<int> findEq(const vector<T> &vec, T val)
   return out;
 }
 
+/*! Find index of first occurance of val in vec */
 template<typename T>
 int findFirst(const vector<int> &vec, T val)
 {

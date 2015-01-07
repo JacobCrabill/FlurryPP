@@ -29,7 +29,7 @@ void solver::calcResidual(void)
   calcInviscidFlux_faces();
 
   if (params.viscous) {
-    calGradU_spts();
+    calcGradU_spts();
 
     correctU();
 
@@ -37,8 +37,9 @@ void solver::calcResidual(void)
 
     calcViscousFlux_faces();
   }
+
   if (params.motion) {
-    // Use non-conservative chain-rule formulate (Liang-Miyaji)
+    // Use non-conservative chain-rule formulation (Liang-Miyaji)
     calcGradF_spts();
   }else{
     // Standard conservative form
@@ -51,29 +52,48 @@ void solver::calcResidual(void)
 void solver::extrapolateU(void)
 {
   for (auto& e: eles) {
-    opers[e.eType].get_opp_spts_fpts[e.order].timesMatrix(e.U_spts,e.U_fpts);
+    opers[e.eType][e.order].apply_spts_fpts(e.U_spts,e.U_fpts);
   }
 }
 
-solver::calc_grad_spts(void)
+void solver::calcInviscidFlux_spts(void)
+{
+  for (auto& e:eles) {
+    e.calcInviscidFlux();
+  }
+}
+
+void solver::calcViscousFlux_spts(void)
+{
+  for (auto& e:eles) {
+    e.calcInviscidFlux();
+  }
+}
+
+void solver::calc_grad_spts(void)
 {
   for (auto& e: eles) {
-    opers[e.eType].get_opp_grad_spts[e.order].timesMatrix(e.U_spts,e.dU_spts);
+    opers[e.eType][e.order].apply_grad_spts(e.U_spts,e.dU_spts);
   }
 }
 
-solver::apply_oper(matrix<double> &op, matrix<double> & A, matrix<double> &B)
+void solver::apply_oper(matrix<double> &op, matrix<double> & A, matrix<double> &B)
 {
 
 }
 
 
-solver::setupOperators()
+void solver::setupOperators()
 {
+  // Get all element types & olynomial orders in mesh
+  for (auto& e:eles) {
+    eTypes.insert(e.eType);
+    polyOrders[e.eType].insert(e.order);
+  }
+
   for (auto& e: eTypes) {
     for (auto& p: polyOrders[eTypes]) {
-      //! Setup extrapolation operator
-      opers[eType].setup_operators(e,p);
+      opers[e][p].setupOperators(e,p);
     }
   }
 }

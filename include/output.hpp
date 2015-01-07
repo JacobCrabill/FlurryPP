@@ -15,3 +15,8 @@
 #pragma once
 
 #include "global.hpp"
+#include "solver.hpp"
+#include "ele.hpp"
+#include "geo.hpp"
+
+void writeData(solver Solver, input params, int iter);

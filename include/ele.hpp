@@ -20,10 +20,12 @@ class face;
 #include "global.hpp"
 #include "mesh.hpp"
 #include "matrix.hpp"
+#include "geo.hpp"
 
 class ele
 {
 friend class face;
+friend class solver;
 
 public:
   int ID, IDg; //! IDg will be for MPI (if I ever get to that; for now, just a reminder!)
@@ -42,6 +44,7 @@ public:
 
   mesh *Mesh; //! Pointer to mesh object to which ele 'belongs'
   geo* Geo; //! same as ^ - need to get rid of one
+  input* params; //! Input parameters for simulation
 
   //! Default constructor
   ele();
@@ -53,14 +56,24 @@ public:
 
   void calcTransforms(void);
 
+  void calcInviscidFlux_spts(void);
+
+  void calcViscousFlux_spts(void);
+
 private:
   // Solution Variables
   // Still undecided on how this will be stored - double*, vector<double>, something custom?
-  vector<vector<double>> U_spts;  //! Solution at solution points
-  vector<vector<double>> U_fpts;  //! Solution at flux points
+  matrix<double> U_spts;  //! Solution at solution points
+  matrix<double> U_fpts;  //! Solution at flux points
   vector<matrix<double>> F_spts;  //! Flux at solution points
   vector<matrix<double>> F_fpts;  //! Flux at flux points
-  vector<vector<double>> Fn_fpts; //! Interface flux at flux points
+  matrix<double> Fn_fpts; //! Interface flux at flux points
+
+  // Gradients
+  vector<matrix<double>> dU_spts;  //! Gradient of solution at solution points
+  vector<matrix<double>> dU_fpts;  //! Gradient of solution at flux points
+  vector<matrix<double>> dF_spts;  //! Gradient of flux at solution points
+  vector<matrix<double>> dF_fpts;  //! Gradient of flux at flux points
 
   // Transform Variables
   vector<double> detJac_spts;  //! Determinant of transformation Jacobian at each solution point
@@ -72,4 +85,5 @@ private:
   /* NOTE: Can't have a pointer to an array<>, but can get a double* using
    * double* blah = norm_fpts.data() */
   vector<array<double,3>> norm_fpts;
+  vector<array<double,3>> tNorm_fpts;
 };
