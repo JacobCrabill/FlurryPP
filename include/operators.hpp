@@ -15,20 +15,24 @@
 #pragma once
 
 #include "global.hpp"
-#include "mesh.hpp"
+//#include "mesh.hpp"
+#include "geo.hpp"
 #include "polynomials.hpp"
 
 class oper
 {
 public:
   //! Overall setup function for one element type & polynomial order
-  void setup_operators(int eType, int order);
+  void setup_operators(int eType, int order, geo* inGeo);
 
   //! Setup operator for extrapolation from solution points to flux points
   void setup_extrapolate_spts_fpts(vector<point> loc_spts, vector<point> loc_fpts, int eType, int order);
 
   //! Setup operator for calculation of gradient at the solution points
   void setup_grad_spts(vector<point> loc_spts, int eType, int order);
+
+  //! Setup an interpolation operation between two sets of points using solution basis
+  void setup_interpolate(vector<point> &pts_from, vector<point> &pts_to, matrix<double> &opp_interp, int eType, int order);
 
   /*! Setup operator to calculate divergence of correction function at solution points
    *  based upon the normal flux correction at the flux points */
@@ -38,7 +42,8 @@ public:
   // i.e. somthing like: div_flux_spts_tri = oper.get_oper_div[TRI]
 
   void apply_grad_spts(matrix<double> &U_spts, vector<matrix<double> > &dU_spts);
-  void apply_spts_fpts();
+
+  void apply_spts_fpts(matrix<double> &U_spts, matrix<double> &U_fpts);
 
   const matrix<double>& get_oper_div_spts();
   const matrix<double>& get_oper_spts_fpts();
@@ -49,11 +54,11 @@ public:
   map<int,matrix<double>*> get_oper_correct;
 
 private:
-  mesh *Mesh;
+  geo *Geo;
   int nDims, eType, order;
 
   matrix<double> opp_spts_to_fpts;
   matrix<double> opp_grad_spts;
   matrix<double> opp_div_spts;
   matrix<double> opp_correction;
-}
+};

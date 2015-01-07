@@ -12,7 +12,6 @@
  * Copyright (C) 2014 Jacob Crabill.
  *
  */
-#pragma once
 
 #include "../include/global.hpp"
 

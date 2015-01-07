@@ -2,32 +2,33 @@ TEMPLATE = app
 CONFIG += console
 CONFIG -= qt
 
+QMAKE_CXXFLAGS += -std=c++11
+
 SOURCES += src/global.cpp \
-           src/input.cpp \
-		   src/ele.cpp \
-		   src/polynomials.cpp \
-		   src/operators.cpp \
-    src/mesh.cpp \
+    src/matrix.cpp \
+    src/input.cpp \
+    src/ele.cpp \
+    src/polynomials.cpp \
+    src/operators.cpp \
+    src/geo.cpp \
     src/output.cpp \
     src/face.cpp \
     src/flux.cpp \
-    geo.cpp \
-    src/geo.cpp \
-    src/matrix.cpp \
-    src/flurry.cpp
+    src/flurry.cpp \
+    src/solver.cpp
 		   
 HEADERS += include/global.hpp \
-           include/input.hpp \
-		   include/ele.hpp \
-		   include/polynomials.hpp \
-		   include/operators.hpp \
-    include/mesh.hpp \
+    include/matrix.hpp \
+    include/input.hpp \
+    include/ele.hpp \
+    include/polynomials.hpp \
+    include/operators.hpp \
+    include/geo.hpp \
     include/output.hpp \
     include/face.hpp \
     include/flux.hpp \
-    geo.hpp \
-    include/matrix.hpp \
-    include/flurry.hpp
+    include/flurry.hpp \
+    include/solver.hpp
 
 DISTFILES += \
     README.md \

@@ -68,9 +68,9 @@ void viscousFlux(vector<double> &U, matrix<double> &gradU, matrix<double> &Fvis,
   dE_dy	   = gradU[1][3];
 
   /* --- Calculate Viscosity --- */
-  rt_ratio = (run_input.gamma-1.0)*inte/(run_input.rt_inf);
-  mu = (run_input.mu_inf)*pow(rt_ratio,1.5)*(1.+(run_input.c_sth))/(rt_ratio+(run_input.c_sth));
-  mu = mu + run_input.fix_vis*(run_input.mu_inf - mu);
+  rt_ratio = (params->gamma-1.0)*e/(params->rt_inf);
+  mu = (params->mu_inf)*pow(rt_ratio,1.5)*(1.+(params->c_sth))/(rt_ratio+(params->c_sth));
+  mu = mu + params->fix_vis*(params->mu_inf - mu);
 
   /* --- Calculate Gradients --- */
   du_dx = (dRhoU_dx-dRho_dx*u)/rho;
@@ -124,7 +124,7 @@ void rusanovFlux(vector<double> &UL, vector<double> &UR, matrix<double> &FL, mat
     pL = (params->gamma-1.0)*(UL[3]-rhoL*(uL*uL+vL*vL));
     pR = (params->gamma-1.0)*(UR[3]-rhoR*(uR*uR+vR*vR));
   }else if (params->nDims==3) {
-    WL = UL[3]/U[0];   WR = UR[3]/UR[0];
+    wL = UL[3]/UL[0];   wR = UR[3]/UR[0];
     pL = (params->gamma-1.0)*(UL[3]-rhoL*(uL*uL+vL*vL+wL*wL));
     pR = (params->gamma-1.0)*(UR[3]-rhoR*(uR*uR+vR*vR+wR*wR));
   }

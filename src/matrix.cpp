@@ -30,7 +30,7 @@ matrix<T>::matrix(unsigned int inDim0, unsigned int inDim1)
 }
 
 template<typename T>
-matrix::matrix(const matrix<T> &inMatrix)
+matrix<T>::matrix(const matrix<T> &inMatrix)
 {
   data = inMatrix.data;
   dim0 = inMatrix.dim0;
@@ -38,7 +38,7 @@ matrix::matrix(const matrix<T> &inMatrix)
 }
 
 template<typename T>
-matrix<T> matrix::operator=(const matrix<T> &inMatrix)
+matrix<T> matrix<T>::operator=(const matrix<T> &inMatrix)
 {
   data = inMatrix.data;
   dim0 = inMatrix.dim0;
@@ -47,7 +47,7 @@ matrix<T> matrix::operator=(const matrix<T> &inMatrix)
 }
 
 template<typename T>
-matrix<T> matrix::operator=(const subMatrix<T> &inSubMatrix)
+matrix<T> matrix<T>::operator=(const subMatrix<T> &inSubMatrix)
 {
   data = inSubMatrix.data;
   dim0 = inSubMatrix.dim0;
@@ -91,7 +91,7 @@ void matrix<T>::timesMatrix(matrix<T> &A, matrix<T> &B)
   unsigned int i, j, k, p;
   p = A.dim1;
 
-  if (A.dim0 != dim1) FatalError("Incompatible matrix sizes!");
+  //if (A.dim0 != dim1) FatalError("Incompatible matrix sizes!");
   if (B.dim0 != dim0 || B.dim1 != A.dim1) B.setup(dim0, A.dim1);
 
   B.initialize_to_zero();
@@ -110,7 +110,7 @@ void matrix<T>::timesVector(vector<T> &A, vector<T> &B)
 {
   unsigned int i, j;
 
-  if (A.size() != dim1) FatalError("Incompatible vector size");
+  //if (A.size() != dim1) FatalError("Incompatible vector size");
   if (B.size() != dim1) B.resize(dim1);
 
   for (i=0; i<dim0; i++) {
@@ -122,14 +122,14 @@ void matrix<T>::timesVector(vector<T> &A, vector<T> &B)
 }
 
 template<typename T>
-void matrix::insertRow(vector<T> &vec, int rowNum)
+void matrix<T>::insertRow(vector<T> &vec, int rowNum)
 {
   if (rowNum==-1 || rowNum==(int)dim0) {
     // Default action - add to end
     data.push_back(vec);
   }else{
     // Insert at specified location
-    vector<vector<T>>::iterator it = data.begin();
+    typename vector<vector<T>>::iterator it = data.begin();
     data.insert(it+rowNum,vec);
   }
 
@@ -173,7 +173,7 @@ void matrix<T>::unique(matrix<T> &out, vector<int> &iRow)
 
     // If no duplicate found, put in 'out' matrix
     if (iRow[i]==-1) {
-      out.push_back(data[i]);
+      out.insertRow(data[i]);
       iRow[i] = i;
     }
   }
@@ -237,7 +237,7 @@ subMatrix<T> subMatrix<T>::operator=(matrix<T>& inMatrix)
   this->dim0 = inMatrix.getDim0();
   this->dim1 = inMatrix.getDim1();
 
-  if (mat!=NULL) {
+  if (mat) {
     for (int row=0; row<rows.size(); row++) {
     for (int col=0; col<cols.size(); col++) {
         (*mat)[rows[row]][cols[col]] = this->data[row][col];
@@ -247,3 +247,8 @@ subMatrix<T> subMatrix<T>::operator=(matrix<T>& inMatrix)
 
   return *this;
 }
+
+
+// Fix for compiler to know which template types will be needed later (and therefore must now be compiled):
+template class matrix<int>;
+template class matrix<double>;

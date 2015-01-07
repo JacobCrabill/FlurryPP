@@ -14,6 +14,7 @@
  * Copyright (C) 2014 Jacob Crabill.
  *
  */
+#pragma once
 
 #include "global.hpp"
 #include "ele.hpp"
@@ -26,15 +27,13 @@ public:
   face();
 
   /*! Setup access to the left & right elements' data */
-  setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID);
+  void setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID);
 
   /*! Calculate the common inviscid flux on the face */
-  calcInviscidFlux();
+  void calcInviscidFlux(void);
 
   /*! Calculate the common viscous flux on the face */
-  calcViscousFlux();
-
-  ~face();
+  void calcViscousFlux(void);
 
   int ID; //! Global ID of face
 

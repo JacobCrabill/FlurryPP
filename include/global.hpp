@@ -25,15 +25,20 @@
 #include <stdio.h>
 #include <algorithm>
 
-#include "matrix.hpp"
-
-using namespace std;
-
 //! Prints the error message, the stack trace, and exits
 #define FatalError(s) {                                             \
   printf("Fatal error '%s' at %s:%d\n",s,__FILE__,__LINE__);        \
   exit(1); }
 
+#include "matrix.hpp"
+
+// Forward declarations of basic Flurry classes
+class geo;
+class ele;
+class face;
+class solver;
+
+using namespace std;
 
 /* --- Misc. Common Constants --- */
 extern double pi;
@@ -53,9 +58,21 @@ enum MESH_TYPE {
   CREATE_MESH = 1
 };
 
+/*! For convinience with geometry, a simple struct to hold an x,y,z coordinate */
 struct point
 {
   double x, y, z;
+
+  double operator[](int ind) {
+    switch(ind) {
+    case 0:
+      return x;
+    case 1:
+      return y;
+    case 2:
+      return z;
+    }
+  }
 };
 
 /*! Find indices of all values in vec equal to val */

@@ -21,5 +21,6 @@
 #include "operators.hpp"
 #include "polynomials.hpp"
 #include "solver.hpp"
+#include "output.hpp"
 
 int main(int argc, char *argv[]);

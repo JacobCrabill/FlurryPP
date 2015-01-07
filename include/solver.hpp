@@ -12,9 +12,12 @@
  * Copyright (C) 2014 Jacob Crabill.
  *
  */
+#pragma once
 
 #include <map>
 #include <set>
+
+class oper;
 
 #include "global.hpp"
 #include "ele.hpp"
@@ -28,6 +31,9 @@ friend class geo; // Probably only needed if I make eles, opers private?
 
 public:
   /* === Member Variables === */
+  //! Pointer to geometry object for mesh-related operations
+  geo *Geo;
+
   //! Map from eType to order to element- & order-specific operator
   map<int, map<int,oper> > opers;
 
@@ -35,16 +41,14 @@ public:
   vector<ele> eles;
 
   //! Vector of all faces handled by this solver
-  vector<ele> faces;
+  vector<face> faces;
 
   /* === Setup Functions === */
   solver();
 
-  void initialize(input *params);
+  void initialize(input *params, geo *Geo);
 
   void setupOperators();
-
-  ~solver();
 
   /* === Functions Related to Basic FR Process === */
 
@@ -105,8 +109,11 @@ public:
 
   void add_ele(int eType, int order);
 
-  /* === Functions Related to Overset Grids === */
+  void assignEles(vector<ele> &in_eles);
 
+  void assignFaces(vector<face> &in_faces);
+
+  /* === Functions Related to Overset Grids === */
 
 private:
   //! Pointer to the parameters object for the current solution
@@ -116,8 +123,8 @@ private:
   set<int> eTypes;
 
   //! Set of all polynomial orders present for each element type
-  map<int,set<int>> polyOrders;
+  map<int,set<int> > polyOrders;
 
   //! Lists of cells to apply various adaptation methods to
   vector<int> r_adapt_cells, h_adapt_cells, p_adapt_cells;
-}
+};

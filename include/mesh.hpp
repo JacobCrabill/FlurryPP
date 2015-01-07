@@ -12,9 +12,9 @@ public:
   //! Default destructor
   ~mesh();
 
-  get_loc_spts(int eType, int order);
+  void get_loc_spts(int eType, int order);
 
-  get_loc_fpts(int eType, int order);
+  void get_loc_fpts(int eType, int order);
 
 private:
   string spts_type_tri, fpts_type_tri;

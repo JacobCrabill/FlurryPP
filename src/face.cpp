@@ -16,7 +16,12 @@
 #include "../include/face.hpp"
 #include "../include/flux.hpp"
 
-face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
+face::face()
+{
+
+}
+
+void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
 {
   int fptStartL, fptEndL, fptStartR, fptEndR, i;
 
@@ -65,7 +70,7 @@ face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   tempFR.setup(nDims,nFields);
 }
 
-face::calcInviscidFlux()
+void face::calcInviscidFlux(void)
 {
   int i, j, k;
 
@@ -76,23 +81,23 @@ face::calcInviscidFlux()
 
     // Calculate common inviscid flux at flux points
     if (params->riemann_type==0) {
-      rusanovFlux(*UL[i], *UR[i], *FL[i], *FR[i], *normL[i], Fn, params);
+      rusanovFlux(*UL[i], *UR[i], *FL[i], *FR[i], *normL[i], *Fn[i], params);
     }else if (params->riemann_type==1) {
-      roeFlux(*UL[i], *UR[i], *normL[i], Fn, params);
+      roeFlux(*UL[i], *UR[i], *normL[i], *Fn[i], params);
     }
   }
 }
 
-face::calcViscousFlux()
+void face::calcViscousFlux(void)
 {
   int i;
 
   for (i=0; i<nFptsL; i++) {
     // Calculate discontinuous viscous flux at flux points
-    viscousFlux(*UL[i], *gradUL, tempFL, params);
-    viscousFlux(*UR[i], *gradUR, tempFR, params);
+    viscousFlux(*UL[i], *gradUL[i], tempFL, params);
+    viscousFlux(*UR[i], *gradUR[i], tempFR, params);
 
     // Calculte common viscous flux at flux points
-    ldgFlux(*UL[i], *UR[i], *gradUL[i], *gradUR[i], Fn, params);
+    ldgFlux(*UL[i], *UR[i], *gradUL[i], *gradUR[i], *Fn[i], params);
   }
 }

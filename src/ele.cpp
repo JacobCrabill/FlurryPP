@@ -15,7 +15,6 @@
  * Copyright (C) 2014 Jacob Crabill
  *
  */
-#pragma once
 
 #include "../include/ele.hpp"
 #include "../include/polynomials.hpp"
@@ -23,12 +22,17 @@
 
 using namespace std;
 
-ele::ele(int in_eType, int in_order, int in_ID, vector<int> &in_nodes, mesh *in_Mesh)
+ele::ele()
+{
+
+}
+
+ele::ele(int in_eType, int in_order, int in_ID, vector<point> &in_nodes, geo *in_Geo)
 {
   eType = in_eType;
   order = in_order;
   ID = in_ID;
-  Mesh = in_Mesh;
+  Geo = in_Geo;
 
   nodes.clear();
   for (auto &n: in_nodes)
@@ -36,7 +40,7 @@ ele::ele(int in_eType, int in_order, int in_ID, vector<int> &in_nodes, mesh *in_
 
 }
 
-ele::initialize()
+void ele::initialize(void)
 {
   int fpt, face;
 
@@ -69,7 +73,7 @@ ele::initialize()
       case(2):
         tNorm_fpts[fpt][0] = 0;
         tNorm_fpts[fpt][1] = 1;
-      case(2):
+      case(3):
         tNorm_fpts[fpt][0] = -1;
         tNorm_fpts[fpt][1] = 0;
       }
@@ -81,10 +85,10 @@ void ele::calcTransforms(void)
 {
   int spt, fpt, dim1, dim2;
 
-  vector<vector<double>> dtemp(nDims,vector<double>(nDims));
+  matrix<double> dtemp(nDims,nDims); // vector<vector<double>> dtemp(nDims, vector<double>(nDims));
 
-  if (Jac_spts.size() != nSpts) Jac_spts.resize(nSpts);
-  if (Jac_fpts.size() != nFpts) Jac_fpts.resize(nFpts);
+  if (Jac_spts.size() != (unsigned int)nSpts) Jac_spts.resize(nSpts);
+  if (Jac_fpts.size() != (unsigned int)nFpts) Jac_fpts.resize(nFpts);
 
   /* --- Calculate Transformation at Solution Points --- */
   for (spt=0; spt<nSpts; spt++) {

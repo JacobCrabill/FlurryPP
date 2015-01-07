@@ -16,13 +16,13 @@
 #include "global.hpp"
 
 /*! Evaluate the 1D Lagrange polynomial mode based on points x_lag at point y */
-double Lagrange(vector<double> &x_lag, double &y, int &mode);
+double Lagrange(vector<double> &x_lag, double &y, unsigned int &mode);
 
 /*! Evaluate the first derivative of the 1D Lagrange polynomial mode based on points x_lag at point y */
-double dLagrange(vector<double> &x_lag, double &y, int &mode);
+double dLagrange(vector<double> &x_lag, double &y, unsigned int &mode);
 
 /*! Evaluate the second derivative of the 1D Lagrange polynomial mode based on points x_lag at point y */
-double ddLagrange(vector<double> &x_lag, double &y, int &mode);
+double ddLagrange(vector<double> &x_lag, double &y, unsigned int &mode);
 
 // correction function bases
 
@@ -34,13 +34,13 @@ double ddLagrange(vector<double> &x_lag, double &y, int &mode);
 void shape_quad(point &in_rs, vector<double> &out_shape);
 
 //! Derivative of shape functions for linear quad
-void dshape_quad(point &in_rs, vector<vector<double>> &out_dshape);
+void dshape_quad(point &in_rs, matrix<double> &out_dshape);
 
 //! Shape function for linear triangle (TODO: Generalize to N-noded tri)
 void shape_tri(point &in_rs, vector<double> &out_shape);
 
 //! Derivative of shape functions for linear triangle
-void dshape_tri(point &in_rs, vector<vector<double>> &out_dshape);
+void dshape_tri(point &in_rs, matrix<double> &out_dshape);
 
 //! Evaluate a mode of the [alpha,beta] Jacobi polynomial at a point
 double eval_jacobi(double in_r, int in_alpha, int in_beta, int in_mode);
@@ -56,3 +56,9 @@ double eval_dr_dubiner_basis_2d(point &in_rs, int in_mode, int in_basis_order);
 
 //! Evaluate the s derivative of the Dubiner basis for triangles
 double eval_ds_dubiner_basis_2d(point &in_rs, int in_mode, int in_basis_order);
+
+//! Evaluate the gamma function for positive integers
+double eval_gamma(int in_n);
+
+//! Change triangular coordinates from natural to area
+point rs_to_ab(point &rs);

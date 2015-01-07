@@ -11,6 +11,8 @@
  * Copyright (C) 2014 Jacob Crabill.
  *
  */
+#pragma once
+
 #include "../include/global.hpp"
 
 #include <string>
@@ -35,19 +37,19 @@ public:
 
   /*! Read a single value from the input file; if not found, apply a default value */
   template <typename T>
-  void getScalarOpt(string optName, T &opt, T defaultVal);
+  void getScalarValue(string optName, T &opt, T defaultVal);
 
   /*! Read a single value from the input file; if not found, throw an error and exit */
   template <typename T>
-  void getScalarOpt(string optName, T &opt);
+  void getScalarValue(string optName, T &opt);
 
   /*! Read a vector of values from the input file; if not found, apply the default value to all elements */
   template <typename T>
-  void getVectorVal(string optName, vector<T> &opt, T defaultVal);
+  void getVectorValue(string optName, vector<T> &opt, T defaultVal);
 
   /*! Read a vector of values from the input file; if not found, throw an error and exit */
   template <typename T>
-  void getVectorVal(string optName, vector<T> &opt);
+  void getVectorValue(string optName, vector<T> &opt);
 
 private:
   ifstream optFile;
@@ -61,18 +63,18 @@ public:
   /*! Default constructor */
   input();
 
-  /*! Default destructor */
-  ~input();
+  input(const input &inInput);
 
   void readInputFile(char *filename);
 
-  /* --- Member Variables --- */
+  /* --- Basic Problem Variables --- */
   int equation;  //! {0 | Advection/diffusion} {1 | Euler/Navier-Stokes}
   int viscous;   //! {0 | No diffusion/Viscosity} {1 | Diffusion/Viscosity}
   int order;
   int riemann_type;
   int ic_type;
   int test_case;
+  int motion;
 
   /* --- Simulation Run Parameters --- */
   int nFields;
@@ -96,15 +98,20 @@ public:
   double prandtl;
   double mu;
 
+  double rt_inf;  // ?
+  double mu_inf;
+  double fix_vis;
+  double c_sth;
+
   /* --- Mesh Parameters --- */
-  string mesh_file_name;
+  string meshFileName;
   int mesh_type;
   int nx, ny;
   double xmin, xmax, ymin, ymax;
 
   /* --- FR Parameters --- */
-  string spt_type_tri;  //! Legendre, Lobatto, ...
-  string spt_type_quad;
+  string sptsTypeTri;  //! Legendre, Lobatto, ...
+  string sptsTypeQuad;
 
 private:
   fileReader opts;

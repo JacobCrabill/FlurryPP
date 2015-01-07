@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
   Geo.setup(&params);
 
   /* Prepare the solver for computation */
-  Solver.initialize(&params);
+  Solver.initialize(&params,&Geo);
 
   /* Setup the FR elements & faces which will be computed on */
   Geo.setupElesFaces(&Solver);

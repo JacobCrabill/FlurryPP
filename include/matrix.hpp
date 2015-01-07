@@ -22,7 +22,6 @@
 using namespace std;
 
 // Forward Declarations
-template <typename T> class matrix;
 template <typename T> class subMatrix;
 
 template <typename T>
@@ -34,7 +33,7 @@ public:
   matrix();
 
   //! Secondary Constructor with Size Allocation
-  matrix(int inDim0, int inDim1);
+  matrix(unsigned int inDim0, unsigned int inDim1);
 
   //! Copy Constructor
   matrix(const matrix<T>& inMatrix);
@@ -43,9 +42,6 @@ public:
   matrix<T> operator=(const matrix<T>& inMatrix);
 
   matrix<T> operator=(const subMatrix<T>& inSubMatrix);
-
-  //! Destructor
-  //~matrix();
 
   void initialize_to_zero();
 
@@ -56,7 +52,7 @@ public:
   unsigned int getDim1(void) {return dim1;}
 
   /* --- Member Functions --- */
-  void setup(int inDim0, int inDim1);
+  void setup(unsigned int inDim0, unsigned int inDim1);
 
   //! Multiplies the matrix by the matrix A and stores the result in B
   void timesMatrix(matrix<T> &A, matrix<T> &B);
@@ -79,15 +75,15 @@ public:
 
   subMatrix<T> operator[](vector<int> &iRows);
 
+  vector<vector<T> > getData();
+
   /* --- Search Operations --- */
 
   /*! Find all unique 'rows' in a matrix */
-  void unique(matrix<T> &out, vector<int> &iRow);
+  void unique(matrix<T> &out, vector<int> &iRow);  
 
   /* --- Member Variables --- */
   unsigned int dim0, dim1;  //! Dimensions of the matrix
-
-  vector<vector<T> > getData();
 
 //protected:
 
@@ -110,8 +106,6 @@ public:
   subMatrix<T> operator=(matrix<T>& inMatrix);
 
   subMatrix<T> operator=(subMatrix<T>& inSubMatrix);
-
-  //~subMatrix();
 
 private:
   matrix<T>* mat; // Pointer to parent matrix

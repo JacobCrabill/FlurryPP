@@ -15,12 +15,28 @@
 #include "../include/input.hpp"
 #include <sstream>
 
+fileReader::fileReader()
+{
+
+}
+
+fileReader::~fileReader()
+{
+  if (optFile.is_open()) optFile.close();
+}
+
 void fileReader::openFile(string fileName) {
   this->fileName = fileName;
   optFile.open(fileName.c_str(), ifstream::in);
 }
 
-void fileReader::getScalarOpt(string optName, fileReader::T &opt, fileReader::T defaultVal)
+void fileReader::closeFile()
+{
+  optFile.close();
+}
+
+template<typename T>
+void fileReader::getScalarValue(string optName, T &opt, T defaultVal)
 {
   if (!optFile.is_open()) {
     optFile.open(fileName.c_str());
@@ -45,7 +61,7 @@ void fileReader::getScalarOpt(string optName, fileReader::T &opt, fileReader::T 
       start += optName.length()+1;
       end = str.find_first_of(" ");
       if (end==string::npos) {
-        end = string.length();
+        end = str.length();
       }
 
       // Put scalar into stringstream for conversion
@@ -62,7 +78,8 @@ void fileReader::getScalarOpt(string optName, fileReader::T &opt, fileReader::T 
   opt = defaultVal;
 }
 
-void fileReader::getScalarOpt(string optName, fileReader::T &opt)
+template<typename T>
+void fileReader::getScalarValue(string optName, T &opt)
 {
   if (!optFile.is_open()) {
     optFile.open(fileName.c_str());
@@ -87,14 +104,14 @@ void fileReader::getScalarOpt(string optName, fileReader::T &opt)
       start += optName.length()+1;
       end = str.find_first_of(" ");
       if (end==string::npos) {
-        end = string.length();
+        end = str.length();
       }
 
       // Put scalar into stringstream for conversion
       if (!(stringstream(str.substr(start,end-start)) >> opt)) {
         cerr << "WARNING: Unable to assign value to option " << optName << endl;
         string errMsg = "Required option not set: " + optName;
-        FatalError(errMsg)
+        FatalError(errMsg.c_str())
       }
 
       return;
@@ -103,7 +120,17 @@ void fileReader::getScalarOpt(string optName, fileReader::T &opt)
 
   // Option was not found; throw error & exit
   string errMsg = "Required option not found: " + optName;
-  FatalError(errMsg)
+  FatalError(errMsg.c_str())
+}
+
+input::input()
+{
+
+}
+
+input::input(const input& inInput)
+{
+
 }
 
 void input::readInputFile(char *filename)
@@ -128,16 +155,16 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("restartIter",restartIter);
 
   opts.getScalarValue("mesh_type",mesh_type,0);
-  opts.getScalarValue("mesh_file_name",mesh_file_name);
+  opts.getScalarValue("mesh_file_name",meshFileName);
   opts.getScalarValue("nx",nx,10);
   opts.getScalarValue("ny",ny,10);
-  opts.getScalarValue("xmin",xmin,-10);
-  opts.getScalarValue("xmax",xmax,10);
-  opts.getScalarValue("ymin",ymin,-10);
-  opts.getScalarValue("ymax",ymax,10);
+  opts.getScalarValue("xmin",xmin,-10.);
+  opts.getScalarValue("xmax",xmax,10.);
+  opts.getScalarValue("ymin",ymin,-10.);
+  opts.getScalarValue("ymax",ymax,10.);
 
-  opts.getScalarValue("spts_type_tri",spts_type_tri,"Legendre");
-  opts.getScalarValue("spts_type_quad",spts_type_quad,"Legendre");
+  opts.getScalarValue("spts_type_tri",sptsTypeTri,string("Legendre"));
+  opts.getScalarValue("spts_type_quad",sptsTypeQuad,string("Legendre"));
 
   /* --- Cleanup ---- */
   opts.closeFile();

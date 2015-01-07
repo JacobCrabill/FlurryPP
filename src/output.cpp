@@ -12,3 +12,9 @@
  * Copyright (C) 2014 Jacob Crabill.
  *
  */
+#include "../include/output.hpp"
+
+void writeData(solver Solver, input params, int iter)
+{
+
+}

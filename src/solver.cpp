@@ -15,9 +15,15 @@
 
 #include "../include/solver.hpp"
 
-void solver::initialize(input *params)
+solver::solver()
+{
+
+}
+
+void solver::initialize(input *params, geo *Geo)
 {
   this->params = params;
+  this->Geo = Geo;
 }
 
 void solver::calcResidual(void)
@@ -28,7 +34,7 @@ void solver::calcResidual(void)
 
   calcInviscidFlux_faces();
 
-  if (params.viscous) {
+  if (params->viscous) {
     calcGradU_spts();
 
     correctU();
@@ -38,7 +44,7 @@ void solver::calcResidual(void)
     calcViscousFlux_faces();
   }
 
-  if (params.motion) {
+  if (params->motion) {
     // Use non-conservative chain-rule formulation (Liang-Miyaji)
     calcGradF_spts();
   }else{
@@ -59,28 +65,63 @@ void solver::extrapolateU(void)
 void solver::calcInviscidFlux_spts(void)
 {
   for (auto& e:eles) {
-    e.calcInviscidFlux();
+    e.calcInviscidFlux_spts();
   }
+}
+
+void solver::calcInviscidFlux_faces()
+{
+
 }
 
 void solver::calcViscousFlux_spts(void)
 {
   for (auto& e:eles) {
-    e.calcInviscidFlux();
+    e.calcInviscidFlux_spts();
   }
 }
 
-void solver::calc_grad_spts(void)
+void solver::calcViscousFlux_faces()
+{
+
+}
+
+void solver::calcGradF_spts()
+{
+
+}
+
+void solver::calcDivF_spts()
+{
+
+}
+
+void solver::correctFlux()
+{
+
+}
+
+void solver::calcGradU_spts(void)
 {
   for (auto& e: eles) {
     opers[e.eType][e.order].apply_grad_spts(e.U_spts,e.dU_spts);
   }
 }
 
-void solver::apply_oper(matrix<double> &op, matrix<double> & A, matrix<double> &B)
+void solver::correctU()
 {
 
 }
+
+void solver::extrapolateGradU()
+{
+
+}
+
+/*void solver::apply_oper(matrix<double> &op, matrix<double> & A, matrix<double> &B)
+{
+
+}*/
 
 
 void solver::setupOperators()
@@ -92,8 +133,18 @@ void solver::setupOperators()
   }
 
   for (auto& e: eTypes) {
-    for (auto& p: polyOrders[eTypes]) {
-      opers[e][p].setupOperators(e,p);
+    for (auto& p: polyOrders[e]) {
+      opers[e][p].setup_operators(e,p,Geo);
     }
   }
+}
+
+void solver::assignEles(vector<ele> &in_eles)
+{
+  this->eles = in_eles;
+}
+
+void solver::assignFaces(vector<face> &in_faces)
+{
+  this->faces = in_faces;
 }
