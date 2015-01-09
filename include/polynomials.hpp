@@ -16,13 +16,13 @@
 #include "global.hpp"
 
 /*! Evaluate the 1D Lagrange polynomial mode based on points x_lag at point y */
-double Lagrange(vector<double> &x_lag, double &y, unsigned int &mode);
+double Lagrange(vector<double> &x_lag, double &y, uint &mode);
 
 /*! Evaluate the first derivative of the 1D Lagrange polynomial mode based on points x_lag at point y */
-double dLagrange(vector<double> &x_lag, double &y, unsigned int &mode);
+double dLagrange(vector<double> &x_lag, double &y, uint &mode);
 
 /*! Evaluate the second derivative of the 1D Lagrange polynomial mode based on points x_lag at point y */
-double ddLagrange(vector<double> &x_lag, double &y, unsigned int &mode);
+double ddLagrange(vector<double> &x_lag, double &y, uint &mode);
 
 // correction function bases
 

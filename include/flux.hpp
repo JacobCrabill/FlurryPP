@@ -25,10 +25,10 @@ void inviscidFlux(vector<double> &U, matrix<double> &F, input *params);
 void viscousFlux(vector<double> &U, matrix<double> &gradU, matrix<double> &Fvis, input *params);
 
 /*! Calculate the common inviscid flux at a point using Roe's method */
-void roeFlux(vector<double> &uL, vector<double> &uR, array<double,3> &norm, vector<double> &Fn, input *params);
+void roeFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params);
 
 /*! Calculate the common inviscid flux at a point using the Rusanov scalar-diffusion method */
-void rusanovFlux(vector<double> &UL, vector<double> &UR, matrix<double> &FL, matrix<double> &FR, array<double,3> &norm, vector<double> &Fn, input *params);
+void rusanovFlux(vector<double> &UL, vector<double> &UR, matrix<double> &FL, matrix<double> &FR, vector<double> &norm, vector<double> &Fn, input *params);
 
 /*! Calculate the common viscous flux at a point using the LDG penalty method */
 void ldgFlux(vector<double> &uL, vector<double> &uR, matrix<double> &gradU_L, matrix<double> &gradU_R, vector<double> &Fn, input *params);

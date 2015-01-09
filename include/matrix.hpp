@@ -23,7 +23,9 @@
 
 using namespace std;
 
-// Forward Declarations
+typedef unsigned int uint;
+
+// Forward declaration needed for matrix class
 template <typename T> class subMatrix;
 
 template <typename T>
@@ -35,7 +37,7 @@ public:
   matrix();
 
   //! Secondary Constructor with Size Allocation
-  matrix(unsigned int inDim0, unsigned int inDim1);
+  matrix(uint inDim0, uint inDim1);
 
   //! Copy Constructor
   matrix(const matrix<T>& inMatrix);
@@ -50,13 +52,13 @@ public:
   void initializeToValue(T val);
 
   /*! Get dim0 [number of rows] */
-  unsigned int getDim0(void) {return dim0;}
+  uint getDim0(void) {return dim0;}
 
   /*! Get dim1 [number of columns] */
-  unsigned int getDim1(void) {return dim1;}
+  uint getDim1(void) {return dim1;}
 
   /* --- Member Functions --- */
-  void setup(unsigned int inDim0, unsigned int inDim1);
+  void setup(uint inDim0, uint inDim1);
 
   //! Multiplies the matrix by the matrix A and stores the result in B
   void timesMatrix(matrix<T> &A, matrix<T> &B);
@@ -87,7 +89,7 @@ public:
   void unique(matrix<T> &out, vector<int> &iRow);  
 
   /* --- Member Variables --- */
-  unsigned int dim0, dim1;  //! Dimensions of the matrix
+  uint dim0, dim1;  //! Dimensions of the matrix
 
 //protected:
 

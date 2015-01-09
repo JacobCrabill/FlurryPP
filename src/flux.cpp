@@ -104,7 +104,7 @@ void viscousFlux(vector<double> &U, matrix<double> &gradU, matrix<double> &Fvis,
 }
 
 
-void rusanovFlux(vector<double> &UL, vector<double> &UR, matrix<double> &FL, matrix<double> &FR, array<double,3> &norm, vector<double> &Fn, input *params)
+void rusanovFlux(vector<double> &UL, vector<double> &UR, matrix<double> &FL, matrix<double> &FR, vector<double> &norm, vector<double> &Fn, input *params)
 {
   int i, j;
   double rhoL, uL, vL, wL, pL, vnL=0.0;
@@ -159,7 +159,7 @@ void ldgFlux(vector<double> &uL, vector<double> &uR, matrix<double> &gradU_L, ma
 }
 
 
-void roeFlux(vector<double> &uL, vector<double> &uR, array<double,3> &norm, vector<double> &Fn, input *params)
+void roeFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params)
 {
   FatalError("Roe flux not implemented just yet.  Go to flux.cpp and do it!!");
 }

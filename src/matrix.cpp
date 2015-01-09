@@ -23,7 +23,7 @@ matrix<T>::matrix()
 }
 
 template<typename T>
-matrix<T>::matrix(unsigned int inDim0, unsigned int inDim1)
+matrix<T>::matrix(uint inDim0, uint inDim1)
 {
   data.resize(inDim0);
   for (auto& x: data) x.resize(inDim1);
@@ -56,7 +56,7 @@ matrix<T> matrix<T>::operator=(const subMatrix<T> &inSubMatrix)
 }
 
 template<typename T>
-void matrix<T>::setup(unsigned int inDim0, unsigned int inDim1)
+void matrix<T>::setup(uint inDim0, uint inDim1)
 {
   dim0 = inDim0;
   dim1 = inDim1;
@@ -85,26 +85,26 @@ subMatrix<T> matrix<T>::operator[](vector<int> &iRows)
 template<typename T>
 void matrix<T>::initializeToZero(void)
 {
-  for (unsigned int idim=0; idim<dim0; idim++)
-    for (unsigned int jdim=0; jdim<dim1; jdim++)
+  for (uint idim=0; idim<dim0; idim++)
+    for (uint jdim=0; jdim<dim1; jdim++)
       data[idim][jdim] = 0;
 }
 
 template<typename T>
 void matrix<T>::initializeToValue(T val)
 {
-  for (unsigned int idim=0; idim<dim0; idim++)
-    for (unsigned int jdim=0; jdim<dim1; jdim++)
+  for (uint idim=0; idim<dim0; idim++)
+    for (uint jdim=0; jdim<dim1; jdim++)
       data[idim][jdim] = val;
 }
 
 template <typename T>
 void matrix<T>::timesMatrix(matrix<T> &A, matrix<T> &B)
 {
-  unsigned int i, j, k, p;
+  uint i, j, k, p;
   p = A.dim1;
 
-  //if (A.dim0 != dim1) FatalError("Incompatible matrix sizes!");
+  if (A.dim0 != dim1) FatalError("Incompatible matrix sizes in matrix multiplication!");
   if (B.dim0 != dim0 || B.dim1 != A.dim1) B.setup(dim0, A.dim1);
 
   B.initializeToZero();
@@ -121,7 +121,7 @@ void matrix<T>::timesMatrix(matrix<T> &A, matrix<T> &B)
 template <typename T>
 void matrix<T>::timesVector(vector<T> &A, vector<T> &B)
 {
-  unsigned int i, j;
+  uint i, j;
 
   //if (A.size() != dim1) FatalError("Incompatible vector size");
   if (B.size() != dim1) B.resize(dim1);
@@ -176,8 +176,8 @@ void matrix<T>::unique(matrix<T> &out, vector<int> &iRow)
 
   /* --- For each row in the matrix, compare to all
      previous rows to get first unique occurence --- */
-  for (unsigned int i=0; i<dim0; i++) {
-    for (unsigned int j=0; j<i; j++) {
+  for (uint i=0; i<dim0; i++) {
+    for (uint j=0; j<i; j++) {
       if (equal(data[i].begin(),data[i].end(),data[j].begin())) {
         iRow[i] = j;
         break;

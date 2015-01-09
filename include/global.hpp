@@ -39,7 +39,9 @@ using namespace std;
 /* --- Misc. Common Constants --- */
 extern double pi;
 
-/** enumeration for element type */
+typedef unsigned int uint;
+
+/*! enumeration for element type */
 enum ETYPE {
   TRI     = 0,
   QUAD    = 1,
@@ -49,9 +51,15 @@ enum ETYPE {
   PYRAMID = 5
 };
 
+/*! Enumeration for mesh (either create cartesian mesh or read from file) */
 enum MESH_TYPE {
   READ_MESH   = 0,
   CREATE_MESH = 1
+};
+
+enum EQUATION {
+  ADVECTION_DIFFUSION = 0,
+  NAVIER_STOKES       = 1
 };
 
 /*! For convinience with geometry, a simple struct to hold an x,y,z coordinate */
@@ -61,12 +69,14 @@ struct point
 
   double operator[](int ind) {
     switch(ind) {
-    case 0:
-      return x;
-    case 1:
-      return y;
-    case 2:
-      return z;
+      case 0:
+        return x;
+      case 1:
+        return y;
+      case 2:
+        return z;
+      default:
+        FatalError("Invalid index for point struct.");
     }
   }
 };
@@ -77,7 +87,7 @@ vector<int> findEq(const vector<T> &vec, T val)
 {
   vector<int> out;
 
-  for (unsigned int i=0; i<vec.size(); i++) {
+  for (uint i=0; i<vec.size(); i++) {
     if (vec[i]==val) out.push_back(i);
   }
 

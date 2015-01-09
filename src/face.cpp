@@ -55,14 +55,14 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   for (i=fptStartL; i<fptEndL; i++) {
     UL[i] = &(eL->U_fpts[i]);
     FL[i] = &(eL->F_fpts[i]);
-    normL[i] = &(eL->norm_fpts[i]);
+    normL[i] = (eL->norm_fpts[i]);
   }
 
   // Get access to data at right element [order reversed to match left ele]
   for (i=fptStartR-1; i>=fptEndR; i--) {
     UR[i] = &(eR->U_fpts[i]);
     FR[i] = &(eR->F_fpts[i]);
-    normR[i] = &(eR->norm_fpts[i]);
+    normR[i] = (eR->norm_fpts[i]);
   }
 
   // Setup a temporary flux-storage vector for later use
@@ -81,9 +81,9 @@ void face::calcInviscidFlux(void)
 
     // Calculate common inviscid flux at flux points
     if (params->riemann_type==0) {
-      rusanovFlux(*UL[i], *UR[i], *FL[i], *FR[i], *normL[i], *Fn[i], params);
+      rusanovFlux(*UL[i], *UR[i], *FL[i], *FR[i], normL[i], *Fn[i], params);
     }else if (params->riemann_type==1) {
-      roeFlux(*UL[i], *UR[i], *normL[i], *Fn[i], params);
+      roeFlux(*UL[i], *UR[i], normL[i], *Fn[i], params);
     }
   }
 }

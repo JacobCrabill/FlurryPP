@@ -25,16 +25,16 @@ void geo::setup(input* params)
   this->params = params;
 
   switch(params->mesh_type) {
-  case (READ_MESH):
-    readGmsh(params->meshFileName);
-    break;
+    case (READ_MESH):
+      readGmsh(params->meshFileName);
+      break;
 
-  case (CREATE_MESH):
-    createMesh();
-    break;
+    case (CREATE_MESH):
+      createMesh();
+      break;
 
-  default:
-    FatalError("Mesh type not recognized.");
+    default:
+      FatalError("Mesh type not recognized.");
   }
 
   processConnectivity();
@@ -56,10 +56,9 @@ void geo::processConnectivity()
     }
   }
 
-  // --- Just for nDims==2 ---
-  // Get just the unique edges
-  // iE is of length [original e2v] with range [final e2v]
-  //[e2v,~,iE] = unique(e2v);
+  /* --- Just for nDims==2 ---
+     Get just the unique edges
+     iE is of length [original e2v] with range [final e2v] */
   vector<int> iE;
   e2v1.unique(e2v,iE);
   nEdges = e2v.getDim0();
@@ -68,7 +67,7 @@ void geo::processConnectivity()
 
   vector<int> ie;
   vector<int> intEdges, bndEdges; // Setup something more permanent...
-  for (unsigned int i=0; i<iE.size(); i++) {
+  for (uint i=0; i<iE.size(); i++) {
     if (iE[i]!=-1) {
       ie = findEq(iE,iE[i]);
       if (ie.size()>2) {
@@ -132,6 +131,8 @@ void geo::setupElesFaces(solver *Solver)
   int ie = 0;
   for (auto& e:eles) {
     e.ID = ie;
+    e.eType = ctype[ie];
+    e.nNodes = c2nv[ie];
 
     // Shape [mesh] nodes
     e.nodeID.resize(c2nv[ie]);
@@ -205,6 +206,7 @@ void geo::createMesh()
 
   c2nv.assign(nEles,4);
   c2ne.assign(nEles,4);
+  ctype.assign(nEles,QUAD); // Add hex later
 
   xv.resize(nVerts);
   c2v_tmp.resize(4);
@@ -235,22 +237,4 @@ void geo::createMesh()
   }
 }
 
-vector<point> geo::getLocSpts(int eType, int order)
-{
-
-}
-
-vector<point> geo::getLocFpts(int eType, int order)
-{
-
-}
-
-vector<double> geo::getLocSpts1D(int eType, int order)
-{
-
-}
-
-vector<double> geo::getLocFpts1D(int eType, int order)
-{
-
-}
+#include "../include/geo.inl"

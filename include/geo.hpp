@@ -51,11 +51,8 @@ public:
   //! Get the reference-domain location of the flux points for the given element & polynomial order
   vector<point> getLocFpts(int eType, int order);
 
-  //! For tensor-product elements, get location of solution points along each direction
-  vector<double> getLocSpts1D(int eType, int order);
-
-  //! Get the 1D locations of flux points (for 2D elements and 3D tensor-product elements)
-  vector<double> getLocFpts1D(int eType, int order);
+  //! Get the point locations of the requested type (i.e. Gauss, Lobatto) for the given order
+  vector<double> getPts1D(string ptsType, int order);
 
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces;
@@ -70,6 +67,6 @@ private:
 
   // Additional Connectivity Data
   matrix<int> c2e, e2c, e2v, v2e, v2v, v2c;
-  vector<int> v2nv, v2nc, c2nv, c2ne;
+  vector<int> v2nv, v2nc, c2nv, c2ne, ctype;
   vector<int> bndPts, bndFaces;
 };

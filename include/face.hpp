@@ -52,8 +52,8 @@ private:
   vector<matrix<double>*> FR;
   vector<vector<double>*> Fn;
   vector<vector<double>*> deltaF;
-  vector<array<double,3>*> normL;
-  vector<array<double,3>*> normR;
+  matrix<double> normL;
+  matrix<double> normR;
 
   matrix<double> tempFL, tempFR;
   vector<double> tempUL, tempUR;

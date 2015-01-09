@@ -20,9 +20,9 @@
 using namespace std;
 
 
-double Lagrange(vector<double> &x_lag, double &y, unsigned int &mode)
+double Lagrange(vector<double> &x_lag, double &y, uint &mode)
 {
-  unsigned int i;
+  uint i;
   double lag = 1.0;
 
   for(i=0; i<x_lag.size(); i++) {
@@ -35,9 +35,9 @@ double Lagrange(vector<double> &x_lag, double &y, unsigned int &mode)
 }
 
 
-double dLagrange(vector<double> &x_lag, double &y, unsigned int &mode)
+double dLagrange(vector<double> &x_lag, double &y, uint &mode)
 {
-  unsigned int i, j;
+  uint i, j;
   double dLag, dLag_num, dLag_den;
 
   dLag = 0.0;
@@ -64,9 +64,9 @@ double dLagrange(vector<double> &x_lag, double &y, unsigned int &mode)
   return dLag;
 }
 
-double ddLagrange(vector<double> &x_lag, double &y, unsigned int &mode)
+double ddLagrange(vector<double> &x_lag, double &y, uint &mode)
 {
-  unsigned int i, j, k;
+  uint i, j, k;
   double ddLag, ddLag_num, ddLag_den;
 
   ddLag = 0.0;

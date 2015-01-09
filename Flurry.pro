@@ -15,7 +15,8 @@ SOURCES += src/global.cpp \
     src/face.cpp \
     src/flux.cpp \
     src/flurry.cpp \
-    src/solver.cpp
+    src/solver.cpp \
+    include/geo.inl
 		   
 HEADERS += include/global.hpp \
     include/matrix.hpp \

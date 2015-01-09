@@ -133,7 +133,7 @@ void solver::setupOperators()
 
   for (auto& e: eTypes) {
     for (auto& p: polyOrders[e]) {
-      opers[e][p].setup_operators(e,p,Geo);
+      opers[e][p].setupOperators(e,p,Geo,params);
     }
   }
 }

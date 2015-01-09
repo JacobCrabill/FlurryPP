@@ -158,6 +158,7 @@ void input::readInputFile(char *filename)
 
   opts.getScalarValue("equation",equation,1);
   opts.getScalarValue("viscous",viscous,0);
+  opts.getScalarValue("viscous",motion,0);
   opts.getScalarValue("order",order,3);
   opts.getScalarValue("riemann_type",riemann_type,0);
   opts.getScalarValue("ic_type",ic_type,0);
