@@ -52,14 +52,18 @@ void ele::initialize(void)
       case(0):
         tNorm_fpts[fpt][0] = 0;
         tNorm_fpts[fpt][1] = -1;
+        break;
       case(1):
         tNorm_fpts[fpt][0] = 1.0/sqrt(2);
         tNorm_fpts[fpt][1] = 1.0/sqrt(2);
+        break;
       case(2):
         tNorm_fpts[fpt][0] = -1;
         tNorm_fpts[fpt][1] = 0;
+        break;
       }
     }
+    break;
   case(QUAD):
     for (fpt=0; fpt<nFpts; fpt++) {
       face = fpt%(nFpts/3);
@@ -67,18 +71,31 @@ void ele::initialize(void)
       case(0):
         tNorm_fpts[fpt][0] = 0;
         tNorm_fpts[fpt][1] = -1;
+        break;
       case(1):
         tNorm_fpts[fpt][0] = 1;
         tNorm_fpts[fpt][1] = 0;
+        break;
       case(2):
         tNorm_fpts[fpt][0] = 0;
         tNorm_fpts[fpt][1] = 1;
+        break;
       case(3):
         tNorm_fpts[fpt][0] = -1;
         tNorm_fpts[fpt][1] = 0;
+        break;
       }
     }
+    break;
   }
+}
+
+void ele::setup(input *inParams, geo *inGeo)
+{
+  params = inParams;
+  Geo = inGeo;
+
+  order = params->order;
 }
 
 void ele::calcTransforms(void)

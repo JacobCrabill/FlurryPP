@@ -58,6 +58,8 @@ matrix<T> matrix<T>::operator=(const subMatrix<T> &inSubMatrix)
 template<typename T>
 void matrix<T>::setup(unsigned int inDim0, unsigned int inDim1)
 {
+  dim0 = inDim0;
+  dim1 = inDim1;
   data.resize(inDim0);
   for (auto& x: data) x.resize(inDim1);
 }
@@ -65,7 +67,11 @@ void matrix<T>::setup(unsigned int inDim0, unsigned int inDim1)
 template<typename T>
 vector<T>& matrix<T>::operator[](int inDim0)
 {
-  if (inDim0<(int)dim0) return data[inDim0];
+  if (inDim0<(int)dim0) {
+    return data[inDim0];
+  }else{
+    FatalError("Attempting to access data beyond end of matrix.");
+  }
 }
 
 template<typename T>
@@ -77,13 +83,20 @@ subMatrix<T> matrix<T>::operator[](vector<int> &iRows)
 }
 
 template<typename T>
-void matrix<T>::initialize_to_zero()
+void matrix<T>::initializeToZero(void)
 {
   for (unsigned int idim=0; idim<dim0; idim++)
     for (unsigned int jdim=0; jdim<dim1; jdim++)
       data[idim][jdim] = 0;
 }
 
+template<typename T>
+void matrix<T>::initializeToValue(T val)
+{
+  for (unsigned int idim=0; idim<dim0; idim++)
+    for (unsigned int jdim=0; jdim<dim1; jdim++)
+      data[idim][jdim] = val;
+}
 
 template <typename T>
 void matrix<T>::timesMatrix(matrix<T> &A, matrix<T> &B)
@@ -94,7 +107,7 @@ void matrix<T>::timesMatrix(matrix<T> &A, matrix<T> &B)
   //if (A.dim0 != dim1) FatalError("Incompatible matrix sizes!");
   if (B.dim0 != dim0 || B.dim1 != A.dim1) B.setup(dim0, A.dim1);
 
-  B.initialize_to_zero();
+  B.initializeToZero();
 
   for (i=0; i<dim0; i++) {
     for (j=0; j<dim1; j++) {

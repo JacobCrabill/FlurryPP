@@ -25,11 +25,7 @@
 #include <stdio.h>
 #include <algorithm>
 
-//! Prints the error message, the stack trace, and exits
-#define FatalError(s) {                                             \
-  printf("Fatal error '%s' at %s:%d\n",s,__FILE__,__LINE__);        \
-  exit(1); }
-
+#include "error.hpp"
 #include "matrix.hpp"
 
 // Forward declarations of basic Flurry classes
@@ -109,3 +105,14 @@ void vecAssign(vector<T> &vec, vector<int> &ind, T val)
   for (auto& i:ind) vec[i] = val;
 }
 
+// Good for numeric types
+template<typename T>
+T getMax(vector<T> &vec)
+{
+  T max = 0;
+  for (auto& i:vec) {
+    if (i>max) max = i;
+  }
+
+  return max;
+}

@@ -25,8 +25,13 @@ fileReader::~fileReader()
   if (optFile.is_open()) optFile.close();
 }
 
-void fileReader::openFile(string fileName) {
+void fileReader::setFile(string fileName)
+{
   this->fileName = fileName;
+}
+
+void fileReader::openFile(void)
+{
   optFile.open(fileName.c_str(), ifstream::in);
 }
 
@@ -38,7 +43,12 @@ void fileReader::closeFile()
 template<typename T>
 void fileReader::getScalarValue(string optName, T &opt, T defaultVal)
 {
-  if (!optFile.is_open()) {
+  size_t start, end, diff;
+  string str;
+
+  openFile();
+
+  if (!optFile.is_open() || !getline(optFile,str)) {
     optFile.open(fileName.c_str());
     if (!optFile.is_open())
       FatalError("Cannont open input file for reading.");
@@ -48,13 +58,13 @@ void fileReader::getScalarValue(string optName, T &opt, T defaultVal)
   optFile.seekg(0,optFile.beg);
 
   // Search for the given string
-  size_t start, end;
-  string str;
-  while (!optFile.eof()) {
-    getline(optFile,str);
+  while (getline(optFile,str)) {
 
     // Remove any leading whitespace & search for option string
     start = str.find_first_not_of(" ");
+    diff = str.length() - start;
+    if (diff<optName.length()) continue; // If line is shorter that length of opt string, skip
+
     if (!str.compare(start,optName.length(),optName)) {
 
       // Find start/end of scalar value
@@ -71,16 +81,23 @@ void fileReader::getScalarValue(string optName, T &opt, T defaultVal)
         opt = defaultVal;
       }
 
+      closeFile();
       return;
     }
   }
 
   opt = defaultVal;
+  closeFile();
 }
 
 template<typename T>
 void fileReader::getScalarValue(string optName, T &opt)
 {
+  size_t start, end, diff;
+  string str;
+
+  openFile();
+
   if (!optFile.is_open()) {
     optFile.open(fileName.c_str());
     if (!optFile.is_open())
@@ -90,14 +107,14 @@ void fileReader::getScalarValue(string optName, T &opt)
   // Rewind to the start of the file
   optFile.seekg(0,optFile.beg);
 
-  // Search for the given string
-  size_t start, end;
-  string str;
-  while (!optFile.eof()) {
-    getline(optFile,str);
+  // Search for the given string  
+  while (getline(optFile,str)) {
 
     // Remove any leading whitespace & search for option string
     start = str.find_first_not_of(" ");
+    diff = str.length() - start;
+    if (diff<optName.length()) continue; // If line is shorter that length of opt string, skip
+
     if (!str.compare(start,optName.length(),optName)) {
 
       // Find start/end of scalar value
@@ -114,6 +131,7 @@ void fileReader::getScalarValue(string optName, T &opt)
         FatalError(errMsg.c_str())
       }
 
+      closeFile();
       return;
     }
   }
@@ -128,18 +146,13 @@ input::input()
 
 }
 
-input::input(const input& inInput)
-{
-
-}
-
 void input::readInputFile(char *filename)
 {
   /* --- Open Input File --- */
   string fName;
   fName.assign(filename);
 
-  opts.openFile(fName);
+  opts.setFile(fName);
 
   /* --- Read input file & store all simulation parameters --- */
 
@@ -149,19 +162,29 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("riemann_type",riemann_type,0);
   opts.getScalarValue("ic_type",ic_type,0);
   opts.getScalarValue("test_case",test_case,0);
-
   opts.getScalarValue("iterMax",iterMax);
-  opts.getScalarValue("restart",restart,0);
-  opts.getScalarValue("restartIter",restartIter);
 
-  opts.getScalarValue("mesh_type",mesh_type,0);
-  opts.getScalarValue("mesh_file_name",meshFileName);
-  opts.getScalarValue("nx",nx,10);
-  opts.getScalarValue("ny",ny,10);
-  opts.getScalarValue("xmin",xmin,-10.);
-  opts.getScalarValue("xmax",xmax,10.);
-  opts.getScalarValue("ymin",ymin,-10.);
-  opts.getScalarValue("ymax",ymax,10.);
+  opts.getScalarValue("restart",restart,0);
+  if (restart) {
+    opts.getScalarValue("restartIter",restartIter);
+  }
+
+  opts.getScalarValue("mesh_type",mesh_type,1); // CREATE_MESH by default
+
+  if (mesh_type == CREATE_MESH) {
+    opts.getScalarValue("nDims",nDims,2);
+    opts.getScalarValue("nx",nx,10);
+    opts.getScalarValue("ny",ny,10);
+    opts.getScalarValue("xmin",xmin,-10.);
+    opts.getScalarValue("xmax",xmax,10.);
+    opts.getScalarValue("ymin",ymin,-10.);
+    opts.getScalarValue("ymax",ymax,10.);
+  }else if (mesh_type == READ_MESH) {
+    opts.getScalarValue("mesh_file_name",meshFileName);
+  }
+
+  opts.getScalarValue("plot_freq",plot_freq,100);
+  opts.getScalarValue("restart_freq",restart_freq,100);
 
   opts.getScalarValue("spts_type_tri",sptsTypeTri,string("Legendre"));
   opts.getScalarValue("spts_type_quad",sptsTypeQuad,string("Legendre"));
@@ -175,4 +198,12 @@ void input::readInputFile(char *filename)
   }else{
     initIter = 0;
   }
+
+  // --- Testing ---
+  cout << "equation = " << equation << endl;
+  cout << "viscous = " << viscous << endl;
+  cout << "order = " << order << endl;
+  cout << "spts_type_tri = " << sptsTypeTri << endl;
+  cout << "mesh_type = " << mesh_type<< endl;
+
 }

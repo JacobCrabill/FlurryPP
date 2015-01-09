@@ -53,7 +53,8 @@ public:
 
   void initialize(void);
 
-  void setup(int in_eType, int in_order, int in_ID, vector<double> &xy);
+  void setup(input *inParams, geo *inGeo);
+  //void setup(int in_eType, int in_order, int in_ID, vector<double> &xy);
 
   void calcTransforms(void);
 

@@ -15,7 +15,6 @@
 
 #include "../include/geo.hpp"
 
-
 geo::geo()
 {
 
@@ -28,12 +27,14 @@ void geo::setup(input* params)
   switch(params->mesh_type) {
   case (READ_MESH):
     readGmsh(params->meshFileName);
+    break;
 
   case (CREATE_MESH):
     createMesh();
+    break;
 
   default:
-    FatalError("Mesh type not recognized.")
+    FatalError("Mesh type not recognized.");
   }
 
   processConnectivity();
@@ -44,7 +45,7 @@ void geo::processConnectivity()
 {
   /* --- Setup Edges --- */
   matrix<int> e2v1, e2v;
-  int iep1, ne = 0;
+  int iep1;
   for (int e=0; e<nEles; e++) {
     for (int ie=0; ie<c2nv[e]; ie++) {
       vector<int> edge(2);
@@ -63,10 +64,10 @@ void geo::processConnectivity()
   e2v1.unique(e2v,iE);
   nEdges = e2v.getDim0();
 
+  if (nDims == 2) nFaces = nEdges;
+
   vector<int> ie;
   vector<int> intEdges, bndEdges; // Setup something more permanent...
-  unsigned int nIntEdges = 0;
-  unsigned int nBndEdges = 0;
   for (unsigned int i=0; i<iE.size(); i++) {
     if (iE[i]!=-1) {
       ie = findEq(iE,iE[i]);
@@ -76,13 +77,11 @@ void geo::processConnectivity()
       }
       else if (ie.size()==2) {
         // Internal Edge which has not yet been added
-        intEdges[nIntEdges] = iE[i];
-        nIntEdges++;
+        intEdges.push_back(iE[i]); //[nIntEdges] = iE[i];
       }
       else if (ie.size()==1) {
         // Boundary Edge
-        bndEdges[nBndEdges] = iE[i];
-        nBndEdges++;
+        bndEdges.push_back(iE[i]); //[nBndEdges] = iE[i];
       }
 
       // Mark edges as completed
@@ -90,10 +89,13 @@ void geo::processConnectivity()
     }
   }
 
-
   /* --- Setup Edge Normals? --- */
 
   /* --- Setup Cell-To-Edge, Edge-To-Cell --- */
+  c2e.setup(nEles,getMax(c2ne));
+  e2c.setup(nEdges,2);
+  e2c.initializeToValue(-1);
+
   vector<int> edge(2), ie1(2);
   int ie0, ie2;
   for (int ic=0; ic<nEles; ic++) {
@@ -127,44 +129,51 @@ void geo::setupElesFaces(solver *Solver)
   vector<face> faces(nFaces);
 
   // Setup the elements
-  ele tmp;
-  for (int e=0; e<nEles; e++) {
-    tmp.ID = e;
+  int ie = 0;
+  for (auto& e:eles) {
+    e.ID = ie;
 
     // Shape [mesh] nodes
-    tmp.nodeID.resize(c2nv[e]);
-    tmp.nodes.resize(c2nv[e]);
-    for (int iv=0; iv<c2nv[e]; iv++) {
-      tmp.nodeID[iv] = c2v[e][iv];
-      tmp.nodes[iv] = xv[c2v[e][iv]];
+    e.nodeID.resize(c2nv[ie]);
+    e.nodes.resize(c2nv[ie]);
+    for (int iv=0; iv<c2nv[ie]; iv++) {
+      e.nodeID[iv] = c2v[ie][iv];
+      e.nodes[iv] = xv[c2v[ie][iv]];
     }
 
     // Global face IDs
-    tmp.faceID.resize(c2ne[e]);
-    for (int ie=0; ie<c2ne[e]; ie++) {
-      tmp.faceID[ie] = c2e[e][ie];
+    e.faceID.resize(c2ne[ie]);
+    for (int k=0; k<c2ne[ie]; k++) {
+      e.faceID[k] = c2e[ie][k];
     }
 
-    eles[e] = tmp;
+    e.setup(params,this);
+
+    ie++;
   }
 
   // Setup the faces
-  face tmpF;
   int fid1, fid2;
-  for (int i=0; i<nFaces; i++) {
+  int i = 0;
+  for (auto& F:faces) {
     // Find local face ID of global face
     fid1 = findFirst(c2e[e2c[i][0]],i);
     fid2 = findFirst(c2e[e2c[i][1]],i);
-    tmpF.setupFace(&eles[e2c[i][0]],&eles[e2c[i][1]],fid1,fid2,i);
+    F.params = params;
+    if (e2c[i][1] == -1) {
+      // Boundary Edge
+      // ** still need to create a boundary face class (and an interior face class?) **
+    }else{
+      // Interior Edge
+      F.setupFace(&eles[e2c[i][0]],&eles[e2c[i][1]],fid1,fid2,i);
+    }
 
-    faces[i] = tmpF;
+    i++;
   }
 
   // Final Step - Assign eles, faces to Solver
   Solver->eles = eles;
   Solver->faces = faces;
-  /*Solver->assignEles(eles);
-  Solver->assignFaces(faces);*/
 }
 
 void geo::readGmsh(string fileName)
@@ -181,6 +190,7 @@ void geo::createMesh()
 
   nx = params->nx;
   ny = params->ny;
+  nDims = params->nDims; // Since I may implement createMesh for 3D later
 
   xmin = params->xmin;
   xmax = params->xmax;
@@ -193,16 +203,19 @@ void geo::createMesh()
   nEles = nx*ny;
   nVerts = (nx+1)*(ny+1);
 
+  c2nv.assign(nEles,4);
+  c2ne.assign(nEles,4);
+
   xv.resize(nVerts);
   c2v_tmp.resize(4);
 
   /* --- Setup Vertices --- */
   nv = 0;
   point pt;
-  for (i=0; i<nx+1; i++) {
-    for (j=0; j<ny+1; j++) {
-      pt.x = xmin + i*dx;
-      pt.y = ymin + j*dy;
+  for (i=0; i<ny+1; i++) {
+    for (j=0; j<nx+1; j++) {
+      pt.x = xmin + j*dx;
+      pt.y = ymin + i*dy;
       xv[nv] = pt;
       nv++;
     }

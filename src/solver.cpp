@@ -17,7 +17,6 @@
 
 solver::solver()
 {
-
 }
 
 void solver::initialize(input *params, geo *Geo)

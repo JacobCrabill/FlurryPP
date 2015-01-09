@@ -49,15 +49,15 @@ void oper::setup_extrapolate_spts_fpts(vector<point> loc_spts, vector<point> loc
       switch(eType) {
       case(TRI):
         opp_spts_to_fpts[fpt][spt] = eval_dubiner_basis_2d(loc_fpts[fpt],spt,order);
-
+        break;
       case(QUAD): {
         vector<double> locSpts1D = Geo->getLocSpts1D(eType,order);
         // First, get the i an j ID of the spt
         ispt = spt%(nSpts/(order+1));
         jspt = floor(spt/(order+1));
         opp_spts_to_fpts[fpt][spt] = Lagrange(locSpts1D,loc_fpts[fpt].x,ispt) * Lagrange(locSpts1D,loc_fpts[fpt].y,jspt);
+        break;
       }
-
       default:
         FatalError("Element type not yet supported.");
       }
@@ -89,13 +89,13 @@ void oper::setup_interpolate(vector<point> &pts_from, vector<point> &pts_to, mat
       switch(eType) {
       case(TRI):
         opp_interp[ptB][ptA] = eval_dubiner_basis_2d(pts_to[ptB],ptA,order);
-
+        break;
       case(QUAD):
         // First, get the i and j ID of the pt [tensor-product element]
         iptA = ptA%(nPtsFrom/(order+1));
         jptA = floor(ptA/(order+1));
         opp_interp[ptB][ptA] = Lagrange(locPts1Dx,pts_to[ptB].x,iptA) * Lagrange(locPts1Dy,pts_to[ptB].y,jptA);
-
+        break;
       default:
         FatalError("Element type not yet supported.");
       }
@@ -117,7 +117,7 @@ void oper::setup_grad_spts(vector<point> loc_spts, int eType, int order)
       opp_grad_spts[0][spt] = eval_dr_dubiner_basis_2d(loc_spts[spt],spt,order);
       opp_grad_spts[1][spt] = eval_ds_dubiner_basis_2d(loc_spts[spt],spt,order);
     }
-
+    break;
   case(QUAD): {
     vector<double> loc_spts_1D = Geo->getLocSpts1D(eType,order);
     for (spt=0; spt<nSpts; spt++) {
@@ -126,8 +126,8 @@ void oper::setup_grad_spts(vector<point> loc_spts, int eType, int order)
       opp_grad_spts[0][spt] = dLagrange(loc_spts_1D,loc_spts_1D[spt],ispt) * Lagrange(loc_spts_1D,loc_spts_1D[spt],jspt);
       opp_grad_spts[1][spt] = Lagrange(loc_spts_1D,loc_spts_1D[spt],ispt) * dLagrange(loc_spts_1D,loc_spts_1D[spt],jspt);
     }
+    break;
   }
-
   default:
     FatalError("Element type not yet supported.");
   }

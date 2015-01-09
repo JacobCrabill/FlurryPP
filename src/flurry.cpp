@@ -24,6 +24,10 @@ int main(int argc, char *argv[]) {
 
   int iter;
 
+  cout << "< insert ASCII art here >" << endl;
+
+  if (argc<2) FatalError("No input file specified.");
+
   /* Read input file & set simulation parameters */
   params.readInputFile(argv[1]);
 
@@ -40,14 +44,14 @@ int main(int argc, char *argv[]) {
   Solver.setupOperators();
 
   /* Write initial data file */
-  writeData(Solver,params,0);
+  writeData(&Solver,&params,0);
 
   /* --- Calculation Loop --- */
   for (iter=params.initIter; iter<params.iterMax; iter++) {
 
     Solver.calcResidual();
 
-    if ((iter+1)%params.plot_freq == 0) writeData(Solver,params,iter);
+    if ((iter+1)%params.plot_freq == 0) writeData(&Solver,&params,iter);
 
   }
 }

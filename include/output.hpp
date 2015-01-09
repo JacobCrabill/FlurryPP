@@ -19,4 +19,4 @@
 #include "ele.hpp"
 #include "geo.hpp"
 
-void writeData(solver Solver, input params, int iter);
+void writeData(solver *Solver, input *params, int iter);

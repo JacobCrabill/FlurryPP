@@ -19,6 +19,8 @@
 
 #include <vector>
 
+#include "error.hpp"
+
 using namespace std;
 
 // Forward Declarations
@@ -43,7 +45,9 @@ public:
 
   matrix<T> operator=(const subMatrix<T>& inSubMatrix);
 
-  void initialize_to_zero();
+  void initializeToZero(void);
+
+  void initializeToValue(T val);
 
   /*! Get dim0 [number of rows] */
   unsigned int getDim0(void) {return dim0;}

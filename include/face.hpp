@@ -37,11 +37,11 @@ public:
 
   int ID; //! Global ID of face
 
+  input *params; //! Input parameters for simulation
+
 private:
   int nFptsL, nFptsR;
   int nDims, nFields;
-
-  input *params;
 
   /* --- Storage for all solution/geometry data at flux points --- */
   vector<vector<double>*> UL;

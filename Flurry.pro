@@ -28,7 +28,8 @@ HEADERS += include/global.hpp \
     include/face.hpp \
     include/flux.hpp \
     include/flurry.hpp \
-    include/solver.hpp
+    include/solver.hpp \
+    include/error.hpp
 
 DISTFILES += \
     README.md \

@@ -27,8 +27,11 @@ public:
   /*! Default destructor */
   ~fileReader();
 
+  /*! Set the file to be read from */
+  void setFile(string fileName);
+
   /*! Open the file to prepare for reading simulation parameters */
-  void openFile(string fileName);
+  void openFile(void);
 
   /*! Close the file & clean up */
   void closeFile(void);
@@ -62,8 +65,6 @@ class input
 public:
   /*! Default constructor */
   input();
-
-  input(const input &inInput);
 
   void readInputFile(char *filename);
 
