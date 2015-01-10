@@ -67,7 +67,19 @@ struct point
 {
   double x, y, z;
 
-  double operator[](int ind) {
+  point() {
+    x = 0;
+    y = 0;
+    z = 0;
+  }
+
+  void zero() {
+    x = 0;
+    y = 0;
+    z = 0;
+  }
+
+  double& operator[](int ind) {
     switch(ind) {
       case 0:
         return x;
@@ -96,7 +108,7 @@ vector<int> findEq(const vector<T> &vec, T val)
 
 /*! Find index of first occurance of val in vec */
 template<typename T>
-int findFirst(const vector<int> &vec, T val)
+int findFirst(vector<T> &vec, T val)
 {
   if (vec.size()==0) return -1;
 

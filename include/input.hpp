@@ -88,6 +88,8 @@ public:
   int plot_freq;
   int restart_freq;
 
+  string dataFileName;
+
   /* --- Boundary Condition Parameters --- */
   double Uinf;
   double Vinf;
@@ -103,6 +105,9 @@ public:
   double mu_inf;
   double fix_vis;
   double c_sth;
+
+  double advectVx;
+  double advectVy;
 
   /* --- Mesh Parameters --- */
   string meshFileName;

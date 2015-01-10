@@ -392,16 +392,16 @@ vector<point> geo::getLocFpts(int eType, int order)
       outPts[i].x = pts1D[i];
       outPts[i].y = -1.;
       // Face 1
-      outPts[i+order+1].x = pts1D[order+1-i];
+      outPts[i+order+1].x = pts1D[order-i];
       outPts[i+order+1].y = pts1D[i];
       // Face 2
       outPts[i+2*(order+1)].x = -1.;
-      outPts[i+2*(order+1)].y = pts1D[order+1-i];
+      outPts[i+2*(order+1)].y = pts1D[order-i];
     }
   }
   else if (eType == QUAD) {
     outPts.resize(4*(order+1));
-    pts1D = getPts1D(params->sptsTypeTri,order);
+    pts1D = getPts1D(params->sptsTypeQuad,order);
     for (int i=0; i<order+1; i++) {
       // Face 0
       outPts[i].x = pts1D[i];
@@ -410,11 +410,11 @@ vector<point> geo::getLocFpts(int eType, int order)
       outPts[i+order+1].x = 1.;
       outPts[i+order+1].y = pts1D[i];
       // Face 2
-      outPts[i+2*(order+1)].x = pts1D[order+1-i];
+      outPts[i+2*(order+1)].x = pts1D[order-i];
       outPts[i+2*(order+1)].y = 1.;
       // Face 3
       outPts[i+3*(order+1)].x = -1.;
-      outPts[i+3*(order+1)].y = pts1D[order+1-i];
+      outPts[i+3*(order+1)].y = pts1D[order-i];
     }
   }
 

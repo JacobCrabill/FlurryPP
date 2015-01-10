@@ -52,9 +52,31 @@ public:
 
   void calcTransforms(void);
 
+  void calcPosSpts(void);
+
   void calcInviscidFlux_spts(void);
 
   void calcViscousFlux_spts(void);
+
+  /* --- Display, Output & Diagnostic Functions --- */
+
+  /*! Get vector of primitive variables at a solution point */
+  vector<double> getPrimitives(uint spt);
+
+  /*! Get position of solution point in physical space */
+  point getPosSpt(uint spt);
+
+  int getNDims() const;
+  void setNDims(int value);
+
+  int getNFields() const;
+  void setNFields(int value);
+
+  int getNSpts() const;
+  void setNSpts(int value);
+
+  int getNFpts() const;
+  void setNFpts(int value);
 
 private:
 
@@ -87,7 +109,11 @@ private:
   vector<matrix<double> > Jac_spts;  //! Transformation Jacobian [matrix] at each solution point
   vector<matrix<double> > Jac_fpts;  //! Transformation Jacobian [matrix] at each flux point
   
-  // Misc.
+  // Geometry Variables
+  vector<point> pos_spts;
   matrix<double> norm_fpts;
   matrix<double> tNorm_fpts;
+
+  /*! Get the values of the nodal shape bases at a solution point */
+  void getShape(int spt, vector<double> &shape);
 };

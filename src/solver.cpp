@@ -70,7 +70,9 @@ void solver::calcInviscidFlux_spts(void)
 
 void solver::calcInviscidFlux_faces()
 {
-
+  for (auto& F:faces) {
+    F.calcInviscidFlux();
+  }
 }
 
 void solver::calcViscousFlux_spts(void)

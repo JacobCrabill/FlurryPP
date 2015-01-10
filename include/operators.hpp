@@ -59,7 +59,7 @@ private:
   int nDims, eType, order;
 
   matrix<double> opp_spts_to_fpts;
-  matrix<double> opp_grad_spts;
+  vector<matrix<double>> opp_grad_spts;
   matrix<double> opp_div_spts;
   matrix<double> opp_correction;
 };

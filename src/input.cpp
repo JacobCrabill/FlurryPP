@@ -157,8 +157,15 @@ void input::readInputFile(char *filename)
   /* --- Read input file & store all simulation parameters --- */
 
   opts.getScalarValue("equation",equation,1);
+  if (equation==ADVECTION_DIFFUSION) {
+    opts.getScalarValue("advectVx",advectVx,1.);
+    opts.getScalarValue("advectVy",advectVy,1.);
+  } else if (equation==NAVIER_STOKES) {
+
+  }
+
   opts.getScalarValue("viscous",viscous,0);
-  opts.getScalarValue("viscous",motion,0);
+  opts.getScalarValue("motion",motion,0);
   opts.getScalarValue("order",order,3);
   opts.getScalarValue("riemann_type",riemann_type,0);
   opts.getScalarValue("ic_type",ic_type,0);
@@ -186,6 +193,7 @@ void input::readInputFile(char *filename)
 
   opts.getScalarValue("plot_freq",plot_freq,100);
   opts.getScalarValue("restart_freq",restart_freq,100);
+  opts.getScalarValue("dataFileName",dataFileName,string("simData"));
 
   opts.getScalarValue("spts_type_tri",sptsTypeTri,string("Legendre"));
   opts.getScalarValue("spts_type_quad",sptsTypeQuad,string("Legendre"));

@@ -20,17 +20,24 @@
 
 void inviscidFlux(vector<double> &U, matrix<double> &F, input *params)
 {
-  double rho, u, v, p;
-  rho = U[0];
-  u = U[1]/rho;
-  v = U[2]/rho;
-  p = (params->gamma-1.0)*(U[3]-(0.5*rho*((u*u)+(v*v))));
+  /* --- Note: Flux matrix expected to be <nDims x nFields> --- */
+  if (params->equation == ADVECTION_DIFFUSION) {
+    F[0][0] = params->advectVx*U[0];
+    F[1][0] = params->advectVy*U[0];
+  }
+  else if (params->equation == NAVIER_STOKES) {
+    double rho, u, v, p;
+    rho = U[0];
+    u = U[1]/rho;
+    v = U[2]/rho;
+    p = (params->gamma-1.0)*(U[3]-(0.5*rho*((u*u)+(v*v))));
 
-  /* --- Assuming F has already been sized properly... --- */
-  F[0][0] =  U[1];       F[1][0] =  U[2];
-  F[0][1] =  U[1]*u;     F[1][1] =  U[1]*v;
-  F[0][2] =  U[2]*u;     F[1][2] =  U[2]*v;
-  F[0][3] = (U[3]+p)*u;  F[1][3] = (U[3]+p)*v;
+    /* --- Assuming F has already been sized properly... --- */
+    F[0][0] =  U[1];       F[1][0] =  U[2];
+    F[0][1] =  U[1]*u;     F[1][1] =  U[1]*v;
+    F[0][2] =  U[2]*u;     F[1][2] =  U[2]*v;
+    F[0][3] = (U[3]+p)*u;  F[1][3] = (U[3]+p)*v;
+  }
 }
 
 
@@ -152,6 +159,23 @@ void rusanovFlux(vector<double> &UL, vector<double> &UR, matrix<double> &FL, mat
   }
 }
 
+
+void centralFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params)
+{
+  if (params->equation == ADVECTION_DIFFUSION) {
+    Fn[0] = params->advectVx*0.5*norm[0]*(uL[0]+uR[0])
+          + params->advectVy*0.5*norm[1]*(uL[0]+uR[0]);
+  }
+  else if (params->equation == NAVIER_STOKES) {
+//    Fn.assign(params->nFields,0.);
+//    for (int i=0; i<params->nFields; i++) {
+//      for (int j=0; j<params->nDims; j++) {
+//        Fn[i] += 0.5*norm[j]*(uL[i]+uR[i]);
+//      }
+//    }
+    FatalError("centralFlux not supported for Navier-Stokes simulations.");
+  }
+}
 
 void ldgFlux(vector<double> &uL, vector<double> &uR, matrix<double> &gradU_L, matrix<double> &gradU_R, vector<double> &Fn, input *params)
 {

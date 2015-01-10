@@ -67,9 +67,10 @@ void matrix<T>::setup(uint inDim0, uint inDim1)
 template<typename T>
 vector<T>& matrix<T>::operator[](int inDim0)
 {
-  if (inDim0<(int)dim0) {
+  if (inDim0 < (int)dim0 && inDim0 >= 0) {
     return data[inDim0];
-  }else{
+  }
+  else {
     FatalError("Attempting to access data beyond end of matrix.");
   }
 }

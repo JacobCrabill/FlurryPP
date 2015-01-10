@@ -80,10 +80,16 @@ void face::calcInviscidFlux(void)
     inviscidFlux(*UR[i],tempFR, params);
 
     // Calculate common inviscid flux at flux points
-    if (params->riemann_type==0) {
-      rusanovFlux(*UL[i], *UR[i], *FL[i], *FR[i], normL[i], *Fn[i], params);
-    }else if (params->riemann_type==1) {
-      roeFlux(*UL[i], *UR[i], normL[i], *Fn[i], params);
+    if (params->equation == ADVECTION_DIFFUSION) {
+      centralFlux(*UL[i], *UR[i], normL[i], *Fn[i], params); // need an upwindFlux() for advection-diffusion
+    }
+    else if (params->equation == NAVIER_STOKES) {
+      if (params->riemann_type==0) {
+        rusanovFlux(*UL[i], *UR[i], *FL[i], *FR[i], normL[i], *Fn[i], params);
+      }
+      else if (params->riemann_type==1) {
+        roeFlux(*UL[i], *UR[i], normL[i], *Fn[i], params);
+      }
     }
   }
 }

@@ -105,6 +105,8 @@ void ele::setup(input *inParams, geo *inGeo)
   nSpts = loc_spts.size();
   nFpts = loc_fpts.size();
 
+  pos_spts.resize(nSpts);
+
   if (params->equation == ADVECTION_DIFFUSION) {
     nFields = 1;
   }else if (params->equation == NAVIER_STOKES) {
@@ -121,7 +123,7 @@ void ele::setup(input *inParams, geo *inGeo)
   F_fpts.resize(nFpts);
   dU_spts.resize(nSpts);
   dU_fpts.resize(nFpts);
-  for (int spt=0; spt<nDims; spt++) { // if I fix nDims (change to nSpts) code fails at line 22 of flurry.cpp!
+  for (int spt=0; spt<nSpts; spt++) { // if I fix nDims (change to nSpts) code fails at line 22 of flurry.cpp!
     F_spts[spt].setup(nDims,nFields);
     dU_spts[spt].setup(nDims,nFields);
   }
@@ -151,6 +153,8 @@ void ele::setup(input *inParams, geo *inGeo)
 
   /* --- Final Step: calculate physical->reference transforms --- */
   calcTransforms();
+
+  calcPosSpts();
 }
 
 void ele::calcTransforms(void)
@@ -213,7 +217,35 @@ void ele::calcTransforms(void)
     if (nDims==2) {
       detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
     }
-    if (detJac_spts[fpt]<0) FatalError("Negative Jacobian at solution points.");
+    if (detJac_fpts[fpt]<0) FatalError("Negative Jacobian at solution points.");
+  }
+}
+
+void ele::calcPosSpts(void)
+{
+  vector<double> shape;
+
+  for (int spt=0; spt<nSpts; spt++) {
+    getShape(spt, shape);
+    pos_spts[spt].zero();
+    for (int iv=0; iv<nNodes; iv++) {
+      for (int dim=0; dim<nDims; dim++) {
+        pos_spts[spt][dim] += shape[iv]*nodes[iv][dim];
+      }
+    }
+  }
+}
+
+void ele::getShape(int spt, vector<double> &shape)
+{
+  if (eType == TRI) {
+    shape_tri(loc_spts[spt], shape);
+  }
+  else if (eType == QUAD) {
+    shape_quad(loc_spts[spt], shape);
+  }
+  else {
+    FatalError("Element Type Not Supported.");
   }
 }
 
@@ -230,3 +262,66 @@ void ele::calcViscousFlux_spts()
     viscousFlux(U_spts[spt], dU_spts[spt], F_spts[spt], params);
   }
 }
+
+vector<double> ele::getPrimitives(uint spt)
+{
+  vector<double> V(nFields);
+
+  if (params->equation == ADVECTION_DIFFUSION) {
+    V[0] = U_spts[spt][0];
+  }
+  else if (params->equation == NAVIER_STOKES) {
+    V[0] = U_spts[spt][0];
+    V[1] = U_spts[spt][1]/V[0];
+    V[2] = U_spts[spt][2]/V[0];
+    // p = (gamma-1)*(rho*e - 1/2*rho*(magV^2))
+    V[3] = (params->gamma-1)*(U_spts[spt][3] - (0.5*(U_spts[spt][1]*U_spts[spt][1] + U_spts[spt][2]*U_spts[spt][2])/U_spts[spt][0]));
+  }
+
+  return V;
+}
+
+point ele::getPosSpt(uint spt)
+{
+  return pos_spts[spt];
+}
+int ele::getNDims() const
+{
+  return nDims;
+}
+
+void ele::setNDims(int value)
+{
+  nDims = value;
+}
+int ele::getNFields() const
+{
+  return nFields;
+}
+
+void ele::setNFields(int value)
+{
+  nFields = value;
+}
+int ele::getNSpts() const
+{
+  return nSpts;
+}
+
+void ele::setNSpts(int value)
+{
+  nSpts = value;
+}
+int ele::getNFpts() const
+{
+  return nFpts;
+}
+
+void ele::setNFpts(int value)
+{
+  nFpts = value;
+}
+
+
+
+

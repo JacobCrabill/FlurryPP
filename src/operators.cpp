@@ -107,24 +107,37 @@ void oper::setupInterpolate(vector<point> &pts_from, vector<point> &pts_to, matr
 
 void oper::setupGradspts(vector<point> loc_spts, int eType, int order)
 {
-  uint spt, nSpts, ispt, jspt;
+  uint spt, nSpts, spt1, spt2, dim, ispt, jspt;
+  uint xid1, yid1, xid2, yid2;
   nSpts = loc_spts.size();
 
-  opp_grad_spts.setup(nDims,nSpts);
+  opp_grad_spts.resize(nDims);
+  for (auto& dim:opp_grad_spts) dim.setup(nSpts,nSpts);
 
   if (eType == TRI) {
-    for (spt=0; spt<nSpts; spt++) {
-      opp_grad_spts[0][spt] = eval_dr_dubiner_basis_2d(loc_spts[spt],spt,order);
-      opp_grad_spts[1][spt] = eval_ds_dubiner_basis_2d(loc_spts[spt],spt,order);
+    for (spt1=0; spt1<nSpts; spt1++) {
+      for (spt2=0; spt2<nSpts; spt2++) {
+        opp_grad_spts[0][spt1][spt2] = eval_dr_dubiner_basis_2d(loc_spts[spt1],spt2,order); // double-check the spt vs. spt2 in this
+        opp_grad_spts[1][spt1][spt2] = eval_ds_dubiner_basis_2d(loc_spts[spt1],spt2,order);
+      }
     }
   }
   else if (eType == QUAD) {
     vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
-    for (spt=0; spt<nSpts; spt++) {
-      ispt = spt%(nSpts/(order+1));
-      jspt = floor(spt/(order+1));
-      opp_grad_spts[0][spt] = dLagrange(loc_spts_1D,loc_spts_1D[spt],ispt) * Lagrange(loc_spts_1D,loc_spts_1D[spt],jspt);
-      opp_grad_spts[1][spt] = Lagrange(loc_spts_1D,loc_spts_1D[spt],ispt) * dLagrange(loc_spts_1D,loc_spts_1D[spt],jspt);
+    for (dim=0; dim<nDims; dim++) {
+      for (spt1=0; spt1<nSpts; spt1++) {
+        xid1 = spt1%(nSpts/(order+1));      // col index - also = to (spt1 - (order+1)*row)
+        yid1 = floor(spt1/(order+1));       // row index
+        for (spt2=0; spt2<nSpts; spt2++) {
+          xid2 = spt2%(nSpts/(order+1));
+          yid2 = floor(spt2/(order+1));
+          if (dim==0) {
+            opp_grad_spts[dim][spt1][spt2] = dLagrange(loc_spts_1D,loc_spts_1D[xid1],xid2) * Lagrange(loc_spts_1D,loc_spts_1D[yid1],yid2);
+          } else {
+            opp_grad_spts[dim][spt1][spt2] = dLagrange(loc_spts_1D,loc_spts_1D[yid1],yid2) * Lagrange(loc_spts_1D,loc_spts_1D[xid1],xid2);
+          }
+        }
+      }
     }
   }
   else {
@@ -136,7 +149,7 @@ void oper::setupGradspts(vector<point> loc_spts, int eType, int order)
 void oper::apply_grad_spts(matrix<double> &U_spts, vector<matrix<double> > &dU_spts)
 {
   for (uint dim=0; dim<dU_spts.size(); dim++)
-    opp_grad_spts.timesMatrix(U_spts,dU_spts[dim]);
+    opp_grad_spts[dim].timesMatrix(U_spts,dU_spts[dim]);
 }
 
 void oper::apply_spts_fpts(matrix<double> &U_spts, matrix<double> &U_fpts)

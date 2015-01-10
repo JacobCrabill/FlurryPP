@@ -95,7 +95,7 @@ void geo::processConnectivity()
   e2c.setup(nEdges,2);
   e2c.initializeToValue(-1);
 
-  vector<int> edge(2), ie1(2);
+  vector<int> edge(2), ie1(2), col2;
   int ie0, ie2;
   for (int ic=0; ic<nEles; ic++) {
     for (int j=0; j<c2ne[ic]; j++) {
@@ -104,7 +104,8 @@ void geo::processConnectivity()
       edge[1] = c2v[ic][jp1];
 
       ie1 = findEq(e2v.getCol(0),edge[0]);
-      ie2 = findFirst((e2v.getRows(ie1)).getCol(1),edge[1]);
+      col2 = (e2v.getRows(ie1)).getCol(1);
+      ie2 = findFirst(col2,edge[1]);
       ie0 = ie1[ie2];
 
       c2e[ic][j] = ie0;
@@ -154,18 +155,21 @@ void geo::setupElesFaces(solver *Solver)
   }
 
   // Setup the faces
+  vector<int> tmpEdges;
   int fid1, fid2;
   int i = 0;
   for (auto& F:faces) {
     // Find local face ID of global face
-    fid1 = findFirst(c2e[e2c[i][0]],i);
-    fid2 = findFirst(c2e[e2c[i][1]],i);
+    tmpEdges = c2e[e2c[i][0]];
+    fid1 = findFirst(tmpEdges,i);
     F.params = params;
     if (e2c[i][1] == -1) {
       // Boundary Edge
       // ** still need to create a boundary face class (and an interior face class?) **
     }else{
       // Interior Edge
+      tmpEdges = c2e[e2c[i][1]];
+      fid2 = findFirst(tmpEdges,i);
       F.setupFace(&eles[e2c[i][0]],&eles[e2c[i][1]],fid1,fid2,i);
     }
 
