@@ -16,7 +16,8 @@ SOURCES += src/global.cpp \
     src/flux.cpp \
     src/flurry.cpp \
     src/solver.cpp \
-    include/geo.inl
+    include/geo.inl \
+    src/bound.cpp
 		   
 HEADERS += include/global.hpp \
     include/matrix.hpp \
@@ -30,7 +31,8 @@ HEADERS += include/global.hpp \
     include/flux.hpp \
     include/flurry.hpp \
     include/solver.hpp \
-    include/error.hpp
+    include/error.hpp \
+    include/bound.hpp
 
 DISTFILES += \
     README.md \

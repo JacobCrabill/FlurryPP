@@ -107,7 +107,7 @@ void oper::setupInterpolate(vector<point> &pts_from, vector<point> &pts_to, matr
 
 void oper::setupGradspts(vector<point> loc_spts, int eType, int order)
 {
-  uint spt, nSpts, spt1, spt2, dim, ispt, jspt;
+  uint nSpts, spt1, spt2, dim;
   uint xid1, yid1, xid2, yid2;
   nSpts = loc_spts.size();
 

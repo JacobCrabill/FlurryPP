@@ -17,6 +17,7 @@
 #include "global.hpp"
 #include "input.hpp"
 #include "solver.hpp"
+#include "bound.hpp"
 
 class geo
 {
@@ -32,7 +33,7 @@ public:
   void processConnectivity();
 
   //! Create the elements and faces needed for the simulation
-  void setupElesFaces(solver* Solver);
+  void setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> bounds);
 
   /* === Helper Routines === */
 
@@ -55,7 +56,7 @@ public:
   vector<double> getPts1D(string ptsType, int order);
 
   int nDims, nFields;
-  int nEles, nVerts, nEdges, nFaces;
+  int nEles, nVerts, nEdges, nFaces, nBndFaces;
 
 private:
 
@@ -66,7 +67,9 @@ private:
   vector<point> xv;
 
   // Additional Connectivity Data
-  matrix<int> c2e, e2c, e2v, v2e, v2v, v2c;
+  matrix<int> c2e, c2b, e2c, e2v, v2e, v2v, v2c;
   vector<int> v2nv, v2nc, c2nv, c2ne, ctype;
-  vector<int> bndPts, bndFaces;
+  vector<int> bndPts, bndFaces, bcType;
+  vector<int> intEdges, bndEdges;
+  vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
 };

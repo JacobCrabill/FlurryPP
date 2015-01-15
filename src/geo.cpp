@@ -63,10 +63,15 @@ void geo::processConnectivity()
   e2v1.unique(e2v,iE);
   nEdges = e2v.getDim0();
 
-  if (nDims == 2) nFaces = nEdges;
+  /* --- Determine interior vs. boundary edges/faces --- */
+
+  // Flag for whether global face ID corresponds to interior or boundary face
+  isBnd.assign(nEdges,0);
+
+  nFaces = 0;
+  nBndFaces = 0;
 
   vector<int> ie;
-  vector<int> intEdges, bndEdges; // Setup something more permanent...
   for (uint i=0; i<iE.size(); i++) {
     if (iE[i]!=-1) {
       ie = findEq(iE,iE[i]);
@@ -77,10 +82,13 @@ void geo::processConnectivity()
       else if (ie.size()==2) {
         // Internal Edge which has not yet been added
         intEdges.push_back(iE[i]); //[nIntEdges] = iE[i];
+        nFaces++;
       }
       else if (ie.size()==1) {
         // Boundary Edge
         bndEdges.push_back(iE[i]); //[nBndEdges] = iE[i];
+        isBnd[iE[i]] = true;
+        nBndFaces++;
       }
 
       // Mark edges as completed
@@ -88,10 +96,17 @@ void geo::processConnectivity()
     }
   }
 
+  /* --- Match Boundary Faces to Boundary Conditions --- */
+
+  bcType.resize(nBndFaces);
+
+
   /* --- Setup Edge Normals? --- */
 
   /* --- Setup Cell-To-Edge, Edge-To-Cell --- */
   c2e.setup(nEles,getMax(c2ne));
+  c2b.setup(nEles,getMax(c2ne));
+  c2b.initializeToZero();
   e2c.setup(nEdges,2);
   e2c.initializeToValue(-1);
 
@@ -108,7 +123,15 @@ void geo::processConnectivity()
       ie2 = findFirst(col2,edge[1]);
       ie0 = ie1[ie2];
 
-      c2e[ic][j] = ie0;
+      // Find ID of face within type-specific array
+      if (isBnd[ie0]) {
+        c2e[ic][j] = findFirst(bndEdges,ie0);
+        c2b[ic][j] = true;
+      }else{
+        c2e[ic][j] = findFirst(intEdges,ie0);
+        c2b[ic][j] = false;
+      }
+
       if (e2c[ie0][0] == -1) {
         // No cell yet assigned to edge; put on left
         e2c[ie0][0] = ic;
@@ -120,65 +143,84 @@ void geo::processConnectivity()
   }
 }
 
-void geo::setupElesFaces(solver *Solver)
+void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> bounds)
 {
   if (nEles<=0) FatalError("Cannot setup elements array - nEles = 0");
 
-  // Temporary vectors that will get assigned to Solver
-  vector<ele> eles(nEles);
-  vector<face> faces(nFaces);
+  eles.resize(nEles);
+  faces.resize(nFaces);
+  bounds.resize(nBndFaces);
 
   // Setup the elements
-  int ie = 0;
+  int ic = 0;
   for (auto& e:eles) {
-    e.ID = ie;
-    e.eType = ctype[ie];
-    e.nNodes = c2nv[ie];
+    e.ID = ic;
+    e.eType = ctype[ic];
+    e.nNodes = c2nv[ic];
 
     // Shape [mesh] nodes
-    e.nodeID.resize(c2nv[ie]);
-    e.nodes.resize(c2nv[ie]);
-    for (int iv=0; iv<c2nv[ie]; iv++) {
-      e.nodeID[iv] = c2v[ie][iv];
-      e.nodes[iv] = xv[c2v[ie][iv]];
+    e.nodeID.resize(c2nv[ic]);
+    e.nodes.resize(c2nv[ic]);
+    for (int iv=0; iv<c2nv[ic]; iv++) {
+      e.nodeID[iv] = c2v[ic][iv];
+      e.nodes[iv] = xv[c2v[ic][iv]];
     }
 
-    // Global face IDs
-    e.faceID.resize(c2ne[ie]);
-    for (int k=0; k<c2ne[ie]; k++) {
-      e.faceID[k] = c2e[ie][k];
+    // Global face IDs for internal & boundary faces
+    e.faceID.resize(c2ne[ic]);
+    e.bndFace.resize(c2ne[ic]);
+    for (int k=0; k<c2ne[ic]; k++) {
+      e.bndFace[k] = c2b[ic][k];
+      e.faceID[k] = c2e[ic][k];
     }
 
     e.setup(params,this);
 
-    ie++;
+    ic++;
   }
 
-  // Setup the faces
+  /* --- Setup the faces --- */
+
   vector<int> tmpEdges;
   int fid1, fid2;
-  int i = 0;
+  int ie, i = 0;
+
+  // Internal Faces
   for (auto& F:faces) {
-    // Find local face ID of global face
-    tmpEdges = c2e[e2c[i][0]];
-    fid1 = findFirst(tmpEdges,i);
+    // Find global face ID of current interior face
+    ie = e2c[intEdges[i]][0];
+    // Find local face ID of global face within first element [on left]
+    tmpEdges = c2e[ie];
+    fid1 = findFirst(tmpEdges,ie);
     F.params = params;
-    if (e2c[i][1] == -1) {
-      // Boundary Edge
-      // ** still need to create a boundary face class (and an interior face class?) **
+    if (e2c[ie][1] == -1) {
+      FatalError("Interior edge does not have a right element assigned.");
     }else{
-      // Interior Edge
-      tmpEdges = c2e[e2c[i][1]];
-      fid2 = findFirst(tmpEdges,i);
-      F.setupFace(&eles[e2c[i][0]],&eles[e2c[i][1]],fid1,fid2,i);
+      tmpEdges = c2e[e2c[ie][1]];
+      fid2 = findFirst(tmpEdges,ie);
+      F.setupFace(&eles[e2c[ie][0]],&eles[e2c[ie][1]],fid1,fid2,ie);
     }
 
     i++;
   }
 
-  // Final Step - Assign eles, faces to Solver
-  Solver->eles = eles;
-  Solver->faces = faces;
+  // Boundary Faces
+  i = 0;
+  for (auto& B:bounds) {
+    // Find global face ID of current boundary face
+    ie = e2c[bndEdges[i]][0];
+    // Find local face ID of global face within element
+    tmpEdges = c2e[ie];
+    fid1 = findFirst(tmpEdges,ie);
+    B.params = params;
+    if (e2c[ie][1] != -1) {
+      FatalError("Boundary edge has a right element assigned.");
+    }else{
+      B.setupBound(&eles[e2c[ie][0]],fid1,bcType[i],ie);
+    }
+
+    i++;
+  }
 }
 
 void geo::readGmsh(string fileName)

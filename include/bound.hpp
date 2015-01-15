@@ -1,8 +1,8 @@
 /*!
- * \file face.hpp
- * \brief Header file for the face class
+ * \file bound.hpp
+ * \brief Header file for the bound class
  *
- * Class to handle calculation of interfce fluxes between elements
+ * Class to handle enforcement of boundary conditions at boundary faces
  *
  * \author - Jacob Crabill
  *           Aerospace Computing Laboratory (ACL)
@@ -17,22 +17,20 @@
 #pragma once
 
 #include "global.hpp"
-#include "ele.hpp"
-#include "matrix.hpp"
 #include "input.hpp"
+#include "ele.hpp"
 
-class face
+class bound
 {
 public:
-  face();
 
   /*! Setup access to the left & right elements' data */
-  void setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID);
+  void setupBound(ele *eL, int locF_L, int bcType, int gID);
 
-  /*! Calculate the common inviscid flux on the face */
+  /*! Calculate the inviscid flux from the boundary condition */
   void calcInviscidFlux(void);
 
-  /*! Calculate the common viscous flux on the face */
+  /*! Calculate the viscous flux from the boundary condition */
   void calcViscousFlux(void);
 
   int ID; //! Global ID of face
@@ -40,22 +38,20 @@ public:
   input *params; //! Input parameters for simulation
 
 private:
-  int nFptsL, nFptsR;
+  int nFptsL;
   int nDims, nFields;
-  int locF_L, locF_R;
+  int bcType;
+  int locF_L;
 
   /* --- Storage for all solution/geometry data at flux points --- */
   vector<vector<double>*> UL;
-  vector<vector<double>*> UR;
   vector<matrix<double>*> gradUL;
-  vector<matrix<double>*> gradUR;
   vector<matrix<double>*> FL;
-  vector<matrix<double>*> FR;
   vector<vector<double>*> Fn;
   vector<vector<double>*> deltaF;
   matrix<double> normL;
-  matrix<double> normR;
 
-  matrix<double> tempFL, tempFR;
-  vector<double> tempUL, tempUR;
+  matrix<double> tempFL;
+  vector<double> tempUL;
+
 };

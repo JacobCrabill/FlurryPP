@@ -32,6 +32,7 @@
 class geo;
 class ele;
 class face;
+class bound;
 class solver;
 
 using namespace std;
@@ -137,4 +138,33 @@ T getMax(vector<T> &vec)
   }
 
   return max;
+}
+
+template<typename T>
+void addVectors(vector<T> &vec1, vector<T> &vec2)
+{
+  if (vec1.size() != vec2.size()) FatalError("Vectors not of same size.");
+
+  for (unsigned int i=0; i<vec1.size(); i++) vec1[i] += vec2[i];
+}
+
+template<typename T>
+vector<T> & operator+=(vector<T>& lhs, vector<T>& rhs)
+{
+  if (lhs.size() != rhs.size()) FatalError("Vectors not of same size.");
+
+  for (unsigned int i=0; i<lhs.size(); i++) lhs[i] += rhs[i];
+
+  return lhs;
+}
+
+template<typename T>
+vector<T> operator+(const vector<T>& lhs, vector<T>& rhs)
+{
+  if (lhs.size() != rhs.size()) FatalError("Vectors not of same size.");
+
+  vector<T> out(lhs.size());
+  for (unsigned int i=0; i<lhs.size(); i++) out[i] = lhs[i] + rhs[i];
+
+  return out;
 }

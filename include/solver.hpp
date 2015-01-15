@@ -22,6 +22,7 @@ class oper;
 #include "global.hpp"
 #include "ele.hpp"
 #include "face.hpp"
+#include "bound.hpp"
 #include "operators.hpp"
 #include "input.hpp"
 
@@ -40,17 +41,24 @@ public:
   //! Vector of all eles handled by this solver
   vector<ele> eles;
 
-  //! Vector of all faces handled by this solver
+  //! Vector of all interior faces handled by this solver
   vector<face> faces;
+
+  //! Vector of all boundary faces handled by this solver
+  vector<bound> bounds;
 
   /* === Setup Functions === */
   solver();
 
-  void initialize(input *params, geo *Geo);
+  void setup(input *params, geo *Geo);
 
+  //! Setup the FR operators for all ele types and polynomial orders which will be used in computation
   void setupOperators();
 
   /* === Functions Related to Basic FR Process === */
+
+  //! Apply the initial condition to all elements
+  void initializeSolution();
 
   //! Perform one full step of computation
   void calcResidual(void);
@@ -108,10 +116,6 @@ public:
   void setup_p_adaptation();
 
   void add_ele(int eType, int order);
-
-  void assignEles(vector<ele> &in_eles);
-
-  void assignFaces(vector<face> &in_faces);
 
   /* === Functions Related to Overset Grids === */
 

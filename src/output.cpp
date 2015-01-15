@@ -14,6 +14,8 @@
  */
 #include "../include/output.hpp"
 
+#include <iomanip>
+
 void writeData(solver *Solver, input *params, int iter)
 {
   ofstream dataFile;
@@ -47,4 +49,26 @@ void writeData(solver *Solver, input *params, int iter)
   }
 
   dataFile.close();
+}
+
+
+void writeResidual(solver *Solver, input *params, int iter)
+{
+  vector<double> res(params->nFields), resTmp(params->nFields);
+
+  for (auto& e:Solver->eles) {
+    resTmp = e.getResidual(params->resType);
+    res += resTmp;
+  }
+
+  // If taking 2-norm, res is sum squared; take sqrt to complete
+  if (params->resType == 2) {
+    for (auto& i:res) i = sqrt(i);
+  }
+
+  cout << setw(6) << iter << " ";
+  for (int i=0; i<params->nFields; i++) {
+    cout << setprecision(6) << res[i] << " ";
+  }
+  cout << endl;
 }

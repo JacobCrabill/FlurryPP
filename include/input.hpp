@@ -87,14 +87,21 @@ public:
   int restart;
   int plot_freq;
   int restart_freq;
+  int resType;
+  int monitor_res_freq;
 
   string dataFileName;
 
-  /* --- Boundary Condition Parameters --- */
+  /* --- Boundary & Initial Condition Parameters --- */
   double Uinf;
   double Vinf;
   double rhoinf;
   double Pinf;
+
+  double rhoIC;
+  double vxIC;
+  double vyIC;
+  double pIC;
 
   /* --- Misc. Physical/Equation Parameters --- */
   double gamma;

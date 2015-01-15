@@ -19,10 +19,16 @@ solver::solver()
 {
 }
 
-void solver::initialize(input *params, geo *Geo)
+void solver::setup(input *params, geo *Geo)
 {
   this->params = params;
   this->Geo = Geo;
+
+  /* Setup the FR elements & faces which will be computed on */
+  Geo->setupElesFaces(eles,faces,bounds);
+
+  /* Setup the FR operators for computation */
+  setupOperators();
 }
 
 void solver::calcResidual(void)
@@ -119,12 +125,6 @@ void solver::extrapolateGradU()
 
 }
 
-/*void solver::apply_oper(matrix<double> &op, matrix<double> & A, matrix<double> &B)
-{
-
-}*/
-
-
 void solver::setupOperators()
 {
   // Get all element types & olynomial orders in mesh
@@ -140,12 +140,9 @@ void solver::setupOperators()
   }
 }
 
-void solver::assignEles(vector<ele> &in_eles)
+void solver::initializeSolution()
 {
-  this->eles = in_eles;
-}
-
-void solver::assignFaces(vector<face> &in_faces)
-{
-  this->faces = in_faces;
+  for (auto& e:eles) {
+    e.setInitialCondition();
+  }
 }

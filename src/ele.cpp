@@ -236,6 +236,57 @@ void ele::calcPosSpts(void)
   }
 }
 
+void ele::setInitialCondition()
+{
+  if (params->equation == NAVIER_STOKES) {
+    double rho, vx, vy, p;
+    double gamma = params->gamma;
+
+    if (params->ic_type == 0) {
+      /* --- Constant "Freestream" solution --- */
+      rho = params->rhoIC;
+      vx = params->vxIC;
+      vy = params->vyIC;
+      p = params->pIC;
+      for (int spt=0; spt<nSpts; spt++) {
+        U_spts[spt][0] = rho;
+        U_spts[spt][1] = rho * vx;
+        U_spts[spt][2] = rho * vy;
+        U_spts[spt][3] = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+      }
+    }
+    else if (params->ic_type == 1) {
+      /* --- Isentropic Vortex of strength eps centered at (0,0) --- */
+      double eps, f, x, y;
+      for (int spt=0; spt<nSpts; spt++) {
+        eps = 5.0;
+        x = pos_spts[spt][0];
+        y = pos_spts[spt][1];
+
+        f = 1.0 - (x*x + y*y);
+
+        rho = pow(1. - eps*eps*(gamma-1.)/(8.*gamma*pi*pi)*exp(f), 1.0/(gamma-1.0));
+        vx = 1. - eps*y / (2.*pi) * exp(f/2.);
+        vy = 1. + eps*x / (2.*pi) * exp(f/2.);
+        p = pow(rho,gamma);
+
+        U_spts[spt][0] = rho;
+        U_spts[spt][1] = rho * vx;
+        U_spts[spt][2] = rho * vy;
+        U_spts[spt][3] = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+      }
+    }
+  }
+  else if (params->equation == ADVECTION_DIFFUSION) {
+    /* --- Simple Gaussian bump centered at (0,0) --- */
+    double r2;
+    for (int spt=0; spt<nSpts; spt++) {
+      r2 = pos_spts[spt][0]*pos_spts[spt][0] + pos_spts[spt][1]*pos_spts[spt][1];
+      U_spts[spt][0] = exp(-r2);
+    }
+  }
+}
+
 void ele::getShape(int spt, vector<double> &shape)
 {
   if (eType == TRI) {
@@ -279,6 +330,24 @@ vector<double> ele::getPrimitives(uint spt)
   }
 
   return V;
+}
+
+vector<double> ele::getResidual(int normType)
+{
+  vector<double> res(nFields,0);
+
+  for (int spt=0; spt<nSpts; spt++) {
+    for (int i=0; i<nFields; i++) {
+      if (normType == 1) {
+        res[i] += abs(U_spts[spt][i]);
+      }
+      else if (normType == 2) {
+        res[i] += U_spts[spt][i]*U_spts[spt][i];
+      }
+    }
+  }
+
+  return res;
 }
 
 point ele::getPosSpt(uint spt)

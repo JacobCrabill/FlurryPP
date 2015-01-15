@@ -34,14 +34,11 @@ int main(int argc, char *argv[]) {
   /* Setup the mesh and connectivity for the simulation */
   Geo.setup(&params);
 
-  /* Prepare the solver for computation */
-  Solver.initialize(&params,&Geo);
+  /* Setup the solver, all elements and faces, and all FR operators for computation */
+  Solver.setup(&params,&Geo);
 
-  /* Setup the FR elements & faces which will be computed on */
-  Geo.setupElesFaces(&Solver);
-
-  /* Setup the FR operators for computation */
-  Solver.setupOperators();
+  /* Apply the initial condition */
+  Solver.initializeSolution();
 
   /* Write initial data file */
   writeData(&Solver,&params,0);
@@ -51,6 +48,7 @@ int main(int argc, char *argv[]) {
 
     Solver.calcResidual();
 
+    if ((iter+1)%params.monitor_res_freq == 0) writeResidual(&Solver,&params,iter);
     if ((iter+1)%params.plot_freq == 0) writeData(&Solver,&params,iter);
 
   }

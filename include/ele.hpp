@@ -24,6 +24,7 @@
 class ele
 {
 friend class face;
+friend class bound;
 friend class solver;
 
 public:
@@ -48,11 +49,12 @@ public:
   void initialize(void);
 
   void setup(input *inParams, geo *inGeo);
-  //void setup(int in_eType, int in_order, int in_ID, vector<double> &xy);
 
   void calcTransforms(void);
 
   void calcPosSpts(void);
+
+  void setInitialCondition(void);
 
   void calcInviscidFlux_spts(void);
 
@@ -62,6 +64,9 @@ public:
 
   /*! Get vector of primitive variables at a solution point */
   vector<double> getPrimitives(uint spt);
+
+  /*! Compute the solution residual over the element */
+  vector<double> getResidual(int normType);
 
   /*! Get position of solution point in physical space */
   point getPosSpt(uint spt);

@@ -27,6 +27,9 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
 
   ID = gID;
 
+  this->locF_L = locF_L;
+  this->locF_R = locF_R;
+
   nDims = params->nDims;
   nFields = params->nFields;
 
@@ -72,7 +75,7 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
 
 void face::calcInviscidFlux(void)
 {
-  int i, j, k;
+  int i;
 
   for (i=0; i<nFptsL; i++) {
     // Calcualte discontinuous inviscid flux at flux points
