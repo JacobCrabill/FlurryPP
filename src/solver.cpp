@@ -95,12 +95,16 @@ void solver::calcViscousFlux_faces()
 
 void solver::calcGradF_spts()
 {
-
+  for (auto& e: eles) {
+    opers[e.eType][e.order].apply_gradF_spts(e.F_spts,e.dF_spts);
+  }
 }
 
 void solver::calcDivF_spts()
 {
-
+  for (auto& e: eles) {
+    opers[e.eType][e.order].apply_divF_spts(e.F_spts,e.divF_spts);
+  }
 }
 
 void solver::correctFlux()

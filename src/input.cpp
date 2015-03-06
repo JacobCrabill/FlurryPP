@@ -160,6 +160,7 @@ void input::readInputFile(char *filename)
   if (equation==ADVECTION_DIFFUSION) {
     opts.getScalarValue("advectVx",advectVx,1.);
     opts.getScalarValue("advectVy",advectVy,1.);
+    nFields = 1;
   } else if (equation==NAVIER_STOKES) {
     opts.getScalarValue("ic_type",ic_type,0);
     if (ic_type == 0) {
@@ -168,6 +169,7 @@ void input::readInputFile(char *filename)
       opts.getScalarValue("vyIC",vyIC,1.);
       opts.getScalarValue("pIC",pIC,10000.);
     }
+    nFields = 4;
   }
 
   opts.getScalarValue("viscous",viscous,0);

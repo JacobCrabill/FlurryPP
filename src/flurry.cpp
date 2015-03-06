@@ -24,7 +24,17 @@ int main(int argc, char *argv[]) {
 
   int iter;
 
-  cout << "< insert ASCII art here >" << endl;
+  cout << "  ========================================== " << endl;
+  cout << "   _______   _                               " << endl;
+  cout << "  |   ____| | |                              " << endl;
+  cout << "  |  |___   | |  _   _   _     _     _    _  " << endl;
+  cout << "  |   ___|  | | | | | | | |/| | |/| | |  | | " << endl;
+  cout << "  |  |      | | | |_| | |  /  |  /  \\  \\/  / " << endl;
+  cout << "  |__|      |_| \\_____/ |_|   |_|    \\    /  " << endl;
+  cout << "                                      |  /   " << endl;
+  cout << "                                      /_/    " << endl;
+  cout << "  ----    Flux Reconstruction in C++   ----" << endl;
+  cout << "  ========================================== " << endl;
 
   if (argc<2) FatalError("No input file specified.");
 

@@ -243,7 +243,7 @@ void ele::setInitialCondition()
     double gamma = params->gamma;
 
     if (params->ic_type == 0) {
-      /* --- Constant "Freestream" solution --- */
+      /* --- Uniform "Freestream" solution --- */
       rho = params->rhoIC;
       vx = params->vxIC;
       vy = params->vyIC;
@@ -343,6 +343,10 @@ vector<double> ele::getResidual(int normType)
       }
       else if (normType == 2) {
         res[i] += U_spts[spt][i]*U_spts[spt][i];
+      }
+      else if (normType == 3) {
+        // Infinity norm
+        res[i] = max(abs(U_spts[spt][i]),res[i]);
       }
     }
   }

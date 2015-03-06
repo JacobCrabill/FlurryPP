@@ -71,5 +71,5 @@ private:
   vector<int> v2nv, v2nc, c2nv, c2ne, ctype;
   vector<int> bndPts, bndFaces, bcType;
   vector<int> intEdges, bndEdges;
-  vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
+  vector<int> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
 };

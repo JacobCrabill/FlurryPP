@@ -1,5 +1,5 @@
 TEMPLATE = app
-CONFIG += console
+CONFIG += console debug
 CONFIG -= qt
 
 QMAKE_CXXFLAGS += -std=c++11

@@ -148,9 +148,38 @@ void oper::setupGradspts(vector<point> loc_spts, int eType, int order)
 
 void oper::apply_grad_spts(matrix<double> &U_spts, vector<matrix<double> > &dU_spts)
 {
-  for (uint dim=0; dim<dU_spts.size(); dim++)
+  for (uint dim=0; dim<nDims; dim++)
     opp_grad_spts[dim].timesMatrix(U_spts,dU_spts[dim]);
 }
+
+void oper::apply_gradF_spts(vector<matrix<double>> &F_spts, vector<vector<matrix<double>>> &dF_spts)
+{
+  for (uint dim1=0; dim1<nDims; dim1++)
+    for (uint dim2=0; dim2<dF_spts.size(); dim2++)
+      opp_grad_spts[dim2].timesMatrix(F_spts[dim1],dF_spts[dim1][dim2]);
+}
+
+
+void oper::apply_divF_spts(vector<matrix<double>> &F_spts, matrix<double> &divF_spts)
+{
+  divF_spts.initializeToZero();
+  uint nSpts = opp_grad_spts[0].getDim0();
+
+  /* Unfortunately, thanks to the way I set up F_spts, can't call
+     the simple matrix-multiply routine */
+  for (uint dim=0; dim<nDims; dim++) {
+    for (int spt1=0; spt1<nSpts; spt1++) {
+      for (int spt2=0; spt2<nSpts; spt2++) {
+        for (int i=0; i<params->nFields; i++) {
+          divF_spts[spt1][i] += opp_grad_spts[dim][spt1][spt2]*F_spts[spt2][dim][i];
+        }
+      }
+    }
+  }
+  //for (uint dim=0; dim<nDims; dim++)
+  //    opp_grad_spts[dim].timesMatrixPlus(F_spts[dim],divF_spts);
+}
+
 
 void oper::apply_spts_fpts(matrix<double> &U_spts, matrix<double> &U_fpts)
 {

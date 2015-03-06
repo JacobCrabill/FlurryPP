@@ -50,8 +50,13 @@ void geo::processConnectivity()
     for (int ie=0; ie<c2nv[e]; ie++) {
       vector<int> edge(2);
       iep1 = (ie+1)%c2nv[e];
+      if (c2v[e][ie] < c2v[e][iep1]) {
       edge[0] = c2v[e][ie];
       edge[1] = c2v[e][iep1];
+      } else {
+        edge[0] = c2v[e][iep1];
+        edge[1] = c2v[e][ie];
+      }
       e2v1.insertRow(edge);
     }
   }
@@ -87,7 +92,7 @@ void geo::processConnectivity()
       else if (ie.size()==1) {
         // Boundary Edge
         bndEdges.push_back(iE[i]); //[nBndEdges] = iE[i];
-        isBnd[iE[i]] = true;
+        isBnd[iE[i]] = 1;
         nBndFaces++;
       }
 
@@ -115,8 +120,15 @@ void geo::processConnectivity()
   for (int ic=0; ic<nEles; ic++) {
     for (int j=0; j<c2ne[ic]; j++) {
       int jp1 = (j+1)%(c2ne[ic]);
+
+      // Store edges consistently to allow matching of duplicates
+      if (c2v[ic][j] < c2v[ic][jp1]) {
       edge[0] = c2v[ic][j];
       edge[1] = c2v[ic][jp1];
+      } else {
+        edge[0] = c2v[ic][jp1];
+        edge[1] = c2v[ic][j];
+      }
 
       ie1 = findEq(e2v.getCol(0),edge[0]);
       col2 = (e2v.getRows(ie1)).getCol(1);
@@ -125,11 +137,11 @@ void geo::processConnectivity()
 
       // Find ID of face within type-specific array
       if (isBnd[ie0]) {
-        c2e[ic][j] = findFirst(bndEdges,ie0);
-        c2b[ic][j] = true;
+        c2e[ic][j] = ie0; //findFirst(bndEdges,ie0);
+        c2b[ic][j] = 1;
       }else{
-        c2e[ic][j] = findFirst(intEdges,ie0);
-        c2b[ic][j] = false;
+        c2e[ic][j] = ie0; //findFirst(intEdges,ie0);
+        c2b[ic][j] = 0;
       }
 
       if (e2c[ie0][0] == -1) {
@@ -188,9 +200,10 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> b
   // Internal Faces
   for (auto& F:faces) {
     // Find global face ID of current interior face
-    ie = e2c[intEdges[i]][0];
+    ie = intEdges[i];
+    ic = e2c[ie][0];
     // Find local face ID of global face within first element [on left]
-    tmpEdges = c2e[ie];
+    tmpEdges = c2e[ic];
     fid1 = findFirst(tmpEdges,ie);
     F.params = params;
     if (e2c[ie][1] == -1) {
@@ -208,9 +221,10 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> b
   i = 0;
   for (auto& B:bounds) {
     // Find global face ID of current boundary face
-    ie = e2c[bndEdges[i]][0];
+    ie = bndEdges[i];
+    ic = e2c[ie][0];
     // Find local face ID of global face within element
-    tmpEdges = c2e[ie];
+    tmpEdges = c2e[ic];
     fid1 = findFirst(tmpEdges,ie);
     B.params = params;
     if (e2c[ie][1] != -1) {

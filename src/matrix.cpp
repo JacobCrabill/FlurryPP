@@ -119,6 +119,25 @@ void matrix<T>::timesMatrix(matrix<T> &A, matrix<T> &B)
   }
 }
 
+
+template <typename T>
+void matrix<T>::timesMatrixPlus(matrix<T> &A, matrix<T> &B)
+{
+  uint i, j, k, p;
+  p = A.dim1;
+
+  if (A.dim0 != dim1) FatalError("Incompatible matrix sizes in matrix multiplication!");
+  if (B.dim0 != dim0 || B.dim1 != A.dim1) B.setup(dim0, A.dim1);
+
+  for (i=0; i<dim0; i++) {
+    for (j=0; j<dim1; j++) {
+      for (k=0; k<p; k++) {
+        B[i][k] += data[i][j]*A[j][k];
+      }
+    }
+  }
+}
+
 template <typename T>
 void matrix<T>::timesVector(vector<T> &A, vector<T> &B)
 {
@@ -180,7 +199,7 @@ void matrix<T>::unique(matrix<T> &out, vector<int> &iRow)
   for (uint i=0; i<dim0; i++) {
     for (uint j=0; j<i; j++) {
       if (equal(data[i].begin(),data[i].end(),data[j].begin())) {
-        iRow[i] = j;
+        iRow[i] = iRow[j];
         break;
       }
     }
@@ -188,7 +207,7 @@ void matrix<T>::unique(matrix<T> &out, vector<int> &iRow)
     // If no duplicate found, put in 'out' matrix
     if (iRow[i]==-1) {
       out.insertRow(data[i]);
-      iRow[i] = i;
+      iRow[i] = out.getDim0() - 1;
     }
   }
 }

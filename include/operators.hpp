@@ -43,6 +43,10 @@ public:
 
   void apply_grad_spts(matrix<double> &U_spts, vector<matrix<double> > &dU_spts);
 
+  void apply_gradF_spts(vector<matrix<double>> &F_spts, vector<vector<matrix<double>>> &dF_spts);
+
+  void apply_divF_spts(vector<matrix<double>> &F_spts, matrix<double> &divF_spts);
+
   void apply_spts_fpts(matrix<double> &U_spts, matrix<double> &U_fpts);
 
   const matrix<double>& get_oper_div_spts();
