@@ -121,6 +121,7 @@ public:
   int mesh_type;
   int nx, ny;
   double xmin, xmax, ymin, ymax;
+  double periodicTol, periodicDX, periodicDY;
 
   /* --- FR Parameters --- */
   string sptsTypeTri;  //! Legendre, Lobatto, ...

@@ -63,6 +63,15 @@ enum EQUATION {
   NAVIER_STOKES       = 1
 };
 
+/*! Enumeration for all available boundary conditions */
+enum BC_TYPE {
+  NONE = -1,
+  PERIODIC = 0,
+  CHAR = 1,
+  SUP_IN = 2,
+  SUP_OUT = 3
+};
+
 /*! For convinience with geometry, a simple struct to hold an x,y,z coordinate */
 struct point
 {

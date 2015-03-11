@@ -69,6 +69,8 @@ public:
   /*! Insert a row into the matrix at location rowNum [zero-indexed], with the default being at the end */
   void insertRow(vector<T> &vec, int rowNum = -1);
 
+  void addCol(void);
+
   matrix<T> getRows(vector<int> ind);
 
   vector<T> getCol(int col);

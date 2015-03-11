@@ -84,7 +84,7 @@ void face::calcInviscidFlux(void)
 
     // Calculate common inviscid flux at flux points
     if (params->equation == ADVECTION_DIFFUSION) {
-      centralFlux(*UL[i], *UR[i], normL[i], *Fn[i], params); // need an upwindFlux() for advection-diffusion
+      upwindFlux(*UL[i], *UR[i], normL[i], *Fn[i], params);
     }
     else if (params->equation == NAVIER_STOKES) {
       if (params->riemann_type==0) {

@@ -19,6 +19,7 @@
 #include "global.hpp"
 #include "input.hpp"
 #include "ele.hpp"
+#include "flux.hpp"
 
 class bound
 {
@@ -37,6 +38,8 @@ public:
 
   input *params; //! Input parameters for simulation
 
+  void applyBCs(void);
+
 private:
   int nFptsL;
   int nDims, nFields;
@@ -54,4 +57,5 @@ private:
   matrix<double> tempFL;
   vector<double> tempUL;
 
+  vector<vector<double>> UC;
 };

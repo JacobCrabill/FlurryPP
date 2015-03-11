@@ -177,6 +177,19 @@ void centralFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, v
   }
 }
 
+
+void upwindFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params)
+{
+  if (params->equation == ADVECTION_DIFFUSION) {
+    double FL, FR, alpha;
+    alpha = params->advectVx*norm[0]+params->advectVy*norm[1];
+    FL = alpha*uL[0];
+    FR = alpha*uR[0];
+    Fn[0] = 0.5*( FR+FL - alpha*(FR-FL) );
+  }
+}
+
+
 void ldgFlux(vector<double> &uL, vector<double> &uR, matrix<double> &gradU_L, matrix<double> &gradU_R, vector<double> &Fn, input *params)
 {
   FatalError("LDG flux not implemented just yet.  Go to flux.cpp and do it!!");

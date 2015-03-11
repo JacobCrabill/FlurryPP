@@ -50,10 +50,45 @@ void bound::setupBound(ele *eL, int locF_L, int bcType, int gID)
 
 void bound::calcInviscidFlux()
 {
+  // Set the boundary condition [store in UC]
+  applyBCs();
 
+  for (int i=0; i<nFptsL; i++) {
+
+
+    // Calcualte discontinuous inviscid flux at flux points
+    inviscidFlux(*UL[i],tempFL, params);
+
+    // Calculate common inviscid flux at flux points
+    if (params->equation == ADVECTION_DIFFUSION) {
+      upwindFlux(*UL[i], UC[i], normL[i], *Fn[i], params);
+    }
+//    else if (params->equation == NAVIER_STOKES) {
+//      if (params->riemann_type==0) {
+//        rusanovFlux(*UL[i], *UC[i], *FL[i], *FR[i], normL[i], *Fn[i], params);
+//      }
+//      else if (params->riemann_type==1) {
+//        roeFlux(*UL[i], *UR[i], normL[i], *Fn[i], params);
+//      }
+//    }
+  }
 }
 
 void bound::calcViscousFlux()
 {
 
+}
+
+void bound::applyBCs(void)
+{
+  for (int fpt=0; fpt<nFptsL; fpt++) {
+    if (params->equation == NAVIER_STOKES) {
+      if (bcType == 0) {
+
+      }
+    }
+    else if (params->equation == ADVECTION_DIFFUSION) {
+
+    }
+  }
 }

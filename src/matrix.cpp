@@ -151,6 +151,13 @@ void matrix<T>::insertRow(vector<T> &vec, int rowNum)
 }
 
 template<typename T>
+void matrix<T>::addCol(void)
+{
+  for (auto row:data) row.resize(dim1+1);
+  dim1++;
+}
+
+template<typename T>
 matrix<T> matrix<T>::getRows(vector<int> ind)
 {
   matrix<T> out;
