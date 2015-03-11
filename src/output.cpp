@@ -38,10 +38,10 @@ void writeData(solver *Solver, input *params, int iter)
     for (uint spt=0; spt<e.getNSpts(); spt++) {
       V = e.getPrimitives(spt);
       pt = e.getPosSpt(spt);
-      for (int dim=0; dim<e.getNDims(); dim++) {
+      for (uint dim=0; dim<e.getNDims(); dim++) {
         dataFile << pt[dim] << ", ";
       }
-      for (int i=0; i<e.getNFields()-1; i++) {
+      for (uint i=0; i<e.getNFields()-1; i++) {
         dataFile << V[i] << ", ";
       }
       dataFile << V[e.getNFields()-1] << endl;

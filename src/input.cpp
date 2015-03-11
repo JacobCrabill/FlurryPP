@@ -160,6 +160,7 @@ void input::readInputFile(char *filename)
   if (equation==ADVECTION_DIFFUSION) {
     opts.getScalarValue("advectVx",advectVx,1.);
     opts.getScalarValue("advectVy",advectVy,1.);
+    opts.getScalarValue("lambda",lambda,1.);
     nFields = 1;
   } else if (equation==NAVIER_STOKES) {
     opts.getScalarValue("ic_type",ic_type,0);
@@ -172,6 +173,7 @@ void input::readInputFile(char *filename)
     nFields = 4;
   }
 
+  opts.getScalarValue("dt",dt);
   opts.getScalarValue("viscous",viscous,0);
   opts.getScalarValue("motion",motion,0);
   opts.getScalarValue("order",order,3);
@@ -206,6 +208,8 @@ void input::readInputFile(char *filename)
 
   opts.getScalarValue("spts_type_tri",sptsTypeTri,string("Legendre"));
   opts.getScalarValue("spts_type_quad",sptsTypeQuad,string("Legendre"));
+  opts.getScalarValue("vcjhSchemeTri",vcjhSchemeTri,0);
+  opts.getScalarValue("vcjhSchemeQuad",vcjhSchemeQuad,0);
 
   /* --- Cleanup ---- */
   opts.closeFile();

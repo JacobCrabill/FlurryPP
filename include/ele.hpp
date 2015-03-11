@@ -71,16 +71,16 @@ public:
   /*! Get position of solution point in physical space */
   point getPosSpt(uint spt);
 
-  int getNDims() const;
+  uint getNDims() const;
   void setNDims(int value);
 
-  int getNFields() const;
+  uint getNFields() const;
   void setNFields(int value);
 
-  int getNSpts() const;
+  uint getNSpts() const;
   void setNSpts(int value);
 
-  int getNFpts() const;
+  uint getNFpts() const;
   void setNFpts(int value);
 
 private:
@@ -101,6 +101,7 @@ private:
   vector<matrix<double> > F_spts;  //! Flux at solution points
   vector<matrix<double> > F_fpts;  //! Flux at flux points
   matrix<double> Fn_fpts;          //! Interface flux at flux points
+  matrix<double> dFn_fpts;         //! Interface - discontinuous flux at flux points
 
   // Gradients
   vector<matrix<double> > dU_spts;  //! Gradient of solution at solution points
@@ -116,8 +117,9 @@ private:
   
   // Geometry Variables
   vector<point> pos_spts;
-  matrix<double> norm_fpts;
-  matrix<double> tNorm_fpts;
+  matrix<double> norm_fpts;   //! Unit normal in physical space
+  matrix<double> tNorm_fpts;  //! Unit normal in reference space
+  vector<double> dA_fpts;     //! Local equivalent face-area at flux point
 
   /*! Get the values of the nodal shape bases at a solution point */
   void getShape(int spt, vector<double> &shape);

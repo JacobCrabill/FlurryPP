@@ -63,6 +63,14 @@ enum EQUATION {
   NAVIER_STOKES       = 1
 };
 
+/*! Enumeration for VCJH scheme (correction function) to use */
+enum VCJH_SCHEME {
+  DG = 0,
+  SD = 1,
+  HU = 2,
+  CPLUS = 3
+};
+
 /*! For convinience with geometry, a simple struct to hold an x,y,z coordinate */
 struct point
 {
@@ -93,6 +101,8 @@ struct point
     }
   }
 };
+
+int factorial(int n);
 
 /*! Find indices of all values in vec equal to val */
 template<typename T>

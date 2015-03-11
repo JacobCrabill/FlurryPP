@@ -54,12 +54,14 @@ int main(int argc, char *argv[]) {
   writeData(&Solver,&params,0);
 
   /* --- Calculation Loop --- */
-  for (iter=params.initIter; iter<params.iterMax; iter++) {
+  for (iter=params.initIter+1; iter<=params.iterMax; iter++) {
 
     Solver.calcResidual();
 
-    if ((iter+1)%params.monitor_res_freq == 0) writeResidual(&Solver,&params,iter);
-    if ((iter+1)%params.plot_freq == 0) writeData(&Solver,&params,iter);
+    Solver.timeStep();
+
+    if ((iter)%params.monitor_res_freq == 0) writeResidual(&Solver,&params,iter);
+    if ((iter)%params.plot_freq == 0) writeData(&Solver,&params,iter);
 
   }
 }

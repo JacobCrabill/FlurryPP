@@ -16,13 +16,22 @@
 #include "global.hpp"
 
 /*! Evaluate the 1D Lagrange polynomial mode based on points x_lag at point y */
-double Lagrange(vector<double> &x_lag, double &y, uint &mode);
+double Lagrange(vector<double> &x_lag, double y, uint mode);
 
 /*! Evaluate the first derivative of the 1D Lagrange polynomial mode based on points x_lag at point y */
-double dLagrange(vector<double> &x_lag, double &y, uint &mode);
+double dLagrange(vector<double> &x_lag, double y, uint mode);
 
 /*! Evaluate the second derivative of the 1D Lagrange polynomial mode based on points x_lag at point y */
-double ddLagrange(vector<double> &x_lag, double &y, uint &mode);
+double ddLagrange(vector<double> &x_lag, double y, uint mode);
+
+double Legendre(double in_r, int in_mode);
+
+double dLegendre(double in_r, int in_mode);
+
+double compute_eta(int vcjh_scheme, int order);
+
+/*! Evaluate the divergence [dF/dxi or dG/deta] of the correction function at a point */
+double dVCJH_1d(double in_r, int in_mode, int in_order, double in_eta);
 
 // correction function bases
 

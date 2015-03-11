@@ -27,6 +27,9 @@ matrix<T>::matrix(uint inDim0, uint inDim1)
 {
   data.resize(inDim0);
   for (auto& x: data) x.resize(inDim1);
+
+  dim0 = inDim0;
+  dim1 = inDim1;
 }
 
 template<typename T>
@@ -62,6 +65,17 @@ void matrix<T>::setup(uint inDim0, uint inDim1)
   dim1 = inDim1;
   data.resize(inDim0);
   for (auto& x: data) x.resize(inDim1);
+}
+
+template<typename T>
+void matrix<T>::addMatrix(matrix<T> &A, double a)
+{
+  if (A.dim0 != dim0 || A.dim1 != dim1)
+    FatalError("Incompatible matrix sizes for addMatrix.");
+
+  for (uint i=0; i<dim0; i++)
+    for (uint j=0; j<dim1; j++)
+      data[i][j] += a*A[i][j];
 }
 
 template<typename T>
@@ -238,7 +252,7 @@ subMatrix<T>::subMatrix(matrix<T> *inMat, vector<int> iRows)
   this->mat = inMat;
 
   rows = iRows;
-  for (int col=0; col<this->data[0].size(); col++) cols.push_back(col);
+  for (uint col=0; col<this->data[0].size(); col++) cols.push_back(col);
 }
 
 template<typename T>

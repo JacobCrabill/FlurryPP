@@ -17,3 +17,8 @@
 
 /* --- Misc. Common Constants --- */
 double pi = 4.0*atan(1);
+
+int factorial(int n)
+{
+  return (n == 1 || n == 0) ? 1 : factorial(n - 1) * n;
+}
