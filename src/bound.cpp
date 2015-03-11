@@ -36,12 +36,15 @@ void bound::setupBound(ele *eL, int locF_L, int bcType, int gID)
 
   UL.resize(nFptsL);
   FL.resize(nFptsL);
+  normL.setup(nFptsL,nDims);
 
   // Get access to data at left element
+  int fpt=0;
   for (int i=fptStartL; i<fptEndL; i++) {
-    UL[i] = &(eL->U_fpts[i]);
-    FL[i] = &(eL->F_fpts[i]);
-    normL[i] = (eL->norm_fpts[i]);
+    UL[fpt] = &(eL->U_fpts[i]);
+    FL[fpt] = &(eL->F_fpts[i]);
+    normL[fpt] = (eL->norm_fpts[i]);
+    fpt++;
   }
 
   // Setup a temporary flux-storage vector for later use

@@ -38,11 +38,11 @@ void writeData(solver *Solver, input *params, int iter)
     for (uint spt=0; spt<e.getNSpts(); spt++) {
       V = e.getPrimitives(spt);
       pt = e.getPosSpt(spt);
-      for (int dim=0; dim<e.getNDims(); dim++) {
-        dataFile << pt[dim] << ",";
+      for (uint dim=0; dim<e.getNDims(); dim++) {
+        dataFile << pt[dim] << ", ";
       }
-      for (int i=0; i<e.getNFields()-1; i++) {
-        dataFile << V[i] << ",";
+      for (uint i=0; i<e.getNFields()-1; i++) {
+        dataFile << V[i] << ", ";
       }
       dataFile << V[e.getNFields()-1] << endl;
     }
@@ -58,7 +58,14 @@ void writeResidual(solver *Solver, input *params, int iter)
 
   for (auto& e:Solver->eles) {
     resTmp = e.getResidual(params->resType);
-    res += resTmp;
+    for (int i=0; i<params->nFields; i++) {
+      if (params->resType == 3) {
+        // Infinity norm [max residual over all spts]
+        res[i] = max(res[i],resTmp[i]);
+      }else{
+        res[i] += resTmp[i];
+      }
+    }
   }
 
   // If taking 2-norm, res is sum squared; take sqrt to complete
@@ -66,9 +73,21 @@ void writeResidual(solver *Solver, input *params, int iter)
     for (auto& i:res) i = sqrt(i);
   }
 
-  cout << setw(6) << iter << " ";
+  if (iter==0 || iter%params->monitor_res_freq==40) {
+    cout << setw(6) << left << "Iter";
+    if (params->equation == ADVECTION_DIFFUSION) {
+      cout << " Residual " << endl;
+    }else if (params->equation == NAVIER_STOKES) {
+      cout << setw(10) << left << "rho";
+      cout << setw(10) << left << "rhoU";
+      cout << setw(10) << left << "rhoV";
+      cout << setw(10) << left << "rhoE";
+    }
+  }
+
+  cout << setw(6) << left << iter << " ";
   for (int i=0; i<params->nFields; i++) {
-    cout << setprecision(6) << res[i] << " ";
+    cout << setprecision(6) << left << res[i] << " ";
   }
   cout << endl;
 }

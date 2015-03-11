@@ -117,24 +117,25 @@ void ele::setup(input *inParams, geo *inGeo)
   U_spts.setup(nSpts,nFields);
   U_fpts.setup(nFpts,nFields);
   Fn_fpts.setup(nFpts,nFields);
+  dFn_fpts.setup(nFpts,nFields);
   divF_spts.setup(nSpts,nFields);
 
-  F_spts.resize(nSpts);
-  F_fpts.resize(nFpts);
+
   dU_spts.resize(nSpts);
   dU_fpts.resize(nFpts);
   for (int spt=0; spt<nSpts; spt++) { // if I fix nDims (change to nSpts) code fails at line 22 of flurry.cpp!
-    F_spts[spt].setup(nDims,nFields);
     dU_spts[spt].setup(nDims,nFields);
   }
   for (int fpt=0; fpt<nFpts; fpt++) {
-    F_fpts[fpt].setup(nDims,nFields);
     dU_fpts[fpt].setup(nDims,nFields);
   }
 
-  //dF_spts.setup(nDims,nDims);
+  F_spts.resize(nDims);
+  F_fpts.resize(nDims);
   dF_spts.resize(nDims);
   for (int i=0; i<nDims; i++) {
+    F_spts[i].setup(nSpts,nFields);
+    F_fpts[i].setup(nFpts,nFields);
     dF_spts[i].resize(nDims);
     for (int j=0; j<nDims; j++) {
       dF_spts[i][j].setup(nSpts,nFields);
@@ -150,6 +151,7 @@ void ele::setup(input *inParams, geo *inGeo)
 
   norm_fpts.setup(nFpts,nDims);
   tNorm_fpts.setup(nFpts,nDims);
+  dA_fpts.resize(nFpts);
 
   /* --- Final Step: calculate physical->reference transforms --- */
   calcTransforms();
@@ -160,6 +162,7 @@ void ele::setup(input *inParams, geo *inGeo)
 void ele::calcTransforms(void)
 {
   matrix<double> dtemp(nDims,nDims);
+  uint iFace;
 
   if (Jac_spts.size() != (uint)nSpts) Jac_spts.resize(nSpts);
   if (Jac_fpts.size() != (uint)nFpts) Jac_fpts.resize(nFpts);
@@ -194,6 +197,7 @@ void ele::calcTransforms(void)
 
   /* --- Calculate Transformation at Flux Points --- */
   for (int fpt=0; fpt<nFpts; fpt++) {
+    iFace = floor(fpt / (order+1));
     // Calculate shape derivatives [in the future, should pre-calculate & store]
     switch(eType) {
       case TRI:
@@ -201,11 +205,31 @@ void ele::calcTransforms(void)
         break;
       case QUAD:
         dshape_quad(loc_fpts[fpt], dtemp);
+        // Face ordering for quads: Bottom, Right, Top, Left
+        switch(iFace) {
+          case 0:
+            tNorm_fpts[fpt][0] = 0;
+            tNorm_fpts[fpt][1] = -1;
+            break;
+          case 1:
+            tNorm_fpts[fpt][0] = 1;
+            tNorm_fpts[fpt][1] = 0;
+            break;
+          case 2:
+            tNorm_fpts[fpt][0] = 0;
+            tNorm_fpts[fpt][1] = 1;
+            break;
+          case 3:
+            tNorm_fpts[fpt][0] = -1;
+            tNorm_fpts[fpt][1] = 0;
+            break;
+        }
         break;
       default:
         FatalError("Element type not yet implemented.")
     }
 
+    // Calculate transformation Jacobian matrix - [dx/dr, dx/ds; dy/dr, dy/ds]
     for (int i=0; i<nNodes; i++) {
       for (int dim1=0; dim1<nDims; dim1++) {
         for (int dim2=0; dim2<nDims; dim2++) {
@@ -218,6 +242,18 @@ void ele::calcTransforms(void)
       detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
     }
     if (detJac_fpts[fpt]<0) FatalError("Negative Jacobian at solution points.");
+
+    /* --- Calculate outward unit normal vector at flux point --- */
+    // Transform face normal from reference to physical space [inverse Jac dot tNorm]
+    norm_fpts[fpt][0] =  Jac_fpts[fpt][1][1]*tNorm_fpts[fpt][0] - Jac_fpts[fpt][1][0]*tNorm_fpts[fpt][1];
+    norm_fpts[fpt][1] = -Jac_fpts[fpt][0][1]*tNorm_fpts[fpt][0] + Jac_fpts[fpt][0][0]*tNorm_fpts[fpt][1];
+
+    // Store magnitude of face normal (equivalent to face area in finite-volume land)
+    dA_fpts[fpt] = sqrt(norm_fpts[fpt][0]*norm_fpts[fpt][0] + norm_fpts[fpt][1]*norm_fpts[fpt][1]);
+
+    // Normalize
+    for (int dim=0; dim<nDims; dim++)
+      norm_fpts[fpt][dim] /= dA_fpts[fpt];
   }
 }
 
@@ -243,7 +279,7 @@ void ele::setInitialCondition()
     double gamma = params->gamma;
 
     if (params->ic_type == 0) {
-      /* --- Constant "Freestream" solution --- */
+      /* --- Uniform "Freestream" solution --- */
       rho = params->rhoIC;
       vx = params->vxIC;
       vy = params->vyIC;
@@ -302,15 +338,25 @@ void ele::getShape(int spt, vector<double> &shape)
 
 void ele::calcInviscidFlux_spts()
 {
+  matrix<double> tempF(nDims,nFields);
+
   for (int spt=0; spt<nSpts; spt++) {
-    inviscidFlux(U_spts[spt], F_spts[spt], params);
+    inviscidFlux(U_spts[spt], tempF, params);
+    for (int i=0; i<nDims; i++)
+      for (int j=0; j<nFields; j++)
+        F_spts[i][spt][j] = tempF[i][j];
   }
 }
 
 void ele::calcViscousFlux_spts()
 {
+  matrix<double> tempF(nDims,nFields);
+
   for (int spt=0; spt<nSpts; spt++) {
-    viscousFlux(U_spts[spt], dU_spts[spt], F_spts[spt], params);
+    viscousFlux(U_spts[spt], dU_spts[spt], tempF, params);
+    for (int i=0; i<nDims; i++)
+      for (int j=0; j<nFields; j++)
+        F_spts[i][spt][j] += tempF[i][j];
   }
 }
 
@@ -344,6 +390,10 @@ vector<double> ele::getResidual(int normType)
       else if (normType == 2) {
         res[i] += U_spts[spt][i]*U_spts[spt][i];
       }
+      else if (normType == 3) {
+        // Infinity norm
+        res[i] = max(abs(U_spts[spt][i]),res[i]);
+      }
     }
   }
 
@@ -354,7 +404,7 @@ point ele::getPosSpt(uint spt)
 {
   return pos_spts[spt];
 }
-int ele::getNDims() const
+uint ele::getNDims() const
 {
   return nDims;
 }
@@ -363,7 +413,7 @@ void ele::setNDims(int value)
 {
   nDims = value;
 }
-int ele::getNFields() const
+uint ele::getNFields() const
 {
   return nFields;
 }
@@ -372,7 +422,7 @@ void ele::setNFields(int value)
 {
   nFields = value;
 }
-int ele::getNSpts() const
+uint ele::getNSpts() const
 {
   return nSpts;
 }
@@ -381,7 +431,7 @@ void ele::setNSpts(int value)
 {
   nSpts = value;
 }
-int ele::getNFpts() const
+uint ele::getNFpts() const
 {
   return nFpts;
 }

@@ -37,6 +37,7 @@ void solver::calcResidual(void)
 
   calcInviscidFlux_spts();
 
+  /* Inviscid Common Flux */
   calcInviscidFlux_faces();
 
   if (params->viscous) {
@@ -46,24 +47,35 @@ void solver::calcResidual(void)
 
     extrapolateGradU();
 
+    /* Viscous Common Flux */
     calcViscousFlux_faces();
   }
 
   if (params->motion) {
-    // Use non-conservative chain-rule formulation (Liang-Miyaji)
+    /* Use non-conservative chain-rule formulation (Liang-Miyaji) */
     calcGradF_spts();
   }else{
-    // Standard conservative form
+    /* Standard conservative form */
     calcDivF_spts();
   }
 
-  correctFlux();
+  /* Extrapolate total flux to flux points & dot with normal */
+  extrapolateNormalFlux();
+
+  correctDivFlux();
+}
+
+void solver::timeStep(void)
+{
+  for (auto& e: eles) {
+    e.U_spts.addMatrix(e.divF_spts,-params->dt);
+  }
 }
 
 void solver::extrapolateU(void)
 {
   for (auto& e: eles) {
-    opers[e.eType][e.order].apply_spts_fpts(e.U_spts,e.U_fpts);
+    opers[e.eType][e.order].applySptsFpts(e.U_spts,e.U_fpts);
   }
 }
 
@@ -95,23 +107,37 @@ void solver::calcViscousFlux_faces()
 
 void solver::calcGradF_spts()
 {
-
+  for (auto& e: eles) {
+    opers[e.eType][e.order].applyGradFSpts(e.F_spts,e.dF_spts);
+  }
 }
 
 void solver::calcDivF_spts()
 {
-
+  for (auto& e: eles) {
+    opers[e.eType][e.order].applyDivFSpts(e.F_spts,e.divF_spts);
+  }
 }
 
-void solver::correctFlux()
+void solver::extrapolateNormalFlux(void)
 {
+  for (auto& e: eles) {
+    opers[e.eType][e.order].applyExtrapolateFn(e.F_spts,e.norm_fpts,e.Fn_fpts);
+  }
+}
+
+void solver::correctDivFlux()
+{
+  for (auto& e: eles) {
+    opers[e.eType][e.order].applyCorrectDivF(e.dFn_fpts,e.divF_spts);
+  }
 
 }
 
 void solver::calcGradU_spts(void)
 {
   for (auto& e: eles) {
-    opers[e.eType][e.order].apply_grad_spts(e.U_spts,e.dU_spts);
+    opers[e.eType][e.order].applyGradSpts(e.U_spts,e.dU_spts);
   }
 }
 

@@ -24,7 +24,17 @@ int main(int argc, char *argv[]) {
 
   int iter;
 
-  cout << "< insert ASCII art here >" << endl;
+  cout << "  ========================================== " << endl;
+  cout << "   _______   _                               " << endl;
+  cout << "  |   ____| | |                              " << endl;
+  cout << "  |  |___   | |  _   _   _     _     _    _  " << endl;
+  cout << "  |   ___|  | | | | | | | |/| | |/| | |  | | " << endl;
+  cout << "  |  |      | | | |_| | |  /  |  /  \\  \\/  / " << endl;
+  cout << "  |__|      |_| \\_____/ |_|   |_|    \\    /  " << endl;
+  cout << "                                      |  /   " << endl;
+  cout << "                                      /_/    " << endl;
+  cout << "  ----    Flux Reconstruction in C++   ----" << endl;
+  cout << "  ========================================== " << endl;
 
   if (argc<2) FatalError("No input file specified.");
 
@@ -44,12 +54,14 @@ int main(int argc, char *argv[]) {
   writeData(&Solver,&params,0);
 
   /* --- Calculation Loop --- */
-  for (iter=params.initIter; iter<params.iterMax; iter++) {
+  for (iter=params.initIter+1; iter<=params.iterMax; iter++) {
 
     Solver.calcResidual();
 
-    if ((iter+1)%params.monitor_res_freq == 0) writeResidual(&Solver,&params,iter);
-    if ((iter+1)%params.plot_freq == 0) writeData(&Solver,&params,iter);
+    Solver.timeStep();
+
+    if ((iter)%params.monitor_res_freq == 0) writeResidual(&Solver,&params,iter);
+    if ((iter)%params.plot_freq == 0) writeData(&Solver,&params,iter);
 
   }
 }

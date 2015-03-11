@@ -20,7 +20,7 @@
 using namespace std;
 
 
-double Lagrange(vector<double> &x_lag, double &y, uint &mode)
+double Lagrange(vector<double> &x_lag, double y, uint mode)
 {
   uint i;
   double lag = 1.0;
@@ -35,7 +35,7 @@ double Lagrange(vector<double> &x_lag, double &y, uint &mode)
 }
 
 
-double dLagrange(vector<double> &x_lag, double &y, uint &mode)
+double dLagrange(vector<double> &x_lag, double y, uint mode)
 {
   uint i, j;
   double dLag, dLag_num, dLag_den;
@@ -64,7 +64,7 @@ double dLagrange(vector<double> &x_lag, double &y, uint &mode)
   return dLag;
 }
 
-double ddLagrange(vector<double> &x_lag, double &y, uint &mode)
+double ddLagrange(vector<double> &x_lag, double y, uint mode)
 {
   uint i, j, k;
   double ddLag, ddLag_num, ddLag_den;
@@ -101,6 +101,42 @@ double ddLagrange(vector<double> &x_lag, double &y, uint &mode)
   return ddLag;
 }
 
+double Legendre(double in_r, int in_mode)
+{
+  double leg;
+
+  if(in_mode==0) {
+    leg = 1.0;
+  } else if(in_mode==1) {
+    leg = in_r;
+  } else {
+    leg = ((2*in_mode-1)*in_r*Legendre(in_r,in_mode-1)-(in_mode-1)*Legendre(in_r,in_mode-2)) / in_mode;
+  }
+
+  return leg;
+}
+
+double dLegendre(double in_r, int in_mode)
+{
+  double dLeg;
+
+  if (in_mode == 0) {
+    dLeg = 0;
+  } else {
+    if (in_r > -1.0 && in_r < 1.0) {
+      dLeg = in_mode*((in_r*Legendre(in_r,in_mode)) - Legendre(in_r,in_mode-1)) / (in_r*in_r-1.0);
+    } else {
+      if (in_r == -1.0) {
+        dLeg = pow(-1.0,in_mode-1.0)*0.5*in_mode*(in_mode+1.0);
+      }
+      if (in_r == 1.0) {
+        dLeg = 0.5*in_mode*(in_mode + 1.0);
+      }
+    }
+  }
+
+  return dLeg;
+}
 
 void shape_quad(point &in_rs, vector<double> &out_shape)
 {
@@ -354,18 +390,76 @@ double eval_gamma(int in_n)
   int i;
   double gamma_val;
 
-  if(in_n==1)
+  if(in_n==1) {
     gamma_val=1;
-  else
-  {
+  } else {
     gamma_val=in_n-1;
-
     for(i=0; i<in_n-2; i++) {
       gamma_val=gamma_val*(in_n-2-i);
     }
   }
 
   return gamma_val;
+}
+
+double compute_eta(int vcjh_scheme, int order)
+{
+  double eta;
+  // Check for P=0 compatibility
+  if(order == 0 && vcjh_scheme != DG)
+    FatalError("ERROR: P=0 only compatible with DG. Set VCJH scheme type to 0!");
+
+  if(vcjh_scheme == DG) {
+    eta=0.0;
+  }
+  else if(vcjh_scheme == SD) {
+    eta=(1.0*(order))/(1.0*(order+1));
+  }
+  else if(vcjh_scheme == HU) {
+    eta=(1.0*(order+1))/(1.0*order);
+  }
+  else if (vcjh_scheme == CPLUS){
+    double c_1d;
+    if (order==2)
+      c_1d = 0.206;
+    else if (order==3)
+      c_1d = 3.80e-3;
+    else if (order==4)
+      c_1d = 4.67e-5;
+    else if (order==5)
+      c_1d = 4.28e-7;
+    else
+      FatalError("C_plus scheme not implemented for this order");
+
+    double ap = 1./pow(2.0,order)*factorial(2*order)/ (factorial(order)*factorial(order));
+    eta = c_1d*(2*order+1)/2*(factorial(order)*ap)*(factorial(order)*ap);
+
+  } else {
+    FatalError("Invalid VCJH scheme.");
+  }
+
+  return eta;
+}
+
+double dVCJH_1d(double in_r, int in_mode, int in_order, double in_eta)
+{
+  double dtemp_0;
+
+  if(in_mode==0) { // left correction function
+    if(in_order == 0) {
+      dtemp_0=0.5*pow(-1.0,in_order)*(dLegendre(in_r,in_order)-((dLegendre(in_r,in_order+1))/(1.0+in_eta)));
+    } else {
+      dtemp_0=0.5*pow(-1.0,in_order)*(dLegendre(in_r,in_order)-(((in_eta*dLegendre(in_r,in_order-1))+dLegendre(in_r,in_order+1))/(1.0+in_eta)));
+    }
+  } else if(in_mode==1) { // right correction function
+    if (in_order == 0) {
+      dtemp_0=0.5*(dLegendre(in_r,in_order)+((dLegendre(in_r,in_order+1))/(1.0+in_eta)));
+    } else {
+      dtemp_0=0.5*(dLegendre(in_r,in_order)+(((in_eta*dLegendre(in_r,in_order-1))+dLegendre(in_r,in_order+1))/(1.0+in_eta)));
+    }
+  }
+
+  return dtemp_0;
 }
 
 point rs_to_ab(point &rs)

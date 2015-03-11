@@ -115,6 +115,7 @@ public:
 
   double advectVx;
   double advectVy;
+  double lambda;  //! Lax-Friedrichs upwind coefficient (0: Central, 1: Upwind)
 
   /* --- Mesh Parameters --- */
   string meshFileName;
@@ -126,6 +127,8 @@ public:
   /* --- FR Parameters --- */
   string sptsTypeTri;  //! Legendre, Lobatto, ...
   string sptsTypeQuad;
+  int vcjhSchemeTri;
+  int vcjhSchemeQuad;
 
 private:
   fileReader opts;

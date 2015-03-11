@@ -36,5 +36,8 @@ void centralFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, v
 /*! Simple upwinded flux (primarily for advection problems) */
 void upwindFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params);
 
+/*! Lax-Friedrichs flux (advection-diffusion) */
+void laxFriedrichsFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params);
+
 /*! Calculate the common viscous flux at a point using the LDG penalty method */
 void ldgFlux(vector<double> &uL, vector<double> &uR, matrix<double> &gradU_L, matrix<double> &gradU_R, vector<double> &Fn, input *params);

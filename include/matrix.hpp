@@ -5,6 +5,9 @@
  * The matrix class is really just a handy wrapper for a vector<vector<T>>, with
  * some functions for setting up and multiplying
  *
+ * Yes, I'm well aware that I really should just be using boost::multi_array
+ * instead for loads of reasons, but this was more fun.  Don't judge me.
+ *
  * \author - Jacob Crabill
  *           Aerospace Computing Laboratory (ACL)
  *           Aero/Astro Department. Stanford University
@@ -60,10 +63,16 @@ public:
   /* --- Member Functions --- */
   void setup(uint inDim0, uint inDim1);
 
-  //! Multiplies the matrix by the matrix A and stores the result in B
+  //! Adds the matrix a*A to current matrix (M += a*A)
+  void addMatrix(matrix<T> &A, double a);
+
+  //! Multiplies the matrix by the matrix A and stores the result in B (B = M*A)
   void timesMatrix(matrix<T> &A, matrix<T> &B);
 
-  //! Multiplies the matrix by the vector A and stores the result in B
+  //! Multiplies the matrix by the matrix A and adds the result to B (B += M*A)
+  void timesMatrixPlus(matrix<T> &A, matrix<T> &B);
+
+  //! Multiplies the matrix by the vector A and stores the result in B (B = M*A)
   void timesVector(vector<T> &A, vector<T> &B);
 
   /*! Insert a row into the matrix at location rowNum [zero-indexed], with the default being at the end */

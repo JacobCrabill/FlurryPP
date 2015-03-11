@@ -177,7 +177,6 @@ void centralFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, v
   }
 }
 
-
 void upwindFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params)
 {
   if (params->equation == ADVECTION_DIFFUSION) {
@@ -189,6 +188,27 @@ void upwindFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, ve
   }
 }
 
+
+void laxFriedrichsFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params)
+{
+  if (params->equation == ADVECTION_DIFFUSION) {
+    Fn[0] = params->advectVx*0.5*norm[0]*(uL[0]+uR[0])
+          + params->advectVy*0.5*norm[1]*(uL[0]+uR[0]);
+
+    double uAvg, uDiff, vNorm;
+
+    uAvg = 0.5*(uL[0] + uR[0]);
+    uDiff = uL[0] - uR[0];
+
+    vNorm = params->advectVx*norm[0] + params->advectVy*norm[1];
+
+    Fn[0] = vNorm*uAvg + 0.5*params->lambda*abs(vNorm)*uDiff;
+
+  }
+  else if (params->equation == NAVIER_STOKES) {
+    FatalError("laxFlux not supported for Navier-Stokes simulations.");
+  }
+}
 
 void ldgFlux(vector<double> &uL, vector<double> &uR, matrix<double> &gradU_L, matrix<double> &gradU_R, vector<double> &Fn, input *params)
 {

@@ -63,6 +63,9 @@ public:
   //! Perform one full step of computation
   void calcResidual(void);
 
+  //! Advance solution in time
+  void timeStep(void);
+
   //! Extrapolate the solution to the flux points
   void extrapolateU(void);
 
@@ -94,8 +97,11 @@ public:
   //! Calculate the divergence of the flux at the solution points
   void calcDivF_spts(void);
 
+  //! Extrapolate total flux to flux points & dot with normal
+  void extrapolateNormalFlux(void);
+
   //! Apply the correction function & add to the divergence of the flux
-  void correctFlux(void);
+  void correctDivFlux(void);
 
   // **All of the following functions are just food for thought at the moment**
 

@@ -51,10 +51,10 @@ private:
   vector<matrix<double>*> gradUR;
   vector<matrix<double>*> FL;
   vector<matrix<double>*> FR;
-  vector<vector<double>*> Fn;
-  vector<vector<double>*> deltaF;
-  matrix<double> normL;
-  matrix<double> normR;
+  matrix<double> Fn;     // Can't use ptr, b/c 2 eles - they need to point to this instead
+  matrix<double> deltaF;
+  matrix<double> normL, normR; //! Unit outward normal at flux points
+  vector<double> dAL, dAR;     //! Local face-area equivalent at flux points
 
   matrix<double> tempFL, tempFR;
   vector<double> tempUL, tempUR;
