@@ -220,12 +220,4 @@ void input::readInputFile(char *filename)
   }else{
     initIter = 0;
   }
-
-  // --- Testing ---
-  cout << "equation = " << equation << endl;
-  cout << "viscous = " << viscous << endl;
-  cout << "order = " << order << endl;
-  cout << "spts_type_tri = " << sptsTypeTri << endl;
-  cout << "mesh_type = " << mesh_type<< endl;
-
 }

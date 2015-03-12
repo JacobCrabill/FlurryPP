@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
 
     Solver.timeStep();
 
-    if ((iter)%params.monitor_res_freq == 0) writeResidual(&Solver,&params,iter);
+    if ((iter)%params.monitor_res_freq == 0 || iter==1) writeResidual(&Solver,&params,iter);
     if ((iter)%params.plot_freq == 0) writeData(&Solver,&params,iter);
 
   }

@@ -46,7 +46,7 @@ void geo::setup(input* params)
 void geo::processConnectivity()
 {
   /* --- Setup Edges --- */
-  matrix<int> e2v1, e2v;
+  matrix<int> e2v1;
   vector<int> edge(2);
   int iep1;
 
@@ -315,7 +315,7 @@ void geo::createMesh()
   nBounds = 1;
   bcList.push_back(bc);
   bndFaces.resize(1);
-  bndPts.setup(1,(nx+1)*(ny+1));
+  bndPts.setup(1,4*nx+4*ny); //(nx+1)*(ny+1));
   bndFaces[0].setup(2*nx+2*ny,2); // nBndFaces x 2-pts-per-edge
   ne = 0;
 
@@ -413,7 +413,7 @@ void geo::createMesh()
 
 void geo::processPeriodicBoundaries(void)
 {
-  uint nPeriodic;
+  uint nPeriodic, bi, bj;
   vector<int> iPeriodic(0);
 
   for (int i=0; i<nBndEdges; i++) {
@@ -429,29 +429,33 @@ void geo::processPeriodicBoundaries(void)
   for (auto& i:iPeriodic) {
     if (bndEdges[i]==-1) continue;
     for (auto& j:iPeriodic) {
-      if (i==j || bndEdges[j]==-1) continue;
+      if (i==j || bndEdges[i]==-1 || bndEdges[j]==-1) continue;
       if (checkPeriodicFaces(e2v[bndEdges[i]],e2v[bndEdges[j]])) {
+
         /* --- Match found - now take care of transfer from boundary -> internal --- */
 
         if (i>j) FatalError("How did this happen?!");
 
+        bi = bndEdges[i];
+        bj = bndEdges[j];
+
         // Transfer combined edge from boundary to internal list
-        intEdges.push_back(bndEdges[i]);
+        intEdges.push_back(bi);
 
         // Flag global edge IDs as internal edges
-        isBnd[bndEdges[i]] = false;
-        isBnd[bndEdges[j]] = false;
+        isBnd[bi] = false;
+        isBnd[bj] = false;
 
         // Fix e2c - add right cell to combined edge, make left cell = -1 in 'deleted' edge
-        e2c[bndEdges[i]][1] = e2c[bndEdges[j]][0];
-        e2c[bndEdges[j]][0] = -1;
+        e2c[bi][1] = e2c[bj][0];
+        e2c[bj][0] = -1;
 
         // Fix c2e - replace 'deleted' edge from right cell with combined edge
-        int fID = findFirst(c2e[e2c[i][1]],bndEdges[j]);
-        c2e[e2c[i][1]][fID] = bndEdges[i];
+        int fID = findFirst(c2e[e2c[bi][1]],(int)bj);
+        c2e[e2c[bi][1]][fID] = bi;
 
         // Fix c2b - set element-local face to be internal face
-        c2b[e2c[i][1]][fID] = false;
+        c2b[e2c[bi][1]][fID] = false;
 
         // Flag edges as gone in boundary edges list
         bndEdges[i] = -1;
@@ -459,6 +463,10 @@ void geo::processPeriodicBoundaries(void)
       }
     }
   }
+
+  // Remove no-longer-existing periodic boundary edges and update nBndEdges
+  bndEdges.erase(std::remove(bndEdges.begin(), bndEdges.end(), -1), bndEdges.end());
+  nBndEdges = bndEdges.size();
 }
 
 bool geo::checkPeriodicFaces(vector<int> edge1, vector<int> edge2)

@@ -180,6 +180,7 @@ void matrix<T>::insertRow(vector<T> &vec, int rowNum)
     data.insert(it+rowNum,vec);
   }
 
+  if (dim1==0) dim1=vec.size();
   dim0++;
 }
 
