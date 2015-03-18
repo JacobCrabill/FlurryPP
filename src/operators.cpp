@@ -71,6 +71,9 @@ void oper::setupExtrapolateSptsFpts(vector<point> loc_spts, vector<point> loc_fp
       }
     }
   }
+  // ------------ Display the matrix ------------
+  //opp_spts_to_fpts.print();
+  // ------------ Display the matrix ------------
 }
 
 void oper::setupInterpolate(vector<point> &pts_from, vector<point> &pts_to, matrix<double> &opp_interp)
@@ -149,6 +152,10 @@ void oper::setupGradSpts(vector<point> loc_spts)
   else {
     FatalError("Element type not yet supported.");
   }
+  // ------------ Display the matrix ------------
+  //opp_grad_spts[0].print(); cout << endl;
+  //opp_grad_spts[1].print();
+  // ------------ Display the matrix ------------
 }
 
 
@@ -177,6 +184,9 @@ void oper::setupCorrection(vector<point> loc_spts, vector<point> loc_fpts)
       }
     }
   }
+  // ------------ Display the matrix ------------
+  //opp_correction.print();
+  // ------------ Display the matrix ------------
 }
 
 
@@ -262,13 +272,13 @@ double oper::divVCJH_quad(int in_fpt, vector<double>& loc, vector<double>& loc_1
   j = in_fpt - (order+1)*i;    // Face-local index of flux point [0 to n_fpts_per_face-1]
 
   if(i==0)
-    div_vcjh_basis = -Lagrange(loc_1d_spts,loc[0],j) * dVCJH_1d(loc[1],0,order,eta);
+    div_vcjh_basis = -Lagrange(loc_1d_spts,loc[0],j) * dVCJH_1d(loc[1],0,order,eta); // was -'ve
   else if(i==1)
     div_vcjh_basis =  Lagrange(loc_1d_spts,loc[1],j) * dVCJH_1d(loc[0],1,order,eta);
   else if(i==2)
     div_vcjh_basis =  Lagrange(loc_1d_spts,loc[0],order-j) * dVCJH_1d(loc[1],1,order,eta);
   else if(i==3)
-    div_vcjh_basis = -Lagrange(loc_1d_spts,loc[1],order-j) * dVCJH_1d(loc[0],0,order,eta);
+    div_vcjh_basis =-Lagrange(loc_1d_spts,loc[1],order-j) * dVCJH_1d(loc[0],0,order,eta); // was -'ve
 
 
   return div_vcjh_basis;

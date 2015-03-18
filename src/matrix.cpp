@@ -208,6 +208,17 @@ vector<T> matrix<T>::getCol(int col)
 }
 
 template<typename T>
+void matrix<T>::print()
+{
+  for (uint i=0; i<dim0; i++) {
+    for (uint j=0; j<dim1; j++) {
+      std::cout << std::setw(15) << std::setprecision(10) << data[i][j] << " ";
+    }
+    cout << endl;
+  }
+}
+
+template<typename T>
 void matrix<T>::unique(matrix<T> &out, vector<int> &iRow)
 {
   out.setup(0,0);

@@ -54,6 +54,8 @@ public:
 
   void calcPosSpts(void);
 
+  void calcPosFpts(void);
+
   void setInitialCondition(void);
 
   void calcInviscidFlux_spts(void);
@@ -70,6 +72,8 @@ public:
 
   /*! Get position of solution point in physical space */
   point getPosSpt(uint spt);
+
+  point getPosFpt(uint spt);
 
   uint getNDims() const;
   void setNDims(int value);
@@ -116,11 +120,12 @@ private:
   vector<matrix<double> > Jac_fpts;  //! Transformation Jacobian [matrix] at each flux point
   
   // Geometry Variables
-  vector<point> pos_spts;
+  vector<point> pos_spts;     //! Position of solution points in physical space
+  vector<point> pos_fpts;     //! Position of flux points in physical space
   matrix<double> norm_fpts;   //! Unit normal in physical space
   matrix<double> tNorm_fpts;  //! Unit normal in reference space
   vector<double> dA_fpts;     //! Local equivalent face-area at flux point
 
   /*! Get the values of the nodal shape bases at a solution point */
-  void getShape(int spt, vector<double> &shape);
+  void getShape(point loc, vector<double> &shape);
 };

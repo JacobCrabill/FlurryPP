@@ -187,3 +187,21 @@ vector<T> operator+(const vector<T>& lhs, vector<T>& rhs)
 
   return out;
 }
+
+template<typename T>
+vector<T> operator*(const vector<T>& lhs, double rhs)
+{
+  vector<T> out(lhs.size());
+  for (unsigned int i=0; i<lhs.size(); i++) out[i] = lhs[i]*rhs;
+
+  return out;
+}
+
+template<typename T>
+vector<T> operator/(const vector<T>& lhs, double rhs)
+{
+  vector<T> out(lhs.size());
+  for (unsigned int i=0; i<lhs.size(); i++) out[i] = lhs[i]/rhs;
+
+  return out;
+}

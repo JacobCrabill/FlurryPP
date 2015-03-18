@@ -53,19 +53,28 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   UR.resize(nFptsR);
   FL.resize(nFptsL);
   FR.resize(nFptsR);
+  dFnL.resize(nFptsL);
+  dFnR.resize(nFptsR);
   Fn.setup(nFptsL,nFields);
   normL.setup(nFptsL,nDims);
   normR.setup(nFptsR,nDims);
   dAL.resize(nFptsL);
   dAR.resize(nFptsR);
+  detJacL.resize(nFptsL);
+  detJacR.resize(nFptsL);
+
+  posFpts.resize(nFptsL); // Probably only needed for debugging.  Remove later.
 
   // Get access to data at left element
   fpt = 0;
   for (i=fptStartL; i<fptEndL; i++) {
     UL[fpt] = &(eL->U_fpts[i]);
     FL[fpt] = &(eL->F_fpts[i]);
+    dFnL[fpt] = &(eL->dFn_fpts[i]);
     normL[fpt] = (eL->norm_fpts[i]);
-    dAL[fpt] = (eL->dA_fpts[fpt]);
+    dAL[fpt] = (eL->dA_fpts[i]);
+    detJacL[fpt] = (eL->detJac_fpts[i]);
+    posFpts[fpt] = eL->pos_fpts[i];
     fpt++;
   }
 
@@ -74,48 +83,61 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   for (i=fptStartR-1; i>=fptEndR; i--) {
     UR[fpt] = &(eR->U_fpts[i]);
     FR[fpt] = &(eR->F_fpts[i]);
+    dFnR[fpt] = &(eR->dFn_fpts[i]);
     normR[fpt] = (eR->norm_fpts[i]);
     dAR[fpt] = (eR->dA_fpts[fpt]);
+    detJacR[fpt] = (eR->detJac_fpts[fpt]);
     fpt--;
   }
 
   // Setup a temporary flux-storage vector for later use
   tempFL.setup(nDims,nFields);
   tempFR.setup(nDims,nFields);
+  tempUL.resize(nFields);
+  tempUR.resize(nFields);
 }
 
 void face::calcInviscidFlux(void)
 {
   int i,j,k;
-  double tempFn;
+  double tempFnL, tempFnR;
 
   for (i=0; i<nFptsL; i++) {
+    tempUL = *UL[i]/(detJacL[i]);
+    tempUR = *UR[i]/(detJacR[i]);
+
     // Calcualte discontinuous inviscid flux at flux points
-    inviscidFlux(*UL[i], tempFL, params);
-    inviscidFlux(*UR[i], tempFR, params);
+    inviscidFlux(tempUL, tempFL, params);
+    inviscidFlux(tempUR, tempFR, params);
 
     // Calculate common inviscid flux at flux points
     if (params->equation == ADVECTION_DIFFUSION) {
-      //centralFlux(*UL[i], *UR[i], normL[i], Fn[i], params);
-      laxFriedrichsFlux(*UL[i], *UR[i], normL[i], Fn[i], params);
+      laxFriedrichsFlux(tempUL, tempUR, normL[i], Fn[i], params);
     }
     else if (params->equation == NAVIER_STOKES) {
       if (params->riemann_type==0) {
-        rusanovFlux(*UL[i], *UR[i], *FL[i], *FR[i], normL[i], Fn[i], params);
+        rusanovFlux(tempUL, tempUR, *FL[i], *FR[i], normL[i], Fn[i], params);
       }
       else if (params->riemann_type==1) {
-        roeFlux(*UL[i], *UR[i], normL[i], Fn[i], params);
+        roeFlux(tempUL, tempUR, normL[i], Fn[i], params);
       }
     }
+
+    cout << posFpts[i][0] << ", " << posFpts[i][1] << " : " << (*UL[i])[0] << ", " << (*UR[i])[0] << ", " << Fn[i][0] << endl;
 
     // Calculate difference between discontinuous & common normal flux, and store in ele
+    // (Each ele needs only the difference, not the actual common value, for the correction)
     for (j=0; j<nFields; j++) {
-      tempFn = 0.;
+      tempFnL =  Fn[i][j];
+      tempFnR = -Fn[i][j]; // opposite normal direction
       for (k=0; k<nDims; k++) {
-
+        tempFnL -= tempFL[k][j]*normL[i][k];
+        tempFnR -= tempFR[k][j]*normR[i][k];
       }
+      // Transform back to reference space & store in element
+      (*dFnL[i])[j] = tempFnL*dAL[i];
+      (*dFnR[i])[j] = tempFnR*dAR[i];
     }
-
   }
 }
 
@@ -124,11 +146,14 @@ void face::calcViscousFlux(void)
   int i;
 
   for (i=0; i<nFptsL; i++) {
+    tempUL = *UL[i]/(detJacL[i]);
+    tempUR = *UR[i]/(detJacR[i]);
+
     // Calculate discontinuous viscous flux at flux points
-    viscousFlux(*UL[i], *gradUL[i], tempFL, params);
-    viscousFlux(*UR[i], *gradUR[i], tempFR, params);
+    viscousFlux(tempUL, *gradUL[i], tempFL, params);
+    viscousFlux(tempUR, *gradUR[i], tempFR, params);
 
     // Calculte common viscous flux at flux points
-    ldgFlux(*UL[i], *UR[i], *gradUL[i], *gradUR[i], Fn[i], params);
+    ldgFlux(tempUL, tempUR, *gradUL[i], *gradUR[i], Fn[i], params);
   }
 }

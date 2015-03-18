@@ -106,6 +106,7 @@ void ele::setup(input *inParams, geo *inGeo)
   nFpts = loc_fpts.size();
 
   pos_spts.resize(nSpts);
+  pos_fpts.resize(nFpts);
 
   if (params->equation == ADVECTION_DIFFUSION) {
     nFields = 1;
@@ -157,6 +158,7 @@ void ele::setup(input *inParams, geo *inGeo)
   calcTransforms();
 
   calcPosSpts();
+  calcPosFpts();
 }
 
 void ele::calcTransforms(void)
@@ -262,11 +264,26 @@ void ele::calcPosSpts(void)
   vector<double> shape;
 
   for (int spt=0; spt<nSpts; spt++) {
-    getShape(spt, shape);
+    getShape(loc_spts[spt], shape);
     pos_spts[spt].zero();
     for (int iv=0; iv<nNodes; iv++) {
       for (int dim=0; dim<nDims; dim++) {
         pos_spts[spt][dim] += shape[iv]*nodes[iv][dim];
+      }
+    }
+  }
+}
+
+void ele::calcPosFpts(void)
+{
+  vector<double> shape;
+
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    getShape(loc_fpts[fpt], shape);
+    pos_fpts[fpt].zero();
+    for (int iv=0; iv<nNodes; iv++) {
+      for (int dim=0; dim<nDims; dim++) {
+        pos_fpts[fpt][dim] += shape[iv]*nodes[iv][dim];
       }
     }
   }
@@ -323,13 +340,13 @@ void ele::setInitialCondition()
   }
 }
 
-void ele::getShape(int spt, vector<double> &shape)
+void ele::getShape(point loc, vector<double> &shape)
 {
   if (eType == TRI) {
-    shape_tri(loc_spts[spt], shape);
+    shape_tri(loc, shape);
   }
   else if (eType == QUAD) {
-    shape_quad(loc_spts[spt], shape);
+    shape_quad(loc, shape);
   }
   else {
     FatalError("Element Type Not Supported.");
@@ -404,6 +421,12 @@ point ele::getPosSpt(uint spt)
 {
   return pos_spts[spt];
 }
+
+point ele::getPosFpt(uint fpt)
+{
+  return pos_fpts[fpt];
+}
+
 uint ele::getNDims() const
 {
   return nDims;

@@ -21,8 +21,11 @@
 #pragma once
 
 #include <vector>
+#include <iostream>
+#include <iomanip>   // for setw, setprecision
 
 #include "error.hpp"
+
 
 using namespace std;
 

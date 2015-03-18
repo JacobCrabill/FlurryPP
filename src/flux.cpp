@@ -167,12 +167,6 @@ void centralFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, v
           + params->advectVy*0.5*norm[1]*(uL[0]+uR[0]);
   }
   else if (params->equation == NAVIER_STOKES) {
-//    Fn.assign(params->nFields,0.);
-//    for (int i=0; i<params->nFields; i++) {
-//      for (int j=0; j<params->nDims; j++) {
-//        Fn[i] += 0.5*norm[j]*(uL[i]+uR[i]);
-//      }
-//    }
     FatalError("centralFlux not supported for Navier-Stokes simulations.");
   }
 }
@@ -203,7 +197,6 @@ void laxFriedrichsFlux(vector<double> &uL, vector<double> &uR, vector<double> &n
     vNorm = params->advectVx*norm[0] + params->advectVy*norm[1];
 
     Fn[0] = vNorm*uAvg + 0.5*params->lambda*abs(vNorm)*uDiff;
-
   }
   else if (params->equation == NAVIER_STOKES) {
     FatalError("laxFlux not supported for Navier-Stokes simulations.");

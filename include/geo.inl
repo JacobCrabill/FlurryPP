@@ -425,7 +425,7 @@ vector<double> geo::getPts1D(string ptsType, int order)
 {
   vector<double> outPts(order+1);
 
-  if (!ptsType.compare("Legendre")) {
+  if (!ptsType.compare("Legendre")) { // Gauss-Legendre
     if (order == 0) {
       outPts[0] =  0.0;
     }
@@ -519,7 +519,7 @@ vector<double> geo::getPts1D(string ptsType, int order)
       FatalError(errMsg.c_str());
     }
   }
-  else if (!ptsType.compare("Lobatto")) {
+  else if (!ptsType.compare("Lobatto")) { // Gauss-Lobatto
     if (order == 0) {
         outPts[0] =  0.0;
     }

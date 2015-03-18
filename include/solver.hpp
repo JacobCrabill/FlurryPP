@@ -75,6 +75,9 @@ public:
   //! Calculate the inviscid interface flux at all element faces
   void calcInviscidFlux_faces(void);
 
+  //! Calculate the inviscid interface flux at all boundary faces
+  void calcInviscidFlux_bounds(void);
+
   //! Calculate the gradient of the solution at the solution points
   void calcGradU_spts(void);
 
@@ -90,6 +93,9 @@ public:
 
   //! Calculate the viscous interface flux at all element faces
   void calcViscousFlux_faces(void);
+
+  //! Calculate the viscous interface flux at all boundary faces
+  void calcViscousFlux_bounds(void);
 
   //! Calculate the gradient of the flux at the solution points
   void calcGradF_spts(void);

@@ -40,6 +40,8 @@ void solver::calcResidual(void)
   /* Inviscid Common Flux */
   calcInviscidFlux_faces();
 
+  calcInviscidFlux_bounds();
+
   if (params->viscous) {
     calcGradU_spts();
 
@@ -49,6 +51,8 @@ void solver::calcResidual(void)
 
     /* Viscous Common Flux */
     calcViscousFlux_faces();
+
+    calcViscousFlux_bounds();
   }
 
   if (params->motion) {
@@ -67,14 +71,14 @@ void solver::calcResidual(void)
 
 void solver::timeStep(void)
 {
-  for (auto& e: eles) {
+  for (auto& e:eles) {
     e.U_spts.addMatrix(e.divF_spts,-params->dt);
   }
 }
 
 void solver::extrapolateU(void)
 {
-  for (auto& e: eles) {
+  for (auto& e:eles) {
     opers[e.eType][e.order].applySptsFpts(e.U_spts,e.U_fpts);
   }
 }
@@ -93,6 +97,13 @@ void solver::calcInviscidFlux_faces()
   }
 }
 
+void solver::calcInviscidFlux_bounds()
+{
+  for (auto& B:bounds) {
+    B.calcInviscidFlux();
+  }
+}
+
 void solver::calcViscousFlux_spts(void)
 {
   for (auto& e:eles) {
@@ -101,6 +112,11 @@ void solver::calcViscousFlux_spts(void)
 }
 
 void solver::calcViscousFlux_faces()
+{
+
+}
+
+void solver::calcViscousFlux_bounds()
 {
 
 }
