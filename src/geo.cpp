@@ -467,6 +467,7 @@ void geo::processPeriodicBoundaries(void)
   // Remove no-longer-existing periodic boundary edges and update nBndEdges
   bndEdges.erase(std::remove(bndEdges.begin(), bndEdges.end(), -1), bndEdges.end());
   nBndEdges = bndEdges.size();
+  nFaces = intEdges.size();
 }
 
 bool geo::checkPeriodicFaces(vector<int> edge1, vector<int> edge2)
