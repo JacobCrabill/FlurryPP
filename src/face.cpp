@@ -79,7 +79,7 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   }
 
   // Get access to data at right element [order reversed to match left ele]
-  fpt = nFptsR - 1;
+  fpt = 0; //nFptsR - 1;
   for (i=fptStartR-1; i>=fptEndR; i--) {
     UR[fpt] = &(eR->U_fpts[i]);
     FR[fpt] = &(eR->F_fpts[i]);
@@ -87,7 +87,8 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
     normR[fpt] = (eR->norm_fpts[i]);
     dAR[fpt] = (eR->dA_fpts[fpt]);
     detJacR[fpt] = (eR->detJac_fpts[fpt]);
-    fpt--;
+    fpt++;
+    //fpt--;  Double-reverse = backwads - d'oh!
   }
 
   // Setup a temporary flux-storage vector for later use
@@ -123,7 +124,7 @@ void face::calcInviscidFlux(void)
       }
     }
 
-    cout << posFpts[i][0] << ", " << posFpts[i][1] << " : " << (*UL[i])[0] << ", " << (*UR[i])[0] << ", " << Fn[i][0] << endl;
+    //cout << posFpts[i][0] << ", " << posFpts[i][1] << " : " << (*UL[i])[0] << ", " << (*UR[i])[0] << ", " << Fn[i][0] << endl;
 
     // Calculate difference between discontinuous & common normal flux, and store in ele
     // (Each ele needs only the difference, not the actual common value, for the correction)

@@ -163,7 +163,6 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("lambda",lambda,1.);
     nFields = 1;
   } else if (equation==NAVIER_STOKES) {
-    opts.getScalarValue("ic_type",ic_type,0);
     if (ic_type == 0) {
       opts.getScalarValue("rhoIC",rhoIC,1.);
       opts.getScalarValue("vxIC",vxIC,1.);
@@ -178,6 +177,7 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("motion",motion,0);
   opts.getScalarValue("order",order,3);
   opts.getScalarValue("riemann_type",riemann_type,0);
+  opts.getScalarValue("ic_type",ic_type,0);
   opts.getScalarValue("test_case",test_case,0);
   opts.getScalarValue("iterMax",iterMax);
 

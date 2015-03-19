@@ -331,11 +331,19 @@ void ele::setInitialCondition()
     }
   }
   else if (params->equation == ADVECTION_DIFFUSION) {
+    if (params->ic_type == 0) {
     /* --- Simple Gaussian bump centered at (0,0) --- */
     double r2;
     for (int spt=0; spt<nSpts; spt++) {
       r2 = pos_spts[spt][0]*pos_spts[spt][0] + pos_spts[spt][1]*pos_spts[spt][1];
       U_spts[spt][0] = exp(-r2);
+    }
+    }
+    else if (params->ic_type == 1) {
+      /* --- Test case for debugging - linear solution x+y over domain --- */
+      for (int spt=0; spt<nSpts; spt++) {
+        U_spts[spt][0] = pos_spts[spt][0]+pos_spts[spt][1];
+      }
     }
   }
 }
