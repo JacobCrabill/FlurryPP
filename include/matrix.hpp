@@ -80,6 +80,7 @@ public:
 
   /*! Insert a row into the matrix at location rowNum [zero-indexed], with the default being at the end */
   void insertRow(vector<T> &vec, int rowNum = -1);
+  void insertRow(T* vec, int rowNum = -1, int length);
 
   void addCol(void);
 
@@ -91,11 +92,11 @@ public:
 
   /* --- Data-Access Operators --- */
 
-  vector<T>& operator[](int inDim0);
+  T* operator[](int inDim0);
 
   subMatrix<T> operator[](vector<int> &iRows);
 
-  vector<vector<T> > getData();
+  vector<T> getData();
 
   /* --- Search Operations --- */
 
@@ -107,7 +108,7 @@ public:
 
 //protected:
 
-  vector<vector<T> > data;
+  vector<T> data;
 };
 
 
