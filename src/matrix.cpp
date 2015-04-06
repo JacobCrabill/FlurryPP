@@ -168,6 +168,30 @@ void matrix<T>::timesVector(vector<T> &A, vector<T> &B)
   }
 }
 
+// Support for non-arithematic data types (pointers) - do nothing.
+template<>
+void matrix<double*>::addMatrix(matrix<double*> &A, double a) {
+  FatalError("matrix.addMatrix not supported for non-arithematic data types.");
+}
+
+template<>
+void matrix<double*>::timesMatrix(matrix<double*> &A, matrix<double*> &B) {
+  // incompatible - do nothing.
+  FatalError("matrix.timesMatrix not supported for non-arithematic data types.");
+}
+
+template<>
+void matrix<double*>::timesMatrixPlus(matrix<double*> &A, matrix<double*> &B) {
+  // incompatible - do nothing.
+  FatalError("matrix.timesMatrixPlus not supported for non-arithematic data types.");
+}
+
+template<>
+void matrix<double*>::timesVector(vector<double*> &A, vector<double*> &B) {
+  // incompatible - do nothing.
+  FatalError("matrix.timesVector not supported for non-arithematic data types.");
+}
+
 template<typename T>
 void matrix<T>::insertRow(vector<T> &vec, int rowNum)
 {
@@ -318,3 +342,4 @@ subMatrix<T> subMatrix<T>::operator=(matrix<T>& inMatrix)
 // Fix for compiler to know which template types will be needed later (and therefore must now be compiled):
 template class matrix<int>;
 template class matrix<double>;
+template class matrix<double*>;

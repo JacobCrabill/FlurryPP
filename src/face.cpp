@@ -51,8 +51,8 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
 
   UL.resize(nFptsL);
   UR.resize(nFptsR);
-  FL.resize(nFptsL);
-  FR.resize(nFptsR);
+  //FL.resize(nFptsL);
+  //FR.resize(nFptsR);
   dFnL.resize(nFptsL);
   dFnR.resize(nFptsR);
   Fn.setup(nFptsL,nFields);
@@ -68,8 +68,10 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   // Get access to data at left element
   fpt = 0;
   for (i=fptStartL; i<fptEndL; i++) {
+    //(*FL[fpt]).setup(nDims,nFields);
+//    for (int j=0; j<nDims; j++)
+//      FL[j][fpt] = &(eL->F_fpts[j][i]);
     UL[fpt] = &(eL->U_fpts[i]);
-    FL[fpt] = &(eL->F_fpts[i]);
     dFnL[fpt] = &(eL->dFn_fpts[i]);
     normL[fpt] = (eL->norm_fpts[i]);
     dAL[fpt] = (eL->dA_fpts[i]);
@@ -82,13 +84,54 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   fpt = 0;
   for (i=fptStartR-1; i>=fptEndR; i--) {
     UR[fpt] = &(eR->U_fpts[i]);
-    FR[fpt] = &(eR->F_fpts[i]);
+    //FR[fpt] = &(eR->F_fpts[i]);
     dFnR[fpt] = &(eR->dFn_fpts[i]);
     normR[fpt] = (eR->norm_fpts[i]);
     dAR[fpt] = (eR->dA_fpts[fpt]);
     detJacR[fpt] = (eR->detJac_fpts[fpt]);
     fpt++;
   }
+
+  // Trying out new method of storing FL, FR...
+  FL.resize(nFptsL);
+  FR.resize(nFptsR);
+  fpt = 0;
+  for (i=fptStartL; i<fptEndL; i++) {
+    FL[fpt].resize(nDims);
+    for (int j=0; j<nDims; j++) {
+      FL[fpt][j].resize(nFields);
+      for (int k=0; k<nFields; k++) {
+        FL[fpt][j][k] = &(eL->F_fpts[j][i][k]);
+      }
+    }
+    fpt++;
+  }
+
+  fpt = 0;
+  for (i=fptStartR-1; i>=fptEndR; i--) {
+    FR[fpt].resize(nDims);
+    for (int j=0; j<nDims; j++) {
+      FR[fpt][j].resize(nFields);
+      for (int k=0; k<nFields; k++) {
+        FR[fpt][j][k] = &(eR->F_fpts[j][i][k]);
+      }
+    }
+    fpt++;
+  }
+
+//      FL[j][fpt] = &(eL->F_fpts[j][i]);
+//  fpt = 0;
+//  for (int j=0; j<nDims; j++) {
+//    FR[j].resize(nDims);
+//    for (i=fptStartR-1; i>=fptEndR; i--) {
+//      //FR[j][fpt] = &(eR->F_fpts[j][i]);
+//      FR[j][fpt].resize(nFields);
+//      for (int k=0; k<nFields; k++) {
+//        FR[j][fpt][k] = &(eR->F_fpts[j][i][k]);
+//      }
+//    }
+//    fpt++;
+//  }
 
   // Setup a temporary flux-storage vector for later use
   tempFL.setup(nDims,nFields);
@@ -103,12 +146,10 @@ void face::calcInviscidFlux(void)
   double tempFnL, tempFnR;
 
   for (i=0; i<nFptsL; i++) {
-    tempUL = *UL[i]/(detJacL[i]);
-    tempUR = *UR[i]/(detJacR[i]);
-
-    // Calcualte discontinuous inviscid flux at flux points
-    inviscidFlux(tempUL, tempFL, params);
-    inviscidFlux(tempUR, tempFR, params);
+    for (j=0; j<nFields; j++) {
+      tempUL[j] = (*UL[i])[j]/(detJacL[i]);
+      tempUR[j] = (*UR[i])[j]/(detJacR[i]);
+    }
 
     // Calculate common inviscid flux at flux points
     if (params->equation == ADVECTION_DIFFUSION) {
@@ -116,7 +157,11 @@ void face::calcInviscidFlux(void)
     }
     else if (params->equation == NAVIER_STOKES) {
       if (params->riemann_type==0) {
-        rusanovFlux(tempUL, tempUR, *FL[i], *FR[i], normL[i], Fn[i], params);
+        // Calcualte discontinuous inviscid flux at flux points
+        inviscidFlux(tempUL, tempFL, params);
+        inviscidFlux(tempUR, tempFR, params);
+        //rusanovFlux(tempUL, tempUR, *FL[i], *FR[i], normL[i], Fn[i], params);
+        rusanovFlux(tempUL, tempUR, tempFL, tempFR, normL[i], Fn[i], params);
       }
       else if (params->riemann_type==1) {
         roeFlux(tempUL, tempUR, normL[i], Fn[i], params);
@@ -129,8 +174,8 @@ void face::calcInviscidFlux(void)
       tempFnL =  Fn[i][j];
       tempFnR = -Fn[i][j]; // opposite normal direction
       for (k=0; k<nDims; k++) {
-        tempFnL -= tempFL[k][j]*normL[i][k];
-        tempFnR -= tempFR[k][j]*normR[i][k];
+        tempFnL -= *(FL[i][k][j])*normL[i][k];
+        tempFnR -= *(FR[i][k][j])*normR[i][k];
       }
       // Transform back to reference space & store in element
       (*dFnL[i])[j] = tempFnL*dAL[i];
