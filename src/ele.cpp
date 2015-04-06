@@ -154,6 +154,9 @@ void ele::setup(input *inParams, geo *inGeo)
   tNorm_fpts.setup(nFpts,nDims);
   dA_fpts.resize(nFpts);
 
+  tempF.setup(nDims,nFields);
+  tempU.assign(nFields,0);
+
   /* --- Final Step: calculate physical->reference transforms --- */
   calcTransforms();
 
@@ -363,15 +366,13 @@ void ele::getShape(point loc, vector<double> &shape)
 
 void ele::calcInviscidFlux_spts()
 {
-  matrix<double> tempF(nDims,nFields);
-  vector<double> tempU(nFields,0);
-
   for (int spt=0; spt<nSpts; spt++) {
-    tempU = U_spts[spt] / detJac_spts[spt];
-    inviscidFlux(U_spts[spt], tempF, params);
-//    for (int i=0; i<nDims; i++)
-//      for (int j=0; j<nFields; j++)
-//        F_spts[i][spt][j] = tempF[i][j];
+
+    /* --- Transform solution to physical domain --- */
+    for (int k=0; k<nFields; k++)
+      tempU[k] = U_spts[spt][k] / detJac_spts[spt];
+
+    inviscidFlux(tempU, tempF, params);
 
     /* --- Transform back to reference domain --- */
     for (int k=0; k<nFields; k++) {
@@ -387,15 +388,14 @@ void ele::calcInviscidFlux_spts()
 
 void ele::calcViscousFlux_spts()
 {
-  matrix<double> tempF(nDims,nFields);
-  vector<double> tempU(nFields,0);
 
   for (int spt=0; spt<nSpts; spt++) {
-    tempU = U_spts[spt] / detJac_spts[spt];
-    viscousFlux(U_spts[spt], dU_spts[spt], tempF, params);
-//    for (int i=0; i<nDims; i++)
-//      for (int j=0; j<nFields; j++)
-//        F_spts[i][spt][j] += tempF[i][j];
+
+    /* --- Transform solution to physical domain --- */
+    for (int k=0; k<nFields; k++)
+      tempU[k] = U_spts[spt][k] / detJac_spts[spt];
+
+    viscousFlux(tempU, dU_spts[spt], tempF, params);
 
     /* --- Transform back to reference domain --- */
     for (int k=0; k<nFields; k++) {
