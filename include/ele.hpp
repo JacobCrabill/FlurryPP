@@ -62,6 +62,8 @@ public:
 
   void calcViscousFlux_spts(void);
 
+  void timeStep(void);
+
   /* --- Display, Output & Diagnostic Functions --- */
 
   /*! Get vector of primitive variables at a solution point */

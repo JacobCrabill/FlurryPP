@@ -110,7 +110,7 @@ void viscousFlux(vector<double> &U, matrix<double> &gradU, matrix<double> &Fvis,
   Fvis[1][3] = -(u*tauxy+v*tauyy+(mu/params->prandtl)*(params->gamma)*de_dy);
 }
 
-
+//void rusanovFlux(vector<double> &UL, vector<double> &UR, vector<vector<double*>> &FL, vector<vector<double*>> &FR, vector<double> &norm, vector<double> &Fn, input *params)
 void rusanovFlux(vector<double> &UL, vector<double> &UR, matrix<double> &FL, matrix<double> &FR, vector<double> &norm, vector<double> &Fn, input *params)
 {
   int i, j;
@@ -141,6 +141,8 @@ void rusanovFlux(vector<double> &UL, vector<double> &UR, matrix<double> &FL, mat
     vnL += norm[j]*UL[j+1]/rhoL;
     vnR += norm[j]*UR[j+1]/rhoR;
     for (i=0; i<params->nFields; i++) {
+      /*FnL[i] += norm[j]*(*FL[j][i]);
+      FnR[i] += norm[j]*(*FR[j][i]);*/
       FnL[i] += norm[j]*FL[j][i];
       FnR[i] += norm[j]*FR[j][i];
     }

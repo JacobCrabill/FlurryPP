@@ -157,6 +157,7 @@ void input::readInputFile(char *filename)
   /* --- Read input file & store all simulation parameters --- */
 
   opts.getScalarValue("equation",equation,1);
+  opts.getScalarValue("ic_type",ic_type,0);
   if (equation==ADVECTION_DIFFUSION) {
     opts.getScalarValue("advectVx",advectVx,1.);
     opts.getScalarValue("advectVy",advectVy,1.);
@@ -169,6 +170,7 @@ void input::readInputFile(char *filename)
       opts.getScalarValue("vyIC",vyIC,1.);
       opts.getScalarValue("pIC",pIC,10000.);
     }
+    opts.getScalarValue("gamma",gamma,1.4);
     nFields = 4;
   }
 
@@ -177,7 +179,6 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("motion",motion,0);
   opts.getScalarValue("order",order,3);
   opts.getScalarValue("riemann_type",riemann_type,0);
-  opts.getScalarValue("ic_type",ic_type,0);
   opts.getScalarValue("test_case",test_case,0);
   opts.getScalarValue("iterMax",iterMax);
 

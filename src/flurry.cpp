@@ -24,6 +24,9 @@ int main(int argc, char *argv[]) {
 
   int iter;
 
+  clock_t initTime, finalTime;
+  initTime = clock();
+
   cout << "  ========================================== " << endl;
   cout << "   _______   _                               " << endl;
   cout << "  |   ____| | |                              " << endl;
@@ -64,4 +67,7 @@ int main(int argc, char *argv[]) {
     if ((iter)%params.plot_freq == 0) writeData(&Solver,&params,iter);
 
   }
+
+  finalTime = clock()-initTime;
+  printf("Execution time= %f s\n", (double) finalTime/((double) CLOCKS_PER_SEC));
 }

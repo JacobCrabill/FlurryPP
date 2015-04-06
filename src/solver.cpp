@@ -72,7 +72,8 @@ void solver::calcResidual(void)
 void solver::timeStep(void)
 {
   for (auto& e:eles) {
-    e.U_spts.addMatrix(e.divF_spts,-params->dt);
+    e.timeStep();
+    //e.U_spts.addMatrix(e.divF_spts,-params->dt);
   }
 }
 

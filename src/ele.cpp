@@ -364,24 +364,56 @@ void ele::getShape(point loc, vector<double> &shape)
 void ele::calcInviscidFlux_spts()
 {
   matrix<double> tempF(nDims,nFields);
+  vector<double> tempU(nFields,0);
 
   for (int spt=0; spt<nSpts; spt++) {
+    tempU = U_spts[spt] / detJac_spts[spt];
     inviscidFlux(U_spts[spt], tempF, params);
-    for (int i=0; i<nDims; i++)
-      for (int j=0; j<nFields; j++)
-        F_spts[i][spt][j] = tempF[i][j];
+//    for (int i=0; i<nDims; i++)
+//      for (int j=0; j<nFields; j++)
+//        F_spts[i][spt][j] = tempF[i][j];
+
+    /* --- Transform back to reference domain --- */
+    for (int k=0; k<nFields; k++) {
+      for (int i=0; i<nDims; i++) {
+        F_spts[i][spt][k] = 0.;
+        for (int j=0; j<nDims; j++) {
+          F_spts[i][spt][k] += Jac_spts[spt][i][j]*tempF[j][k];
+        }
+      }
+    }
   }
 }
 
 void ele::calcViscousFlux_spts()
 {
   matrix<double> tempF(nDims,nFields);
+  vector<double> tempU(nFields,0);
 
   for (int spt=0; spt<nSpts; spt++) {
+    tempU = U_spts[spt] / detJac_spts[spt];
     viscousFlux(U_spts[spt], dU_spts[spt], tempF, params);
-    for (int i=0; i<nDims; i++)
-      for (int j=0; j<nFields; j++)
-        F_spts[i][spt][j] += tempF[i][j];
+//    for (int i=0; i<nDims; i++)
+//      for (int j=0; j<nFields; j++)
+//        F_spts[i][spt][j] += tempF[i][j];
+
+    /* --- Transform back to reference domain --- */
+    for (int k=0; k<nFields; k++) {
+      for (int i=0; i<nDims; i++) {
+        for (int j=0; j<nDims; j++) {
+          F_spts[i][spt][k] += Jac_spts[spt][i][j]*tempF[j][k];
+        }
+      }
+    }
+  }
+}
+
+void ele::timeStep()
+{
+  for (int spt=0; spt<nSpts; spt++) {
+    for (int i=0; i<nFields; i++) {
+      U_spts[spt][i] -= params->dt*divF_spts[spt][i]/detJac_spts[spt];
+    }
   }
 }
 
