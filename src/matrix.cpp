@@ -84,7 +84,18 @@ T* matrix<T>::operator[](int inRow)
     return &data[inRow*dim1];
   }
   else {
-    FatalError("Attempting to access data beyond end of matrix.");
+    FatalError("Attempting to access data beyond range of matrix.");
+  }
+}
+
+template<typename T>
+T& matrix<T>::operator()(int i, int j)
+{
+  if (i<(int)dim0 && i>=0 && j<(int)dim1 && j>=0) {
+    return &data[i*dim1+j];
+  }
+  else {
+    FatalError("Attempting to access data beyond range of matrix.");
   }
 }
 
@@ -342,3 +353,4 @@ subMatrix<T> subMatrix<T>::operator=(matrix<T>& inMatrix)
 // Fix for compiler to know which template types will be needed later (and therefore must now be compiled):
 template class matrix<int>;
 template class matrix<double>;
+template class matrix<double*>;

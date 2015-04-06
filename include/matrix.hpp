@@ -109,6 +109,8 @@ public:
 //protected:
 
   vector<T> data;
+
+  T &operator()(int i, int j);
 };
 
 

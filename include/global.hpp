@@ -197,6 +197,11 @@ vector<T> operator*(const vector<T>& lhs, double rhs)
   return out;
 }
 
+//----------Performance boost mod----------------------
+/*template<typename T>
+void std::vector<T>::operator*()*/
+//----------Performance boost mod----------------------
+
 template<typename T>
 vector<T> operator/(const vector<T>& lhs, double rhs)
 {

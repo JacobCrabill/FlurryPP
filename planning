@@ -28,3 +28,16 @@ NO_BLAS: 7.03 s
 ---> BLAS provided ~14% reduction in calculation time - less than I expected, hmm...
 maybe the global structure still helped, even without (directly) accounting for cache structure.
 After all, even without BLAS, the arrays are still stored in contiguous memory.  Hmm...
+
+
+Matrix Class Modifictions
+==Testing (and profiling with callgrind) show that matrix class (as Josh pointed out) is very inefficient
+  due to the use of vectors *of vectors*, which leads to inconsistent/nonlinear memory access.
+  --Callgrind shows matrix::operator[] as a big hitter!
+==Possible solution: Modify matrix class to use single vector<double> for data
+  --But then, how to keep *nice* features like matrix slicing?
+    --Make vector<double> data  --> vector<double> *data
+	--Modify submatrix --> this->data = inMat->data [copy pointer to data - no data copying!]
+	--Modify submatrix --> store iStride & jStride, iStart & jStart, etc. to control how data is accessed
+	  >>i.e. to get one column, make jStart be that col index; for row, iStart = row index, etc.
+	  >>This *SHOULD* cover all of my *niceties* for slicing operations...

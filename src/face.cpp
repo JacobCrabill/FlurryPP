@@ -69,12 +69,17 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   fpt = 0;
   for (i=fptStartL; i<fptEndL; i++) {
     UL[fpt] = &(eL->U_fpts[i]);
-    FL[fpt] = &(eL->F_fpts[i]);
+    //FL[fpt] = &(eL->F_fpts[i]);       // WRONG INDEXING IN ELE-FLUX - FIX ME!!
     dFnL[fpt] = &(eL->dFn_fpts[i]);
     normL[fpt] = (eL->norm_fpts[i]);
     dAL[fpt] = (eL->dA_fpts[i]);
     detJacL[fpt] = (eL->detJac_fpts[i]);
     posFpts[fpt] = eL->pos_fpts[i];
+
+    for (int dim=0; dim<nDims; dim++)
+      for (int k=0; k<nFields; k++)
+        FL[fpt][dim][k] = &(eL->F_fpts[dim][i][k]);
+
     fpt++;
   }
 
@@ -82,11 +87,15 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   fpt = 0;
   for (i=fptStartR-1; i>=fptEndR; i--) {
     UR[fpt] = &(eR->U_fpts[i]);
-    FR[fpt] = &(eR->F_fpts[i]);
     dFnR[fpt] = &(eR->dFn_fpts[i]);
     normR[fpt] = (eR->norm_fpts[i]);
     dAR[fpt] = (eR->dA_fpts[fpt]);
     detJacR[fpt] = (eR->detJac_fpts[fpt]);
+
+    for (int dim=0; dim<nDims; dim++)
+      for (int k=0; k<nFields; k++)
+        FR[fpt][dim][k] = &(eR->F_fpts[dim][i][k]);
+
     fpt++;
   }
 
@@ -103,12 +112,10 @@ void face::calcInviscidFlux(void)
   double tempFnL, tempFnR;
 
   for (i=0; i<nFptsL; i++) {
-    tempUL = *UL[i]/(detJacL[i]);
-    tempUR = *UR[i]/(detJacR[i]);
-
-    // Calcualte discontinuous inviscid flux at flux points
-    inviscidFlux(tempUL, tempFL, params);
-    inviscidFlux(tempUR, tempFR, params);
+    for (j=0; j<nFields; j++) {
+      tempUL[j] = (*UL[i])[j]/(detJacL[i]);
+      tempUR[j] = (*UR[i])[j]/(detJacR[i]);
+    }
 
     // Calculate common inviscid flux at flux points
     if (params->equation == ADVECTION_DIFFUSION) {
@@ -116,7 +123,10 @@ void face::calcInviscidFlux(void)
     }
     else if (params->equation == NAVIER_STOKES) {
       if (params->riemann_type==0) {
-        rusanovFlux(tempUL, tempUR, *FL[i], *FR[i], normL[i], Fn[i], params);
+        // Calcualte discontinuous inviscid flux at flux points
+        inviscidFlux(tempUL, tempFL, params);
+        inviscidFlux(tempUR, tempFR, params);
+        rusanovFlux(tempUL, tempUR, tempFL, tempFR, normL[i], Fn[i], params);
       }
       else if (params->riemann_type==1) {
         roeFlux(tempUL, tempUR, normL[i], Fn[i], params);
@@ -129,8 +139,8 @@ void face::calcInviscidFlux(void)
       tempFnL =  Fn[i][j];
       tempFnR = -Fn[i][j]; // opposite normal direction
       for (k=0; k<nDims; k++) {
-        tempFnL -= tempFL[k][j]*normL[i][k];
-        tempFnR -= tempFR[k][j]*normR[i][k];
+        tempFnL -= (*FL[i])[k][j]*normL[i][k];
+        tempFnR -= (*FR[i])[k][j]*normR[i][k];
       }
       // Transform back to reference space & store in element
       (*dFnL[i])[j] = tempFnL*dAL[i];
