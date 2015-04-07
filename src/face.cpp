@@ -68,9 +68,11 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   // Get access to data at left element
   fpt = 0;
   for (i=fptStartL; i<fptEndL; i++) {
+    /* Old Versions of FL, FR */
+    //FR[fpt] = &(eR->F_fpts[i]);
     //(*FL[fpt]).setup(nDims,nFields);
-//    for (int j=0; j<nDims; j++)
-//      FL[j][fpt] = &(eL->F_fpts[j][i]);
+    //for (int j=0; j<nDims; j++)
+    //   FL[j][fpt] = &(eL->F_fpts[j][i]);
     UL[fpt] = &(eL->U_fpts[i]);
 
     dFnL[fpt] = &(eL->dFn_fpts[i]);
@@ -91,9 +93,6 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   fpt = 0;
   for (i=fptStartR-1; i>=fptEndR; i--) {
     UR[fpt] = &(eR->U_fpts[i]);
-
-    //FR[fpt] = &(eR->F_fpts[i]);
-
     dFnR[fpt] = &(eR->dFn_fpts[i]);
     normR[fpt] = (eR->norm_fpts[i]);
     dAR[fpt] = (eR->dA_fpts[fpt]);
@@ -107,6 +106,7 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
     fpt++;
   }
 
+  /* Other FL,FR storage methods
   // Trying out new method of storing FL, FR...
 //  FL.resize(nFptsL);
 //  FR.resize(nFptsR);
@@ -148,6 +148,7 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
 //    }
 //    fpt++;
 //  }
+*/
 
   // Setup a temporary flux-storage vector for later use
   tempFL.setup(nDims,nFields);

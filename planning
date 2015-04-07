@@ -37,6 +37,7 @@ Matrix Class Modifictions
 ==Possible solution: Modify matrix class to use single vector<double> for data
   --But then, how to keep *nice* features like matrix slicing?
     --Make vector<double> data  --> vector<double> *data
+	  >>Might have to carry around ptr to 'owner' of *data so the pointer can be deleted properly
 	--Modify submatrix --> this->data = inMat->data [copy pointer to data - no data copying!]
 	--Modify submatrix --> store iStride & jStride, iStart & jStart, etc. to control how data is accessed
 	  >>i.e. to get one column, make jStart be that col index; for row, iStart = row index, etc.

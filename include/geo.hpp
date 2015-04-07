@@ -73,6 +73,7 @@ private:
   vector<int> bcList;            //! List of boundary conditions for each boundary
   vector<int> bcType;            //! Boundary condition for each boundary edge
   matrix<int> bndPts;            //! List of node IDs on each boundary
+  vector<int> nBndPts;           //! Number of points on each boudary
   vector<matrix<int> > bndFaces; //! List of nodes on each face (edge) on each boundary
   vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
   int nBounds;  //! Number of boundaries
@@ -81,5 +82,5 @@ private:
   void processPeriodicBoundaries(void);
 
   //! Check if two given periodic edges match up
-  bool checkPeriodicFaces(vector<int> edge1, vector<int> edge2);
+  bool checkPeriodicFaces(int *edge1, int *edge2);
 };

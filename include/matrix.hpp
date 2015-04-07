@@ -80,7 +80,8 @@ public:
 
   /*! Insert a row into the matrix at location rowNum [zero-indexed], with the default being at the end */
   void insertRow(vector<T> &vec, int rowNum = -1);
-  void insertRow(T* vec, int rowNum = -1, int length);
+  //void insertRow(T* vec, int rowNum = -1, int length);
+  void insertRow(T* vec, int rowNum, int length);
 
   void addCol(void);
 
