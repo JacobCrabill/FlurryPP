@@ -216,7 +216,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> b
     ie = intEdges[i];
     ic = e2c[ie][0];
     // Find local face ID of global face within first element [on left]
-    tmpEdges = c2e[ic];
+    tmpEdges.assign(c2e[ic],c2e[ic]+c2ne[ic]);
     fid1 = findFirst(tmpEdges,ie);
     F.params = params;
     if (e2c[ie][1] == -1) {
@@ -373,7 +373,7 @@ void geo::createMesh()
 
 void geo::processPeriodicBoundaries(void)
 {
-  uint nPeriodic, bi, bj;
+  uint nPeriodic, bi, bj, ic;
   vector<int> iPeriodic(0);
 
   for (int i=0; i<nBndEdges; i++) {

@@ -47,12 +47,13 @@ private:
   int locF_L;
 
   /* --- Storage for all solution/geometry data at flux points --- */
-  vector<vector<double>*> UL;
+  vector<double*> UL;
   vector<matrix<double>*> gradUL;
-  vector<matrix<double>*> FL;
-  vector<vector<double>*> Fn;
-  vector<vector<double>*> deltaF;
+  vector<matrix<double*>> FL;
+  vector<double*> Fn;
+  vector<double*> deltaF;
   matrix<double> normL;
+  vector<double> detJacL;
 
   matrix<double> tempFL;
   vector<double> tempUL;

@@ -73,13 +73,15 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
     //(*FL[fpt]).setup(nDims,nFields);
     //for (int j=0; j<nDims; j++)
     //   FL[j][fpt] = &(eL->F_fpts[j][i]);
-    UL[fpt] = &(eL->U_fpts[i]);
+    UL[fpt] = (eL->U_fpts[i]);
 
-    dFnL[fpt] = &(eL->dFn_fpts[i]);
-    normL[fpt] = (eL->norm_fpts[i]);
+    dFnL[fpt] = (eL->dFn_fpts[i]);
     dAL[fpt] = (eL->dA_fpts[i]);
     detJacL[fpt] = (eL->detJac_fpts[i]);
     posFpts[fpt] = eL->pos_fpts[i];
+
+    for (int dim=0; dim<nDims; dim++)
+      normL[fpt][dim] = (eL->norm_fpts[i][dim]);
 
     FL[fpt].setup(nDims,nFields);
     for (int dim=0; dim<nDims; dim++)
@@ -92,11 +94,13 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   // Get access to data at right element [order reversed to match left ele]
   fpt = 0;
   for (i=fptStartR-1; i>=fptEndR; i--) {
-    UR[fpt] = &(eR->U_fpts[i]);
-    dFnR[fpt] = &(eR->dFn_fpts[i]);
-    normR[fpt] = (eR->norm_fpts[i]);
-    dAR[fpt] = (eR->dA_fpts[fpt]);
-    detJacR[fpt] = (eR->detJac_fpts[fpt]);
+    UR[fpt] = (eR->U_fpts[i]);
+    dFnR[fpt] = (eR->dFn_fpts[i]);
+    dAR[fpt] = (eR->dA_fpts[i]);
+    detJacR[fpt] = (eR->detJac_fpts[i]);
+
+    for (int dim=0; dim<nDims; dim++)
+      normR[fpt][dim] = (eR->norm_fpts[i][dim]);  // change norm to matrix<double*> for future
 
     FR[fpt].setup(nDims,nFields);
     for (int dim=0; dim<nDims; dim++)
@@ -164,8 +168,8 @@ void face::calcInviscidFlux(void)
 
   for (i=0; i<nFptsL; i++) {
     for (j=0; j<nFields; j++) {
-      tempUL[j] = (*UL[i])[j]/(detJacL[i]);
-      tempUR[j] = (*UR[i])[j]/(detJacR[i]);
+      tempUL[j] = UL[i][j]/(detJacL[i]);
+      tempUR[j] = UR[i][j]/(detJacR[i]);
     }
 
     // Calculate common inviscid flux at flux points
@@ -195,8 +199,8 @@ void face::calcInviscidFlux(void)
         tempFnR -= *(FR[i][k][j])*normR[i][k];
       }
       // Transform back to reference space & store in element
-      (*dFnL[i])[j] = tempFnL*dAL[i];
-      (*dFnR[i])[j] = tempFnR*dAR[i];
+      dFnL[i][j] = tempFnL*dAL[i];
+      dFnR[i][j] = tempFnR*dAR[i];
     }
   }
 }
@@ -206,8 +210,10 @@ void face::calcViscousFlux(void)
   int i;
 
   for (i=0; i<nFptsL; i++) {
-    tempUL = *UL[i]/(detJacL[i]);
-    tempUR = *UR[i]/(detJacR[i]);
+    for (int k=0; k<nFields; k++) {
+      tempUL[k] = UL[i][k]/(detJacL[i]);
+      tempUR[k] = UR[i][k]/(detJacR[i]);
+    }
 
     // Calculate discontinuous viscous flux at flux points
     viscousFlux(tempUL, *gradUL[i], tempFL, params);

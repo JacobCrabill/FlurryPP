@@ -45,8 +45,9 @@ private:
   int locF_L, locF_R;
 
   /* --- Storage for all solution/geometry data at flux points --- */
-  vector<vector<double>*> UL;
-  vector<vector<double>*> UR;
+  //vector<vector<double>*> UL;
+  //vector<vector<double>*> UL;
+  vector<double*> UL, UR;
   vector<matrix<double>*> gradUL;
   vector<matrix<double>*> gradUR;
   //vector<matrix<double>*> FL;
@@ -56,8 +57,10 @@ private:
   //vector<matrix<double*>> FL, FR;
   //vector<vector<vector<double*>>> FL;
   //vector<vector<vector<double*>>> FR;
-  vector<vector<double>*> dFnL;   //! Common minus discontinuous normal flux for left ele
-  vector<vector<double>*> dFnR;   //! Common minus discontinuous normal flux for right ele
+  //vector<vector<double>*> dFnL;   //! Common minus discontinuous normal flux for left ele
+  //vector<vector<double>*> dFnR;   //! Common minus discontinuous normal flux for right ele
+  vector<double*> dFnL;   //! Common minus discontinuous normal flux for left ele
+  vector<double*> dFnR;   //! Common minus discontinuous normal flux for right ele
   matrix<double> Fn;     // Can't use ptr, b/c 2 eles - they need to point to this instead
   matrix<double> normL, normR; //! Unit outward normal at flux points
   vector<double> dAL, dAR;     //! Local face-area equivalent at flux points

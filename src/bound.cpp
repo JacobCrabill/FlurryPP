@@ -37,18 +37,28 @@ void bound::setupBound(ele *eL, int locF_L, int bcType, int gID)
   UL.resize(nFptsL);
   FL.resize(nFptsL);
   normL.setup(nFptsL,nDims);
+  detJacL.resize(nFptsL);
 
   // Get access to data at left element
   int fpt=0;
   for (int i=fptStartL; i<fptEndL; i++) {
-    UL[fpt] = &(eL->U_fpts[i]);
-    FL[fpt] = &(eL->F_fpts[i]);
-    normL[fpt] = (eL->norm_fpts[i]);
+    UL[fpt] = (eL->U_fpts[i]);
+    detJacL[fpt] = (eL->detJac_fpts[i]); // change to double**[] = &(eL->det[])
+
+    for (int dim=0; dim<nDims; dim++)
+      normL[fpt][dim] = (eL->norm_fpts[i][dim]); // change to dbl ptr
+
+    FL[fpt].setup(nDims,nFields);
+    for (int dim=0; dim<nDims; dim++)
+      for (int k=0; k<nFields; k++)
+        FL[fpt][dim][k] = &(eL->F_fpts[dim][i][k]);
+
     fpt++;
   }
 
   // Setup a temporary flux-storage vector for later use
   tempFL.setup(nDims,nFields);
+  tempUL.resize(nFields);
 }
 
 void bound::calcInviscidFlux()
@@ -57,14 +67,15 @@ void bound::calcInviscidFlux()
   applyBCs();
 
   for (int i=0; i<nFptsL; i++) {
-
+    for (int j=0; j<nFields; j++)
+      tempUL[j] = UL[i][j]/(detJacL[i]);
 
     // Calcualte discontinuous inviscid flux at flux points
-    inviscidFlux(*UL[i],tempFL, params);
+    inviscidFlux(tempUL,tempFL, params);
 
     // Calculate common inviscid flux at flux points
     if (params->equation == ADVECTION_DIFFUSION) {
-      upwindFlux(*UL[i], UC[i], normL[i], *Fn[i], params);
+      upwindFlux(tempUL, UC[i], normL[i], Fn[i], params);
     }
 //    else if (params->equation == NAVIER_STOKES) {
 //      if (params->riemann_type==0) {

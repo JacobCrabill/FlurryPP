@@ -25,20 +25,20 @@ void inviscidFlux(vector<double> &U, matrix<double> &F, input *params);
 void viscousFlux(vector<double> &U, matrix<double> &gradU, matrix<double> &Fvis, input *params);
 
 /*! Calculate the common inviscid flux at a point using Roe's method */
-void roeFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params);
+void roeFlux(vector<double> &uL, vector<double> &uR, double *norm, double *Fn, input *params);
 
 /*! Calculate the common inviscid flux at a point using the Rusanov scalar-diffusion method */
-void rusanovFlux(vector<double> &UL, vector<double> &UR, matrix<double> &FL, matrix<double> &FR, vector<double> &norm, vector<double> &Fn, input *params);
+void rusanovFlux(vector<double> &UL, vector<double> &UR, matrix<double> &FL, matrix<double> &FR, double *norm, double *Fn, input *params);
 //void rusanovFlux(vector<double> &UL, vector<double> &UR, vector<vector<double*>> &FL, vector<vector<double*>> &FR, vector<double> &norm, vector<double> &Fn, input *params);
 
 /*! Simple central-difference flux (primarily for advection problems) */
-void centralFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params);
+void centralFlux(vector<double> &uL, vector<double> &uR, double *norm, double *Fn, input *params);
 
 /*! Simple upwinded flux (primarily for advection problems) */
-void upwindFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params);
+void upwindFlux(vector<double> &uL, vector<double> &uR, double *norm, double *Fn, input *params);
 
 /*! Lax-Friedrichs flux (advection-diffusion) */
-void laxFriedrichsFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params);
+void laxFriedrichsFlux(vector<double> &uL, vector<double> &uR, double *norm, double *Fn, input *params);
 
 /*! Calculate the common viscous flux at a point using the LDG penalty method */
-void ldgFlux(vector<double> &uL, vector<double> &uR, matrix<double> &gradU_L, matrix<double> &gradU_R, vector<double> &Fn, input *params);
+void ldgFlux(vector<double> &uL, vector<double> &uR, matrix<double> &gradU_L, matrix<double> &gradU_R, double *Fn, input *params);

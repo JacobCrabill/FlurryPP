@@ -111,7 +111,7 @@ void viscousFlux(vector<double> &U, matrix<double> &gradU, matrix<double> &Fvis,
 }
 
 //void rusanovFlux(vector<double> &UL, vector<double> &UR, vector<vector<double*>> &FL, vector<vector<double*>> &FR, vector<double> &norm, vector<double> &Fn, input *params)
-void rusanovFlux(vector<double> &UL, vector<double> &UR, matrix<double> &FL, matrix<double> &FR, vector<double> &norm, vector<double> &Fn, input *params)
+void rusanovFlux(vector<double> &UL, vector<double> &UR, matrix<double> &FL, matrix<double> &FR, double* norm, double* Fn, input *params)
 {
   int i, j;
   double rhoL, uL, vL, wL, pL, vnL=0.0;
@@ -162,7 +162,7 @@ void rusanovFlux(vector<double> &UL, vector<double> &UR, matrix<double> &FL, mat
 }
 
 
-void centralFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params)
+void centralFlux(vector<double> &uL, vector<double> &uR, double* norm, double* Fn, input *params)
 {
   if (params->equation == ADVECTION_DIFFUSION) {
     Fn[0] = params->advectVx*0.5*norm[0]*(uL[0]+uR[0])
@@ -173,7 +173,7 @@ void centralFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, v
   }
 }
 
-void upwindFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params)
+void upwindFlux(vector<double> &uL, vector<double> &uR, double* norm, double* Fn, input *params)
 {
   if (params->equation == ADVECTION_DIFFUSION) {
     double FL, FR, alpha;
@@ -185,7 +185,7 @@ void upwindFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, ve
 }
 
 
-void laxFriedrichsFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params)
+void laxFriedrichsFlux(vector<double> &uL, vector<double> &uR, double* norm, double* Fn, input *params)
 {
   if (params->equation == ADVECTION_DIFFUSION) {
     Fn[0] = params->advectVx*0.5*norm[0]*(uL[0]+uR[0])
@@ -205,13 +205,13 @@ void laxFriedrichsFlux(vector<double> &uL, vector<double> &uR, vector<double> &n
   }
 }
 
-void ldgFlux(vector<double> &uL, vector<double> &uR, matrix<double> &gradU_L, matrix<double> &gradU_R, vector<double> &Fn, input *params)
+void ldgFlux(vector<double> &uL, vector<double> &uR, matrix<double> &gradU_L, matrix<double> &gradU_R, double* Fn, input *params)
 {
   FatalError("LDG flux not implemented just yet.  Go to flux.cpp and do it!!");
 }
 
 
-void roeFlux(vector<double> &uL, vector<double> &uR, vector<double> &norm, vector<double> &Fn, input *params)
+void roeFlux(vector<double> &uL, vector<double> &uR, double* norm, double* Fn, input *params)
 {
   FatalError("Roe flux not implemented just yet.  Go to flux.cpp and do it!!");
 }
