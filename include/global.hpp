@@ -140,6 +140,19 @@ int findFirst(vector<T> &vec, T val)
   return -1;
 }
 
+template<typename T>
+int findFirst(T* vec, T val, uint length)
+{
+  if (length==0) return -1;
+
+  for (int i=0; i<(int)length; i++) {
+    if (vec[i]==val) return i;
+  }
+
+  // If not found...
+  return -1;
+}
+
 /*! Assign a value to vector vec at indices indicated in ind */
 template<typename T>
 void vecAssign(vector<T> &vec, vector<int> &ind, T val)

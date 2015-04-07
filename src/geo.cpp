@@ -111,10 +111,10 @@ void geo::processConnectivity()
     int iv1 = e2v[bndEdges[i]][0];
     int iv2 = e2v[bndEdges[i]][1];
     for (int bnd=0; bnd<nBounds; bnd++) {
-      if (findFirst(bndPts[bnd],iv1)!=-1 && findFirst(bndPts[bnd],iv2)!=-1) {
+      if (findFirst(bndPts[bnd],iv1,bndPts.dim1)!=-1 && findFirst(bndPts[bnd],iv2,bndPts.dim1)!=-1) {
         // The edge lies on this boundary
         bcType[i] = bcList[bnd];
-        bndFaces[bnd].insertRow(e2v[bndEdges[i]]);
+        bndFaces[bnd].insertRow(e2v[bndEdges[i]],-1,e2v.dim1);
         break;
       }
     }
@@ -222,7 +222,9 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> b
     if (e2c[ie][1] == -1) {
       FatalError("Interior edge does not have a right element assigned.");
     }else{
-      tmpEdges = c2e[e2c[ie][1]];
+      ic = e2c[ie][1];
+      tmpEdges.assign(c2e[ic], c2e[ic]+c2ne[ic]);
+      //tmpEdges = c2e[e2c[ie][1]]; // previous row-as-vector form
       fid2 = findFirst(tmpEdges,ie);
       F.setupFace(&eles[e2c[ie][0]],&eles[e2c[ie][1]],fid1,fid2,ie);
     }
@@ -237,7 +239,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> b
     ie = bndEdges[i];
     ic = e2c[ie][0];
     // Find local face ID of global face within element
-    tmpEdges = c2e[ic];
+    tmpEdges.assign(c2e[ic],c2e[ic]+c2ne[ic]);
+    //tmpEdges = c2e[ic]; // previous row-as-vector form
     fid1 = findFirst(tmpEdges,ie);
     B.params = params;
     if (e2c[ie][1] != -1) {
@@ -316,6 +319,7 @@ void geo::createMesh()
   bcList.push_back(bc);
   bndFaces.resize(1);
   bndPts.setup(1,4*nx+4*ny); //(nx+1)*(ny+1));
+  nBndPts.resize(1);
   bndFaces[0].setup(2*nx+2*ny,2); // nBndFaces x 2-pts-per-edge
   ne = 0;
 
@@ -356,59 +360,15 @@ void geo::createMesh()
   }
 
   // Remove duplicates in bndPts
-  std::sort(bndPts[0].begin(), bndPts[0].end());
-  vector<int>::iterator it;
-  it = std::unique (bndPts[0].begin(), bndPts[0].end());
-  bndPts[0].resize(std::distance(bndPts[0].begin(), it));
+  std::sort(bndPts[0], bndPts[0]+bndPts.dim1);
+  int* it = std::unique(bndPts[0], bndPts[0]+bndPts.dim1);
+  nBndPts[0] = std::distance(bndPts[0],it);
 
-  // Default created mesh will be a rectangle with periodic boundaries
-  // Top, Right edges will be replace by equivalent Bottom, Left edges
-//  int ic;
-//  for (int iy=0; iy<ny-1; iy++) {
-//    for (int ix=0; ix<nx-1; ix++) {
-//      ic = ix + ny*iy;
-//      for (int ie=0; ie<4; ie++) {
-//        iep1 = (ie+1)%4;
-//        edge[0] = c2v[ic][ie];
-//        edge[1] = c2v[ic][iep1];
-//        e2v1.insertRow(edge);
-//      }
-//    }
-//    // Match right edges of mesh @ row iy to left edge
-//    ic = nx + ny*iy;
-//    edge[0] = c2v[ic][0];        // Bottom edge of current cell
-//    edge[1] = c2v[ic][1];
-//    e2v1.insertRow(edge);
-//    edge[0] = c2v[ic-(nx-1)][3]; // Left edge of left-most cell in row
-//    edge[1] = c2v[ic-(nx-1)][0];
-//    e2v1.insertRow(edge);
-//    edge[0] = c2v[ic][2];        // Top edge of current cell
-//    edge[1] = c2v[ic][3];
-//    e2v1.insertRow(edge);
-//  }
-
-//  // Match top edges of mesh to bottom edges
-//  ic = ny*(ny-1);
-//  edge[0] = c2v[ic][3];
-//  edge[1] = c2v[ic][0];
-//  e2v1.insertRow(edge);
-//  for (int ix=0; ix<nx-1; ix++) {
-//    ic = ix + ny*(ny-1);
-//    edge[0] = c2v[ic][1]; // Right edge
-//    edge[1] = c2v[ic][2];
-//    e2v1.insertRow(edge);
-//    edge[0] = c2v[ix][0]; // Bottom edge of cell at bottom of mesh
-//    edge[1] = c2v[ix][1];
-//    e2v1.insertRow(edge);
-//  }
-
-//  ic = nx*(ny-1); // Top-left cell
-//  edge[0] = c2v[ic][3];   // Final cell, right egde
-//  edge[1] = c2v[ic][0];
-//  e2v1.insertRow(edge);
-//  edge[0] = nx-1; // Final cell, top edge
-//  edge[1] = nx;
-//  e2v1.insertRow(edge);
+  /* previous vector-based matrix version */
+  //std::sort(bndPts[0].begin(), bndPts[0].end());
+  //vector<int>::iterator it;
+  //it = std::unique(bndPts[0].begin(), bndPts[0].end());
+  //bndPts[0].resize(std::distance(bndPts[0], it));
 }
 
 void geo::processPeriodicBoundaries(void)
@@ -451,7 +411,8 @@ void geo::processPeriodicBoundaries(void)
         e2c[bj][0] = -1;
 
         // Fix c2e - replace 'deleted' edge from right cell with combined edge
-        int fID = findFirst(c2e[e2c[bi][1]],(int)bj);
+        ic = e2c[bi][1];
+        int fID = findFirst(c2e[ic],(int)bj,c2ne[ic]);
         c2e[e2c[bi][1]][fID] = bi;
 
         // Fix c2b - set element-local face to be internal face
@@ -470,7 +431,7 @@ void geo::processPeriodicBoundaries(void)
   nFaces = intEdges.size();
 }
 
-bool geo::checkPeriodicFaces(vector<int> edge1, vector<int> edge2)
+bool geo::checkPeriodicFaces(int* edge1, int* edge2)
 {
   double x11, x12, y11, y12, x21, x22, y21, y22;
   x11 = xv[edge1[0]][0];  y11 = xv[edge1[0]][1];

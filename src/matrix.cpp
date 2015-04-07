@@ -84,7 +84,7 @@ T* matrix<T>::operator[](int inRow)
     return &data[inRow*dim1];
   }
   else {
-    FatalError("Attempting to access data beyond range of matrix.");
+    FatalError("Attempted out-of-bounds access in matrix.");
   }
 }
 
@@ -95,7 +95,7 @@ T& matrix<T>::operator()(int i, int j)
     return &data[i*dim1+j];
   }
   else {
-    FatalError("Attempting to access data beyond range of matrix.");
+    FatalError("Attempted out-of-bounds access in matrix.");
   }
 }
 
@@ -212,7 +212,7 @@ void matrix<T>::insertRow(vector<T> &vec, int rowNum)
     data.insert(data.end(),vec.begin(),vec.end());
   }else{
     // Insert at specified location
-    data.insert(&data[rowNum*dim1],vec.begin(),vec.end());
+    data.insert(data.begin()+rowNum*dim1,vec.begin(),vec.end());
   }
 
   if (dim1==0) dim1=vec.size(); // This may not be needed (i.e. may never have dim1==0). need to verify how I set up dim0, dim1...
@@ -229,7 +229,7 @@ void matrix<T>::insertRow(T *vec, int rowNum, int length)
     data.insert(data.end(),vec,vec+length);
   }else{
     // Insert at specified location
-    data.insert(&data[rowNum*dim1],vec,vec+length);
+    data.insert(data.begin()+rowNum*dim1,vec,vec+length);
   }
 
   if (dim1==0) dim1=vec.size();
