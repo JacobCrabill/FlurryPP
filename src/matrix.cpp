@@ -25,9 +25,7 @@ matrix<T>::matrix()
 template<typename T>
 matrix<T>::matrix(uint inDim0, uint inDim1)
 {
-  data.resize(inDim0);
-  for (auto& x: data) x.resize(inDim1);
-
+  data.resize(inDim0*inDim1);
   dim0 = inDim0;
   dim1 = inDim1;
 }
@@ -92,7 +90,7 @@ template<typename T>
 T& matrix<T>::operator()(int i, int j)
 {
   if (i<(int)dim0 && i>=0 && j<(int)dim1 && j>=0) {
-    return &data[i*dim1+j];
+    return data[i*dim1+j];
   }
   else {
     FatalError("Attempted out-of-bounds access in matrix.");
@@ -103,7 +101,7 @@ template<typename T>
 subMatrix<T> matrix<T>::operator[](vector<int> &iRows)
 {
   subMatrix<T> subMat(this,iRows);
-  for (auto& i:iRows) subMat.insertRow(data[i]);
+  for (auto& i:iRows) subMat.insertRow(&data[i*this->dim1],-1,this->dim1);
   return subMat;
 }
 
@@ -232,14 +230,14 @@ void matrix<T>::insertRow(T *vec, int rowNum, int length)
     data.insert(data.begin()+rowNum*dim1,vec,vec+length);
   }
 
-  if (dim1==0) dim1=vec.size();
+  if (dim1==0) dim1=length;
   dim0++;
 }
 
 template<typename T>
 void matrix<T>::addCol(void)
 {
-  vector<T>::iterator it;
+  typename vector<T>::iterator it;
   for (uint row=0; row<dim0; row++) {
     it = data.begin() + (row+1)*(dim1+1) - 1;
     data.insert(it,it-1,it);
@@ -285,7 +283,7 @@ void matrix<T>::unique(matrix<T> &out, vector<int> &iRow)
 
   /* --- For each row in the matrix, compare to all
      previous rows to get first unique occurence --- */
-  vector<T>::iterator itI, itJ;
+  typename vector<T>::iterator itI, itJ;
   for (uint i=0; i<dim0; i++) {
     itI = data.begin() + i*dim1;
     for (uint j=0; j<i; j++) {
@@ -323,14 +321,14 @@ template<typename T>
 subMatrix<T>::subMatrix(matrix<T> *inMat, vector<int> iRows)
 {
   this->data.clear();
-  for (auto& row:iRows) this->data.push_back((*inMat)[row]);
+  for (auto& row:iRows) this->insertRow((*inMat)[row],-1,inMat->getDim1());
 
   this->dim0 = iRows.size();
   this->dim1 = inMat->dim1;
   this->mat = inMat;
 
   rows = iRows;
-  for (uint col=0; col<dim1; col++) cols.push_back(col);
+  for (uint col=0; col<this->dim1; col++) cols.push_back(col);
 }
 
 template<typename T>
@@ -365,7 +363,7 @@ subMatrix<T> subMatrix<T>::operator=(matrix<T>& inMatrix)
   if (mat) {
     for (int row=0; row<rows.size(); row++) {
     for (int col=0; col<cols.size(); col++) {
-        (*mat)[rows[row]][cols[col]] = this->data[row*dim1+col];
+        (*mat)[rows[row]][cols[col]] = this->data[row*this->dim1+col];
       }
     }
   }
