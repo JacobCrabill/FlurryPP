@@ -128,6 +128,10 @@ private:
   matrix<double> tNorm_fpts;  //! Unit normal in reference space
   vector<double> dA_fpts;     //! Local equivalent face-area at flux point
 
+  /* --- Temporary Variables --- */
+  matrix<double> tempF;
+  vector<double> tempU;
+
   /*! Get the values of the nodal shape bases at a solution point */
   void getShape(point loc, vector<double> &shape);
 };

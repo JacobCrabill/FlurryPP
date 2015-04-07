@@ -73,7 +73,6 @@ void solver::timeStep(void)
 {
   for (auto& e:eles) {
     e.timeStep();
-    //e.U_spts.addMatrix(e.divF_spts,-params->dt);
   }
 }
 
