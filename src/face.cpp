@@ -51,6 +51,8 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
 
   UL.resize(nFptsL);
   UR.resize(nFptsR);
+  disFnL.resize(nFptsL);
+  disFnR.resize(nFptsR);
   FL.resize(nFptsL);
   FR.resize(nFptsR);
   dFnL.resize(nFptsL);
@@ -68,13 +70,8 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   // Get access to data at left element
   fpt = 0;
   for (i=fptStartL; i<fptEndL; i++) {
-    /* Old Versions of FL, FR */
-    //FR[fpt] = &(eR->F_fpts[i]);
-    //(*FL[fpt]).setup(nDims,nFields);
-    //for (int j=0; j<nDims; j++)
-    //   FL[j][fpt] = &(eL->F_fpts[j][i]);
     UL[fpt] = (eL->U_fpts[i]);
-
+    disFnL[fpt] = (eL->Fn_fpts[i]);
     dFnL[fpt] = (eL->dFn_fpts[i]);
     dAL[fpt] = (eL->dA_fpts[i]);
     detJacL[fpt] = (eL->detJac_fpts[i]);
@@ -95,6 +92,7 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   fpt = 0;
   for (i=fptStartR-1; i>=fptEndR; i--) {
     UR[fpt] = (eR->U_fpts[i]);
+    disFnR[fpt] = (eR->Fn_fpts[i]);
     dFnR[fpt] = (eR->dFn_fpts[i]);
     dAR[fpt] = (eR->dA_fpts[i]);
     detJacR[fpt] = (eR->detJac_fpts[i]);
@@ -109,50 +107,6 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
 
     fpt++;
   }
-
-  /* Other FL,FR storage methods
-  // Trying out new method of storing FL, FR...
-//  FL.resize(nFptsL);
-//  FR.resize(nFptsR);
-//  fpt = 0;
-//  for (i=fptStartL; i<fptEndL; i++) {
-//    FL[fpt].resize(nDims);
-//    for (int j=0; j<nDims; j++) {
-//      FL[fpt][j].resize(nFields);
-//      for (int k=0; k<nFields; k++) {
-//        FL[fpt][j][k] = &(eL->F_fpts[j][i][k]);
-//      }
-//    }
-//    fpt++;
-//  }
-//
-//  fpt = 0;
-//  for (i=fptStartR-1; i>=fptEndR; i--) {
-//    FR[fpt].resize(nDims);
-//    for (int j=0; j<nDims; j++) {
-//      FR[fpt][j].resize(nFields);
-//      for (int k=0; k<nFields; k++) {
-//        FR[fpt][j][k] = &(eR->F_fpts[j][i][k]);
-//      }
-//    }
-//    fpt++;
-//  }
-
-  // other method...
-//      FL[j][fpt] = &(eL->F_fpts[j][i]);
-//  fpt = 0;
-//  for (int j=0; j<nDims; j++) {
-//    FR[j].resize(nDims);
-//    for (i=fptStartR-1; i>=fptEndR; i--) {
-//      //FR[j][fpt] = &(eR->F_fpts[j][i]);
-//      FR[j][fpt].resize(nFields);
-//      for (int k=0; k<nFields; k++) {
-//        FR[j][fpt][k] = &(eR->F_fpts[j][i][k]);
-//      }
-//    }
-//    fpt++;
-//  }
-*/
 
   // Setup a temporary flux-storage vector for later use
   tempFL.setup(nDims,nFields);
@@ -192,15 +146,9 @@ void face::calcInviscidFlux(void)
     // Calculate difference between discontinuous & common normal flux, and store in ele
     // (Each ele needs only the difference, not the actual common value, for the correction)
     for (j=0; j<nFields; j++) {
-      tempFnL =  Fn[i][j];
-      tempFnR = -Fn[i][j]; // opposite normal direction
-      for (k=0; k<nDims; k++) {
-        tempFnL -= *(FL[i][k][j])*normL[i][k];
-        tempFnR -= *(FR[i][k][j])*normR[i][k];
-      }
       // Transform back to reference space & store in element
-      dFnL[i][j] = tempFnL*dAL[i];
-      dFnR[i][j] = tempFnR*dAR[i];
+      dFnL[i][j] =  Fn[i][j]*dAL[i] - disFnL[i][j];
+      dFnR[i][j] = -Fn[i][j]*dAR[i] - disFnR[i][j]; // opposite normal direction
     }
   }
 }

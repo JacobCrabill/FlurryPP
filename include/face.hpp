@@ -47,7 +47,8 @@ private:
   /* --- Storage for all solution/geometry data at flux points --- */
   //vector<vector<double>*> UL;
   //vector<vector<double>*> UL;
-  vector<double*> UL, UR;
+  vector<double*> UL, UR;         //! Discontinuous solution at left and right
+  vector<double*> disFnL, disFnR; //! Discontinuous normal flux at left and right
   vector<matrix<double>*> gradUL;
   vector<matrix<double>*> gradUR;
   //vector<matrix<double>*> FL;

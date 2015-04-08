@@ -37,6 +37,8 @@ void solver::calcResidual(void)
 
   calcInviscidFlux_spts();
 
+  extrapolateNormalFlux();
+
   /* Inviscid Common Flux */
   calcInviscidFlux_faces();
 
@@ -64,7 +66,7 @@ void solver::calcResidual(void)
   }
 
   /* Extrapolate total flux to flux points & dot with normal */
-  extrapolateNormalFlux();
+  //extrapolateNormalFlux();
 
   correctDivFlux();
 }
@@ -138,7 +140,7 @@ void solver::calcDivF_spts()
 void solver::extrapolateNormalFlux(void)
 {
   for (auto& e: eles) {
-    opers[e.eType][e.order].applyExtrapolateFn(e.F_spts,e.norm_fpts,e.Fn_fpts);
+    opers[e.eType][e.order].applyExtrapolateFn(e.F_spts,e.tNorm_fpts,e.Fn_fpts);
   }
 }
 
