@@ -147,8 +147,10 @@ void ele::setup(input *inParams, geo *inGeo)
   detJac_fpts.resize(nFpts);
   Jac_spts.resize(nSpts);
   Jac_fpts.resize(nFpts);
+  JGinv_spts.resize(nSpts);
   for (auto& spt:Jac_spts) spt.setup(nDims,nDims);
   for (auto& fpt:Jac_fpts) fpt.setup(nDims,nDims);
+  for (auto& spt:JGinv_spts) spt.setup(nDims,nDims);
 
   norm_fpts.setup(nFpts,nDims);
   tNorm_fpts.setup(nFpts,nDims);
@@ -195,7 +197,11 @@ void ele::calcTransforms(void)
     }
 
     if (nDims==2) {
+      // Determinant of transformation matrix
       detJac_spts[spt] = Jac_spts[spt][0][0]*Jac_spts[spt][1][1]-Jac_spts[spt][1][0]*Jac_spts[spt][0][1];
+      // Inverse of transformation matrix (times its determinant)
+      JGinv_spts[spt][0][0] = Jac_spts[spt][1][1];  JGinv_spts[spt][0][1] =-Jac_spts[spt][0][1];
+      JGinv_spts[spt][1][0] =-Jac_spts[spt][1][0];  JGinv_spts[spt][1][1] = Jac_spts[spt][0][0];
     }
     if (detJac_spts[spt]<0) FatalError("Negative Jacobian at solution points.");
   }
@@ -249,7 +255,7 @@ void ele::calcTransforms(void)
     if (detJac_fpts[fpt]<0) FatalError("Negative Jacobian at solution points.");
 
     /* --- Calculate outward unit normal vector at flux point --- */
-    // Transform face normal from reference to physical space [inverse Jac dot tNorm]
+    // Transform face normal from reference to physical space [JGinv dot tNorm]
     norm_fpts[fpt][0] =  Jac_fpts[fpt][1][1]*tNorm_fpts[fpt][0] - Jac_fpts[fpt][1][0]*tNorm_fpts[fpt][1];
     norm_fpts[fpt][1] = -Jac_fpts[fpt][0][1]*tNorm_fpts[fpt][0] + Jac_fpts[fpt][0][0]*tNorm_fpts[fpt][1];
 
@@ -370,16 +376,16 @@ void ele::calcInviscidFlux_spts()
 
     /* --- Transform solution to physical domain --- */
     for (int k=0; k<nFields; k++)
-      tempU[k] = U_spts[spt][k] / detJac_spts[spt];
+      tempU[k] = U_spts[spt][k]; // / detJac_spts[spt];
 
     inviscidFlux(tempU, tempF, params);
 
     /* --- Transform back to reference domain --- */
-    for (int k=0; k<nFields; k++) {
-      for (int i=0; i<nDims; i++) {
+    for (int i=0; i<nDims; i++) {
+      for (int k=0; k<nFields; k++) {
         F_spts[i][spt][k] = 0.;
         for (int j=0; j<nDims; j++) {
-          F_spts[i][spt][k] += Jac_spts[spt][i][j]*tempF[j][k];
+          F_spts[i][spt][k] += JGinv_spts[spt][i][j]*tempF[j][k];
         }
       }
     }
@@ -393,7 +399,7 @@ void ele::calcViscousFlux_spts()
 
     /* --- Transform solution to physical domain --- */
     for (int k=0; k<nFields; k++)
-      tempU[k] = U_spts[spt][k] / detJac_spts[spt];
+      tempU[k] = U_spts[spt][k]; // / detJac_spts[spt];
 
     viscousFlux(tempU, dU_spts[spt], tempF, params);
 
@@ -401,7 +407,7 @@ void ele::calcViscousFlux_spts()
     for (int k=0; k<nFields; k++) {
       for (int i=0; i<nDims; i++) {
         for (int j=0; j<nDims; j++) {
-          F_spts[i][spt][k] += Jac_spts[spt][i][j]*tempF[j][k];
+          F_spts[i][spt][k] += JGinv_spts[spt][i][j]*tempF[j][k];
         }
       }
     }

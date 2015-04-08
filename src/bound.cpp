@@ -68,7 +68,7 @@ void bound::calcInviscidFlux()
 
   for (int i=0; i<nFptsL; i++) {
     for (int j=0; j<nFields; j++)
-      tempUL[j] = UL[i][j]/(detJacL[i]);
+      tempUL[j] = UL[i][j]; // /(detJacL[i]);
 
     // Calcualte discontinuous inviscid flux at flux points
     inviscidFlux(tempUL,tempFL, params);

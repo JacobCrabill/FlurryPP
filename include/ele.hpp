@@ -120,6 +120,7 @@ private:
   vector<double> detJac_fpts;  //! Determinant of transformation Jacobian at each solution point
   vector<matrix<double> > Jac_spts;  //! Transformation Jacobian [matrix] at each solution point
   vector<matrix<double> > Jac_fpts;  //! Transformation Jacobian [matrix] at each flux point
+  vector<matrix<double> > JGinv_spts;  //! Inverse of transformation Jacobian [matrix] at each solution point
   
   // Geometry Variables
   vector<point> pos_spts;     //! Position of solution points in physical space

@@ -168,8 +168,8 @@ void face::calcInviscidFlux(void)
 
   for (i=0; i<nFptsL; i++) {
     for (j=0; j<nFields; j++) {
-      tempUL[j] = UL[i][j]/(detJacL[i]);
-      tempUR[j] = UR[i][j]/(detJacR[i]);
+      tempUL[j] = UL[i][j];// /(detJacL[i]);
+      tempUR[j] = UR[i][j];// /(detJacR[i]);
     }
 
     // Calculate common inviscid flux at flux points
@@ -211,8 +211,8 @@ void face::calcViscousFlux(void)
 
   for (i=0; i<nFptsL; i++) {
     for (int k=0; k<nFields; k++) {
-      tempUL[k] = UL[i][k]/(detJacL[i]);
-      tempUR[k] = UR[i][k]/(detJacR[i]);
+      tempUL[k] = UL[i][k]; // /(detJacL[i]);
+      tempUR[k] = UR[i][k]; // /(detJacR[i]);
     }
 
     // Calculate discontinuous viscous flux at flux points
