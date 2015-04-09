@@ -1,8 +1,6 @@
-close all; clear all;
-
-datadir = 'debug'; % Location of data files
+datadir = 'bin_debug'; % Location of data files
 caseName = 'simData'; % Name of files to be plotted
-Iters = [0:100:500];    % Iterations to be plotted
+Iters = [0:200:10000];    % Iterations to be plotted
 N = 50;                % # of points to use in each direction for surf plot
 GIF = false;           % Save plots to animated GIF file?
 
@@ -27,7 +25,7 @@ for i=1:length(Iters)
     F = TriScatteredInterp(x,y,u);
     
     U = F(X,Y);
-    surf(X,Y,U);
+    surf(X,Y,U);    zlim([.5,1.1]);
     pause(.1);
     
 	% Create animated GIF

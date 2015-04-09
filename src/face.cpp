@@ -117,36 +117,29 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
 
 void face::calcInviscidFlux(void)
 {
-  int i,j,k;
-  double tempFnL, tempFnR;
+  int i,j;
 
   for (i=0; i<nFptsL; i++) {
-    for (j=0; j<nFields; j++) {
-      tempUL[j] = UL[i][j];// /(detJacL[i]);
-      tempUR[j] = UR[i][j];// /(detJacR[i]);
-    }
-
     // Calculate common inviscid flux at flux points
     if (params->equation == ADVECTION_DIFFUSION) {
-      laxFriedrichsFlux(tempUL, tempUR, normL[i], Fn[i], params);
+      laxFriedrichsFlux(UL[i], UR[i], normL[i], Fn[i], params);
     }
     else if (params->equation == NAVIER_STOKES) {
       if (params->riemann_type==0) {
         // Calcualte discontinuous inviscid flux at flux points
-        inviscidFlux(tempUL, tempFL, params);
-        inviscidFlux(tempUR, tempFR, params);
-        //rusanovFlux(tempUL, tempUR, *FL[i], *FR[i], normL[i], Fn[i], params);
-        rusanovFlux(tempUL, tempUR, tempFL, tempFR, normL[i], Fn[i], params);
+        inviscidFlux(UL[i], tempFL, params);
+        inviscidFlux(UR[i], tempFR, params);
+        rusanovFlux(UL[i], UR[i], tempFL, tempFR, normL[i], Fn[i], params);
       }
       else if (params->riemann_type==1) {
-        roeFlux(tempUL, tempUR, normL[i], Fn[i], params);
+        roeFlux(UL[i], UR[i], normL[i], Fn[i], params);
       }
     }
 
     // Calculate difference between discontinuous & common normal flux, and store in ele
     // (Each ele needs only the difference, not the actual common value, for the correction)
+    // Need dAL/R to transform normal flux back to reference space
     for (j=0; j<nFields; j++) {
-      // Transform back to reference space & store in element
       dFnL[i][j] =  Fn[i][j]*dAL[i] - disFnL[i][j];
       dFnR[i][j] = -Fn[i][j]*dAR[i] - disFnR[i][j]; // opposite normal direction
     }
@@ -158,16 +151,11 @@ void face::calcViscousFlux(void)
   int i;
 
   for (i=0; i<nFptsL; i++) {
-    for (int k=0; k<nFields; k++) {
-      tempUL[k] = UL[i][k]; // /(detJacL[i]);
-      tempUR[k] = UR[i][k]; // /(detJacR[i]);
-    }
-
     // Calculate discontinuous viscous flux at flux points
-    viscousFlux(tempUL, *gradUL[i], tempFL, params);
-    viscousFlux(tempUR, *gradUR[i], tempFR, params);
+    viscousFlux(UL[i], *gradUL[i], tempFL, params);
+    viscousFlux(UR[i], *gradUR[i], tempFR, params);
 
     // Calculte common viscous flux at flux points
-    ldgFlux(tempUL, tempUR, *gradUL[i], *gradUR[i], Fn[i], params);
+    ldgFlux(UL[i], UR[i], *gradUL[i], *gradUR[i], Fn[i], params);
   }
 }

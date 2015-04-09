@@ -67,15 +67,15 @@ void bound::calcInviscidFlux()
   applyBCs();
 
   for (int i=0; i<nFptsL; i++) {
-    for (int j=0; j<nFields; j++)
-      tempUL[j] = UL[i][j]; // /(detJacL[i]);
+//    for (int j=0; j<nFields; j++)
+//      tempUL[j] = UL[i][j]; // /(detJacL[i]);
 
     // Calcualte discontinuous inviscid flux at flux points
-    inviscidFlux(tempUL,tempFL, params);
+    inviscidFlux(UL[i],tempFL, params);
 
     // Calculate common inviscid flux at flux points
     if (params->equation == ADVECTION_DIFFUSION) {
-      upwindFlux(tempUL, UC[i], normL[i], Fn[i], params);
+      upwindFlux(UL[i], &UC[i][0], normL[i], Fn[i], params);
     }
 //    else if (params->equation == NAVIER_STOKES) {
 //      if (params->riemann_type==0) {

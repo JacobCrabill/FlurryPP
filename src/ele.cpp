@@ -374,11 +374,11 @@ void ele::calcInviscidFlux_spts()
 {
   for (int spt=0; spt<nSpts; spt++) {
 
-    /* --- Transform solution to physical domain --- */
-    for (int k=0; k<nFields; k++)
-      tempU[k] = U_spts[spt][k]; // / detJac_spts[spt];
+//    /* --- Transform solution to physical domain --- */
+//    for (int k=0; k<nFields; k++)
+//      tempU[k] = U_spts[spt][k]; // / detJac_spts[spt];
 
-    inviscidFlux(tempU, tempF, params);
+    inviscidFlux(U_spts[spt], tempF, params);
 
     /* --- Transform back to reference domain --- */
     for (int i=0; i<nDims; i++) {
@@ -394,14 +394,13 @@ void ele::calcInviscidFlux_spts()
 
 void ele::calcViscousFlux_spts()
 {
-
   for (int spt=0; spt<nSpts; spt++) {
 
     /* --- Transform solution to physical domain --- */
-    for (int k=0; k<nFields; k++)
-      tempU[k] = U_spts[spt][k]; // / detJac_spts[spt];
+//    for (int k=0; k<nFields; k++)
+//      tempU[k] = U_spts[spt][k]; // / detJac_spts[spt];
 
-    viscousFlux(tempU, dU_spts[spt], tempF, params);
+    viscousFlux(U_spts[spt], dU_spts[spt], tempF, params);
 
     /* --- Transform back to reference domain --- */
     for (int k=0; k<nFields; k++) {

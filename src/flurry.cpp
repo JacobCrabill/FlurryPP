@@ -25,7 +25,6 @@ int main(int argc, char *argv[]) {
   int iter;
 
   clock_t initTime, finalTime;
-  initTime = clock();
 
   cout << "  ========================================== " << endl;
   cout << "   _______   _                               " << endl;
@@ -49,6 +48,9 @@ int main(int argc, char *argv[]) {
 
   /* Setup the solver, all elements and faces, and all FR operators for computation */
   Solver.setup(&params,&Geo);
+
+  /* Starting time for simulation (ignoring pre-processing) */
+  initTime = clock();
 
   /* Apply the initial condition */
   Solver.initializeSolution();
