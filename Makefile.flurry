@@ -44,9 +44,10 @@ MOVE          = mv -f
 CHK_DIR_EXISTS= test -d
 MKDIR         = mkdir -p
 
-####### Output directory
+####### Output directory - these do nothing currently
 
-OBJECTS_DIR   = ./
+OBJECTS_DIR   = ./obj
+DESTDIR       = ./bin
 
 ####### Files
 
@@ -63,21 +64,20 @@ SOURCES       = src/global.cpp \
 		src/flurry.cpp \
 		src/solver.cpp \
 		src/bound.cpp 
-OBJECTS       = global.o \
-		matrix.o \
-		input.o \
-		ele.o \
-		polynomials.o \
-		operators.o \
-		geo.o \
-		output.o \
-		face.o \
-		flux.o \
-		flurry.o \
-		solver.o \
-		bound.o
-DESTDIR       = ./debug 
-TARGET        = Flurry
+OBJECTS       = obj/global.o \
+		obj/matrix.o \
+		obj/input.o \
+		obj/ele.o \
+		obj/polynomials.o \
+		obj/operators.o \
+		obj/geo.o \
+		obj/output.o \
+		obj/face.o \
+		obj/flux.o \
+		obj/flurry.o \
+		obj/solver.o \
+		obj/bound.o
+TARGET        = bin/Flurry
 
 ####### Implicit rules
 
@@ -102,7 +102,6 @@ TARGET        = Flurry
 
 $(TARGET):  $(OBJECTS)  
 	$(LINK) $(LFLAGS) -o $(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS) -pg
-	{ test -n "$(DESTDIR)" && DESTDIR="$(DESTDIR)" || DESTDIR=.; } && test $$(gdb --version | sed -e 's,[^0-9]\+\([0-9]\)\.\([0-9]\).*,\1\2,;q') -gt 72 && gdb --nx --batch --quiet -ex 'set confirm off' -ex "save gdb-index $$DESTDIR" -ex quit '$(TARGET)' && test -f $(TARGET).gdb-index && objcopy --add-section '.gdb_index=$(TARGET).gdb-index' --set-section-flags '.gdb_index=readonly' '$(TARGET)' '$(TARGET)' && rm -f $(TARGET).gdb-index || true
 
 dist: 
 	@$(CHK_DIR_EXISTS) .tmp/Flurry1.0.0 || $(MKDIR) .tmp/Flurry1.0.0 
@@ -129,22 +128,22 @@ compiler_clean:
 
 ####### Compile
 
-global.o: src/global.cpp include/global.hpp \
+obj/global.o: src/global.cpp include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o global.o src/global.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/global.o src/global.cpp
 
-matrix.o: src/matrix.cpp include/matrix.hpp \
+obj/matrix.o: src/matrix.cpp include/matrix.hpp \
 		include/error.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o matrix.o src/matrix.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/matrix.o src/matrix.cpp
 
-input.o: src/input.cpp include/input.hpp \
+obj/input.o: src/input.cpp include/input.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o input.o src/input.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/input.o src/input.cpp
 
-ele.o: src/ele.cpp include/ele.hpp \
+obj/ele.o: src/ele.cpp include/ele.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp \
@@ -156,15 +155,15 @@ ele.o: src/ele.cpp include/ele.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp \
 		include/flux.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o ele.o src/ele.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/ele.o src/ele.cpp
 
-polynomials.o: src/polynomials.cpp include/polynomials.hpp \
+obj/polynomials.o: src/polynomials.cpp include/polynomials.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o polynomials.o src/polynomials.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/polynomials.o src/polynomials.cpp
 
-operators.o: src/operators.cpp include/operators.hpp \
+obj/operators.o: src/operators.cpp include/operators.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp \
@@ -175,9 +174,9 @@ operators.o: src/operators.cpp include/operators.hpp \
 		include/face.hpp \
 		include/bound.hpp \
 		include/polynomials.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o operators.o src/operators.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/operators.o src/operators.cpp
 
-geo.o: src/geo.cpp include/geo.hpp \
+obj/geo.o: src/geo.cpp include/geo.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp \
@@ -189,9 +188,9 @@ geo.o: src/geo.cpp include/geo.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp \
 		include/geo.inl
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o geo.o src/geo.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/geo.o src/geo.cpp
 
-output.o: src/output.cpp include/output.hpp \
+obj/output.o: src/output.cpp include/output.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp \
@@ -203,9 +202,9 @@ output.o: src/output.cpp include/output.hpp \
 		include/face.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o output.o src/output.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/output.o src/output.cpp
 
-face.o: src/face.cpp include/face.hpp \
+obj/face.o: src/face.cpp include/face.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp \
@@ -217,16 +216,16 @@ face.o: src/face.cpp include/face.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp \
 		include/flux.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o face.o src/face.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/face.o src/face.cpp
 
-flux.o: src/flux.cpp include/flux.hpp \
+obj/flux.o: src/flux.cpp include/flux.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp \
 		include/input.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o flux.o src/flux.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/flux.o src/flux.cpp
 
-flurry.o: src/flurry.cpp include/flurry.hpp \
+obj/flurry.o: src/flurry.cpp include/flurry.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp \
@@ -239,9 +238,9 @@ flurry.o: src/flurry.cpp include/flurry.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp \
 		include/output.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o flurry.o src/flurry.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/flurry.o src/flurry.cpp
 
-solver.o: src/solver.cpp include/solver.hpp \
+obj/solver.o: src/solver.cpp include/solver.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp \
@@ -252,9 +251,9 @@ solver.o: src/solver.cpp include/solver.hpp \
 		include/face.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o solver.o src/solver.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/solver.o src/solver.cpp
 
-bound.o: src/bound.cpp include/bound.hpp \
+obj/bound.o: src/bound.cpp include/bound.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp \
@@ -265,4 +264,4 @@ bound.o: src/bound.cpp include/bound.hpp \
 		include/face.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o bound.o src/bound.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/bound.o src/bound.cpp

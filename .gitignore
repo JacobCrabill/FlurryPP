@@ -51,7 +51,6 @@ lib/
 *.plt
 
 # Binary / run directory
-bin/
 build/
 debug/
 release/
