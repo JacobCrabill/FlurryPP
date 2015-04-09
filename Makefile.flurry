@@ -1,6 +1,7 @@
 #############################################################################
 # Makefile for building: Flurry
 # Command: make -f Makefile.flurry 
+#          make -f Makefile.flurry CODE="release"
 #############################################################################
 
 ####### Compiler, tools and options
@@ -77,7 +78,7 @@ OBJECTS       = obj/global.o \
 		obj/flurry.o \
 		obj/solver.o \
 		obj/bound.o
-TARGET        = bin/Flurry
+TARGET        = Flurry
 
 ####### Implicit rules
 
@@ -101,11 +102,7 @@ TARGET        = bin/Flurry
 ####### Build rules
 
 $(TARGET):  $(OBJECTS)  
-	$(LINK) $(LFLAGS) -o $(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS) -pg
-
-dist: 
-	@$(CHK_DIR_EXISTS) .tmp/Flurry1.0.0 || $(MKDIR) .tmp/Flurry1.0.0 
-	$(COPY_FILE) --parents $(SOURCES) $(DIST) .tmp/Flurry1.0.0/ && (cd `dirname .tmp/Flurry1.0.0` && $(TAR) Flurry1.0.0.tar Flurry1.0.0 && $(COMPRESS) Flurry1.0.0.tar) && $(MOVE) `dirname .tmp/Flurry1.0.0`/Flurry1.0.0.tar.gz . && $(DEL_FILE) -r .tmp/Flurry1.0.0
+	$(LINK) $(LFLAGS) -o $(DESTDIR)/$(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS) -pg
 
 clean:compiler_clean 
 	-$(DEL_FILE) $(OBJECTS)
@@ -114,16 +111,6 @@ clean:compiler_clean
 ####### Sub-libraries
 check: first
 
-compiler_rcc_make_all:
-compiler_rcc_clean:
-compiler_uic_make_all:
-compiler_uic_clean:
-compiler_yacc_decl_make_all:
-compiler_yacc_decl_clean:
-compiler_yacc_impl_make_all:
-compiler_yacc_impl_clean:
-compiler_lex_make_all:
-compiler_lex_clean:
 compiler_clean: 
 
 ####### Compile

@@ -14,10 +14,14 @@
  */
 #pragma once
 
+#include <map>
+#include <vector>
+
 #include "global.hpp"
-//#include "mesh.hpp"
+
 #include "geo.hpp"
-#include "polynomials.hpp"
+#include "input.hpp"
+#include "matrix.hpp"
 
 class oper
 {
@@ -56,9 +60,7 @@ public:
   const matrix<double>& get_oper_div_spts();
   const matrix<double>& get_oper_spts_fpts();
 
-  //map<int,matrix<double>*> get_oper_div_spts;
   map<int,matrix<double>*> get_oper_grad_spts;
-  //map<int,matrix<double>*> get_oper_spts_fpts;
   map<int,matrix<double>*> get_oper_correct;
 
 private:

@@ -13,10 +13,11 @@
  */
 #pragma once
 
-#include "../include/global.hpp"
-
-#include <string>
 #include <fstream>
+#include <string>
+#include <vector>
+
+#include "global.hpp"
 
 class fileReader
 {

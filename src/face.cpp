@@ -14,6 +14,7 @@
  */
 
 #include "../include/face.hpp"
+
 #include "../include/flux.hpp"
 
 face::face()

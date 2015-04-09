@@ -18,10 +18,21 @@ In the meantime, if you actually took the time to read this, then you should rea
 This open-source code is under development by the Aerospace Computing Lab at Stanford, with new features in the works all the time (it is a research code, after all).
 
 
+Quick Start - Compilation Instructions
+=======================================
+
+To compile Flurry, you can either use QT Creator (https://www.qt.io/download-open-source/), which is an excellent C++ IDE that I use for development, or you can use the provided Makefile.flurry to compile using GNU make.  For the make option, just open a terminal and run the following:
+`make -f Makefile.flurry`
+Optionally, you can specify the type of build as either *debug* or *release*:
+`make -f Makefile.flurry CODE='release'`
+where *release* turns on full optimization, and *debug* removes all optimization and adds flags for both debugging and profiling.
+
+
 Code Structure
 ==============
 
-<<\ Files />>
+Files
+-----
 - Flurry
   + Driver
 - Input
@@ -34,24 +45,27 @@ Code Structure
   + Routines to calculate the inviscid & viscous fluxes
 
 
-<<\ Basic Classes />>
+Basic Classes
+--------------
 - Operators
   + Pre-computes and stores matrices for interpolation, extrapolation, etc. of polynomial bases for all elements in current solution
 - Ele
-  + Each 'ele' is a single element in the mesh, and stores its solution, Jacobian, shape nodes [pointer to global vertices?], and pointer(?) to global face IDs
+  + Each 'ele' is a single element in the mesh, and stores its solution, Jacobian, shape nodes (pointer to global vertices?), and pointer(?) to global face IDs
 - Face
   + Each face stores the ID of the L/R cells & local face ID of each
   + Calculates interface flux or boundary flux
 - Solver (grid? mesh? solution?)
-  + Applies the various FR operations to a solution [set of eles, faces, operators, and geometry]
+  + Applies the various FR operations to a solution (set of eles, faces, operators, and geometry)
   
 
-<<\ Potential Classes [Food for thought] />>
+Potential Classes (Food for thought)
+------------------------------------
 - Solution
   + Wrapper for all data needed for a solution; for h-multigrid or overset, can have several, with methods to transfer data between the two?
-  + Alternatively - have a "solution" class/struct which just holds the global solution, flux, common flux vectors, and then have the eles (and inters?) classes link to this global array somehow [hopefully, something a little more clean/elegant that HiFiLES's "inters" class; sure, pointers work, but having to dereference a pointer on every single variable gets annoying]
+  + Alternatively - have a "solution" class/struct which just holds the global solution, flux, common flux vectors, and then have the eles (and inters?) classes link to this global array somehow (hopefully, something a little more clean/elegant that HiFiLES's "inters" class; sure, pointers work, but having to dereference a pointer on every single variable gets annoying)
 
 
-<<\ Future Classes (?) />>
+Future Classes (?)
+------------------
 - Overset
   + given 2 grids, find the overlapping region and handle data transfer between the two solutions

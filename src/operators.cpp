@@ -11,15 +11,12 @@
  *
  */
 
-#include <cmath>
- 
 #include "../include/operators.hpp"
- 
-/*
- * example usage:
- * get_oper_grad[order] = &oper_grad;
- */
 
+#include <cmath>
+
+#include "../include/polynomials.hpp"
+ 
 void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
 {
   // Get access to basic data
@@ -207,19 +204,6 @@ void oper::applyGradFSpts(vector<matrix<double>> &F_spts, vector<vector<matrix<d
 void oper::applyDivFSpts(vector<matrix<double>> &F_spts, matrix<double> &divF_spts)
 {
   divF_spts.initializeToZero();
-/*  uint nSpts = opp_grad_spts[0].getDim0();
-
-//  // Unfortunately, thanks to the way I set up F_spts, can't call
-//  //   the simple matrix-multiply routine
-//  for (uint dim=0; dim<nDims; dim++) {
-//    for (int spt1=0; spt1<nSpts; spt1++) {
-//      for (int spt2=0; spt2<nSpts; spt2++) {
-//        for (int i=0; i<params->nFields; i++) {
-//          divF_spts[spt1][i] += opp_grad_spts[dim][spt1][spt2]*F_spts[spt2][dim][i];
-//        }
-//      }
-//    }
-//  } */
   for (uint dim=0; dim<nDims; dim++)
       opp_grad_spts[dim].timesMatrixPlus(F_spts[dim],divF_spts);
 }

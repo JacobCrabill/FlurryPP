@@ -13,7 +13,10 @@
  */
 
 #include "../include/input.hpp"
+
+#include <fstream>
 #include <sstream>
+#include <string>
 
 fileReader::fileReader()
 {

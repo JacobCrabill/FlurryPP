@@ -14,12 +14,16 @@
  */
 #pragma once
 
-#include "global.hpp"
-//#include "mesh.hpp"
-#include "matrix.hpp"
-#include "geo.hpp"
+#include <vector>
 
-#include <array>
+#include "global.hpp"
+
+#include "bound.hpp"
+#include "face.hpp"
+#include "geo.hpp"
+#include "input.hpp"
+#include "matrix.hpp"
+#include "solver.hpp"
 
 class ele
 {

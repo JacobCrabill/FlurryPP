@@ -20,9 +20,9 @@
  */
 #pragma once
 
-#include <vector>
-#include <iostream>
 #include <iomanip>   // for setw, setprecision
+#include <iostream>
+#include <vector>
 
 #include "error.hpp"
 
@@ -95,6 +95,8 @@ public:
 
   T* operator[](int inDim0);
 
+  T &operator()(int i, int j);
+
   subMatrix<T> operator[](vector<int> &iRows);
 
   vector<T> getData();
@@ -107,11 +109,8 @@ public:
   /* --- Member Variables --- */
   uint dim0, dim1;  //! Dimensions of the matrix
 
-//protected:
-
+protected:
   vector<T> data;
-
-  T &operator()(int i, int j);
 };
 
 

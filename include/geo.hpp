@@ -14,7 +14,12 @@
  */
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "global.hpp"
+
+#include "ele.hpp"
 #include "input.hpp"
 #include "solver.hpp"
 #include "bound.hpp"

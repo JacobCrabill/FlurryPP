@@ -16,15 +16,18 @@
 
 #include <map>
 #include <set>
+#include <vector>
 
 class oper;
 
 #include "global.hpp"
+
+#include "bound.hpp"
 #include "ele.hpp"
 #include "face.hpp"
-#include "bound.hpp"
-#include "operators.hpp"
+#include "geo.hpp"
 #include "input.hpp"
+#include "operators.hpp"
 
 class solver
 {

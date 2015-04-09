@@ -17,6 +17,7 @@
  */
 
 #include "../include/ele.hpp"
+
 #include "../include/polynomials.hpp"
 #include "../include/flux.hpp"
 
@@ -374,10 +375,6 @@ void ele::calcInviscidFlux_spts()
 {
   for (int spt=0; spt<nSpts; spt++) {
 
-//    /* --- Transform solution to physical domain --- */
-//    for (int k=0; k<nFields; k++)
-//      tempU[k] = U_spts[spt][k]; // / detJac_spts[spt];
-
     inviscidFlux(U_spts[spt], tempF, params);
 
     /* --- Transform back to reference domain --- */
@@ -395,10 +392,6 @@ void ele::calcInviscidFlux_spts()
 void ele::calcViscousFlux_spts()
 {
   for (int spt=0; spt<nSpts; spt++) {
-
-    /* --- Transform solution to physical domain --- */
-//    for (int k=0; k<nFields; k++)
-//      tempU[k] = U_spts[spt][k]; // / detJac_spts[spt];
 
     viscousFlux(U_spts[spt], dU_spts[spt], tempF, params);
 
@@ -433,7 +426,6 @@ vector<double> ele::getPrimitives(uint spt)
     V[0] = U_spts[spt][0];
     V[1] = U_spts[spt][1]/V[0];
     V[2] = U_spts[spt][2]/V[0];
-    // p = (gamma-1)*(rho*e - 1/2*rho*(magV^2))
     V[3] = (params->gamma-1)*(U_spts[spt][3] - (0.5*(U_spts[spt][1]*U_spts[spt][1] + U_spts[spt][2]*U_spts[spt][2])/U_spts[spt][0]));
   }
 

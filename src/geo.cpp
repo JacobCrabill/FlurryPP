@@ -15,6 +15,9 @@
 
 #include "../include/geo.hpp"
 
+#include <algorithm>
+#include <cstdlib>
+
 geo::geo()
 {
 
@@ -363,12 +366,6 @@ void geo::createMesh()
   std::sort(bndPts[0], bndPts[0]+bndPts.dim1);
   int* it = std::unique(bndPts[0], bndPts[0]+bndPts.dim1);
   nBndPts[0] = std::distance(bndPts[0],it);
-
-  /* previous vector-based matrix version */
-  //std::sort(bndPts[0].begin(), bndPts[0].end());
-  //vector<int>::iterator it;
-  //it = std::unique(bndPts[0].begin(), bndPts[0].end());
-  //bndPts[0].resize(std::distance(bndPts[0], it));
 }
 
 void geo::processPeriodicBoundaries(void)
