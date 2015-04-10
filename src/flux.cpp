@@ -262,7 +262,7 @@ void roeFlux(double *uL, double *uR, double* norm, double* Fn, input *params)
   am = sqrt(am_sq);
 
   unm = 0.;
-  //vgn = 0.;
+  vgn = 0.;
   for (int i=0;i<nDims;i++) {
     unm += um[i]*norm[i];
     //vgn += v_g(i)*norm[i];

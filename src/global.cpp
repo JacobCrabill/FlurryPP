@@ -15,6 +15,8 @@
 
 #include "../include/global.hpp"
 
+#include <cstdlib>
+
 /* --- Misc. Common Constants --- */
 double pi = 4.0*atan(1);
 

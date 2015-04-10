@@ -85,6 +85,8 @@ public:
 
   void addCol(void);
 
+  vector<T> getRow(uint row);
+
   matrix<T> getRows(vector<int> ind);
 
   vector<T> getCol(int col);

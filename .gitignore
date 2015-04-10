@@ -49,6 +49,8 @@ lib/
 # Visualization Output Files
 *.vtu
 *.plt
+*.csv
+*.csv.*
 
 # Binary / run directory
 build/

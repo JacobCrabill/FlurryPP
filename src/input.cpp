@@ -200,6 +200,10 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("xmax",xmax,10.);
     opts.getScalarValue("ymin",ymin,-10.);
     opts.getScalarValue("ymax",ymax,10.);
+    opts.getScalarValue("create_bcTop",create_bcTop,string("periodic"));
+    opts.getScalarValue("create_bcBottom",create_bcBottom,string("periodic"));
+    opts.getScalarValue("create_bcLeft",create_bcLeft,string("periodic"));
+    opts.getScalarValue("create_bcRight",create_bcRight,string("periodic"));
   }else if (mesh_type == READ_MESH) {
     opts.getScalarValue("mesh_file_name",meshFileName);
   }

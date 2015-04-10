@@ -305,6 +305,16 @@ void geo::createMesh()
     }
   }
 
+//  // Add a random perturbation of +/- dx/4 to interior points
+//  for (i=1; i<ny; i++) {
+//    for (j=1; j<nx; j++) {
+//      pt.x = (dx/4)*(-1+((double)(rand()%1000))/500.);
+//      pt.y = (dy/4)*(-1+((double)(rand()%1000))/500.);
+//      xv[i*(ny+1)+j].x += pt.x;
+//      xv[i*(ny+1)+j].y += pt.y;
+//    }
+//  }
+
   /* --- Setup Elements --- */
   for (i=0; i<nx; i++) {
     for (j=0; j<ny; j++) {

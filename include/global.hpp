@@ -20,6 +20,7 @@
 #include <fstream>
 #include <string>
 #include <cstddef>    // std::size_t
+#include <cstdlib>
 #include <vector>
 #include <array>
 #include <stdio.h>
@@ -112,6 +113,8 @@ struct point
 };
 
 int factorial(int n);
+
+//double randRange(double xMin, double xMax);
 
 /*! Find indices of all values in vec equal to val */
 template<typename T>

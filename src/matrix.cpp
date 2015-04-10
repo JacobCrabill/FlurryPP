@@ -246,6 +246,14 @@ void matrix<T>::addCol(void)
 }
 
 template<typename T>
+vector<T> matrix<T>::getRow(uint row)
+{
+  vector<T> out;
+  out.assign(&data[row*dim1],&data[row*dim1]+dim1);
+  return out;
+}
+
+template<typename T>
 matrix<T> matrix<T>::getRows(vector<int> ind)
 {
   matrix<T> out;

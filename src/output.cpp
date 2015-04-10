@@ -22,7 +22,8 @@ void writeData(solver *Solver, input *params, int iter)
 
   char fileNameC[50];
   string fileName = params->dataFileName;
-  sprintf(fileNameC,"%s_%.09d.vtk",&fileName[0],iter);
+  //sprintf(fileNameC,"%s_%.09d.csv",&fileName[0],iter);
+  sprintf(fileNameC,"%s.csv.%.09d",&fileName[0],iter);
 
   dataFile.open(fileNameC);
 
@@ -33,16 +34,30 @@ void writeData(solver *Solver, input *params, int iter)
 
   // Eventually I'll get around to a real .vtk output (or Tecplot output...)
   // For now, let's output in a simple, Matlab-readable format: For each solution point:
-  // x  y  rho  u  v  p
+
+  // Write header:
+  // x  y  z(=0)  rho  [u  v  p]
+  dataFile << "x,y,z,";
+  if (params->equation == ADVECTION_DIFFUSION) {
+    dataFile << "rho" << endl;
+  }
+  else if (params->equation == NAVIER_STOKES) {
+    dataFile << "rho,u,v,p" << endl;
+  }
+
+  // Solution data
   for (auto& e:Solver->eles) {
     for (uint spt=0; spt<e.getNSpts(); spt++) {
       V = e.getPrimitives(spt);
       pt = e.getPosSpt(spt);
+
       for (uint dim=0; dim<e.getNDims(); dim++) {
-        dataFile << pt[dim] << ", ";
+        dataFile << pt[dim] << ",";
       }
+      if (e.getNDims() == 2) dataFile << "0.0,"; // output a 0 for z [2D]
+
       for (uint i=0; i<e.getNFields()-1; i++) {
-        dataFile << V[i] << ", ";
+        dataFile << V[i] << ",";
       }
       dataFile << V[e.getNFields()-1] << endl;
     }
@@ -73,21 +88,24 @@ void writeResidual(solver *Solver, input *params, int iter)
     for (auto& i:res) i = sqrt(i);
   }
 
-  if (iter==0 || iter%params->monitor_res_freq==40) {
-    cout << setw(6) << left << "Iter";
+  cout.precision(6);
+  cout.setf(ios::fixed, ios::floatfield);
+  if (iter==1 || iter/params->monitor_res_freq==40) {
+    cout << setw(8) << left << "Iter";
     if (params->equation == ADVECTION_DIFFUSION) {
       cout << " Residual " << endl;
     }else if (params->equation == NAVIER_STOKES) {
-      cout << setw(10) << left << "rho";
-      cout << setw(10) << left << "rhoU";
-      cout << setw(10) << left << "rhoV";
-      cout << setw(10) << left << "rhoE";
+      cout << setw(12) << left << "rho";
+      cout << setw(12) << left << "rhoU";
+      cout << setw(12) << left << "rhoV";
+      cout << setw(12) << left << "rhoE";
     }
+    cout << endl;
   }
 
-  cout << setw(6) << left << iter << " ";
+  cout << setw(8) << left << iter;
   for (int i=0; i<params->nFields; i++) {
-    cout << setprecision(6) << left << res[i] << " ";
+    cout << setw(12) << left << res[i];
   }
   cout << endl;
 }

@@ -28,6 +28,24 @@ Optionally, you can specify the type of build as either *debug* or *release*:
 where *release* turns on full optimization, and *debug* removes all optimization and adds flags for both debugging and profiling.
 
 
+Post-Processing
+================
+
+Flurry currently only has a super-simple .csv output method, which outputs the x,y,z coordinates of the solution points in each element, along with the solution vector at each point.  This can either be plotted using the provided Matlab script, or can alternatively be plotted in a very similar way using ParaView.
+
+To plot the data using ParaView, simply open the entire range of .csv.* files (the iteration number is added after .csv so that ParaView can use it as a time stamp), then:
+
+1) Go to Filters -> Alphabetical -> Table to Points
+2) Set the x,y,z columns in the "Properties" tab
+3) Click "Apply"
+4) Go to Filters -> Alphabetical -> Delaunay
+5) Click "Apply"
+
+Done!
+
+Optionally, to view the data in 3D in Paraview (like Matlab's 'surf'), go to Filters -> Alphabetical -> Warp By Scalar and click "Apply".  The scale can be adjusted as needed in the "Properties" tab.
+
+
 Code Structure
 ==============
 

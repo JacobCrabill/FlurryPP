@@ -118,9 +118,7 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
 
 void face::calcInviscidFlux(void)
 {
-  int i,j;
-
-  for (i=0; i<nFptsL; i++) {
+  for (int i=0; i<nFptsL; i++) {
     // Calculate common inviscid flux at flux points
     if (params->equation == ADVECTION_DIFFUSION) {
       laxFriedrichsFlux(UL[i], UR[i], normL[i], Fn[i], params);
@@ -140,7 +138,7 @@ void face::calcInviscidFlux(void)
     // Calculate difference between discontinuous & common normal flux, and store in ele
     // (Each ele needs only the difference, not the actual common value, for the correction)
     // Need dAL/R to transform normal flux back to reference space
-    for (j=0; j<nFields; j++) {
+    for (int j=0; j<nFields; j++) {
       dFnL[i][j] =  Fn[i][j]*dAL[i] - disFnL[i][j];
       dFnR[i][j] = -Fn[i][j]*dAR[i] - disFnR[i][j]; // opposite normal direction
     }

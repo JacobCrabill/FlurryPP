@@ -124,6 +124,7 @@ public:
   int nx, ny;
   double xmin, xmax, ymin, ymax;
   double periodicTol, periodicDX, periodicDY;
+  string create_bcTop, create_bcBottom, create_bcLeft, create_bcRight; //! BC's to apply to Flurry-created mesh
 
   /* --- FR Parameters --- */
   string sptsTypeTri;  //! Legendre, Lobatto, ...
