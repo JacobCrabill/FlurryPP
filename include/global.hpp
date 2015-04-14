@@ -26,6 +26,8 @@
 #include <stdio.h>
 #include <algorithm>
 
+#include <omp.h>
+
 #include "error.hpp"
 #include "matrix.hpp"
 

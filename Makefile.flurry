@@ -11,21 +11,21 @@ CC            = gcc
 CXX           = g++
 DEFINES       = 
 ifeq ($(CODE),release)
-  CFLAGS      = -m64 -pipe -O3 -Wall -W $(DEFINES)
-  CXXFLAGS    = -m64 -pipe -O3 -Wall -W -std=c++11 $(DEFINES)
+  CFLAGS      = -m64 -pipe -O3 -Wall -W -fopenmp $(DEFINES) 
+  CXXFLAGS    = -m64 -pipe -O3 -Wall -W -fopenmp -std=c++11 $(DEFINES)
 else
   ifeq ($(CODE),debug)
-    CFLAGS    = -m64 -pipe -pg -g -O0 -Wall -W $(DEFINES)
-    CXXFLAGS  = -m64 -pipe -pg -g -O0 -Wall -W -std=c++11 $(DEFINES)
+    CFLAGS    = -m64 -pipe -pg -g -O0 -Wall -W -fopenmp $(DEFINES) 
+    CXXFLAGS  = -m64 -pipe -pg -g -O0 -Wall -W -fopenmp -std=c++11 $(DEFINES)
   else
-    CFLAGS    = -m64 -pipe -g -O2 -Wall -W $(DEFINES)
-    CXXFLAGS  = -m64 -pipe -g -O2 -Wall -W -std=c++11 $(DEFINES)
+    CFLAGS    = -m64 -pipe -g -O2 -Wall -fopenmp -W $(DEFINES)
+    CXXFLAGS  = -m64 -pipe -g -O2 -Wall -fopenmp -W -std=c++11 $(DEFINES)
   endif
 endif
 INCPATH       = -I.
 LINK          = g++
 LFLAGS        = -m64
-LIBS          = $(SUBLIBS)    
+LIBS          = $(SUBLIBS)
 AR            = ar cqs
 RANLIB        = 
 TAR           = tar -cf
@@ -85,10 +85,10 @@ TARGET        = Flurry
 .SUFFIXES: .o .c .cpp .cc .cxx .C
 
 .cpp.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"  
 
 .cc.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"  
 
 .cxx.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"
@@ -102,7 +102,7 @@ TARGET        = Flurry
 ####### Build rules
 
 $(TARGET):  $(OBJECTS)  
-	$(LINK) $(LFLAGS) -o $(DESTDIR)/$(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS) -pg
+	$(LINK) $(LFLAGS) -fopenmp -lgomp -o $(DESTDIR)/$(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS) -pg
 
 clean:compiler_clean 
 	-$(DEL_FILE) $(OBJECTS)

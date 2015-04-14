@@ -14,7 +14,7 @@ advectVy      1    # Advection wave speed, y-component
 #   N-S: 0-Uniform flow, 1-Uniform+Vortex
 ic_type       1    
 test_case     0
-iterMax       10000
+iterMax       5000
 restart       0
 restartIter   10
 
