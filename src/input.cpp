@@ -174,6 +174,14 @@ void input::readInputFile(char *filename)
       opts.getScalarValue("pIC",pIC,10000.);
     }
     opts.getScalarValue("gamma",gamma,1.4);
+    opts.getScalarValue("RGas",RGas,286.9);
+    opts.getScalarValue("rhoBound",rhoBound,1.);
+    opts.getScalarValue("uBound",uBound,1.);
+    opts.getScalarValue("vBound",vBound,0.);
+    opts.getScalarValue("wBound",wBound,0.);
+    opts.getScalarValue("pBound",pBound,1.);
+    opts.getScalarValue("TBound",TBound,300.);
+    opts.getScalarValue("TWall",TWall,300.);
     nFields = 4;
   }
 

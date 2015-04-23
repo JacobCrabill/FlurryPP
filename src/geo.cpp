@@ -51,11 +51,10 @@ void geo::processConnectivity()
   /* --- Setup Edges --- */
   matrix<int> e2v1;
   vector<int> edge(2);
-  int iep1;
 
   for (int e=0; e<nEles; e++) {
     for (int ie=0; ie<c2nv[e]; ie++) {
-      iep1 = (ie+1)%c2nv[e];
+      int iep1 = (ie+1)%c2nv[e];
       if (c2v[e][ie] < c2v[e][iep1]) {
       edge[0] = c2v[e][ie];
       edge[1] = c2v[e][iep1];
@@ -67,9 +66,10 @@ void geo::processConnectivity()
     }
   }
 
-  /* --- Just for nDims==2 ---
-     Get just the unique edges
-     iE is of length [original e2v] with range [final e2v] */
+  /* --- Just for nDims==2: Get just the unique edges --- */
+  // iE is of length [original e2v1] with range [final e2v]
+  // The number of times an edge appears in iE is equal to
+  // the number of cells that edge touches
   vector<int> iE;
   e2v1.unique(e2v,iE);
   nEdges = e2v.getDim0();
@@ -82,10 +82,9 @@ void geo::processConnectivity()
   nFaces = 0;
   nBndEdges = 0;
 
-  vector<int> ie;
   for (uint i=0; i<iE.size(); i++) {
     if (iE[i]!=-1) {
-      ie = findEq(iE,iE[i]);
+      vector<int> ie = findEq(iE,iE[i]);
       if (ie.size()>2) {
         string errMsg = "More than 2 cells for edge " + to_string(i);
         FatalError(errMsg.c_str());
@@ -108,7 +107,10 @@ void geo::processConnectivity()
   }
 
   /* --- Match Boundary Faces to Boundary Conditions --- */
-
+  // Since bndFaces was setup during createMesh, and will be created
+  // here anyways, clear bndFaces & re-setup
+  bndFaces.clear();
+  bndFaces.resize(nBounds);
   bcType.assign(nBndEdges,-1);
   for (int i=0; i<nBndEdges; i++) {
     int iv1 = e2v[bndEdges[i]][0];
@@ -131,8 +133,6 @@ void geo::processConnectivity()
   e2c.setup(nEdges,2);
   e2c.initializeToValue(-1);
 
-  vector<int> ie1(2), col2;
-  int ie0, ie2;
   for (int ic=0; ic<nEles; ic++) {
     for (int j=0; j<c2ne[ic]; j++) {
       int jp1 = (j+1)%(c2ne[ic]);
@@ -146,10 +146,10 @@ void geo::processConnectivity()
         edge[1] = c2v[ic][j];
       }
 
-      ie1 = findEq(e2v.getCol(0),edge[0]);
-      col2 = (e2v.getRows(ie1)).getCol(1);
-      ie2 = findFirst(col2,edge[1]);
-      ie0 = ie1[ie2];
+      vector<int> ie1 = findEq(e2v.getCol(0),edge[0]);
+      vector<int> col2 = (e2v.getRows(ie1)).getCol(1);
+      int ie2 = findFirst(col2,edge[1]);
+      int ie0 = ie1[ie2];
 
       // Find ID of face within type-specific array
       if (isBnd[ie0]) {
@@ -210,17 +210,16 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> b
   /* --- Setup the faces --- */
 
   vector<int> tmpEdges;
-  int fid1, fid2;
-  int ie, i = 0;
+  int i = 0;
 
   // Internal Faces
   for (auto& F:faces) {
     // Find global face ID of current interior face
-    ie = intEdges[i];
+    int ie = intEdges[i];
     ic = e2c[ie][0];
     // Find local face ID of global face within first element [on left]
     tmpEdges.assign(c2e[ic],c2e[ic]+c2ne[ic]);
-    fid1 = findFirst(tmpEdges,ie);
+    int fid1 = findFirst(tmpEdges,ie);
     F.params = params;
     if (e2c[ie][1] == -1) {
       FatalError("Interior edge does not have a right element assigned.");
@@ -228,7 +227,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> b
       ic = e2c[ie][1];
       tmpEdges.assign(c2e[ic], c2e[ic]+c2ne[ic]);
       //tmpEdges = c2e[e2c[ie][1]]; // previous row-as-vector form
-      fid2 = findFirst(tmpEdges,ie);
+      int fid2 = findFirst(tmpEdges,ie);
       F.setupFace(&eles[e2c[ie][0]],&eles[e2c[ie][1]],fid1,fid2,ie);
     }
 
@@ -239,12 +238,11 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> b
   i = 0;
   for (auto& B:bounds) {
     // Find global face ID of current boundary face
-    ie = bndEdges[i];
+    int ie = bndEdges[i];
     ic = e2c[ie][0];
     // Find local face ID of global face within element
     tmpEdges.assign(c2e[ic],c2e[ic]+c2ne[ic]);
-    //tmpEdges = c2e[ic]; // previous row-as-vector form
-    fid1 = findFirst(tmpEdges,ie);
+    int fid1 = findFirst(tmpEdges,ie);
     B.params = params;
     if (e2c[ie][1] != -1) {
       FatalError("Boundary edge has a right element assigned.");
@@ -263,22 +261,17 @@ void geo::readGmsh(string fileName)
 
 void geo::createMesh()
 {
-  int i, j, nx, ny;
-  int ne, nv;
-  double xmin, xmax, ymin, ymax, dx, dy;
-  vector<int> c2v_tmp;
-
-  nx = params->nx;
-  ny = params->ny;
+  int nx = params->nx;
+  int ny = params->ny;
   nDims = params->nDims; // Since I may implement createMesh for 3D later
 
-  xmin = params->xmin;
-  xmax = params->xmax;
-  ymin = params->ymin;
-  ymax = params->ymax;
+  double xmin = params->xmin;
+  double xmax = params->xmax;
+  double ymin = params->ymin;
+  double ymax = params->ymax;
 
-  dx = (xmax-xmin)/nx;
-  dy = (ymax-ymin)/ny;
+  double dx = (xmax-xmin)/nx;
+  double dy = (ymax-ymin)/ny;
 
   params->periodicDX = xmax-xmin;
   params->periodicDY = ymax-ymin;
@@ -291,13 +284,13 @@ void geo::createMesh()
   ctype.assign(nEles,QUAD); // Add hex later
 
   xv.resize(nVerts);
-  c2v_tmp.resize(4);
+  vector<int> c2v_tmp(4,0);
 
   /* --- Setup Vertices --- */
-  nv = 0;
+  int nv = 0;
   point pt;
-  for (i=0; i<ny+1; i++) {
-    for (j=0; j<nx+1; j++) {
+  for (int i=0; i<ny+1; i++) {
+    for (int j=0; j<nx+1; j++) {
       pt.x = xmin + j*dx;
       pt.y = ymin + i*dy;
       xv[nv] = pt;
@@ -316,8 +309,8 @@ void geo::createMesh()
 //  }
 
   /* --- Setup Elements --- */
-  for (i=0; i<nx; i++) {
-    for (j=0; j<ny; j++) {
+  for (int i=0; i<nx; i++) {
+    for (int j=0; j<ny; j++) {
       c2v_tmp[0] = j*(nx+1) + i;
       c2v_tmp[1] = j*(nx+1) + i + 1;
       c2v_tmp[2] = (j+1)*(nx+1) + i + 1;
@@ -327,55 +320,84 @@ void geo::createMesh()
   }
 
   /* --- Setup Boundaries --- */
-  int bc = PERIODIC;
-  nBounds = 1;
-  bcList.push_back(bc);
-  bndFaces.resize(1);
-  bndPts.setup(1,4*nx+4*ny); //(nx+1)*(ny+1));
-  nBndPts.resize(1);
-  bndFaces[0].setup(2*nx+2*ny,2); // nBndFaces x 2-pts-per-edge
-  ne = 0;
+  // List of all boundary conditions being used (bcNum maps string->int)
+  bcList.push_back(bcNum[params->create_bcBottom]);
+  bcList.push_back(bcNum[params->create_bcRight]);
+  bcList.push_back(bcNum[params->create_bcTop]);
+  bcList.push_back(bcNum[params->create_bcLeft]);
+
+  // Sort the list & remove any duplicates
+  std::sort(bcList.begin(), bcList.end());
+  vector<int>::iterator vIt = std::unique(bcList.begin(), bcList.end());
+  nBounds = std::distance(bcList.begin(), vIt);     // will I need both an nBounds (i.e., in mesh) and an nBC's (current nBounds)?
+  bcList.resize(nBounds);
+
+  // Setup a map so we know where each BC# is inside of bcList
+  map<int,int> bc2bcList;
+
+  // Setup boundary connectivity storage
+  nBndFaces.assign(nBounds,0);
+  bndFaces.resize(nBounds);
+  bndPts.setup(nBounds,4*nx+4*ny); //(nx+1)*(ny+1));
+  nBndPts.resize(nBounds);
+  for (int i=0; i<nBounds; i++) {
+    bc2bcList[bcList[i]] = i;
+    bndFaces[i].setup(2*nx+2*ny,2); // max nBndFaces x 2-pts-per-edge
+  }
 
   // Bottom Edge Faces
+  int ib = bc2bcList[bcNum[params->create_bcBottom]];
+  int ne = nBndFaces[ib];
   for (int ix=0; ix<nx; ix++) {
-    bndFaces[0][ne][0] = ix;
-    bndFaces[0][ne][1] = ix+1;
-    bndPts[0][2*ne]   = bndFaces[0][ne][0];
-    bndPts[0][2*ne+1] = bndFaces[0][ne][1];
+    bndFaces[ib][ne][0] = ix;
+    bndFaces[ib][ne][1] = ix+1;
+    bndPts[ib][2*ne]   = bndFaces[ib][ne][0];
+    bndPts[ib][2*ne+1] = bndFaces[ib][ne][1];
     ne++;
   }
+  nBndFaces[ib] = ne;
 
   // Top Edge Faces
+  ib = bc2bcList[bcNum[params->create_bcTop]];
+  ne = nBndFaces[ib];
   for (int ix=0; ix<nx; ix++) {
-    bndFaces[0][ne][1] = (nx+1)*ny + ix;
-    bndFaces[0][ne][0] = (nx+1)*ny + ix+1;
-    bndPts[0][2*ne]   = bndFaces[0][ne][0];
-    bndPts[0][2*ne+1] = bndFaces[0][ne][1];
+    bndFaces[ib][ne][1] = (nx+1)*ny + ix;
+    bndFaces[ib][ne][0] = (nx+1)*ny + ix+1;
+    bndPts[ib][2*ne]   = bndFaces[ib][ne][0];
+    bndPts[ib][2*ne+1] = bndFaces[ib][ne][1];
     ne++;
   }
+  nBndFaces[ib] = ne;
 
   // Left Edge Faces
+  ib = bc2bcList[bcNum[params->create_bcLeft]];
+  ne = nBndFaces[ib];
   for (int iy=0; iy<ny; iy++) {
-    bndFaces[0][ne][1] = iy*(nx+1);
-    bndFaces[0][ne][0] = (iy+1)*(nx+1);
-    bndPts[0][2*ne]   = bndFaces[0][ne][0];
-    bndPts[0][2*ne+1] = bndFaces[0][ne][1];
+    bndFaces[ib][ne][1] = iy*(nx+1);
+    bndFaces[ib][ne][0] = (iy+1)*(nx+1);
+    bndPts[ib][2*ne]   = bndFaces[ib][ne][0];
+    bndPts[ib][2*ne+1] = bndFaces[ib][ne][1];
     ne++;
   }
 
   // Right Edge Faces
+  ib = bc2bcList[bcNum[params->create_bcRight]];
+  ne = nBndFaces[ib];
   for (int iy=0; iy<ny; iy++) {
-    bndFaces[0][ne][0] = iy*(nx+1) + nx;
-    bndFaces[0][ne][1] = (iy+1)*(nx+1) + nx;
-    bndPts[0][2*ne]   = bndFaces[0][ne][0];
-    bndPts[0][2*ne+1] = bndFaces[0][ne][1];
+    bndFaces[ib][ne][0] = iy*(nx+1) + nx;
+    bndFaces[ib][ne][1] = (iy+1)*(nx+1) + nx;
+    bndPts[ib][2*ne]   = bndFaces[ib][ne][0];
+    bndPts[ib][2*ne+1] = bndFaces[ib][ne][1];
     ne++;
   }
+  nBndFaces[ib] = ne;
 
   // Remove duplicates in bndPts
-  std::sort(bndPts[0], bndPts[0]+bndPts.dim1);
-  int* it = std::unique(bndPts[0], bndPts[0]+bndPts.dim1);
-  nBndPts[0] = std::distance(bndPts[0],it);
+  for (int i=0; i<nBounds; i++) {
+    std::sort(bndPts[i], bndPts[i]+bndPts.dim1);
+    int* it = std::unique(bndPts[i], bndPts[i]+bndPts.dim1);
+    nBndPts[i] = std::distance(bndPts[i],it);
+  }
 }
 
 void geo::processPeriodicBoundaries(void)

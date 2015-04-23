@@ -97,29 +97,32 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
 
   for (int fpt=0; fpt<nFptsL; fpt++) {
     if (params->equation == NAVIER_STOKES) {
-      double rhoL, rhoR, pL, pR, eL, eR, vSq;
+      // These varibles will be used to set the right state of the boundary.
+      double rhoR, pR, eR, TR;
       array<double,3> vL, vR;
+      array<double,3> vG = {0,0,0};
+      array<double,3> vBound = {params->uBound,params->vBound,params->wBound};
 
       double gamma = params->gamma;
 
       /* --- Calcualte primitives on left side (interior) --- */
-      rhoL = uL[0];
-      eL = uL[nDims+1];
+      double rhoL = uL[0];
+      double eL = uL[nDims+1];
       for (int i=0; i<nDims; i++)
         vL[i] = uL[i+1]/uL[0];
 
-      vSq = 0;
+      double vSq = 0;
       for (int i=0; i<nDims; i++)
         vSq += (vL[i]*vL[i]);
 
-      pL = (gamma-1.0)*(eL - 0.5*rhoL*vSq);
+      double pL = (gamma-1.0)*(eL - 0.5*rhoL*vSq);
 
       // Subsonic inflow simple (free pressure) //CONSIDER DELETING
-/*      if(bcType == 1) {
+      if(bcType == SUB_IN) {
         // fix density and velocity
-        rhoR = rho_bound;
+        rhoR = params->rhoBound;
         for (int i=0; i<nDims; i++)
-          vR[i] = v_bound[i];
+          vR[i] = vBound[i];
 
         // extrapolate pressure
         pR = pL;
@@ -132,14 +135,14 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
       }
 
       // Subsonic outflow simple (fixed pressure) //CONSIDER DELETING
-      else if(bcType == 2) {
+      else if(bcType == SUB_OUT) {
         // extrapolate density and velocity
         rhoR = rhoL;
         for (int i=0; i<nDims; i++)
           vR[i] = vL[i];
 
         // fix pressure
-        pR = p_bound;
+        pR = params->pBound;
 
         // compute energy
         vSq = 0.;
@@ -154,7 +157,8 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
       // all but one state variable at the inlet. The outgoing Riemann invariant
       // provides the final piece of info. Adapted from an implementation in
       // SU2.
-      else if(bdy_type == 3) {
+      else if(bcType == SUB_IN_CHAR) {
+        /*
         double vR;
         double cL, cR_sq, c_total_sq;
         double R_plus, h_total;
@@ -231,13 +235,7 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
 
         // Compute energy
         eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
-
-        // SA model
-        if (run_input.turb_model == 1) {
-          // set turbulent eddy viscosity
-          double mu_tilde_inf = bdy_params[14];
-          uR[nDims+2] = mu_tilde_inf;
-        }
+        */
       }
 
       // Subsonic outflow characteristic
@@ -246,7 +244,8 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
       // variables. Compute the entropy and the acoustic Riemann variable.
       // These invariants, as well as the tangential velocity components,
       // are extrapolated. Adapted from an implementation in SU2.
-      else if(bdy_type == 4) {
+      else if(bcType == SUB_OUT_CHAR) {
+        /*
         double cL, cR;
         double R_plus, s;
         double vnR;
@@ -266,7 +265,7 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
         s = pL/pow(rhoL,gamma);
 
         // fix pressure on the right side
-        pR = p_bound;
+        pR = pBound;
 
         // Compute density
         rhoR = pow(pR/s, 1.0/gamma);
@@ -284,29 +283,30 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
           vSq += (vR[i]*vR[i]);
         }
         eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
-
+        */
       }
 
       // Supersonic inflow
-      else if(bdy_type == 5) {
+      else if(bcType == SUP_IN) {
         // fix density and velocity
-        rhoR = rho_bound;
-        for (int i=0; i<nDims; i++)
-          vR[i] = v_bound[i];
+        rhoR = params->rhoBound;
+        vR[0] = params->uBound;
+        vR[1] = params->vBound;
 
         // fix pressure
-        pR = p_bound;
+        pR = params->pBound;
 
         // compute energy
         vSq = 0.;
         for (int i=0; i<nDims; i++)
           vSq += (vR[i]*vR[i]);
+
         eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
       }
 
 
       // Supersonic outflow
-      else if(bdy_type == 6) {
+      else if(bcType == SUP_OUT) {
         // extrapolate density, velocity, energy
         rhoR = rhoL;
         for (int i=0; i<nDims; i++)
@@ -315,14 +315,14 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
       }
 
       // Slip wall
-      else if(bdy_type == 7) {
+      else if(bcType == SLIP_WALL) {
         // extrapolate density
         rhoR = rhoL;
 
         // Compute normal velocity on left side
-        vnL = 0.;
+        double vnL = 0.;
         for (int i=0; i<nDims; i++)
-          vnL += (vL[i]-v_g[i])*norm[i];
+          vnL += (vL[i]-vG[i])*norm[i];
 
         // reflect normal velocity
         for (int i=0; i<nDims; i++)
@@ -333,20 +333,20 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
       }
 
       // Isothermal, no-slip wall (fixed)
-      else if(bdy_type == 11) {
+      else if(bcType == ISOTHERMAL_NOSLIP) {
         // Set state for the right side
         // extrapolate pressure
         pR = pL;
 
         // isothermal temperature
-        TR = T_wall;
+        TR = params->TWall;
 
         // density
-        rhoR = pR/(R_ref*TR);
+        rhoR = pR/(params->RGas*TR);
 
         // no-slip
         for (int i=0; i<nDims; i++)
-          vR[i] = v_g[i];
+          vR[i] = vG[i];
 
         // energy
         vSq = 0.;
@@ -354,16 +354,10 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
           vSq += (vR[i]*vR[i]);
 
         eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
-
-        // SA model
-        if (run_input.turb_model == 1) {
-          // zero turbulent eddy viscosity at the wall
-          uR[nDims+2] = 0.0;
-        }
       }
 
       // Adiabatic, no-slip wall (fixed)
-      else if(bdy_type == 12) {
+      else if(bcType == ADIABATIC_NOSLIP) {
         // extrapolate density
         rhoR = rhoL; // only useful part
 
@@ -372,7 +366,7 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
 
         // no-slip
         for (int i=0; i<nDims; i++)
-          vR[i] = v_g[i];
+          vR[i] = vG[i];
 
         // energy
         vSq = 0.;
@@ -380,57 +374,46 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
           vSq += (vR[i]*vR[i]);
 
         eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
-
-        // SA model
-        if (run_input.turb_model == 1) {
-          // zero turbulent eddy viscosity at the wall
-          uR[nDims+2] = 0.0;
-        }
       }
 
       // Characteristic
-      else if (bdy_type == 15) {
-        double c_star;
-        double vn_star;
-        double vn_bound;
-        double r_plus,r_minus;
-
+      else if (bcType == CHAR) {
         double one_over_s;
         double h_free_stream;
 
         // Compute normal velocity on left side
-        vnL = 0.;
+        double vnL = 0.;
         for (int i=0; i<nDims; i++)
           vnL += vL[i]*norm[i];
 
-        vn_bound = 0;
+        double vnBound = 0;
         for (int i=0; i<nDims; i++)
-          vn_bound += v_bound[i]*norm[i];
+          vnBound += vBound[i]*norm[i];
 
-        r_plus  = vnL + 2./(gamma-1.)*sqrt(gamma*pL/rhoL);
-        r_minus = vn_bound - 2./(gamma-1.)*sqrt(gamma*p_bound/rho_bound);
+        double r_plus  = vnL + 2./(gamma-1.)*sqrt(gamma*pL/rhoL);
+        double r_minus = vnBound - 2./(gamma-1.)*sqrt(gamma*params->pBound/params->rhoBound);
 
-        c_star = 0.25*(gamma-1.)*(r_plus-r_minus);
-        vn_star = 0.5*(r_plus+r_minus);
+        double cStar = 0.25*(gamma-1.)*(r_plus-r_minus);
+        double vn_star = 0.5*(r_plus+r_minus);
 
         // Inflow
         if (vnL<0) {
           // HACK
-          one_over_s = pow(rho_bound,gamma)/p_bound;
+          one_over_s = pow(params->rhoBound,gamma)/params->pBound;
 
           // freestream total enthalpy
           vSq = 0.;
           for (int i=0;i<nDims;i++)
-            vSq += v_bound[i]*v_bound[i];
-          h_free_stream = gamma/(gamma-1.)*p_bound/rho_bound + 0.5*vSq;
+            vSq += vBound[i]*vBound[i];
+          h_free_stream = gamma/(gamma-1.)*params->pBound/params->rhoBound + 0.5*vSq;
 
-          rhoR = pow(1./gamma*(one_over_s*c_star*c_star),1./(gamma-1.));
+          rhoR = pow(1./gamma*(one_over_s*cStar*cStar),1./(gamma-1.));
 
           // Compute velocity on the right side
           for (int i=0; i<nDims; i++)
-            vR[i] = vn_star*norm[i] + (v_bound[i] - vn_bound*norm[i]);
+            vR[i] = vn_star*norm[i] + (vBound[i] - vnBound*norm[i]);
 
-          pR = rhoR/gamma*c_star*c_star;
+          pR = rhoR/gamma*cStar*cStar;
           eR = rhoR*h_free_stream - pR;
         }
         // Outflow
@@ -438,20 +421,24 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
           one_over_s = pow(rhoL,gamma)/pL;
 
           // freestream total enthalpy
-          rhoR = pow(1./gamma*(one_over_s*c_star*c_star), 1./(gamma-1.));
+          rhoR = pow(1./gamma*(one_over_s*cStar*cStar), 1./(gamma-1.));
 
           // Compute velocity on the right side
           for (int i=0; i<nDims; i++)
             vR[i] = vn_star*norm[i] + (vL[i] - vnL*norm[i]);
 
-          pR = rhoR/gamma*c_star*c_star;
+          pR = rhoR/gamma*cStar*cStar;
           vSq = 0.;
           for (int i=0; i<nDims; i++)
             vSq += (vR[i]*vR[i]);
           eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
         }
       }
-*/
+
+      // Assign calculated values to right state
+      uR[0] = rhoR;
+      for (int i=0; i<nDims; i++) uR[i+1] = rhoR*vR[i];
+      uR[nDims+1] = eR;
     }
     else if (params->equation == ADVECTION_DIFFUSION) {
       // Trivial Dirichlet

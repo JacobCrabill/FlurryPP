@@ -80,6 +80,8 @@ private:
   matrix<int> bndPts;            //! List of node IDs on each boundary
   vector<int> nBndPts;           //! Number of points on each boudary
   vector<matrix<int> > bndFaces; //! List of nodes on each face (edge) on each boundary
+  vector<int> nBndFaces;         //! List of # of faces on each boundary
+  //map<string,int> bcNum;         //! Maps a boundary-condition string to its integer enum
   vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
   int nBounds;  //! Number of boundaries
 

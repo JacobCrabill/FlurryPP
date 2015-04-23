@@ -18,6 +18,7 @@
 #include <cmath>
 #include <iostream>
 #include <fstream>
+#include <map>
 #include <string>
 #include <cstddef>    // std::size_t
 #include <cstdlib>
@@ -40,10 +41,12 @@ class solver;
 
 using namespace std;
 
-/* --- Misc. Common Constants --- */
+typedef unsigned int uint;
+
+/* --- Misc. Common Constants / Globally-Useful Variables --- */
 extern double pi;
 
-typedef unsigned int uint;
+extern map<string,int> bcNum; //! Maps a boundary-condition string to its integer enum
 
 /*! enumeration for element type */
 enum ETYPE {
@@ -72,7 +75,14 @@ enum BC_TYPE {
   PERIODIC = 0,
   CHAR = 1,
   SUP_IN = 2,
-  SUP_OUT = 3
+  SUP_OUT = 3,
+  SUB_IN = 4,
+  SUB_OUT = 5,
+  SUB_IN_CHAR = 6,
+  SUB_OUT_CHAR = 7,
+  SLIP_WALL = 8,
+  ISOTHERMAL_NOSLIP = 9,
+  ADIABATIC_NOSLIP = 10
 };
 
 /*! Enumeration for VCJH scheme (correction function) to use */
@@ -115,6 +125,8 @@ struct point
 };
 
 int factorial(int n);
+
+void setGlobalVariables(void);
 
 //double randRange(double xMin, double xMax);
 

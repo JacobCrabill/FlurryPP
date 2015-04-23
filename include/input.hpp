@@ -104,10 +104,14 @@ public:
   double vyIC;
   double pIC;
 
+  double rhoBound, uBound, vBound, wBound, pBound, TBound;
+  double TWall;
+
   /* --- Misc. Physical/Equation Parameters --- */
   double gamma;
   double prandtl;
   double mu;
+  double RGas;
 
   double rt_inf;  // ?
   double mu_inf;
@@ -125,6 +129,7 @@ public:
   double xmin, xmax, ymin, ymax;
   double periodicTol, periodicDX, periodicDY;
   string create_bcTop, create_bcBottom, create_bcLeft, create_bcRight; //! BC's to apply to Flurry-created mesh
+  //map<string,int> bcNum;
 
   /* --- FR Parameters --- */
   string sptsTypeTri;  //! Legendre, Lobatto, ...

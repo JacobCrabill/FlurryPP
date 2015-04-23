@@ -40,6 +40,8 @@ int main(int argc, char *argv[]) {
 
   if (argc<2) FatalError("No input file specified.");
 
+  setGlobalVariables();
+
   /* Read input file & set simulation parameters */
   params.readInputFile(argv[1]);
 
