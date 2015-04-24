@@ -171,7 +171,7 @@ void geo::processConnectivity()
   }
 }
 
-void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> bounds)
+void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> &bounds)
 {
   if (nEles<=0) FatalError("Cannot setup elements array - nEles = 0");
 
@@ -379,6 +379,7 @@ void geo::createMesh()
     bndPts[ib][2*ne+1] = bndFaces[ib][ne][1];
     ne++;
   }
+  nBndFaces[ib] = ne;
 
   // Right Edge Faces
   ib = bc2bcList[bcNum[params->create_bcRight]];

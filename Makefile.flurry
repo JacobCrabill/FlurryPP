@@ -11,15 +11,15 @@ CC            = gcc
 CXX           = g++
 DEFINES       = 
 ifeq ($(CODE),release)
-  CFLAGS      = -m64 -pipe -O3 -Wall -W -fopenmp $(DEFINES) 
-  CXXFLAGS    = -m64 -pipe -O3 -Wall -W -fopenmp -std=c++11 $(DEFINES)
+  CFLAGS      = -m64 -pipe -O3 -Wall -W $(DEFINES) 
+  CXXFLAGS    = -m64 -pipe -O3 -Wall -W -std=c++11 $(DEFINES)
 else
   ifeq ($(CODE),debug)
-    CFLAGS    = -m64 -pipe -pg -g -O0 -Wall -W -fopenmp $(DEFINES) 
-    CXXFLAGS  = -m64 -pipe -pg -g -O0 -Wall -W -fopenmp -std=c++11 $(DEFINES)
+    CFLAGS    = -m64 -pipe -pg -g -O0 -Wall -W $(DEFINES) 
+    CXXFLAGS  = -m64 -pipe -pg -g -O0 -Wall -W -std=c++11 $(DEFINES)
   else
-    CFLAGS    = -m64 -pipe -g -O2 -Wall -fopenmp -W $(DEFINES)
-    CXXFLAGS  = -m64 -pipe -g -O2 -Wall -fopenmp -W -std=c++11 $(DEFINES)
+    CFLAGS    = -m64 -pipe -g -O2 -Wall -W $(DEFINES)
+    CXXFLAGS  = -m64 -pipe -g -O2 -Wall -W -std=c++11 $(DEFINES)
   endif
 endif
 INCPATH       = -I.
@@ -44,6 +44,10 @@ DEL_DIR       = rmdir
 MOVE          = mv -f
 CHK_DIR_EXISTS= test -d
 MKDIR         = mkdir -p
+ifeq ($(OPENMP),yes)
+    CXXFLAGS += -fopenmp
+    LFLAGS += -fopenmp -lgomp 
+endif
 
 ####### Output directory - these do nothing currently
 
@@ -102,7 +106,7 @@ TARGET        = Flurry
 ####### Build rules
 
 $(TARGET):  $(OBJECTS)  
-	$(LINK) $(LFLAGS) -fopenmp -lgomp -o $(DESTDIR)/$(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS) -pg
+	$(LINK) $(LFLAGS) -o $(DESTDIR)/$(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS) -pg
 
 clean:compiler_clean 
 	-$(DEL_FILE) $(OBJECTS)

@@ -40,3 +40,20 @@ void setGlobalVariables(void) {
   bcNum["isothermal_noslip"] = ISOTHERMAL_NOSLIP;
   bcNum["adiabatic_noslip"] = ADIABATIC_NOSLIP;
 }
+
+
+bool checkNaN(vector<double> &vec)
+{
+  for (auto& i:vec)
+    if (std::isnan(i)) return true;
+
+  return false;
+}
+
+bool checkNaN(double* vec, int size)
+{
+  for (int i=0; i<size; i++)
+    if (std::isnan(vec[i])) return true;
+
+  return false;
+}

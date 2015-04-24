@@ -36,14 +36,22 @@ void bound::setupBound(ele *eL, int locF_L, int bcType, int gID)
   fptEndL = (locF_L*(nFptsL)) + nFptsL;
 
   UL.resize(nFptsL);
+  UR.setup(nFptsL,nFields);
+  disFnL.resize(nFptsL);
   FL.resize(nFptsL);
+  Fn.setup(nFptsL,nFields);
   normL.setup(nFptsL,nDims);
+  dFnL.resize(nFptsL);
+  dAL.resize(nFptsL);
   detJacL.resize(nFptsL);
 
   // Get access to data at left element
   int fpt=0;
   for (int i=fptStartL; i<fptEndL; i++) {
     UL[fpt] = (eL->U_fpts[i]);
+    disFnL[fpt] = (eL->Fn_fpts[i]);
+    dFnL[fpt] = (eL->dFn_fpts[i]);
+    dAL[fpt] = (eL->dA_fpts[i]);
     detJacL[fpt] = (eL->detJac_fpts[i]); // change to double**[] = &(eL->det[])
 
     for (int dim=0; dim<nDims; dim++)
@@ -59,6 +67,7 @@ void bound::setupBound(ele *eL, int locF_L, int bcType, int gID)
 
   // Setup a temporary flux-storage vector for later use
   tempFL.setup(nDims,nFields);
+  tempFR.setup(nDims,nFields);
   tempUL.resize(nFields);
 }
 
@@ -66,23 +75,32 @@ void bound::calcInviscidFlux()
 {
   for (int i=0; i<nFptsL; i++) {
     // Set the boundary condition [store in UC]
-    applyBCs(UL[i],&UC[i][0],normL[i]);
+    applyBCs(UL[i],UR[i],normL[i]);
 
     // Calcualte discontinuous inviscid flux at flux points
     inviscidFlux(UL[i],tempFL, params);
 
     // Calculate common inviscid flux at flux points
     if (params->equation == ADVECTION_DIFFUSION) {
-      upwindFlux(UL[i], &UC[i][0], normL[i], Fn[i], params);
+      centralFlux(UL[i], UR[i], normL[i], Fn[i], params);
     }
-//    else if (params->equation == NAVIER_STOKES) {
-//      if (params->riemann_type==0) {
-//        rusanovFlux(*UL[i], *UC[i], *FL[i], *FR[i], normL[i], *Fn[i], params);
-//      }
-//      else if (params->riemann_type==1) {
-//        roeFlux(*UL[i], *UR[i], normL[i], *Fn[i], params);
-//      }
-//    }
+    else if (params->equation == NAVIER_STOKES) {
+      if (params->riemann_type==0) {
+        inviscidFlux(UL[i],tempFL,params);
+        inviscidFlux(UR[i],tempFR,params);
+        centralFlux(tempFL, tempFR, normL[i], Fn[i], params);
+      }
+      else if (params->riemann_type==1) {
+        roeFlux(UL[i], UR[i], normL[i], Fn[i], params);
+      }
+    }
+
+    // Calculate difference between discontinuous & common normal flux, and store in ele
+    // (Each ele needs only the difference, not the actual common value, for the correction)
+    // Need dAL/R to transform normal flux back to reference space
+    for (int j=0; j<nFields; j++) {
+      dFnL[i][j] = Fn[i][j]*dAL[i] - disFnL[i][j];
+    }
   }
 }
 
@@ -108,11 +126,11 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
       /* --- Calcualte primitives on left side (interior) --- */
       double rhoL = uL[0];
       double eL = uL[nDims+1];
-      for (int i=0; i<nDims; i++)
+      for (uint i=0; i<nDims; i++)
         vL[i] = uL[i+1]/uL[0];
 
       double vSq = 0;
-      for (int i=0; i<nDims; i++)
+      for (uint i=0; i<nDims; i++)
         vSq += (vL[i]*vL[i]);
 
       double pL = (gamma-1.0)*(eL - 0.5*rhoL*vSq);
@@ -121,7 +139,7 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
       if(bcType == SUB_IN) {
         // fix density and velocity
         rhoR = params->rhoBound;
-        for (int i=0; i<nDims; i++)
+        for (uint i=0; i<nDims; i++)
           vR[i] = vBound[i];
 
         // extrapolate pressure
@@ -129,7 +147,7 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
 
         // compute energy
         vSq = 0;
-        for (int i=0; i<nDims; i++)
+        for (uint i=0; i<nDims; i++)
           vSq += (vR[i]*vR[i]);
         eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
       }
@@ -138,7 +156,7 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
       else if(bcType == SUB_OUT) {
         // extrapolate density and velocity
         rhoR = rhoL;
-        for (int i=0; i<nDims; i++)
+        for (uint i=0; i<nDims; i++)
           vR[i] = vL[i];
 
         // fix pressure
@@ -146,7 +164,7 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
 
         // compute energy
         vSq = 0.;
-        for (int i=0; i<nDims; i++)
+        for (uint i=0; i<nDims; i++)
           vSq += (vR[i]*vR[i]);
 
         eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
@@ -298,7 +316,7 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
 
         // compute energy
         vSq = 0.;
-        for (int i=0; i<nDims; i++)
+        for (uint i=0; i<nDims; i++)
           vSq += (vR[i]*vR[i]);
 
         eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
@@ -309,7 +327,7 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
       else if(bcType == SUP_OUT) {
         // extrapolate density, velocity, energy
         rhoR = rhoL;
-        for (int i=0; i<nDims; i++)
+        for (uint i=0; i<nDims; i++)
           vR[i] = vL[i];
         eR = eL;
       }
@@ -321,11 +339,11 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
 
         // Compute normal velocity on left side
         double vnL = 0.;
-        for (int i=0; i<nDims; i++)
+        for (uint i=0; i<nDims; i++)
           vnL += (vL[i]-vG[i])*norm[i];
 
         // reflect normal velocity
-        for (int i=0; i<nDims; i++)
+        for (uint i=0; i<nDims; i++)
           vR[i] = vL[i] - 2.0*vnL*norm[i];
 
         // extrapolate energy
@@ -345,12 +363,12 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
         rhoR = pR/(params->RGas*TR);
 
         // no-slip
-        for (int i=0; i<nDims; i++)
+        for (uint i=0; i<nDims; i++)
           vR[i] = vG[i];
 
         // energy
         vSq = 0.;
-        for (int i=0; i<nDims; i++)
+        for (uint i=0; i<nDims; i++)
           vSq += (vR[i]*vR[i]);
 
         eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
@@ -365,12 +383,12 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
         pR = pL;
 
         // no-slip
-        for (int i=0; i<nDims; i++)
+        for (uint i=0; i<nDims; i++)
           vR[i] = vG[i];
 
         // energy
         vSq = 0.;
-        for (int i=0; i<nDims; i++)
+        for (uint i=0; i<nDims; i++)
           vSq += (vR[i]*vR[i]);
 
         eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
@@ -383,11 +401,11 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
 
         // Compute normal velocity on left side
         double vnL = 0.;
-        for (int i=0; i<nDims; i++)
+        for (uint i=0; i<nDims; i++)
           vnL += vL[i]*norm[i];
 
         double vnBound = 0;
-        for (int i=0; i<nDims; i++)
+        for (uint i=0; i<nDims; i++)
           vnBound += vBound[i]*norm[i];
 
         double r_plus  = vnL + 2./(gamma-1.)*sqrt(gamma*pL/rhoL);
@@ -403,14 +421,14 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
 
           // freestream total enthalpy
           vSq = 0.;
-          for (int i=0;i<nDims;i++)
+          for (uint i=0;i<nDims;i++)
             vSq += vBound[i]*vBound[i];
           h_free_stream = gamma/(gamma-1.)*params->pBound/params->rhoBound + 0.5*vSq;
 
           rhoR = pow(1./gamma*(one_over_s*cStar*cStar),1./(gamma-1.));
 
           // Compute velocity on the right side
-          for (int i=0; i<nDims; i++)
+          for (uint i=0; i<nDims; i++)
             vR[i] = vn_star*norm[i] + (vBound[i] - vnBound*norm[i]);
 
           pR = rhoR/gamma*cStar*cStar;
@@ -424,12 +442,12 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
           rhoR = pow(1./gamma*(one_over_s*cStar*cStar), 1./(gamma-1.));
 
           // Compute velocity on the right side
-          for (int i=0; i<nDims; i++)
+          for (uint i=0; i<nDims; i++)
             vR[i] = vn_star*norm[i] + (vL[i] - vnL*norm[i]);
 
           pR = rhoR/gamma*cStar*cStar;
           vSq = 0.;
-          for (int i=0; i<nDims; i++)
+          for (uint i=0; i<nDims; i++)
             vSq += (vR[i]*vR[i]);
           eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
         }
@@ -437,7 +455,8 @@ void bound::applyBCs(double* uL, double* uR, double* norm)
 
       // Assign calculated values to right state
       uR[0] = rhoR;
-      for (int i=0; i<nDims; i++) uR[i+1] = rhoR*vR[i];
+      for (uint i=0; i<nDims; i++)
+        uR[i+1] = rhoR*vR[i];
       uR[nDims+1] = eR;
     }
     else if (params->equation == ADVECTION_DIFFUSION) {

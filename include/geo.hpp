@@ -38,7 +38,7 @@ public:
   void processConnectivity();
 
   //! Create the elements and faces needed for the simulation
-  void setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> bounds);
+  void setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> &bounds);
 
   /* === Helper Routines === */
 

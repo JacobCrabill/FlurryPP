@@ -32,8 +32,11 @@ void roeFlux(double* uL, double* uR, double *norm, double *Fn, input *params);
 void rusanovFlux(double* UL, double* UR, matrix<double> &FL, matrix<double> &FR, double *norm, double *Fn, input *params);
 //void rusanovFlux(vector<double> &UL, vector<double> &UR, vector<vector<double*>> &FL, vector<vector<double*>> &FR, vector<double> &norm, vector<double> &Fn, input *params);
 
-/*! Simple central-difference flux (primarily for advection problems) */
+/*! Simple central-difference flux (For advection problems) */
 void centralFlux(double* uL, double* uR, double *norm, double *Fn, input *params);
+
+/*! Simple central-difference flux (For Navier-Stokes problems) */
+void centralFlux(matrix<double> &FL, matrix<double> &FR, double* norm, double* Fn, input *params);
 
 /*! Simple upwinded flux (primarily for advection problems) */
 void upwindFlux(double* uL, double* uR, double *norm, double *Fn, input *params);

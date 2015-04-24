@@ -47,15 +47,19 @@ private:
   int locF_L;
 
   /* --- Storage for all solution/geometry data at flux points --- */
-  vector<double*> UL;
+  vector<double*> UL;       //! Discontinuous solution at element boundary
+  matrix<double> UR;        //! Boundary condition from "ghost right state"
+  vector<double*> disFnL;   //! Discontinuous normal flux at element boundary
   vector<matrix<double>*> gradUL;
   vector<matrix<double*>> FL;
-  vector<double*> Fn;
+  vector<double*> dFnL;     //! Common minus discontinuous normal flux for ele
+  matrix<double> Fn;        //! Common normal flux on boundary
   vector<double*> deltaF;
   matrix<double> normL;
+  vector<double> dAL;       //! Local face-area equivalent at flux points
   vector<double> detJacL;
 
-  matrix<double> tempFL;
+  matrix<double> tempFL, tempFR;
   vector<double> tempUL;
 
   vector<vector<double>> UC;

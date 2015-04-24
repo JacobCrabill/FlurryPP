@@ -1,6 +1,8 @@
+clear all; close all;
+
 datadir = 'bin'; % Location of data files
 caseName = 'simData'; % Name of files to be plotted
-Iters = [0:200:10000];    % Iterations to be plotted
+Iters = [0:1:90];    % Iterations to be plotted
 N = 50;                % # of points to use in each direction for surf plot
 GIF = false;           % Save plots to animated GIF file?
 
@@ -21,12 +23,15 @@ yy = min(y):(max(y)-min(y))/N:max(y);
 for i=1:length(Iters)
     x = data{i}(:,1);
     y = data{i}(:,2);
-    u = data{i}(:,4);
+    u = data{i}(:,6);
     F = TriScatteredInterp(x,y,u);
     
     U = F(X,Y);
-    surf(X,Y,U);    zlim([.5,1.1]);
+    
+    %surf(X,Y,U);    zlim([.5,1.1]);
+    contourf(X,Y,U,100,'edgecolor','none'); colorbar;
     pause(.1);
+    %pause;
     
 	% Create animated GIF
     if GIF

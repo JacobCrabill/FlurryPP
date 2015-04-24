@@ -176,6 +176,16 @@ void centralFlux(double* uL, double* uR, double* norm, double* Fn, input *params
   }
 }
 
+void centralFlux(matrix<double> &FL, matrix<double> &FR, double* norm, double* Fn, input *params)
+{
+  for (int i=0; i<params->nFields; i++) {
+    Fn[i] = 0;
+    for (int j=0; j<params->nDims; j++) {
+      Fn[i] = 0.5*(FL[j][i]+FR[j][i])*norm[j];
+    }
+  }
+}
+
 void upwindFlux(double* uL, double* uR, double* norm, double* Fn, input *params)
 {
   if (params->equation == ADVECTION_DIFFUSION) {

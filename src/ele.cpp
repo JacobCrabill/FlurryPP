@@ -439,14 +439,14 @@ vector<double> ele::getResidual(int normType)
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
       if (normType == 1) {
-        res[i] += abs(U_spts[spt][i]);
+        res[i] += abs(divF_spts[spt][i]);
       }
       else if (normType == 2) {
-        res[i] += U_spts[spt][i]*U_spts[spt][i];
+        res[i] += divF_spts[spt][i]*divF_spts[spt][i];
       }
       else if (normType == 3) {
         // Infinity norm
-        res[i] = max(abs(U_spts[spt][i]),res[i]);
+        res[i] = max(abs(divF_spts[spt][i]),res[i]);
       }
     }
   }

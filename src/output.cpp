@@ -73,6 +73,8 @@ void writeResidual(solver *Solver, input *params, int iter)
 
   for (auto& e:Solver->eles) {
     resTmp = e.getResidual(params->resType);
+    if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
+
     for (int i=0; i<params->nFields; i++) {
       if (params->resType == 3) {
         // Infinity norm [max residual over all spts]
@@ -88,24 +90,25 @@ void writeResidual(solver *Solver, input *params, int iter)
     for (auto& i:res) i = sqrt(i);
   }
 
-  cout.precision(6);
+  int colW = 22;
+  cout.precision(18);
   cout.setf(ios::fixed, ios::floatfield);
   if (iter==1 || iter/params->monitor_res_freq==40) {
     cout << setw(8) << left << "Iter";
     if (params->equation == ADVECTION_DIFFUSION) {
       cout << " Residual " << endl;
     }else if (params->equation == NAVIER_STOKES) {
-      cout << setw(12) << left << "rho";
-      cout << setw(12) << left << "rhoU";
-      cout << setw(12) << left << "rhoV";
-      cout << setw(12) << left << "rhoE";
+      cout << setw(colW) << left << "rho";
+      cout << setw(colW) << left << "rhoU";
+      cout << setw(colW) << left << "rhoV";
+      cout << setw(colW) << left << "rhoE";
     }
     cout << endl;
   }
 
   cout << setw(8) << left << iter;
   for (int i=0; i<params->nFields; i++) {
-    cout << setw(12) << left << res[i];
+    cout << setw(colW) << left << res[i];
   }
   cout << endl;
 }

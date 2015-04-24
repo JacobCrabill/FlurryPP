@@ -4,7 +4,7 @@ dt            .002  # Time step size
 
 viscous       0
 motion        0
-riemann_type  1    # Advection: use 0; N-S: 0: Rusanov, 1: Roe
+riemann_type  0    # Advection: use 0; N-S: 0: Rusanov, 1: Roe
 
 advectVx      1    # Advection wave speed, x-component
 advectVy      1    # Advection wave speed, y-component
@@ -22,7 +22,7 @@ restartIter   10
 (not implemented yet)
 
 # Plotting/Output Parameters
-plot_freq     10
+plot_freq     1
 monitor_res_freq  1
 
 
@@ -39,16 +39,26 @@ ymin          -10
 ymax          10
 # For creating a cartesian mesh, boundary condition to apply to each face
 # (default is periodic)
+#create_bcTop     periodic
+#create_bcBottom  periodic
+#create_bcLeft    periodic
+#create_bcRight   periodic
+
 create_bcTop     sup_in
-create_bcBottom  slip_wall
+create_bcBottom  sup_in
 create_bcLeft    sup_in
-create_bcRight   sup_out
+create_bcRight   sup_in
 
 # Boundary & Initial Conditions
 vxIC    1
 vyIC    -1
 rhoIC   1
-pIC     10000
+pIC     10
+
+rhoBound 1
+uBound 1
+vBound -1
+pBound 10
 
 # Other FR-method parameters
 spts_type_tri   Legendre
