@@ -410,6 +410,7 @@ void ele::timeStep()
 {
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
+      //if (divF_spts[spt][i] < 1e-8) divF_spts[spt][i] = 0;
       U_spts[spt][i] -= params->dt*divF_spts[spt][i]/detJac_spts[spt];
     }
   }

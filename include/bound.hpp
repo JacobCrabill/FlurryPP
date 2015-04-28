@@ -38,7 +38,7 @@ public:
 
   input *params; //! Input parameters for simulation
 
-  void applyBCs(double* uL, double* uR, double* norm);
+  void applyBCs(const double *uL, double* uR, const double* norm);
 
 private:
   int nFptsL;
