@@ -122,6 +122,53 @@ void fileReader::getScalarValue(string optName, T &opt)
   FatalError(errMsg.c_str())
 }
 
+template<typename T, typename U>
+void fileReader::getMap(string optName, map<T,U> &opt) {
+  string str, optKey;
+  T tmpT;
+  U tmpU;
+  bool found;
+
+  openFile();
+
+  if (!optFile.is_open()) {
+    optFile.open(fileName.c_str());
+    if (!optFile.is_open())
+      FatalError("Cannont open input file for reading.");
+  }
+
+  // Rewind to the start of the file
+  optFile.seekg(0,optFile.beg);
+
+  // Search for the given option string
+  while (getline(optFile,str)) {
+    // Remove any leading whitespace & see if first word is the input option
+    stringstream ss;
+    ss.str(str);
+    ss >> optKey;
+    if (optKey.compare(optName)==0) {
+      found = true;
+      if (!(ss >> tmpT >> tmpU)) {
+        // This could happen if, for example, trying to assign a string to a double
+        cerr << "WARNING: Unable to assign value to option " << optName << endl;
+        string errMsg = "Required option not set: " + optName;
+        FatalError(errMsg.c_str())
+      }
+
+      opt[tmpT] = tmpU;
+      optKey = "";
+    }
+  }
+
+  if (!found) {
+    // Option was not found; throw error & exit
+    string errMsg = "Required option not found: " + optName;
+    FatalError(errMsg.c_str())
+  }
+
+  closeFile();
+}
+
 input::input()
 {
 
@@ -192,6 +239,7 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("create_bcRight",create_bcRight,string("periodic"));
   }else if (mesh_type == READ_MESH) {
     opts.getScalarValue("mesh_file_name",meshFileName);
+    opts.getMap("mesh_bound",meshBounds);
   }
 
   opts.getScalarValue("monitor_res_freq",monitor_res_freq,10);

@@ -55,6 +55,10 @@ public:
   template <typename T>
   void getVectorValue(string optName, vector<T> &opt);
 
+  /*! Read in a map of type <T,U> from input file; each entry prefaced by optName */
+  template <typename T, typename U>
+  void getMap(string optName, map<T, U> &opt);
+
 private:
   ifstream optFile;
   string fileName;
@@ -130,6 +134,7 @@ public:
   double periodicTol, periodicDX, periodicDY;
   string create_bcTop, create_bcBottom, create_bcLeft, create_bcRight; //! BC's to apply to Flurry-created mesh
   //map<string,int> bcNum;
+  map<string,string> meshBounds;
 
   /* --- FR Parameters --- */
   string sptsTypeTri;  //! Legendre, Lobatto, ...

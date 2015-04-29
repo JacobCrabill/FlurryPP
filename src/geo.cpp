@@ -266,6 +266,8 @@ void geo::readGmsh(string fileName)
   if (!meshFile.is_open())
     FatalError("Unable to open mesh file.");
 
+  /* --- Read Boundary Conditions & Fluid Field(s) --- */
+
   // Move cursor to $PhysicalNames
   while(1) {
     getline(meshFile,str);
@@ -274,30 +276,40 @@ void geo::readGmsh(string fileName)
   }
 
   // Read number of boundaries and fields defined
-  int nBnds;
+  int nBnds;              // Temp. variable for # of Gmsh regions ("PhysicalNames")
   meshFile >> nBnds;
   getline(meshFile,str);  // clear rest of line
-  for(int i=0;i<nBnds;i++)
-  {
+
+  nBounds = 0;
+  for (int i=0; i<nBnds; i++) {
     string bcStr;
+    stringstream ss;
     int bcdim, bcid;
 
     getline(meshFile,str);
     ss << str;
     ss >> bcdim >> bcid >> bcStr;
 
-    // Remove quotation marks from around boundary condition and make lowercase
+    // Remove quotation marks from around boundary condition
     size_t ind = bcStr.find("\"");
     while (ind!=string::npos) {
       bcStr.erase(ind,1);
       ind = bcStr.find("\"");
     }
+
+    // Convert to lowercase to match Flurry's boundary condition strings
     std::transform(bcStr.begin(), bcStr.end(), bcStr.begin(), ::tolower);
 
-    // Check that boundary condition exists
-    // TODO: Change to input-file style using map<string,string> like I've
-    // been considering for, like, forever. (So that names in mesh will be
-    // descriptive names like "airfoil", "topwall", "farfield", etc.)
+    // First, map mesh boundary to boundary condition in input file
+    if (params->meshBounds.find(bcStr)==params->meshBounds.end()) {
+      string errS = "Unrecognized mesh boundary: \"" + bcStr + "\"\n";
+      errS += "Boundary names in input file must match those in mesh file.";
+      FatalError(errS.c_str());
+    }
+
+    bcStr = params->meshBounds[bcStr];
+
+    // Next, check that the requested boundary condition exists
     if (bcNum.find(bcStr)==bcNum.end()) {
       string errS = "Unrecognized boundary condition: \"" + bcStr + "\"";
       FatalError(errS.c_str());
@@ -305,9 +317,12 @@ void geo::readGmsh(string fileName)
 
     bcList.push_back(bcNum[bcStr]);
 
-    if (bcStr.compare("FLUID")==0) {
+    if (bcStr.compare("fluid")==0) {
       nDims = bcdim;
       params->nDims = bcdim;
+    }
+    else {
+      nBounds++;
     }
   }
 
@@ -315,35 +330,53 @@ void geo::readGmsh(string fileName)
     FatalError("Only 2D meshes are currently supported - check that your mesh is setup properly.");
   }
 
+  /* --- Read Mesh Vertex Locations --- */
+
+  // Move cursor to $Nodes
+  meshFile.clear();
+  meshFile.seekg(0, ios::beg);
+  while(1) {
+    getline(meshFile,str);
+    if (str.find("$Nodes")!=string::npos) break;
+    if(meshFile.eof()) FatalError("$Nodes tag not found in Gmsh file!");
+  }
+
+  uint nNodes, iv;
+  meshFile >> nNodes;
+  xv.resize(nNodes);
+  getline(meshFile,str); // Clear end of line, just in case
+
+  for (uint i=0; i<nNodes; i++) {
+    meshFile >> iv >> xv[i].x >> xv[i].y >> xv[i].z;
+  }
+
+
+  /* --- Read Element Connectivity --- */
+
   // Move cursor to $Elements
+  meshFile.clear();
+  meshFile.seekg(0, ios::beg);
   while(1) {
     getline(meshFile,str);
     if (str.find("$Elements")!=string::npos) break;
     if(meshFile.eof()) FatalError("$Elements tag not found in Gmsh file!");
   }
 
-  /* --- Read element connectivity --- */
+  int nElesGmsh;
+  vector<int> c2v_tmp(9,0);  // Maximum number of nodes/element possible
+  vector<set<int>> boundPoints(nBounds);
+  map<int,int> eType2nv;
+  eType2nv[3] = 4;
+  eType2nv[16] = 4;
+  eType2nv[10] = 4;
 
-  int n_entities, nCellsGlobal;
-  // Read number of interior + boundary elements
-  meshFile >> n_entities;   // num cells in mesh
-  getline(meshFile,str);    // clear rest of line
+  // Setup bndPts matrix - Just an initial estimate; will be adjusted on the fly
+  //bndPts.setup(nBounds,std::round(nNodes/nBounds));
+  nBndPts.resize(nBounds);
 
-  int ic = 0;
-  int id, bcid, eType, nTags;
-
-  for (int i=0; i<n_entities; i++) {
-    meshFile >> id >> eType >> nTags;
-    meshFile >> bcid;
-    for (int tag=0; tag<nTags-1; tag++)
-      meshFile >> dummy;
-
-    if (bcList[bcid] == -1)
-      ic++;
-
-    getline(meshFile,str);  // clear rest of line
-  }
-  nCellsGlobal = ic;
+  // Read total number of interior + boundary elements
+  meshFile >> nElesGmsh;
+  getline(meshFile,str);    // Clear end of line, just in case
 
 //  // Allocate memory
 //  out_c2v.setup(nCellsGlobal,MAX_V_PER_C);
@@ -360,69 +393,120 @@ void geo::readGmsh(string fileName)
 //      out_c2v(i,k)=-1;
 //  }
 
-//  // Move cursor to $Elements
-//  meshFile.clear();
-//  meshFile.seekg(0, ios::beg);
-//  while(1) {
-//    getline(meshFile,str);
-//    if (str.find("$Elements")!=string::npos) break;
-//    if(meshFile.eof()) FatalError("$Elements tag not found!");
-//  }
-
-//  meshFile >> n_entities;   // num cells in mesh
-//  getline(meshFile,str);  // clear rest of line
-
-//  // Skip elements being read by other processors
-//  int i=0;
-
-  // ctype is the element type:  for HiFiLES: 0=tri, 1=quad, 2=tet, 3=prism, 4=hex
   // For Gmsh node ordering, see: http://geuz.org/gmsh/doc/texinfo/gmsh.html#Node-ordering
-
-  for (int k=0; k<n_entities; k++) {
+  int ic = 0;
+  for (int k=0; k<nElesGmsh; k++) {
+    int id, eType, nTags, bcid, tmp;
     meshFile >> id >> eType >> nTags;
-    meshFile >> bcid;
+    meshFile >> bcid; bcid--; // NOTE: Gmsh is 1-indexed
     for (int tag=0; tag<nTags-1; tag++)
-      meshFile >> dummy;
+      meshFile >> tmp;
 
     if (bcList[bcid] == NONE) {
-      // Currently, only quads are supported
-//      if (eType==3 || eType==16 || eType==10) {
-//        out_ctype(i) = 1;
-//        if (eType==3) { // linear quadrangle
-//          out_c2n_v(i) = 4;
-//          meshFile >> out_c2v(i,0) >> out_c2v(i,1) >> out_c2v(i,3) >> out_c2v(i,2);
-//        }
-//        else if (eType==16) { // quadratic 8-node (serendipity) quadrangle
-//          out_c2n_v(i) = 8;
-//          meshFile >> out_c2v(i,0) >> out_c2v(i,1) >> out_c2v(i,2) >> out_c2v(i,3) >> out_c2v(i,4) >> out_c2v(i,5) >> out_c2v(i,6) >> out_c2v(i,7);
-//        }
-//        else if (eType==10) { // quadratic (9-node Lagrange) quadrangle
-//          out_c2n_v(i) = 9;
-//          meshFile >> out_c2v(i,0) >> out_c2v(i,2) >> out_c2v(i,8) >> out_c2v(i,6) >> out_c2v(i,1) >> out_c2v(i,5) >> out_c2v(i,7) >> out_c2v(i,3) >> out_c2v(i,4);
-//        }
-//      }
-//      else {
-//        cout << "elmtype=" << eType << endl;
-//        FatalError("element type not recognized");
-//      }
+      // NOTE: Currently, only quads are supported
+      switch(eType) {
+      case 3:
+        // linear quadrangle
+        //ctype(i) = 1;
+        c2nv.push_back(4);
+        c2ne.push_back(4);
+        ctype.push_back(QUAD);
+        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3];
+        break;
 
-//      // Shift every values of c2v by -1
-//      for(int k=0;k<out_c2n_v(i);k++) {
-//        if(out_c2v(i,k)!=0) {
-//          out_c2v(i,k)--;
-//        }
-//      }
+      case 16:
+        // quadratic 8-node (serendipity) quadrangle
+        c2nv.push_back(8); //c2nv[i] = 8;
+        c2ne.push_back(4);
+        ctype.push_back(QUAD);
+        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+        break;
 
-//      i++;
-//      getline(meshFile,str); // skip end of line
+      case 10:
+        // quadratic (9-node Lagrange) quadrangle
+        c2nv.push_back(9); //c2nv[i] = 9;
+        c2ne.push_back(4);
+        ctype.push_back(QUAD);
+        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7] >> c2v_tmp[8];
+        break;
+
+      default:
+        cout << "Gmsh Element Type = " << eType << endl;
+        FatalError("element type not recognized");
+        break;
+      }
+
+      // Increase the size of c2v (max # of vertices per cell) if needed
+      if (c2v.getDim1()<c2nv[ic]) {
+        for (int dim=c2v.getDim1(); dim<c2nv[ic]; dim++) {
+          c2v.addCol();
+        }
+      }
+
+      // Number of nodes in c2v_tmp may vary, so use pointer rather than vector
+      c2v.insertRow(c2v_tmp.data(),-1,c2nv[ic]);
+
+      // Shift every value of c2v by -1 (Gmsh is 1-indexed; we need 0-indexed)
+      for(int k=0; k<c2nv[ic]; k++) {
+        if(c2v(ic,k)!=0) {
+          c2v(ic,k)--;
+        }
+      }
+
+      ic++;
+      getline(meshFile,str); // skip end of line
     }
     else {
-      // Not FLUID cell, skip line
-      meshFile.getline(buf,BUFSIZ); // skip line, cell doesn't belong to this processor
-    }
+      // Boundary cell; put vertices into bndPts
+      int nPtsEdge;
+      switch(eType) {
+      case 1: // Linear edge
+        nPtsEdge = 2;
+        break;
 
+      case 8: // Quadratic edge
+        nPtsEdge = 3;
+        break;
+
+      case 26: // Cubic Edge
+        nPtsEdge = 4;
+        break;
+
+      case 27: // Quartic Edge
+        nPtsEdge = 5;
+        break;
+
+      case 28: // Quintic Edge
+        nPtsEdge = 6;
+        break;
+      }
+
+      for (int i=0; i<nPtsEdge; i++) {
+        meshFile >> iv;  iv--;
+        boundPoints[bcid].insert(iv);
+      }
+      getline(meshFile,str);
+    }
   } // End of loop over entities
 
+  int maxNBndPts = 0;
+  for (int i=0; i<nBounds; i++) {
+    nBndPts[i] = boundPoints[i].size();
+    maxNBndPts = max(maxNBndPts,nBndPts[i]);
+  }
+
+  // Copy temp boundPoints data into bndPts matrix
+  bndPts.setup(nBounds,maxNBndPts);
+  set<int>::iterator it;
+  for (int i=0; i<nBounds; i++) {
+    int j = 0;
+    for (it=boundPoints[i].begin(); it!=boundPoints[i].end(); it++) {
+      bndPts(i,j) = (*it);
+      j++;
+    }
+  }
+
+  nEles = c2v.getDim0();
 
   meshFile.close();
 }
