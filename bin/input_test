@@ -1,5 +1,5 @@
 equation      1    # 0: Advection-Diffusion;  1: Euler/Navier-Stokes
-order         2    # Polynomial order to use
+order         1    # Polynomial order to use
 dt            .001  # Time step size
 
 viscous       0
@@ -14,14 +14,14 @@ advectVy      1    # Advection wave speed, y-component
 #   N-S: 0-Uniform flow, 1-Uniform+Vortex
 ic_type       0    
 test_case     0
-iterMax       10000
+iterMax       5000
 restart       0
 restartIter   10
 resType       3
 
 # Plotting/Output Parameters
-plot_freq     100
-monitor_res_freq  100
+plot_freq     500
+monitor_res_freq  500
 
 
 # mesh_type - 0: Read mesh, 1: Create mesh
@@ -43,20 +43,20 @@ ymax          10
 #create_bcLeft    periodic
 #create_bcRight   periodic
 
-create_bcTop     char
+create_bcTop     sup_in
 create_bcBottom  slip_wall
-create_bcLeft    char
-create_bcRight   char
+create_bcLeft    sup_in
+create_bcRight   sup_out
 
 # Boundary & Initial Conditions
-vxIC    .2
-vyIC    0
+vxIC    2
+vyIC    -.5
 rhoIC   1
 pIC     .7142857143
 
 rhoBound 1
-uBound .2
-vBound 0
+uBound 2
+vBound -.5
 pBound .7142857143
 
 # Other FR-method parameters

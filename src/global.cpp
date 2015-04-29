@@ -30,6 +30,7 @@ int factorial(int n)
 
 void setGlobalVariables(void) {
   bcNum["none"] = NONE;
+  bcNum["fluid"] = NONE;
   bcNum["periodic"] = PERIODIC;
   bcNum["char"] = CHAR;
   bcNum["sup_in"] = SUP_IN;

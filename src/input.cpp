@@ -46,8 +46,7 @@ void fileReader::closeFile()
 template<typename T>
 void fileReader::getScalarValue(string optName, T &opt, T defaultVal)
 {
-  size_t start, end, diff;
-  string str;
+  string str, optKey;
 
   openFile();
 
@@ -60,25 +59,15 @@ void fileReader::getScalarValue(string optName, T &opt, T defaultVal)
   // Rewind to the start of the file
   optFile.seekg(0,optFile.beg);
 
-  // Search for the given string
+  // Search for the given option string
   while (getline(optFile,str)) {
-
-    // Remove any leading whitespace & search for option string
-    start = str.find_first_not_of(" ");
-    diff = str.length() - start;
-    if (diff<optName.length()) continue; // If line is shorter that length of opt string, skip
-
-    if (!str.compare(start,optName.length(),optName)) {
-
-      // Find start/end of scalar value
-      start += optName.length()+1;
-      end = str.find_first_of(" ");
-      if (end==string::npos) {
-        end = str.length();
-      }
-
-      // Put scalar into stringstream for conversion
-      if (!(stringstream(str.substr(start,end-start)) >> opt)) {
+    // Remove any leading whitespace & see if first word is the input option
+    stringstream ss;
+    ss.str(str);
+    ss >> optKey;
+    if (optKey.compare(optName)==0) {
+      if (!(ss >> opt)) {
+        // This could happen if, for example, trying to assign a string to a double
         cout << "WARNING: Unable to assign value to option " << optName << endl;
         cout << "Using default value of " << defaultVal << " instead." << endl;
         opt = defaultVal;
@@ -96,8 +85,7 @@ void fileReader::getScalarValue(string optName, T &opt, T defaultVal)
 template<typename T>
 void fileReader::getScalarValue(string optName, T &opt)
 {
-  size_t start, end, diff;
-  string str;
+  string str, optKey;
 
   openFile();
 
@@ -110,25 +98,15 @@ void fileReader::getScalarValue(string optName, T &opt)
   // Rewind to the start of the file
   optFile.seekg(0,optFile.beg);
 
-  // Search for the given string  
+  // Search for the given option string
   while (getline(optFile,str)) {
-
-    // Remove any leading whitespace & search for option string
-    start = str.find_first_not_of(" ");
-    diff = str.length() - start;
-    if (diff<optName.length()) continue; // If line is shorter that length of opt string, skip
-
-    if (!str.compare(start,optName.length(),optName)) {
-
-      // Find start/end of scalar value
-      start += optName.length()+1;
-      end = str.find_first_of(" ");
-      if (end==string::npos) {
-        end = str.length();
-      }
-
-      // Put scalar into stringstream for conversion
-      if (!(stringstream(str.substr(start,end-start)) >> opt)) {
+    // Remove any leading whitespace & see if first word is the input option
+    stringstream ss;
+    ss.str(str);
+    ss >> optKey;
+    if (optKey.compare(optName)==0) {
+      if (!(ss >> opt)) {
+        // This could happen if, for example, trying to assign a string to a double
         cerr << "WARNING: Unable to assign value to option " << optName << endl;
         string errMsg = "Required option not set: " + optName;
         FatalError(errMsg.c_str())

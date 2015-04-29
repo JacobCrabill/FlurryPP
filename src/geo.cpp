@@ -17,6 +17,8 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <map>
+#include <sstream>
 
 geo::geo()
 {
@@ -256,7 +258,173 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> &
 
 void geo::readGmsh(string fileName)
 {
+  ifstream meshFile;
+  stringstream ss;
+  string str;
 
+  meshFile.open(fileName.c_str());
+  if (!meshFile.is_open())
+    FatalError("Unable to open mesh file.");
+
+  // Move cursor to $PhysicalNames
+  while(1) {
+    getline(meshFile,str);
+    if (str.find("$PhysicalNames")!=string::npos) break;
+    if(meshFile.eof()) FatalError("$PhysicalNames tag not found in Gmsh file!");
+  }
+
+  // Read number of boundaries and fields defined
+  int nBnds;
+  meshFile >> nBnds;
+  getline(meshFile,str);  // clear rest of line
+  for(int i=0;i<nBnds;i++)
+  {
+    string bcStr;
+    int bcdim, bcid;
+
+    getline(meshFile,str);
+    ss << str;
+    ss >> bcdim >> bcid >> bcStr;
+
+    // Remove quotation marks from around boundary condition and make lowercase
+    size_t ind = bcStr.find("\"");
+    while (ind!=string::npos) {
+      bcStr.erase(ind,1);
+      ind = bcStr.find("\"");
+    }
+    std::transform(bcStr.begin(), bcStr.end(), bcStr.begin(), ::tolower);
+
+    // Check that boundary condition exists
+    // TODO: Change to input-file style using map<string,string> like I've
+    // been considering for, like, forever. (So that names in mesh will be
+    // descriptive names like "airfoil", "topwall", "farfield", etc.)
+    if (bcNum.find(bcStr)==bcNum.end()) {
+      string errS = "Unrecognized boundary condition: \"" + bcStr + "\"";
+      FatalError(errS.c_str());
+    }
+
+    bcList.push_back(bcNum[bcStr]);
+
+    if (bcStr.compare("FLUID")==0) {
+      nDims = bcdim;
+      params->nDims = bcdim;
+    }
+  }
+
+  if (nDims != 2) {
+    FatalError("Only 2D meshes are currently supported - check that your mesh is setup properly.");
+  }
+
+  // Move cursor to $Elements
+  while(1) {
+    getline(meshFile,str);
+    if (str.find("$Elements")!=string::npos) break;
+    if(meshFile.eof()) FatalError("$Elements tag not found in Gmsh file!");
+  }
+
+  /* --- Read element connectivity --- */
+
+  int n_entities, nCellsGlobal;
+  // Read number of interior + boundary elements
+  meshFile >> n_entities;   // num cells in mesh
+  getline(meshFile,str);    // clear rest of line
+
+  int ic = 0;
+  int id, bcid, eType, nTags;
+
+  for (int i=0; i<n_entities; i++) {
+    meshFile >> id >> eType >> nTags;
+    meshFile >> bcid;
+    for (int tag=0; tag<nTags-1; tag++)
+      meshFile >> dummy;
+
+    if (bcList[bcid] == -1)
+      ic++;
+
+    getline(meshFile,str);  // clear rest of line
+  }
+  nCellsGlobal = ic;
+
+//  // Allocate memory
+//  out_c2v.setup(nCellsGlobal,MAX_V_PER_C);
+//  out_c2n_v.setup(nCellsGlobal);
+//  out_ctype.setup(nCellsGlobal);
+//  out_ic2icg.setup(nCellsGlobal);
+
+//  // Initialize arrays to -1
+//  for (int i=0;i<nCellsGlobal;i++) {
+//    out_c2n_v(i)=-1;
+//    out_ctype(i) = -1;
+//    out_ic2icg(i) = -1;
+//    for (int k=0;k<MAX_V_PER_C;k++)
+//      out_c2v(i,k)=-1;
+//  }
+
+//  // Move cursor to $Elements
+//  meshFile.clear();
+//  meshFile.seekg(0, ios::beg);
+//  while(1) {
+//    getline(meshFile,str);
+//    if (str.find("$Elements")!=string::npos) break;
+//    if(meshFile.eof()) FatalError("$Elements tag not found!");
+//  }
+
+//  meshFile >> n_entities;   // num cells in mesh
+//  getline(meshFile,str);  // clear rest of line
+
+//  // Skip elements being read by other processors
+//  int i=0;
+
+  // ctype is the element type:  for HiFiLES: 0=tri, 1=quad, 2=tet, 3=prism, 4=hex
+  // For Gmsh node ordering, see: http://geuz.org/gmsh/doc/texinfo/gmsh.html#Node-ordering
+
+  for (int k=0; k<n_entities; k++) {
+    meshFile >> id >> eType >> nTags;
+    meshFile >> bcid;
+    for (int tag=0; tag<nTags-1; tag++)
+      meshFile >> dummy;
+
+    if (bcList[bcid] == NONE) {
+      // Currently, only quads are supported
+//      if (eType==3 || eType==16 || eType==10) {
+//        out_ctype(i) = 1;
+//        if (eType==3) { // linear quadrangle
+//          out_c2n_v(i) = 4;
+//          meshFile >> out_c2v(i,0) >> out_c2v(i,1) >> out_c2v(i,3) >> out_c2v(i,2);
+//        }
+//        else if (eType==16) { // quadratic 8-node (serendipity) quadrangle
+//          out_c2n_v(i) = 8;
+//          meshFile >> out_c2v(i,0) >> out_c2v(i,1) >> out_c2v(i,2) >> out_c2v(i,3) >> out_c2v(i,4) >> out_c2v(i,5) >> out_c2v(i,6) >> out_c2v(i,7);
+//        }
+//        else if (eType==10) { // quadratic (9-node Lagrange) quadrangle
+//          out_c2n_v(i) = 9;
+//          meshFile >> out_c2v(i,0) >> out_c2v(i,2) >> out_c2v(i,8) >> out_c2v(i,6) >> out_c2v(i,1) >> out_c2v(i,5) >> out_c2v(i,7) >> out_c2v(i,3) >> out_c2v(i,4);
+//        }
+//      }
+//      else {
+//        cout << "elmtype=" << eType << endl;
+//        FatalError("element type not recognized");
+//      }
+
+//      // Shift every values of c2v by -1
+//      for(int k=0;k<out_c2n_v(i);k++) {
+//        if(out_c2v(i,k)!=0) {
+//          out_c2v(i,k)--;
+//        }
+//      }
+
+//      i++;
+//      getline(meshFile,str); // skip end of line
+    }
+    else {
+      // Not FLUID cell, skip line
+      meshFile.getline(buf,BUFSIZ); // skip line, cell doesn't belong to this processor
+    }
+
+  } // End of loop over entities
+
+
+  meshFile.close();
 }
 
 void geo::createMesh()

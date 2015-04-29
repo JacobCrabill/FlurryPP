@@ -2,7 +2,7 @@ clear all; close all;
 
 datadir = 'bin'; % Location of data files
 caseName = 'simData'; % Name of files to be plotted
-Iters = [0:100:5000];    % Iterations to be plotted
+Iters = [0:500:50000];    % Iterations to be plotted
 N = 50;                % # of points to use in each direction for surf plot
 GIF = false;           % Save plots to animated GIF file?
 

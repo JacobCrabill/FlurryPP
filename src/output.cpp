@@ -93,7 +93,8 @@ void writeResidual(solver *Solver, input *params, int iter)
   int colW = 22;
   cout.precision(16);
   cout.setf(ios::fixed, ios::floatfield);
-  if (iter==1 || iter/params->monitor_res_freq==40) {
+  if (iter==1 || (iter/params->monitor_res_freq)%40==0) {
+    cout << endl;
     cout << setw(8) << left << "Iter";
     if (params->equation == ADVECTION_DIFFUSION) {
       cout << " Residual " << endl;
