@@ -123,6 +123,14 @@ void writeParaview(solver *Solver, input *params)
     dataFile << endl;
     dataFile << "				</DataArray>" << endl;
 
+    /* --- Pressure --- */
+    dataFile << "				<DataArray type= \"Float32\" Name=\"Pressure\" format=\"ascii\">" << endl;
+    for(int k=0; k<nPpts; k++) {
+      dataFile << vPpts(k,3) << " ";
+    }
+    dataFile << endl;
+    dataFile << "				</DataArray>" << endl;
+
     /* --- Velocity --- */
     dataFile << "				<DataArray type= \"Float32\" NumberOfComponents=\"3\" Name=\"Velocity\" format=\"ascii\">" << endl;
     for(int k=0; k<nPpts; k++) {

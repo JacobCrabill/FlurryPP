@@ -118,7 +118,7 @@ void ele::setup(input *inParams, geo *inGeo)
   /* --- Setup all data arrays --- */
   U_spts.setup(nSpts,nFields);
   U_fpts.setup(nFpts,nFields);
-  U_spts.setup(nNodes,nFields);
+  U_mpts.setup(nNodes,nFields);
   Fn_fpts.setup(nFpts,nFields);
   dFn_fpts.setup(nFpts,nFields);
   divF_spts.setup(nSpts,nFields);
