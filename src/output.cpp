@@ -18,13 +18,26 @@
 
 void writeData(solver *Solver, input *params)
 {
+  if (params->plot_type == 0) {
+    writeCSV(Solver,params);
+  }
+  else if (params->plot_type == 1) {
+    writeParaview(Solver,params);
+  }
+
+}
+
+void writeCSV(solver *Solver, input *params)
+{
   ofstream dataFile;
   int iter = params->iter;
 
   char fileNameC[50];
   string fileName = params->dataFileName;
-  //sprintf(fileNameC,"%s_%.09d.csv",&fileName[0],iter);
   sprintf(fileNameC,"%s.csv.%.09d",&fileName[0],iter);
+
+  dataFile.precision(15);
+  dataFile.setf(ios_base::fixed);
 
   dataFile.open(fileNameC);
 
@@ -32,9 +45,6 @@ void writeData(solver *Solver, input *params)
   vector<double> V;
   // Location of solution point
   point pt;
-
-  // Eventually I'll get around to a real .vtk output (or Tecplot output...)
-  // For now, let's output in a simple, Matlab-readable format: For each solution point:
 
   // Write header:
   // x  y  z(=0)  rho  [u  v  p]
@@ -63,6 +73,139 @@ void writeData(solver *Solver, input *params)
       dataFile << V[e.getNFields()-1] << endl;
     }
   }
+
+  dataFile.close();
+}
+
+void writeParaview(solver *Solver, input *params)
+{
+  ofstream dataFile;
+  int iter = params->iter;
+
+  char fileNameC[50];
+  string fileName = params->dataFileName;
+  sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],iter);
+
+  dataFile.open(fileNameC);
+
+  // File header
+  dataFile << "<?xml version=\"1.0\" ?>" << endl;
+  dataFile << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" compressor=\"vtkZLibDataCompressor\">" << endl;
+  dataFile << "	<UnstructuredGrid>" << endl;
+
+  for (auto& e:Solver->eles) {
+    // If this is the initial file, need to extrapolate solution to flux points
+    if (params->iter==0) Solver->extrapolateU();
+
+    Solver->extrapolateUMpts();
+
+    // The combination of spts + fpts will be the plot points
+    matrix<double> vPpts;
+    vector<point> ppts;
+    e.getPrimitivesPlot(vPpts);
+    e.getPpts(ppts);
+
+    int nSubCells = (e.order+2)*(e.order+2);
+    int nPpts = (e.order+3)*(e.order+3);
+    int nPpts1D = e.order+3;
+
+    // Write cell header
+    dataFile << "		<Piece NumberOfPoints=\"" << nPpts << "\" NumberOfCells=\"" << nSubCells << "\">" << endl;
+
+    /* ==== Write out solution to file ==== */
+    dataFile << "			<PointData>" << endl;
+
+    /* --- Density --- */
+    dataFile << "				<DataArray type= \"Float32\" Name=\"Density\" format=\"ascii\">" << endl;
+    for(int k=0; k<nPpts; k++) {
+      dataFile << vPpts(k,0) << " ";
+    }
+    dataFile << endl;
+    dataFile << "				</DataArray>" << endl;
+
+    /* --- Velocity --- */
+    dataFile << "				<DataArray type= \"Float32\" NumberOfComponents=\"3\" Name=\"Velocity\" format=\"ascii\">" << endl;
+    for(int k=0; k<nPpts; k++) {
+      // Divide momentum components by density to obtain velocity components
+      dataFile << vPpts(k,1) << " " << vPpts(k,2) << " ";
+
+      // In 2D the z-component of velocity is not stored, but Paraview needs it so write a 0.
+      if(params->nDims==2) {
+        dataFile << 0.0 << " ";
+      }
+      else {
+        dataFile << vPpts[k][3] << " ";
+      }
+    }
+    dataFile << endl;
+    dataFile << "				</DataArray>" << endl;
+
+    dataFile << "			</PointData>" << endl;
+
+    /* ==== Write Out Cell Points & Connectivity==== */
+
+    /* --- Write out the plot point coordinates --- */
+    dataFile << "			<Points>" << endl;
+    dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">" << endl;
+
+    // Loop over plot points in element
+    for(int k=0; k<nPpts; k++) {
+      for(int l=0;l<params->nDims;l++) {
+        dataFile << ppts[k][l] << " ";
+      }
+
+      // If 2D, write a 0 as the z-component
+      if(params->nDims == 2) {
+        dataFile << "0 ";
+      }
+    }
+
+    dataFile << endl;
+    dataFile << "				</DataArray>" << endl;
+    dataFile << "			</Points>" << endl;
+
+    /* --- Write out Cell data: connectivity, offsets, element types --- */
+    dataFile << "			<Cells>" << endl;
+
+    /* --- Write connectivity array --- */
+    dataFile << "				<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">" << endl;
+
+    for (int i=0; i<nPpts1D-1; i++) {
+      for (int j=0; j<nPpts1D-1; j++) {
+        dataFile << i*nPpts1D     + j   << " ";
+        dataFile << i*nPpts1D     + j+1 << " ";
+        dataFile << (i+1)*nPpts1D + j+1 << " ";
+        dataFile << (i+1)*nPpts1D + j   << " ";
+        dataFile << endl;
+      }
+    }
+    dataFile << "				</DataArray>" << endl;
+
+    // Write cell IDs...?
+    dataFile << "				<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">" << endl;
+    for(int k=0; k<nSubCells; k++){
+      dataFile << (k+1)*4 << " ";
+    }
+    dataFile << endl;
+    dataFile << "				</DataArray>" << endl;
+
+    // Write VTK element type
+    // 5 = tri, 9 = quad, 10 = tet, 12 = hex
+    dataFile << "				<DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">" << endl;
+    for(int k=0; k<nSubCells; k++) {
+      dataFile << 9 << " ";
+    }
+    dataFile << endl;
+    dataFile << "				</DataArray>" << endl;
+
+    /* --- Write cell and piece footers --- */
+    dataFile << "			</Cells>" << endl;
+    dataFile << "		</Piece>" << endl;
+  }
+
+  /* --- Write footer of file & close --- */
+  dataFile << "	</UnstructuredGrid>" << endl;
+  dataFile << "</VTKFile>" << endl;
 
   dataFile.close();
 }

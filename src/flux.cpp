@@ -46,7 +46,7 @@ void inviscidFlux(double* U, matrix<double> &F, input *params)
 
 void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *params)
 {
-  double rho, u, v, E, e;
+  double rho, u, v, e;
 
   double dRho_dx, dRhoU_dx, dRhoV_dx, dE_dx;
   double dRho_dy, dRhoU_dy, dRhoV_dy, dE_dy;
@@ -55,10 +55,10 @@ void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *
   double diag, tauxx, tauxy, tauyy;
   double rt_ratio;
 
-  double mu, mu_t, nu_tilde;
-  double p,T,R;
-  double inv_Re_c, Mach_c;
-  double T_gas_non, S_gas_non;
+  double mu;
+//  double p,T,R;
+//  double inv_Re_c, Mach_c;
+//  double T_gas_non, S_gas_non;
 
   /* --- Calculate Primitives --- */
   rho = U[0];
@@ -81,6 +81,8 @@ void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *
   rt_ratio = (params->gamma-1.0)*e/(params->rt_inf);
   mu = (params->mu_inf)*pow(rt_ratio,1.5)*(1.+(params->c_sth))/(rt_ratio+(params->c_sth));
   mu = mu + params->fix_vis*(params->mu_inf - mu);
+
+  double mu_t = 0;
 
   /* --- Calculate Gradients --- */
   du_dx = (dRhoU_dx-dRho_dx*u)/rho;
@@ -216,7 +218,7 @@ void laxFriedrichsFlux(double* uL, double* uR, double* norm, double* Fn, input *
   }
 }
 
-void ldgFlux(double* uL, double* uR, matrix<double> &gradU_L, matrix<double> &gradU_R, double* Fn, input *params)
+void ldgFlux(double* , double* , matrix<double> &, matrix<double> &, double* , input *)
 {
   FatalError("LDG flux not implemented just yet.  Go to flux.cpp and do it!!");
 }

@@ -72,6 +72,9 @@ public:
   //! Extrapolate the solution to the flux points
   void extrapolateU(void);
 
+  //! Extrapolate the solution to the mesh (corner) points
+  void extrapolateUMpts(void);
+
   //! Calculate the inviscid flux at the solution points
   void calcInviscidFlux_spts(void);
 

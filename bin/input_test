@@ -1,6 +1,6 @@
 equation      1    # 0: Advection-Diffusion;  1: Euler/Navier-Stokes
 order         1    # Polynomial order to use
-dt            .0002  # Time step size
+dt            .000001  # Time step size
 
 viscous       0
 motion        0
@@ -12,21 +12,23 @@ advectVy      1    # Advection wave speed, y-component
 # Initial Condition
 #   Advection: 0-Gaussian, 1-u=x+y test case
 #   N-S: 0-Uniform flow, 1-Uniform+Vortex
-ic_type       0    
+ic_type       0
 test_case     0
 iterMax       10000
 restart       0
 restartIter   10
-resType       3
 
 # Plotting/Output Parameters
-plot_freq     100
-monitor_res_freq  100
-
+plot_freq         100  # Frequency to write plot files
+plot_type         1    # 0: csv, 1: ParaView
+dataFileName      testRun  # Filename prefix for output files
+monitor_res_freq  100  # Frequency to print residual to terminal
+resType           2    # 1: 1-norm, 2: 2-norm, 3: Inf-norm
 
 # mesh_type - 0: Read mesh, 1: Create mesh
 mesh_type     0
-mesh_file_name  QuadBox_10x10.msh
+mesh_file_name  ACL_Gmsh.msh
+#mesh_file_name  QuadBox_10x10.msh
 
 # The following parameters are only needed when creating a mesh:
 nDims         2
@@ -46,26 +48,33 @@ create_bcRight   sup_out
 
 # Boundary Conditions for Gmsh File
 # (first column is physical name in Gmsh file; 2nd column is the Flurry boundary condition)
-mesh_bound    top     sup_in
-mesh_bound    bottom  slip_wall
-mesh_bound    left    sup_in
-mesh_bound    right   sup_out
 mesh_bound    fluid   fluid
+mesh_bound    acl     slip_wall
+mesh_bound    farfield  char
+# mesh_bound    top     sup_in
+# mesh_bound    bottom  slip_wall
+# mesh_bound    left    sup_in
+# mesh_bound    right   sup_out
 
 # Boundary & Initial Conditions
-vxIC    683.709
-vyIC   -120.556
+vxIC    20
+vyIC    0.
 rhoIC   1.168
 pIC     100000
 
 rhoBound 1.168
-uBound   683.709
-vBound  -120.556
+uBound   20.
+vBound   0.
 pBound   100000
 
-# In order to set a = 1:
-#rhoBound 1
-#pBound .7142857143
+# In order to set speed of sound to 1, use:
+# rhoBound 1
+# pBound .7142857143
+
+# Slip-Wall Boundary Condition Parameters
+# Trying out 'penalty' method to reduce initial 'shock'
+slipPenalty   1    # 0 (false-default)  or 1 (true)
+beta          500   # 'Penalty' factor
 
 # Other FR-method parameters
 spts_type_tri   Legendre

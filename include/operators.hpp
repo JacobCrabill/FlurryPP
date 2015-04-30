@@ -30,17 +30,20 @@ public:
   void setupOperators(uint eType, uint order, geo* inGeo, input* inParams);
 
   //! Setup operator for extrapolation from solution points to flux points
-  void setupExtrapolateSptsFpts(vector<point> loc_spts, vector<point> loc_fpts);
+  void setupExtrapolateSptsFpts(vector<point> &loc_spts, vector<point> &loc_fpts);
+
+  //! Setup operator for extrapolation from solution points to mesh (corner) points
+  void setupExtrapolateSptsMpts(vector<point> &loc_spts);
 
   //! Setup operator for calculation of gradient at the solution points
-  void setupGradSpts(vector<point> loc_spts);
+  void setupGradSpts(vector<point> &loc_spts);
 
   //! Setup an interpolation operation between two sets of points using solution basis
   void setupInterpolate(vector<point> &pts_from, vector<point> &pts_to, matrix<double> &opp_interp);
 
   /*! Setup operator to calculate divergence of correction function at solution points
    *  based upon the normal flux correction at the flux points */
-  void setupCorrection(vector<point> loc_spts, vector<point> loc_fpts);
+  void setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts);
 
   // Create a map<int,double*> (?) to get access to the correct operator
   // i.e. somthing like: div_flux_spts_tri = oper.get_oper_div[TRI]
@@ -52,6 +55,8 @@ public:
   void applyDivFSpts(vector<matrix<double>> &F_spts, matrix<double> &divF_spts);
 
   void applySptsFpts(matrix<double> &U_spts, matrix<double> &U_fpts);
+
+  void applySptsMpts(matrix<double> &U_spts, matrix<double> &U_mpts);
 
   void applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts);
 
@@ -69,6 +74,7 @@ private:
   uint nDims, nFields, eType, order;
 
   matrix<double> opp_spts_to_fpts;
+  matrix<double> opp_spts_to_mpts;
   vector<matrix<double>> opp_grad_spts;
   matrix<double> opp_div_spts;
   matrix<double> opp_correction;

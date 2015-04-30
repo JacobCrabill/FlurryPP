@@ -91,6 +91,7 @@ public:
   int restartIter;
   int restart;
   int plot_freq;
+  int plot_type;
   int restart_freq;
   int resType;
   int monitor_res_freq;

@@ -73,6 +73,12 @@ public:
   /*! Get vector of primitive variables at a solution point */
   vector<double> getPrimitives(uint spt);
 
+  /*! Get the full matrix of solution values at spts + fpts combined */
+  void getPrimitivesPlot(matrix<double> &V);
+
+  /*! Get the locations of the plotting points */
+  void getPpts(vector<point> &ppts);
+
   /*! Compute the solution residual over the element */
   vector<double> getResidual(int normType);
 
@@ -108,6 +114,7 @@ private:
   // Solution, flux
   matrix<double> U_spts;           //! Solution at solution points
   matrix<double> U_fpts;           //! Solution at flux points
+  matrix<double> U_mpts;           //! Solution at mesh (corner) points
   vector<matrix<double> > F_spts;  //! Flux at solution points
   vector<matrix<double> > F_fpts;  //! Flux at flux points
   matrix<double> Fn_fpts;          //! Interface flux at flux points

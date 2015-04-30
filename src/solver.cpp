@@ -83,11 +83,17 @@ void solver::timeStep(void)
 
 void solver::extrapolateU(void)
 {
-  //for (auto& e:eles) {
-  //  opers[e.eType][e.order].applySptsFpts(e.U_spts,e.U_fpts);
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     opers[eles[i].eType][eles[i].order].applySptsFpts(eles[i].U_spts,eles[i].U_fpts);
+  }
+}
+
+void solver::extrapolateUMpts(void)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    opers[eles[i].eType][eles[i].order].applySptsMpts(eles[i].U_spts,eles[i].U_mpts);
   }
 }
 
@@ -201,7 +207,8 @@ void solver::setupOperators()
 
 void solver::initializeSolution()
 {
-  for (auto& e:eles) {
-    e.setInitialCondition();
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].setInitialCondition();
   }
 }

@@ -35,13 +35,15 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
   // Set up each operator
   setupExtrapolateSptsFpts(loc_spts, loc_fpts);
 
+  setupExtrapolateSptsMpts(loc_spts);
+
   setupGradSpts(loc_spts);
 
   setupCorrection(loc_spts,loc_fpts);
 
 }
 
-void oper::setupExtrapolateSptsFpts(vector<point> loc_spts, vector<point> loc_fpts)
+void oper::setupExtrapolateSptsFpts(vector<point> &loc_spts, vector<point> &loc_fpts)
 {
   uint spt, fpt, nSpts, nFpts, ispt, jspt;
   nSpts = loc_spts.size();
@@ -63,14 +65,50 @@ void oper::setupExtrapolateSptsFpts(vector<point> loc_spts, vector<point> loc_fp
           opp_spts_to_fpts[fpt][spt] = Lagrange(locSpts1D,loc_fpts[fpt].x,ispt) * Lagrange(locSpts1D,loc_fpts[fpt].y,jspt);
           break;
         }
-      default:
-        FatalError("Element type not yet supported.");
+        default:
+          FatalError("Element type not yet supported.");
       }
     }
   }
-  // ------------ Display the matrix ------------
-  //opp_spts_to_fpts.print();
-  // ------------ Display the matrix ------------
+}
+
+void oper::setupExtrapolateSptsMpts(vector<point> &loc_spts)
+{
+  uint nSpts = loc_spts.size();
+
+  switch(eType) {
+    case(TRI): {
+      opp_spts_to_mpts.setup(3,nSpts);
+      point vert1, vert2, vert3;
+      vert1.x = -1;  vert1.y = -1;
+      vert2.x =  1;  vert2.y = -1;
+      vert3.x = -1;  vert3.y =  1;
+      for (uint spt=0; spt<nSpts; spt++) {
+        opp_spts_to_mpts[0][spt] = eval_dubiner_basis_2d(vert1,spt,order);
+        opp_spts_to_mpts[1][spt] = eval_dubiner_basis_2d(vert2,spt,order);
+        opp_spts_to_mpts[2][spt] = eval_dubiner_basis_2d(vert3,spt,order);
+      }
+      break;
+    }
+    case(QUAD): {
+      uint ispt, jspt;
+      opp_spts_to_mpts.setup(4,nSpts);
+      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      for (uint spt=0; spt<nSpts; spt++) {
+        // First, get the i an j ID of the spt
+        ispt = spt%(nSpts/(order+1));
+        jspt = floor(spt/(order+1));
+        // Next, get evaluate Lagrange solution basis at corners
+        opp_spts_to_mpts[0][spt] = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D,-1,jspt);
+        opp_spts_to_mpts[1][spt] = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D,-1,jspt);
+        opp_spts_to_mpts[2][spt] = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D, 1,jspt);
+        opp_spts_to_mpts[3][spt] = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D, 1,jspt);
+      }
+      break;
+    }
+    default:
+      FatalError("Element type not yet supported.");
+  }
 }
 
 void oper::setupInterpolate(vector<point> &pts_from, vector<point> &pts_to, matrix<double> &opp_interp)
@@ -111,7 +149,7 @@ void oper::setupInterpolate(vector<point> &pts_from, vector<point> &pts_to, matr
   }
 }
 
-void oper::setupGradSpts(vector<point> loc_spts)
+void oper::setupGradSpts(vector<point> &loc_spts)
 {
   uint nSpts, spt1, spt2, dim;
   uint xid1, yid1, xid2, yid2;
@@ -149,14 +187,10 @@ void oper::setupGradSpts(vector<point> loc_spts)
   else {
     FatalError("Element type not yet supported.");
   }
-  // ------------ Display the matrix ------------
-  //opp_grad_spts[0].print(); cout << endl;
-  //opp_grad_spts[1].print();
-  // ------------ Display the matrix ------------
 }
 
 
-void oper::setupCorrection(vector<point> loc_spts, vector<point> loc_fpts)
+void oper::setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
 {
   uint nSpts, nFpts, spt, fpt, dim;
   vector<double> loc(nDims);
@@ -181,9 +215,6 @@ void oper::setupCorrection(vector<point> loc_spts, vector<point> loc_fpts)
       }
     }
   }
-  // ------------ Display the matrix ------------
-  //opp_correction.print();
-  // ------------ Display the matrix ------------
 }
 
 
@@ -212,6 +243,11 @@ void oper::applyDivFSpts(vector<matrix<double>> &F_spts, matrix<double> &divF_sp
 void oper::applySptsFpts(matrix<double> &U_spts, matrix<double> &U_fpts)
 {
   opp_spts_to_fpts.timesMatrix(U_spts,U_fpts);
+}
+
+void oper::applySptsMpts(matrix<double> &U_spts, matrix<double> &U_mpts)
+{
+  opp_spts_to_mpts.timesMatrix(U_spts,U_mpts);
 }
 
 void oper::applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts)

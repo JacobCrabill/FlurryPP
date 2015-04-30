@@ -118,6 +118,7 @@ void ele::setup(input *inParams, geo *inGeo)
   /* --- Setup all data arrays --- */
   U_spts.setup(nSpts,nFields);
   U_fpts.setup(nFpts,nFields);
+  U_spts.setup(nNodes,nFields);
   Fn_fpts.setup(nFpts,nFields);
   dFn_fpts.setup(nFpts,nFields);
   divF_spts.setup(nSpts,nFields);
@@ -431,6 +432,75 @@ vector<double> ele::getPrimitives(uint spt)
   }
 
   return V;
+}
+
+void ele::getPrimitivesPlot(matrix<double> &V)
+{
+  V.setup(nSpts+nFpts+nNodes,nFields);
+
+  // Get solution at corner points
+  for (int k=0; k<nFields; k++) {
+    V[0][k]                     = U_mpts[0][k];
+    V[order+2][k]               = U_mpts[1][k];
+    V[(order+3)*(order+3)-1][k] = U_mpts[2][k];
+    V[(order+3)*(order+2)][k]   = U_mpts[3][k];
+  }
+
+  // Get solution at flux points
+  for (int i=0; i<order+1; i++) {
+    for (int k=0; k<nFields; k++) {
+      V[i+1][k]                     = U_fpts[i][k];               // Bottom
+      V[(i+1)*(order+3)][k]         = U_fpts[nFpts-i-1][k];       // Left
+      V[(i+2)*(order+3)-1][k]       = U_fpts[order+1+i][k];       // Right
+      V[(order+3)*(order+2)+i+1][k] = U_fpts[3*(order+1)-i-1][k]; // Top
+    }
+  }
+
+  // Get solution at solution points
+  for (int i=0; i<order+1; i++) {
+    for (int j=0; j<order+1; j++) {
+      for (int k=0; k<nFields; k++) {
+        int id = (i+1)*(order+3)+j+1;
+        V[id][k] = U_spts[j+i*(order+1)][k];
+      }
+    }
+  }
+
+  if (params->equation == NAVIER_STOKES) {
+    // Overwriting V, so be careful of order!
+    for (int i=0; i<V.getDim0(); i++) {
+      V[i][3] = (params->gamma-1)*(V[i][3] - (0.5*(V[i][1]*V[i][1] + V[i][2]*V[i][2])/V[i][0]));
+      V[i][1] = V[i][1]/V[i][0];
+      V[i][2] = V[i][2]/V[i][0];
+    }
+  }
+}
+
+void ele::getPpts(vector<point> &ppts)
+{
+  int nPts1D = order+3;
+  ppts.resize(nPts1D*nPts1D);
+
+  // Get mesh (corner) points
+  ppts[0*nPts1D+0]               = nodes[0];
+  ppts[0*nPts1D+order+2]         = nodes[1];
+  ppts[(order+2)*nPts1D+0]       = nodes[3];
+  ppts[(order+2)*nPts1D+order+2] = nodes[2];
+
+  // Get flux points
+  for (int i=0; i<order+1; i++) {
+    ppts[0*nPts1D+i+1]         = pos_fpts[i];                // Bottom
+    ppts[(i+1)*nPts1D+0]       = pos_fpts[nFpts-i-1];        // Left
+    ppts[(i+1)*nPts1D+order+2] = pos_fpts[order+1+i];        // Right
+    ppts[(order+2)*nPts1D+i+1] = pos_fpts[3*(order+1)-i-1];  // Top
+  }
+
+  // Get solution at solution points
+  for (int i=0; i<order+1; i++) {
+    for (int j=0; j<order+1; j++) {
+      ppts[(i+1)*nPts1D+j+1] = pos_spts[j+i*(order+1)];
+    }
+  }
 }
 
 vector<double> ele::getResidual(int normType)

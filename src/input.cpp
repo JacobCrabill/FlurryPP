@@ -247,6 +247,7 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("monitor_res_freq",monitor_res_freq,10);
   opts.getScalarValue("resType",resType,2);
   opts.getScalarValue("plot_freq",plot_freq,100);
+  opts.getScalarValue("plot_type",plot_type,1);
   opts.getScalarValue("restart_freq",restart_freq,100);
   opts.getScalarValue("dataFileName",dataFileName,string("simData"));
 
