@@ -1,9 +1,9 @@
 clear all; close all;
 
-datadir = 'bin'; % Location of data files
+datadir = 'tests/euler/wedge'; % Location of data files
 caseName = 'simData'; % Name of files to be plotted
-Iters = [0:500:50000];    % Iterations to be plotted
-N = 50;                % # of points to use in each direction for surf plot
+Iters = [0:100:5000];    % Iterations to be plotted
+N = 150;                % # of points to use in each direction for surf plot
 GIF = false;           % Save plots to animated GIF file?
 
 data = cell(length(Iters));
@@ -21,18 +21,28 @@ yy = min(y):(max(y)-min(y))/N:max(y);
 [X,Y] = meshgrid(xx,yy);
 
 for i=1:length(Iters)
+    % x y z rho u v p
     x = data{i}(:,1);
     y = data{i}(:,2);
-    u = data{i}(:,6); % x y z rho u v p
-    F = TriScatteredInterp(x,y,u);
+    rho = data{i}(:,4);
+    if size(data{i},2) > 4
+        u = data{i}(:,5);
+        v = data{i}(:,6);
+        p = data{i}(:,7);
+        M = sqrt(u.^2+v.^2)./sqrt(1.4*p./rho);
+        
+        % Choose which quantity to plot
+        q = rho;
+    else
+        q = rho;
+    end  
     
-    U = log(abs(F(X,Y)-10));
-    
-    %surf(X,Y,U);    zlim([.5,1.1]);
-    %contourf(X,Y,U,100,'edgecolor','none'); colorbar;
+    % Interpolate Data to Grid
+    F = TriScatteredInterp(x,y,q);
+    U = F(X,Y);
+
     pcolor(X,Y,U); shading flat; colorbar;
     pause(.1);
-    %pause;
     
 	% Create animated GIF
     if GIF

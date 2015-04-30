@@ -1,0 +1,39 @@
+equation      0    # 0: Advection-Diffusion;  1: Euler/Navier-Stokes
+order         2    # Polynomial order to use
+dt            .002  # Time step size
+
+riemann_type  0    # Advection: use 0; N-S: 0: Rusanov, 1: Roe
+
+advectVx      1    # Advection wave speed, x-component
+advectVy      1    # Advection wave speed, y-component
+
+# Initial Condition
+#   Advection: 0-Gaussian, 1-u=x+y test case
+#   N-S: 0-Uniform flow, 1-Uniform+Vortex
+ic_type       0
+iterMax       10000
+
+# Plotting/Output Parameters
+plot_freq     500
+monitor_res_freq  200
+
+# mesh_type - 0: Read mesh, 1: Create mesh
+mesh_type     1
+
+# Boundary conditions
+create_bcTop     periodic
+create_bcBottom  periodic
+create_bcLeft    periodic
+create_bcRight   periodic
+
+# Parameters used when creating the mesh:
+nDims         2
+nx            20
+ny            20
+xmin          -10
+xmax          10
+ymin          -10
+ymax          10
+
+# Flux Reconstruction parameters
+spts_type_quad  Legendre

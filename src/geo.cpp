@@ -259,7 +259,6 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> &
 void geo::readGmsh(string fileName)
 {
   ifstream meshFile;
-  stringstream ss;
   string str;
 
   meshFile.open(fileName.c_str());
@@ -350,7 +349,6 @@ void geo::readGmsh(string fileName)
     meshFile >> iv >> xv[i].x >> xv[i].y >> xv[i].z;
   }
 
-
   /* --- Read Element Connectivity --- */
 
   // Move cursor to $Elements
@@ -377,21 +375,6 @@ void geo::readGmsh(string fileName)
   // Read total number of interior + boundary elements
   meshFile >> nElesGmsh;
   getline(meshFile,str);    // Clear end of line, just in case
-
-//  // Allocate memory
-//  out_c2v.setup(nCellsGlobal,MAX_V_PER_C);
-//  out_c2n_v.setup(nCellsGlobal);
-//  out_ctype.setup(nCellsGlobal);
-//  out_ic2icg.setup(nCellsGlobal);
-
-//  // Initialize arrays to -1
-//  for (int i=0;i<nCellsGlobal;i++) {
-//    out_c2n_v(i)=-1;
-//    out_ctype(i) = -1;
-//    out_ic2icg(i) = -1;
-//    for (int k=0;k<MAX_V_PER_C;k++)
-//      out_c2v(i,k)=-1;
-//  }
 
   // For Gmsh node ordering, see: http://geuz.org/gmsh/doc/texinfo/gmsh.html#Node-ordering
   int ic = 0;
@@ -437,7 +420,7 @@ void geo::readGmsh(string fileName)
       }
 
       // Increase the size of c2v (max # of vertices per cell) if needed
-      if (c2v.getDim1()<c2nv[ic]) {
+      if (c2v.getDim1()<(uint)c2nv[ic]) {
         for (int dim=c2v.getDim1(); dim<c2nv[ic]; dim++) {
           c2v.addCol();
         }
@@ -458,7 +441,7 @@ void geo::readGmsh(string fileName)
     }
     else {
       // Boundary cell; put vertices into bndPts
-      int nPtsEdge;
+      int nPtsEdge = 0;
       switch(eType) {
       case 1: // Linear edge
         nPtsEdge = 2;
@@ -479,6 +462,9 @@ void geo::readGmsh(string fileName)
       case 28: // Quintic Edge
         nPtsEdge = 6;
         break;
+
+      default:
+          FatalError("Boundary Element (Face) Type Not Recognized!");
       }
 
       for (int i=0; i<nPtsEdge; i++) {
@@ -589,22 +575,18 @@ void geo::createMesh()
 
   // Setup boundary connectivity storage
   nBndFaces.assign(nBounds,0);
-  bndFaces.resize(nBounds);
   bndPts.setup(nBounds,4*nx+4*ny); //(nx+1)*(ny+1));
   nBndPts.resize(nBounds);
   for (int i=0; i<nBounds; i++) {
     bc2bcList[bcList[i]] = i;
-    bndFaces[i].setup(2*nx+2*ny,2); // max nBndFaces x 2-pts-per-edge
   }
 
   // Bottom Edge Faces
   int ib = bc2bcList[bcNum[params->create_bcBottom]];
   int ne = nBndFaces[ib];
   for (int ix=0; ix<nx; ix++) {
-    bndFaces[ib][ne][0] = ix;
-    bndFaces[ib][ne][1] = ix+1;
-    bndPts[ib][2*ne]   = bndFaces[ib][ne][0];
-    bndPts[ib][2*ne+1] = bndFaces[ib][ne][1];
+    bndPts[ib][2*ne]   = ix;
+    bndPts[ib][2*ne+1] = ix+1;
     ne++;
   }
   nBndFaces[ib] = ne;
@@ -613,10 +595,8 @@ void geo::createMesh()
   ib = bc2bcList[bcNum[params->create_bcTop]];
   ne = nBndFaces[ib];
   for (int ix=0; ix<nx; ix++) {
-    bndFaces[ib][ne][1] = (nx+1)*ny + ix;
-    bndFaces[ib][ne][0] = (nx+1)*ny + ix+1;
-    bndPts[ib][2*ne]   = bndFaces[ib][ne][0];
-    bndPts[ib][2*ne+1] = bndFaces[ib][ne][1];
+    bndPts[ib][2*ne]   = (nx+1)*ny + ix+1;
+    bndPts[ib][2*ne+1] = (nx+1)*ny + ix;
     ne++;
   }
   nBndFaces[ib] = ne;
@@ -625,10 +605,8 @@ void geo::createMesh()
   ib = bc2bcList[bcNum[params->create_bcLeft]];
   ne = nBndFaces[ib];
   for (int iy=0; iy<ny; iy++) {
-    bndFaces[ib][ne][1] = iy*(nx+1);
-    bndFaces[ib][ne][0] = (iy+1)*(nx+1);
-    bndPts[ib][2*ne]   = bndFaces[ib][ne][0];
-    bndPts[ib][2*ne+1] = bndFaces[ib][ne][1];
+    bndPts[ib][2*ne]   = (iy+1)*(nx+1);
+    bndPts[ib][2*ne+1] = iy*(nx+1);
     ne++;
   }
   nBndFaces[ib] = ne;
@@ -637,10 +615,8 @@ void geo::createMesh()
   ib = bc2bcList[bcNum[params->create_bcRight]];
   ne = nBndFaces[ib];
   for (int iy=0; iy<ny; iy++) {
-    bndFaces[ib][ne][0] = iy*(nx+1) + nx;
-    bndFaces[ib][ne][1] = (iy+1)*(nx+1) + nx;
-    bndPts[ib][2*ne]   = bndFaces[ib][ne][0];
-    bndPts[ib][2*ne+1] = bndFaces[ib][ne][1];
+    bndPts[ib][2*ne]   = iy*(nx+1) + nx;
+    bndPts[ib][2*ne+1] = (iy+1)*(nx+1) + nx;
     ne++;
   }
   nBndFaces[ib] = ne;

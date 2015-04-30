@@ -20,7 +20,7 @@
 #include "geo.hpp"
 
 /*! Write solution data to a file. */
-void writeData(solver *Solver, input *params, int iter);
+void writeData(solver *Solver, input *params);
 
 /*! Compute the residual and print to the screen. */
-void writeResidual(solver *Solver, input *params, int iter);
+void writeResidual(solver *Solver, input *params);

@@ -130,6 +130,16 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
     for (uint i=0; i<nDims; i++)
       vSq += (vL[i]*vL[i]);
 
+    // --------- TESTING -----------
+    if (uR[0]==0) {
+      uR[0] = uL[0];
+      uR[1] = uL[1];
+      uR[2] = uL[2];
+    }
+    vR[0] = uR[1]/uR[0];
+    vR[1] = uR[2]/uR[0];
+    // --------- TESTING -----------
+
     double pL = (gamma-1.0)*(eL - 0.5*rhoL*vSq);
 
     // Subsonic inflow simple (free pressure) //CONSIDER DELETING
@@ -340,8 +350,17 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
         vnL += (vL[i]-vG[i])*norm[i];
 
       // reflect normal velocity
-      for (uint i=0; i<nDims; i++)
-        vR[i] = vL[i] - 2.0*vnL*norm[i];
+      if (params->slipPenalty) {
+        for (uint i=0; i<nDims; i++) {
+          vR[i] = vR[i] - params->beta*params->dt*(vR[i] - (vL[i] - (2.0)*vnL*norm[i]));
+          //vR[i] = vL[i] - (2.0-(double)5000./(params->iter+2500.))*vnL*norm[i];
+        }
+      }
+      else {
+        for (uint i=0; i<nDims; i++) {
+          vR[i] = vL[i] - (2.0)*vnL*norm[i];
+        }
+      }
 
       // extrapolate energy
       eR = eL;

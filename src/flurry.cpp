@@ -25,8 +25,6 @@ int main(int argc, char *argv[]) {
   geo Geo;
   solver Solver;
 
-  int iter;
-
   cout << "  ========================================== " << endl;
   cout << "   _______   _                               " << endl;
   cout << "  |   ____| | |                              " << endl;
@@ -59,17 +57,17 @@ int main(int argc, char *argv[]) {
   Solver.initializeSolution();
 
   /* Write initial data file */
-  writeData(&Solver,&params,0);
+  writeData(&Solver,&params);
 
   /* --- Calculation Loop --- */
-  for (iter=params.initIter+1; iter<=params.iterMax; iter++) {
+  for (params.iter=params.initIter+1; params.iter<=params.iterMax; params.iter++) {
 
     Solver.calcResidual();
 
     Solver.timeStep();
 
-    if ((iter)%params.monitor_res_freq == 0 || iter==1) writeResidual(&Solver,&params,iter);
-    if ((iter)%params.plot_freq == 0) writeData(&Solver,&params,iter);
+    if ((params.iter)%params.monitor_res_freq == 0 || params.iter==1) writeResidual(&Solver,&params);
+    if ((params.iter)%params.plot_freq == 0) writeData(&Solver,&params);
 
   }
 

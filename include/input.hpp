@@ -94,6 +94,9 @@ public:
   int restart_freq;
   int resType;
   int monitor_res_freq;
+  int iter;
+  double beta;
+  bool slipPenalty;  //! Use "penalty method" on slip-wall boundary
 
   string dataFileName;
 

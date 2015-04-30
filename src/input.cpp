@@ -194,19 +194,21 @@ void input::readInputFile(char *filename)
   } else if (equation==NAVIER_STOKES) {
     if (ic_type == 0) {
       opts.getScalarValue("rhoIC",rhoIC,1.);
-      opts.getScalarValue("vxIC",vxIC,1.);
-      opts.getScalarValue("vyIC",vyIC,1.);
-      opts.getScalarValue("pIC",pIC,10000.);
+      opts.getScalarValue("vxIC",vxIC,.2);
+      opts.getScalarValue("vyIC",vyIC,0.);
+      opts.getScalarValue("pIC",pIC,.7142857143);
     }
     opts.getScalarValue("gamma",gamma,1.4);
     opts.getScalarValue("RGas",RGas,286.9);
     opts.getScalarValue("rhoBound",rhoBound,1.);
-    opts.getScalarValue("uBound",uBound,1.);
+    opts.getScalarValue("uBound",uBound,.2);
     opts.getScalarValue("vBound",vBound,0.);
     opts.getScalarValue("wBound",wBound,0.);
-    opts.getScalarValue("pBound",pBound,1.);
+    opts.getScalarValue("pBound",pBound,.7142857143);
     opts.getScalarValue("TBound",TBound,300.);
     opts.getScalarValue("TWall",TWall,300.);
+    opts.getScalarValue("beta",beta,2.);
+    opts.getScalarValue("slipPenalty",slipPenalty,false);
     nFields = 4;
   }
 
@@ -262,4 +264,6 @@ void input::readInputFile(char *filename)
   }else{
     initIter = 0;
   }
+
+  iter = initIter;
 }
