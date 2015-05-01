@@ -86,10 +86,14 @@ void writeParaview(solver *Solver, input *params)
   string fileName = params->dataFileName;
   sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],iter);
 
+  dataFile.precision(15);
+  dataFile.setf(ios_base::fixed);
+
   dataFile.open(fileNameC);
 
   // File header
   dataFile << "<?xml version=\"1.0\" ?>" << endl;
+  //dataFile << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"BigEndian\"" << endl;
   dataFile << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" compressor=\"vtkZLibDataCompressor\">" << endl;
   dataFile << "	<UnstructuredGrid>" << endl;
 
@@ -202,6 +206,170 @@ void writeParaview(solver *Solver, input *params)
     dataFile << "				<DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">" << endl;
     for(int k=0; k<nSubCells; k++) {
       dataFile << 9 << " ";
+    }
+    dataFile << endl;
+    dataFile << "				</DataArray>" << endl;
+
+    /* --- Write cell and piece footers --- */
+    dataFile << "			</Cells>" << endl;
+    dataFile << "		</Piece>" << endl;
+  }
+
+  /* --- Write footer of file & close --- */
+  dataFile << "	</UnstructuredGrid>" << endl;
+  dataFile << "</VTKFile>" << endl;
+
+  dataFile.close();
+}
+
+void writeParaviewBinary(solver *Solver, input *params)
+{
+  ofstream dataFile;
+  int iter = params->iter;
+
+  char fileNameC[50];
+  string fileName = params->dataFileName;
+  sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],iter);
+
+  //dataFile.precision(15);
+  //dataFile.setf(ios_base::fixed);
+  //dataFile.open(fileNameC, std::ofstream::app | std::ofstream::binary);
+  dataFile.open(fileNameC, std::ofstream::binary);
+
+  char bufi[sizeof(int)];
+  char bufu[sizeof(uint)];
+  char bufd[sizeof(double)];
+
+  // File header
+  dataFile << "<?xml version=\"1.0\" ?>" << endl;
+  dataFile << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"BigEndian\">" << endl;
+  //dataFile << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" compressor=\"vtkZLibDataCompressor\">" << endl;
+  dataFile << "	<UnstructuredGrid>" << endl;
+
+  for (auto& e:Solver->eles) {
+    // If this is the initial file, need to extrapolate solution to flux points
+    if (params->iter==0) Solver->extrapolateU();
+
+    Solver->extrapolateUMpts();
+
+    // The combination of spts + fpts will be the plot points
+    matrix<double> vPpts;
+    vector<point> ppts;
+    e.getPrimitivesPlot(vPpts);
+    e.getPpts(ppts);
+
+    int nSubCells = (e.order+2)*(e.order+2);
+    int nPpts = (e.order+3)*(e.order+3);
+    int nPpts1D = e.order+3;
+
+    // Write cell header
+    dataFile << "		<Piece NumberOfPoints=\"" << nPpts << "\" NumberOfCells=\"" << nSubCells << "\">" << endl;
+
+    /* ==== Write out solution to file ==== */
+    dataFile << "			<PointData>" << endl;
+
+    /* --- Density --- */
+    dataFile << "				<DataArray type= \"Float32\" Name=\"Density\" format=\"binary\">" << endl;
+    for(int k=0; k<nPpts; k++) {
+      bitswap(vPpts(k,0),bufd);
+      dataFile.write(bufd,sizeof(double));
+    }
+    dataFile << endl;
+    dataFile << "				</DataArray>" << endl;
+
+    /* --- Pressure --- */
+    dataFile << "				<DataArray type= \"Float32\" Name=\"Pressure\" format=\"binary\">" << endl;
+    for(int k=0; k<nPpts; k++) {
+      bitswap(vPpts(k,3),bufd);
+      dataFile.write(bufd,sizeof(double));
+    }
+    dataFile << endl;
+    dataFile << "				</DataArray>" << endl;
+
+    /* --- Velocity --- */
+    dataFile << "				<DataArray type= \"Float32\" NumberOfComponents=\"3\" Name=\"Velocity\" format=\"binary\">" << endl;
+    for(int k=0; k<nPpts; k++) {
+      // Divide momentum components by density to obtain velocity components
+      bitswap(vPpts(k,1),bufd);
+      dataFile.write(bufd,sizeof(double));
+      bitswap(vPpts(k,2),bufd);
+      dataFile.write(bufd,sizeof(double));
+
+      // In 2D the z-component of velocity is not stored, but Paraview needs it so write a 0.
+      if(params->nDims==2) {
+        bitswap((double)0.,bufd);
+        dataFile.write(bufd,sizeof(double));
+      }
+      else {
+        bitswap(vPpts(k,3),bufd);
+        dataFile.write(bufd,sizeof(double));
+      }
+    }
+    dataFile << endl;
+    dataFile << "				</DataArray>" << endl;
+
+    dataFile << "			</PointData>" << endl;
+
+    /* ==== Write Out Cell Points & Connectivity==== */
+
+    /* --- Write out the plot point coordinates --- */
+    dataFile << "			<Points>" << endl;
+    dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"binary\">" << endl;
+
+    // Loop over plot points in element
+    for(int k=0; k<nPpts; k++) {
+      for(int l=0;l<params->nDims;l++) {
+        bitswap(ppts[k][l],bufd);
+        dataFile.write(bufd,sizeof(double));
+      }
+
+      // If 2D, write a 0 as the z-component
+      if(params->nDims == 2) {
+        bitswap((double)0.,bufd);
+        dataFile.write(bufd,sizeof(double));
+      }
+    }
+
+    dataFile << endl;
+    dataFile << "				</DataArray>" << endl;
+    dataFile << "			</Points>" << endl;
+
+    /* --- Write out Cell data: connectivity, offsets, element types --- */
+    dataFile << "			<Cells>" << endl;
+
+    /* --- Write connectivity array --- */
+    dataFile << "				<DataArray type=\"Int16\" Name=\"connectivity\" format=\"binary\">" << endl;
+
+    for (int i=0; i<nPpts1D-1; i++) {
+      for (int j=0; j<nPpts1D-1; j++) {
+        bitswap((int)(i*nPpts1D + j),bufi);
+        dataFile.write(bufi,sizeof(int));
+        bitswap((int)(i*nPpts1D + j+1),bufi);
+        dataFile.write(bufi,sizeof(int));
+        bitswap((int)((i+1)*nPpts1D + j+1),bufi);
+        dataFile.write(bufi,sizeof(int));
+        bitswap((int)((i+1)*nPpts1D + j),bufi);
+        dataFile.write(bufi,sizeof(int));
+      }
+    }
+    dataFile << endl;
+    dataFile << "				</DataArray>" << endl;
+
+    // Write cell IDs...?
+    dataFile << "				<DataArray type=\"Int16\" Name=\"offsets\" format=\"binary\">" << endl;
+    for(int k=0; k<nSubCells; k++){
+      bitswap((int)(k+1)*4,bufi);
+      dataFile.write(bufi,sizeof(int));
+    }
+    dataFile << endl;
+    dataFile << "				</DataArray>" << endl;
+
+    // Write VTK element type
+    // 5 = tri, 9 = quad, 10 = tet, 12 = hex
+    dataFile << "				<DataArray type=\"UInt16\" Name=\"types\" format=\"binary\">" << endl;
+    for(int k=0; k<nSubCells; k++) {
+      bitswap((uint)9,bufu);
+      dataFile.write(bufu,sizeof(uint));
     }
     dataFile << endl;
     dataFile << "				</DataArray>" << endl;

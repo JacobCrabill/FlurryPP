@@ -244,3 +244,23 @@ vector<T> operator/(const vector<T>& lhs, double rhs)
 
   return out;
 }
+
+/* Return a byte swapped version of the first agument in the
+   char buffer */
+
+void bitswap(int value, char *buf);
+
+void bitswap(uint value, char *buf);
+
+void bitswap(float value, char *buf);
+
+void bitswap(double value, char *buf);
+
+/* Byte swap the contents of the char buffer and return it in
+   the second value. */
+
+void bitunswap(char *buf, int *value);
+
+void bitunswap(char *buf, float *value);
+
+void bitunswap(char *buf, double *value);
