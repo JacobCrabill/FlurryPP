@@ -102,7 +102,7 @@ void solver::calcResidual(int step)
   if (params->motion) {
     /* Use non-conservatiion-form chain-rule formulation (Liang-Miyaji) */
     calcGradF_spts();
-    transformGradF_spts();
+    transformGradF_spts(step);
   }else{
     /* Standard conservative form */
     calcDivF_spts(step);
@@ -212,11 +212,11 @@ void solver::calcGradF_spts(void)
   }
 }
 
-void solver::transformGradF_spts(void)
+void solver::transformGradF_spts(int step)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    eles[i].transformGradF_spts();
+    eles[i].transformGradF_spts(step);
     //opers[eles[i].eType][eles[i].order].applyTransformGradFSpts(eles[i].dF_spts,eles[i].JGinv_spts,eles[i].gridVel_spts);
   }
 }

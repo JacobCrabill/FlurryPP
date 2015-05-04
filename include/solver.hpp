@@ -114,7 +114,7 @@ public:
   void calcGradF_spts(void);
 
   //! Use full space-time chain-rule to transform gradients to parent domain
-  void transformGradF_spts(void);
+  void transformGradF_spts(int step);
 
   //! Calculate the divergence of the flux at the solution points
   void calcDivF_spts(int step);

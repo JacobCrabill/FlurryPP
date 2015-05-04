@@ -147,10 +147,12 @@ void ele::setup(input *inParams, geo *inGeo)
   F_spts.resize(nDims);
   F_fpts.resize(nDims);
   dF_spts.resize(nDims);
+  tdF_spts.resize(nDims);
   for (int i=0; i<nDims; i++) {
     F_spts[i].setup(nSpts,nFields);
     F_fpts[i].setup(nFpts,nFields);
     dF_spts[i].resize(nDims);
+    tdF_spts[i].setup(nSpts,nFields);
     for (int j=0; j<nDims; j++) {
       dF_spts[i][j].setup(nSpts,nFields);
     }
@@ -170,6 +172,7 @@ void ele::setup(input *inParams, geo *inGeo)
   dA_fpts.resize(nFpts);
 
   gridVel_spts.setup(nSpts,nDims);
+  gridVel_spts.initializeToZero();
 
   tempF.setup(nDims,nFields);
   tempU.assign(nFields,0);
@@ -465,7 +468,7 @@ void ele::calcViscousFlux_spts()
   }
 }
 
-void ele::transformGradF_spts(void)
+void ele::transformGradF_spts(int step)
 {
 //  ! ---- LIANG-MIYAJI Mod ----
 //  ! A = ydot*xs - xdot*ys
@@ -480,14 +483,13 @@ void ele::transformGradF_spts(void)
 //  spt2j = ele%sptId(i,ind)
 //  tdF_spts(spt,:,1,e) = dF(spt,:,1,0,e)*Jaco(e,spt,1,0) + dF(spt,:,1,1,e)*Jaco(e,spt,0,0) + dU(spt,1,:,e)*B
 
-  // Let's make the first 'nDim' of dF be the derivative, and the 2nd be the flux direction
-  matrix<double> tdF_spts(nSpts,nDims,nFields);
+  // The first 'nDim' of dF is the derivative, and the 2nd is the flux direction
   for (int spt=0; spt<nSpts; spt++) {
-    double A = gridVel_spts(spt,1)*Jac_spts(spt,0,1) - gridVel_spts(spt,0)*Jac_spts(spt,1,1);
-    double B = gridVel_spts(spt,0)*Jac_spts(spt,1,0) - gridVel_spts(spt,1)*Jac_spts(spt,0,0);
+    double A = gridVel_spts(spt,1)*Jac_spts[spt](0,1) - gridVel_spts(spt,0)*Jac_spts[spt](1,1);
+    double B = gridVel_spts(spt,0)*Jac_spts[spt](1,0) - gridVel_spts(spt,1)*Jac_spts[spt](0,0);
     for (int k=0; k<nFields; k++) {
-      tdF_spts(spt,0,k) = dF_spts(spt,0,0,k)*Jac_spts(spt1,1,1) + dF_spts(spt,0,1,k)*Jac_spts(spt,0,1) + dU_spts(spt,0,k)*A;
-      tdF_spts(spt,1,k) = dF_spts(spt,1,0,k)*Jac_spts(spt1,1,0) + dF_spts(spt,1,1,k)*Jac_spts(spt,0,0) + dU_spts(spt,1,k)*B;
+      divF_spts[step](spt,k) = dF_spts[0][0](spt,k)*Jac_spts[spt](1,1) + dF_spts[0][1](spt,k)*Jac_spts[spt](0,1) + dU_spts[spt](0,k)*A;
+      divF_spts[step](spt,k)+= dF_spts[1][0](spt,k)*Jac_spts[spt](1,0) + dF_spts[1][1](spt,k)*Jac_spts[spt](0,0) + dU_spts[spt](1,k)*B;
     }
   }
 }

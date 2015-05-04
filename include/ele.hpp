@@ -74,7 +74,7 @@ public:
 
   void calcViscousFlux_spts(void);
 
-  void transformGradF_spts(void);
+  void transformGradF_spts(int step);
 
   /*! Advance intermediate stages of Runge-Kutta time integration */
   void timeStepA(int step, double rkVal);
@@ -144,6 +144,7 @@ private:
   vector<matrix<double> > dU_fpts;  //! Gradient of solution at flux points
   vector<vector<matrix<double>>> dF_spts;  //! Gradient of flux at solution points
   vector<matrix<double>> divF_spts;         //! Divergence of flux at solution points
+  vector<matrix<double>> tdF_spts;          //! Transformed gradient of flux (dF_dxi and dG_deta) at solution points
 
   // Transform Variables
   vector<double> detJac_spts;  //! Determinant of transformation Jacobian at each solution point
