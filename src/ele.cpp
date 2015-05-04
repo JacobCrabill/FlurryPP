@@ -121,7 +121,18 @@ void ele::setup(input *inParams, geo *inGeo)
   U_mpts.setup(nNodes,nFields);
   Fn_fpts.setup(nFpts,nFields);
   dFn_fpts.setup(nFpts,nFields);
-  divF_spts.setup(nSpts,nFields);
+
+  switch (params->timeType) {
+    case 0:
+      divF_spts.resize(1);
+      break;
+    case 4:
+      divF_spts.resize(4);
+      break;
+    default:
+      FatalError("Time-advancement time not recognized.");
+  }
+  for (auto& dF:divF_spts) dF.setup(nSpts,nFields);
 
 
   dU_spts.resize(nSpts);
@@ -158,66 +169,84 @@ void ele::setup(input *inParams, geo *inGeo)
   tNorm_fpts.setup(nFpts,nDims);
   dA_fpts.resize(nFpts);
 
+  gridVel_spts.setup(nSpts,nDims);
+
   tempF.setup(nDims,nFields);
   tempU.assign(nFields,0);
 
   /* --- Final Step: calculate physical->reference transforms --- */
+  setDShape_spts();
+  setDShape_fpts();
+  setTransformedNormals_fpts();
   calcTransforms();
 
   calcPosSpts();
   calcPosFpts();
+  setPpts();
 }
 
-void ele::calcTransforms(void)
+void ele::setDShape_spts(void)
 {
-  matrix<double> dtemp(nDims,nDims);
-  uint iFace;
+  dShape_spts.resize(nSpts);
+  for (auto& dS:dShape_spts) dS.setup(nDims,nDims);
 
-  if (Jac_spts.size() != (uint)nSpts) Jac_spts.resize(nSpts);
-  if (Jac_fpts.size() != (uint)nFpts) Jac_fpts.resize(nFpts);
-
-  /* --- Calculate Transformation at Solution Points --- */
   for (int spt=0; spt<nSpts; spt++) {
-    // Calculate shape derivatives [in the future, should pre-calculate & store]
     switch(eType) {
       case TRI:
-        dshape_tri(loc_spts[spt], dtemp);
+        dshape_tri(loc_spts[spt], dShape_spts[spt]);
         break;
       case QUAD:
-        dshape_quad(loc_spts[spt], dtemp);
+        dshape_quad(loc_spts[spt], dShape_spts[spt]);
         break;
       default:
         FatalError("Element type not yet implemented.")
     }
-
-    for (int i=0; i<nNodes; i++) {
-      for (int dim1=0; dim1<nDims; dim1++) {
-        for (int dim2=0; dim2<nDims; dim2++) {
-          Jac_spts[spt][dim1][dim2] += dtemp[i][dim2]*nodes[i][dim1];
-        }
-      }
-    }
-
-    if (nDims==2) {
-      // Determinant of transformation matrix
-      detJac_spts[spt] = Jac_spts[spt][0][0]*Jac_spts[spt][1][1]-Jac_spts[spt][1][0]*Jac_spts[spt][0][1];
-      // Inverse of transformation matrix (times its determinant)
-      JGinv_spts[spt][0][0] = Jac_spts[spt][1][1];  JGinv_spts[spt][0][1] =-Jac_spts[spt][0][1];
-      JGinv_spts[spt][1][0] =-Jac_spts[spt][1][0];  JGinv_spts[spt][1][1] = Jac_spts[spt][0][0];
-    }
-    if (detJac_spts[spt]<0) FatalError("Negative Jacobian at solution points.");
   }
+}
 
-  /* --- Calculate Transformation at Flux Points --- */
+void ele::setDShape_fpts(void)
+{
+  dShape_fpts.resize(nFpts);
+  for (auto& dS:dShape_fpts) dS.setup(nDims,nDims);
+
   for (int fpt=0; fpt<nFpts; fpt++) {
-    iFace = floor(fpt / (order+1));
+    switch(eType) {
+      case TRI:
+        dshape_tri(loc_fpts[fpt], dShape_fpts[fpt]);
+        break;
+      case QUAD:
+        dshape_quad(loc_fpts[fpt], dShape_fpts[fpt]);
+        break;
+      default:
+        FatalError("Element type not yet implemented.")
+    }
+  }
+}
+
+void ele::setTransformedNormals_fpts(void)
+{
+  // Setting unit normal vector in the parent domain
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    uint iFace = floor(fpt / (order+1));
     // Calculate shape derivatives [in the future, should pre-calculate & store]
     switch(eType) {
       case TRI:
-        dshape_tri(loc_fpts[fpt], dtemp);
+        switch(iFace) {
+          case 0:
+            tNorm_fpts[fpt][0] = 0;
+            tNorm_fpts[fpt][1] = -1;
+            break;
+          case 1:
+            tNorm_fpts[fpt][0] = sqrt(2);
+            tNorm_fpts[fpt][1] = sqrt(2);
+            break;
+          case 2:
+            tNorm_fpts[fpt][0] = -1;
+            tNorm_fpts[fpt][1] = 0;
+            break;
+        }
         break;
       case QUAD:
-        dshape_quad(loc_fpts[fpt], dtemp);
         // Face ordering for quads: Bottom, Right, Top, Left
         switch(iFace) {
           case 0:
@@ -241,12 +270,41 @@ void ele::calcTransforms(void)
       default:
         FatalError("Element type not yet implemented.")
     }
+  }
+}
 
+void ele::calcTransforms(void)
+{
+//  if (Jac_spts.size() != (uint)nSpts) Jac_spts.resize(nSpts);
+//  if (Jac_fpts.size() != (uint)nFpts) Jac_fpts.resize(nFpts);
+
+  /* --- Calculate Transformation at Solution Points --- */
+  for (int spt=0; spt<nSpts; spt++) {
+    for (int i=0; i<nNodes; i++) {
+      for (int dim1=0; dim1<nDims; dim1++) {
+        for (int dim2=0; dim2<nDims; dim2++) {
+          Jac_spts[spt][dim1][dim2] += dShape_spts[spt][i][dim2]*nodes[i][dim1];
+        }
+      }
+    }
+
+    if (nDims==2) {
+      // Determinant of transformation matrix
+      detJac_spts[spt] = Jac_spts[spt][0][0]*Jac_spts[spt][1][1]-Jac_spts[spt][1][0]*Jac_spts[spt][0][1];
+      // Inverse of transformation matrix (times its determinant)
+      JGinv_spts[spt][0][0] = Jac_spts[spt][1][1];  JGinv_spts[spt][0][1] =-Jac_spts[spt][0][1];
+      JGinv_spts[spt][1][0] =-Jac_spts[spt][1][0];  JGinv_spts[spt][1][1] = Jac_spts[spt][0][0];
+    }
+    if (detJac_spts[spt]<0) FatalError("Negative Jacobian at solution points.");
+  }
+
+  /* --- Calculate Transformation at Flux Points --- */
+  for (int fpt=0; fpt<nFpts; fpt++) {
     // Calculate transformation Jacobian matrix - [dx/dr, dx/ds; dy/dr, dy/ds]
     for (int i=0; i<nNodes; i++) {
       for (int dim1=0; dim1<nDims; dim1++) {
         for (int dim2=0; dim2<nDims; dim2++) {
-          Jac_fpts[fpt][dim1][dim2] += dtemp[i][dim2]*nodes[i][dim1];
+          Jac_fpts[fpt][dim1][dim2] += dShape_fpts[fpt][i][dim2]*nodes[i][dim1];
         }
       }
     }
@@ -407,14 +465,62 @@ void ele::calcViscousFlux_spts()
   }
 }
 
-void ele::timeStep()
+void ele::transformGradF_spts(void)
+{
+//  ! ---- LIANG-MIYAJI Mod ----
+//  ! A = ydot*xs - xdot*ys
+//  ! B = xdot*yr - ydot*xr
+//    A = solver%gridVel_spts(spt1,1,e)*Geo%Jaco(e,spt1,0,1) - solver%gridVel_spts(spt1,0,e)*Geo%Jaco(e,spt1,1,1)
+//    B = solver%gridVel_spts(spt1,0,e)*Geo%Jaco(e,spt1,1,0) - solver%gridVel_spts(spt1,1,e)*Geo%Jaco(e,spt1,0,0)
+//  ! Xi Derivative
+//  spt2i = ele%sptId(ind,j)
+//  tdF_spts(spt,:,0,e) = dF(spt,:,0,0,e)*Jaco(e,spt,1,1) - dF(spt,:,0,1,e)*Jaco(e,spt,0,1) + dU(spt,0,:,e)*A
+
+//  ! Eta Derivative
+//  spt2j = ele%sptId(i,ind)
+//  tdF_spts(spt,:,1,e) = dF(spt,:,1,0,e)*Jaco(e,spt,1,0) + dF(spt,:,1,1,e)*Jaco(e,spt,0,0) + dU(spt,1,:,e)*B
+
+  // Let's make the first 'nDim' of dF be the derivative, and the 2nd be the flux direction
+  matrix<double> tdF_spts(nSpts,nDims,nFields);
+  for (int spt=0; spt<nSpts; spt++) {
+    double A = gridVel_spts(spt,1)*Jac_spts(spt,0,1) - gridVel_spts(spt,0)*Jac_spts(spt,1,1);
+    double B = gridVel_spts(spt,0)*Jac_spts(spt,1,0) - gridVel_spts(spt,1)*Jac_spts(spt,0,0);
+    for (int k=0; k<nFields; k++) {
+      tdF_spts(spt,0,k) = dF_spts(spt,0,0,k)*Jac_spts(spt1,1,1) + dF_spts(spt,0,1,k)*Jac_spts(spt,0,1) + dU_spts(spt,0,k)*A;
+      tdF_spts(spt,1,k) = dF_spts(spt,1,0,k)*Jac_spts(spt1,1,0) + dF_spts(spt,1,1,k)*Jac_spts(spt,0,0) + dU_spts(spt,1,k)*B;
+    }
+  }
+}
+
+void ele::timeStepA(int step, double rkVal)
 {
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
       //if (divF_spts[spt][i] < 1e-8) divF_spts[spt][i] = 0;
-      U_spts[spt][i] -= params->dt*divF_spts[spt][i]/detJac_spts[spt];
+      U_spts[spt][i] = U0[spt][i] - rkVal * params->dt*divF_spts[step][spt][i]/detJac_spts[spt];
     }
   }
+}
+
+void ele::timeStepB(int step, double rkVal)
+{
+  for (int spt=0; spt<nSpts; spt++) {
+    for (int i=0; i<nFields; i++) {
+      //if (divF_spts[spt][i] < 1e-8) divF_spts[spt][i] = 0;
+      U_spts[spt][i] -= rkVal * params->dt*divF_spts[step][spt][i]/detJac_spts[spt];
+    }
+  }
+}
+
+
+void ele::copyUspts_U0(void)
+{
+  U0 = U_spts;
+}
+
+void ele::copyU0_Uspts(void)
+{
+  U_spts = U0;
 }
 
 vector<double> ele::getPrimitives(uint spt)
@@ -476,29 +582,34 @@ void ele::getPrimitivesPlot(matrix<double> &V)
   }
 }
 
-void ele::getPpts(vector<point> &ppts)
+vector<point> ele::getPpts(void)
+{
+  return pos_ppts;
+}
+
+void ele::setPpts(void)
 {
   int nPts1D = order+3;
-  ppts.resize(nPts1D*nPts1D);
+  pos_ppts.resize(nPts1D*nPts1D);
 
   // Get mesh (corner) points
-  ppts[0*nPts1D+0]               = nodes[0];
-  ppts[0*nPts1D+order+2]         = nodes[1];
-  ppts[(order+2)*nPts1D+0]       = nodes[3];
-  ppts[(order+2)*nPts1D+order+2] = nodes[2];
+  pos_ppts[0*nPts1D+0]               = nodes[0];
+  pos_ppts[0*nPts1D+order+2]         = nodes[1];
+  pos_ppts[(order+2)*nPts1D+0]       = nodes[3];
+  pos_ppts[(order+2)*nPts1D+order+2] = nodes[2];
 
   // Get flux points
   for (int i=0; i<order+1; i++) {
-    ppts[0*nPts1D+i+1]         = pos_fpts[i];                // Bottom
-    ppts[(i+1)*nPts1D+0]       = pos_fpts[nFpts-i-1];        // Left
-    ppts[(i+1)*nPts1D+order+2] = pos_fpts[order+1+i];        // Right
-    ppts[(order+2)*nPts1D+i+1] = pos_fpts[3*(order+1)-i-1];  // Top
+    pos_ppts[0*nPts1D+i+1]         = pos_fpts[i];                // Bottom
+    pos_ppts[(i+1)*nPts1D+0]       = pos_fpts[nFpts-i-1];        // Left
+    pos_ppts[(i+1)*nPts1D+order+2] = pos_fpts[order+1+i];        // Right
+    pos_ppts[(order+2)*nPts1D+i+1] = pos_fpts[3*(order+1)-i-1];  // Top
   }
 
   // Get solution at solution points
   for (int i=0; i<order+1; i++) {
     for (int j=0; j<order+1; j++) {
-      ppts[(i+1)*nPts1D+j+1] = pos_spts[j+i*(order+1)];
+      pos_ppts[(i+1)*nPts1D+j+1] = pos_spts[j+i*(order+1)];
     }
   }
 }
@@ -510,14 +621,14 @@ vector<double> ele::getResidual(int normType)
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
       if (normType == 1) {
-        res[i] += abs(divF_spts[spt][i]);
+        res[i] += abs(divF_spts[0][spt][i]);
       }
       else if (normType == 2) {
-        res[i] += divF_spts[spt][i]*divF_spts[spt][i];
+        res[i] += divF_spts[0][spt][i]*divF_spts[0][spt][i];
       }
       else if (normType == 3) {
         // Infinity norm
-        res[i] = max(abs(divF_spts[spt][i]),res[i]);
+        res[i] = max(abs(divF_spts[0][spt][i]),res[i]);
       }
     }
   }

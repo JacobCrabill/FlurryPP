@@ -21,9 +21,12 @@
 
 class fileReader
 {
+
 public:
   /*! Default constructor */
   fileReader();
+
+  fileReader(string fileName);
 
   /*! Default destructor */
   ~fileReader();
@@ -86,6 +89,7 @@ public:
   int nFields;
   int nDims;
   double dt;
+  int timeType;
   int iterMax;
   int initIter;
   int restartIter;

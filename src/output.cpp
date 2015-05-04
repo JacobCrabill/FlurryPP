@@ -103,7 +103,7 @@ void writeParaview(solver *Solver, input *params)
     matrix<double> vPpts;
     vector<point> ppts;
     e.getPrimitivesPlot(vPpts);
-    e.getPpts(ppts);
+    ppts = e.getPpts();
 
     int nSubCells = (e.order+2)*(e.order+2);
     int nPpts = (e.order+3)*(e.order+3);
@@ -113,6 +113,7 @@ void writeParaview(solver *Solver, input *params)
     dataFile << "		<Piece NumberOfPoints=\"" << nPpts << "\" NumberOfCells=\"" << nSubCells << "\">" << endl;
 
     /* ==== Write out solution to file ==== */
+
     dataFile << "			<PointData>" << endl;
 
     /* --- Density --- */
@@ -189,7 +190,7 @@ void writeParaview(solver *Solver, input *params)
     }
     dataFile << "				</DataArray>" << endl;
 
-    // Write cell IDs...?
+    // Write cell-node offsets
     dataFile << "				<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">" << endl;
     for(int k=0; k<nSubCells; k++){
       dataFile << (k+1)*4 << " ";

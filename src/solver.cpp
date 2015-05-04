@@ -31,9 +31,49 @@ void solver::setup(input *params, geo *Geo)
 
   /* Setup the FR operators for computation */
   setupOperators();
+
+  /* Additional Setup */
+
+  // Time advancement setup
+  switch (params->timeType) {
+    case 0:
+      nRKSteps = 1;
+      RKb = {1};
+      break;
+    case 4:
+      nRKSteps = 4;
+      RKa = {.5, .5, 1.};
+      RKb = {1./6., 1./3., 1./3., 1./6.};
+      break;
+    default:
+      FatalError("Time-Stepping type not supported.");
+  }
 }
 
-void solver::calcResidual(void)
+void solver::update(void)
+{
+  if (nRKSteps>1)
+    copyUspts_U0();
+
+  /* Intermediate residuals for Runge-Kutta time integration */
+  for (int i=0; i<nRKSteps-1; i++) {
+    calcResidual(i);
+
+    timeStepA(i);
+  }
+
+  calcResidual(nRKSteps-1);
+
+  if (nRKSteps>1)
+    copyU0_Uspts();
+
+  /* Final Runge-Kutta time advancement step */
+  for (int i=0; i<nRKSteps; i++) {
+    timeStepB(i);
+  }
+}
+
+void solver::calcResidual(int step)
 {
   extrapolateU();
 
@@ -60,24 +100,49 @@ void solver::calcResidual(void)
   }
 
   if (params->motion) {
-    /* Use non-conservative chain-rule formulation (Liang-Miyaji) */
+    /* Use non-conservatiion-form chain-rule formulation (Liang-Miyaji) */
     calcGradF_spts();
+    transformGradF_spts();
   }else{
     /* Standard conservative form */
-    calcDivF_spts();
+    calcDivF_spts(step);
   }
 
   /* Extrapolate total flux to flux points & dot with normal */
   //extrapolateNormalFlux();
 
-  correctDivFlux();
+  correctDivFlux(step);
 }
 
-void solver::timeStep(void)
+void solver::timeStepA(int step)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    eles[i].timeStep();
+    eles[i].timeStepA(step,RKa[step]);
+  }
+}
+
+void solver::timeStepB(int step)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].timeStepB(step,RKb[step]);
+  }
+}
+
+void solver::copyUspts_U0(void)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].copyUspts_U0();
+  }
+}
+
+void solver::copyU0_Uspts(void)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].copyU0_Uspts();
   }
 }
 
@@ -139,7 +204,7 @@ void solver::calcViscousFlux_bounds()
 
 }
 
-void solver::calcGradF_spts()
+void solver::calcGradF_spts(void)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
@@ -147,11 +212,20 @@ void solver::calcGradF_spts()
   }
 }
 
-void solver::calcDivF_spts()
+void solver::transformGradF_spts(void)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    opers[eles[i].eType][eles[i].order].applyDivFSpts(eles[i].F_spts,eles[i].divF_spts);
+    eles[i].transformGradF_spts();
+    //opers[eles[i].eType][eles[i].order].applyTransformGradFSpts(eles[i].dF_spts,eles[i].JGinv_spts,eles[i].gridVel_spts);
+  }
+}
+
+void solver::calcDivF_spts(int step)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    opers[eles[i].eType][eles[i].order].applyDivFSpts(eles[i].F_spts,eles[i].divF_spts[step]);
   }
 }
 
@@ -163,11 +237,11 @@ void solver::extrapolateNormalFlux(void)
   }
 }
 
-void solver::correctDivFlux()
+void solver::correctDivFlux(int step)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    opers[eles[i].eType][eles[i].order].applyCorrectDivF(eles[i].dFn_fpts,eles[i].divF_spts);
+    opers[eles[i].eType][eles[i].order].applyCorrectDivF(eles[i].dFn_fpts,eles[i].divF_spts[step]);
   }
 
 }

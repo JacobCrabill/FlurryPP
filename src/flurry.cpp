@@ -62,9 +62,7 @@ int main(int argc, char *argv[]) {
   /* --- Calculation Loop --- */
   for (params.iter=params.initIter+1; params.iter<=params.iterMax; params.iter++) {
 
-    Solver.calcResidual();
-
-    Solver.timeStep();
+    Solver.update();
 
     if ((params.iter)%params.monitor_res_freq == 0 || params.iter==1) writeResidual(&Solver,&params);
     if ((params.iter)%params.plot_freq == 0) writeData(&Solver,&params);

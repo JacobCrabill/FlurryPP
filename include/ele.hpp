@@ -60,13 +60,31 @@ public:
 
   void calcPosFpts(void);
 
+  void setPpts(void);
+
+  void setDShape_spts(void);
+
+  void setDShape_fpts(void);
+
+  void setTransformedNormals_fpts(void);
+
   void setInitialCondition(void);
 
   void calcInviscidFlux_spts(void);
 
   void calcViscousFlux_spts(void);
 
-  void timeStep(void);
+  void transformGradF_spts(void);
+
+  /*! Advance intermediate stages of Runge-Kutta time integration */
+  void timeStepA(int step, double rkVal);
+
+  /*! Perform final advancement of Runge-Kutta time integration */
+  void timeStepB(int step, double rkVal);
+
+  /*! Copy U0_spts into U_spts for final time advancement */
+  void copyU0_Uspts(void);
+  void copyUspts_U0(void);
 
   /* --- Display, Output & Diagnostic Functions --- */
 
@@ -77,7 +95,7 @@ public:
   void getPrimitivesPlot(matrix<double> &V);
 
   /*! Get the locations of the plotting points */
-  void getPpts(vector<point> &ppts);
+  vector<point> getPpts(void);
 
   /*! Compute the solution residual over the element */
   vector<double> getResidual(int normType);
@@ -115,16 +133,17 @@ private:
   matrix<double> U_spts;           //! Solution at solution points
   matrix<double> U_fpts;           //! Solution at flux points
   matrix<double> U_mpts;           //! Solution at mesh (corner) points
+  matrix<double> U0;               //! Solution at solution points, beginning of each time step
   vector<matrix<double> > F_spts;  //! Flux at solution points
   vector<matrix<double> > F_fpts;  //! Flux at flux points
   matrix<double> Fn_fpts;          //! Interface flux at flux points
-  matrix<double> dFn_fpts;         //! Interface - discontinuous flux at flux points
+  matrix<double> dFn_fpts;         //! Interface minus discontinuous flux at flux points
 
   // Gradients
   vector<matrix<double> > dU_spts;  //! Gradient of solution at solution points
   vector<matrix<double> > dU_fpts;  //! Gradient of solution at flux points
   vector<vector<matrix<double>>> dF_spts;  //! Gradient of flux at solution points
-  matrix<double> divF_spts;         //! Divergence of flux at solution points
+  vector<matrix<double>> divF_spts;         //! Divergence of flux at solution points
 
   // Transform Variables
   vector<double> detJac_spts;  //! Determinant of transformation Jacobian at each solution point
@@ -133,9 +152,14 @@ private:
   vector<matrix<double> > Jac_fpts;  //! Transformation Jacobian [matrix] at each flux point
   vector<matrix<double> > JGinv_spts;  //! Inverse of transformation Jacobian [matrix] at each solution point
   
+  vector<matrix<double>> dShape_spts;  //! Derivative of shape basis at solution points
+  vector<matrix<double>> dShape_fpts;  //! Derivative of shape basis at flux points
+  matrix<double> gridVel_spts;         //! Mesh velocity at solution points
+
   // Geometry Variables
   vector<point> pos_spts;     //! Position of solution points in physical space
   vector<point> pos_fpts;     //! Position of flux points in physical space
+  vector<point> pos_ppts;     //! Position of plotting points [spt+fpts+nodes]
   matrix<double> norm_fpts;   //! Unit normal in physical space
   matrix<double> tNorm_fpts;  //! Unit normal in reference space
   vector<double> dA_fpts;     //! Local equivalent face-area at flux point

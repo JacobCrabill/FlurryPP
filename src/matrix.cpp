@@ -48,15 +48,6 @@ matrix<T> matrix<T>::operator=(const matrix<T> &inMatrix)
 }
 
 template<typename T>
-matrix<T> matrix<T>::operator=(const subMatrix<T> &inSubMatrix)
-{
-  data = inSubMatrix.data;
-  dim0 = inSubMatrix.dim0;
-  dim1 = inSubMatrix.dim1;
-  return *this;
-}
-
-template<typename T>
 void matrix<T>::setup(uint inDim0, uint inDim1)
 {
   dim0 = inDim0;
@@ -95,14 +86,6 @@ T& matrix<T>::operator()(int i, int j)
   else {
     FatalError("Attempted out-of-bounds access in matrix.");
   }
-}
-
-template<typename T>
-subMatrix<T> matrix<T>::operator[](vector<int> &iRows)
-{
-  subMatrix<T> subMat(this,iRows);
-  for (auto& i:iRows) subMat.insertRow(&data[i*this->dim1],-1,this->dim1);
-  return subMat;
 }
 
 template<typename T>
@@ -315,70 +298,6 @@ vector<T> matrix<T>::getData(void)
 {
   return data;
 }
-
-
-/* --------------------------- SubMatrix Functions -------------------------- */
-
-template<typename T>
-subMatrix<T>::subMatrix()
-{
-
-}
-
-template<typename T>
-subMatrix<T>::subMatrix(matrix<T> *inMat, vector<int> iRows)
-{
-  this->data.clear();
-  for (auto& row:iRows) this->insertRow((*inMat)[row],-1,inMat->getDim1());
-
-  this->dim0 = iRows.size();
-  this->dim1 = inMat->dim1;
-  this->mat = inMat;
-
-  rows = iRows;
-  for (uint col=0; col<this->dim1; col++) cols.push_back(col);
-}
-
-template<typename T>
-subMatrix<T>::subMatrix(matrix<T>* inMat, vector<int> &inRows, vector<int> &inCols)
-{
-  this->data = inMat->data;
-  this->dim0 = inMat->dim0;
-  this->dim1 = inMat->dim1;
-  this->mat = inMat;
-
-  rows = inRows;
-  cols = inCols;
-}
-
-template<typename T>
-subMatrix<T> subMatrix<T>::operator=(subMatrix<T>& inSubMatrix)
-{
-  this->data = inSubMatrix.data;
-  this->dim0 = inSubMatrix.dim0;
-  this->dim1 = inSubMatrix.dim1;
-  this->mat = inSubMatrix.mat;
-  return *this;
-}
-
-template<typename T>
-subMatrix<T> subMatrix<T>::operator=(matrix<T>& inMatrix)
-{
-  this->data = inMatrix.getData();
-  this->dim0 = inMatrix.getDim0();
-  this->dim1 = inMatrix.getDim1();
-
-  if (mat) {
-    for (int row=0; row<rows.size(); row++) {
-    for (int col=0; col<cols.size(); col++) {
-        (*mat)[rows[row]][cols[col]] = this->data[row*this->dim1+col];
-      }
-    }
-  }
-
-  return *this;
-}
-
 
 // Fix for compiler to know which template types will be needed later (and therefore must now be compiled):
 template class matrix<int>;

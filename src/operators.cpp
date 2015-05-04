@@ -217,6 +217,33 @@ void oper::setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
   }
 }
 
+//void oper::setupGradCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
+//{
+//  uint nSpts, nFpts, spt, fpt, dim;
+//  vector<double> loc(nDims);
+//  nSpts = loc_spts.size();
+//  nFpts = loc_fpts.size();
+
+//  opp_grad_correction.setup(nSpts,nFpts);
+//  opp_grad_correction.initializeToZero();
+
+//  if (eType == TRI) {
+//    // Not yet implemented
+//  }
+//  else if (eType == QUAD) {
+//    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+//    for(spt=0; spt<nSpts; spt++) {
+//      for(dim=0; dim<nDims; dim++){
+//        loc[dim] = loc_spts[spt][dim];
+//      }
+
+//      for(fpt=0; fpt<nFpts; fpt++) {
+//        opp_grad_correction[dim][spt][fpt] = divVCJH_quad(fpt,loc,loc_spts_1D,params->vcjhSchemeQuad,order);
+//      }
+//    }
+//  }
+//}
+
 
 void oper::applyGradSpts(matrix<double> &U_spts, vector<matrix<double> > &dU_spts)
 {
@@ -281,7 +308,7 @@ double oper::divVCJH_quad(int in_fpt, vector<double>& loc, vector<double>& loc_1
 {
   uint i,j;
   double eta;
-  double div_vcjh_basis;
+  double div_vcjh_basis = 0;
 
   if (vcjh == DG)
     eta = 0.; // HiFiLES: run_input.eta_quad;
@@ -303,3 +330,30 @@ double oper::divVCJH_quad(int in_fpt, vector<double>& loc, vector<double>& loc_1
 
   return div_vcjh_basis;
 }
+
+//double oper::dVCJH_quad(int fpt, int dim, vector<double>& loc, vector<double>& loc_1d_spts, uint vcjh, uint order)
+//{
+//  uint i,j;
+//  double eta;
+//  double div_vcjh_basis;
+
+//  if (vcjh == DG)
+//    eta = 0.; // HiFiLES: run_input.eta_quad;
+//  else
+//    eta = compute_eta(vcjh,order);
+
+//  i = fpt / (order+1);      // Face upon which the flux point lies [0,1,2, or 3]
+//  j = fpt - (order+1)*i;    // Face-local index of flux point [0 to n_fpts_per_face-1]
+
+//  if(i==0)
+//    div_vcjh_basis = -Lagrange(loc_1d_spts,loc[0],j) * dVCJH_1d(loc[1],0,order,eta); // was -'ve
+//  else if(i==1)
+//    div_vcjh_basis =  Lagrange(loc_1d_spts,loc[1],j) * dVCJH_1d(loc[0],1,order,eta);
+//  else if(i==2)
+//    div_vcjh_basis =  Lagrange(loc_1d_spts,loc[0],order-j) * dVCJH_1d(loc[1],1,order,eta);
+//  else if(i==3)
+//    div_vcjh_basis =-Lagrange(loc_1d_spts,loc[1],order-j) * dVCJH_1d(loc[0],0,order,eta); // was -'ve
+
+
+//  return div_vcjh_basis;
+//}

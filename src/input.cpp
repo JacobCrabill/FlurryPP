@@ -1,6 +1,6 @@
 /*!
  * \file input.cpp
- * \brief Class to read & store simulation parameters
+ * \brief Class to read & store simulation parameters from file
  * \author - Jacob Crabill
  *           Aerospace Computing Laboratory (ACL)
  *           Aero/Astro Department. Stanford University
@@ -21,6 +21,11 @@
 fileReader::fileReader()
 {
 
+}
+
+fileReader::fileReader(string fileName)
+{
+  this->fileName = fileName;
 }
 
 fileReader::~fileReader()
@@ -169,6 +174,56 @@ void fileReader::getMap(string optName, map<T,U> &opt) {
   closeFile();
 }
 
+template<typename T>
+void fileReader::getVectorValue(string optName, vector<T> &opt)
+{
+  string str, optKey;
+
+  openFile();
+
+  if (!optFile.is_open()) {
+    optFile.open(fileName.c_str());
+    if (!optFile.is_open())
+      FatalError("Cannont open input file for reading.");
+  }
+
+  // Rewind to the start of the file
+  optFile.seekg(0,optFile.beg);
+
+  // Search for the given option string
+  while (getline(optFile,str)) {
+    // Remove any leading whitespace & see if first word is the input option
+    stringstream ss;
+    ss.str(str);
+    ss >> optKey;
+    if (optKey.compare(optName)==0) {
+      int nVals;
+      if (!(ss >> nVals)) {
+        // This could happen if, for example, trying to assign a string to a double
+        cerr << "WARNING: Unable to read number of entries for vector option " << optName << endl;
+        string errMsg = "Required option not set: " + optName;
+        FatalError(errMsg.c_str());
+      }
+
+      opt.resize(nVals);
+      for (int i=0; i<nVals; i++) {
+        if (!ss >> opt[i]) {
+          cerr << "WARNING: Unable to assign all values to vector option " << optName << endl;
+          string errMsg = "Required option not set: " + optName;
+          FatalError(errMsg.c_str())
+        }
+      }
+
+      closeFile();
+      return;
+    }
+  }
+
+  // Option was not found; throw error & exit
+  string errMsg = "Required option not found: " + optName;
+  FatalError(errMsg.c_str())
+}
+
 input::input()
 {
 
@@ -219,6 +274,8 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("riemann_type",riemann_type,0);
   opts.getScalarValue("test_case",test_case,0);
   opts.getScalarValue("iterMax",iterMax);
+
+  opts.getScalarValue("timeType",timeType,0);
 
   opts.getScalarValue("restart",restart,0);
   if (restart) {

@@ -63,11 +63,18 @@ public:
   //! Apply the initial condition to all elements
   void initializeSolution();
 
+  void update(void);
+
   //! Perform one full step of computation
-  void calcResidual(void);
+  void calcResidual(int step);
 
   //! Advance solution in time
-  void timeStep(void);
+  void timeStepA(int step);
+
+  void timeStepB(int step);
+
+  void copyUspts_U0(void);
+  void copyU0_Uspts(void);
 
   //! Extrapolate the solution to the flux points
   void extrapolateU(void);
@@ -106,14 +113,17 @@ public:
   //! Calculate the gradient of the flux at the solution points
   void calcGradF_spts(void);
 
+  //! Use full space-time chain-rule to transform gradients to parent domain
+  void transformGradF_spts(void);
+
   //! Calculate the divergence of the flux at the solution points
-  void calcDivF_spts(void);
+  void calcDivF_spts(int step);
 
   //! Extrapolate total flux to flux points & dot with normal
   void extrapolateNormalFlux(void);
 
   //! Apply the correction function & add to the divergence of the flux
-  void correctDivFlux(void);
+  void correctDivFlux(int step);
 
   // **All of the following functions are just food for thought at the moment**
 
@@ -149,4 +159,8 @@ private:
 
   //! Lists of cells to apply various adaptation methods to
   vector<int> r_adapt_cells, h_adapt_cells, p_adapt_cells;
+
+  int nRKSteps;
+
+  vector<double> RKa, RKb;
 };

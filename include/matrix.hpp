@@ -51,8 +51,6 @@ public:
   //! Assignment
   matrix<T> operator=(const matrix<T>& inMatrix);
 
-  matrix<T> operator=(const subMatrix<T>& inSubMatrix);
-
   void initializeToZero(void);
 
   void initializeToValue(T val);
@@ -99,8 +97,6 @@ public:
 
   T &operator()(int i, int j);
 
-  subMatrix<T> operator[](vector<int> &iRows);
-
   vector<T> getData();
 
   /* --- Search Operations --- */
@@ -113,26 +109,4 @@ public:
 
 protected:
   vector<T> data;
-};
-
-
-template <typename T>
-class subMatrix: public matrix<T>
-{
-public:
-  subMatrix();
-
-  subMatrix(matrix<T> *inMat, vector<int> iRows);
-
-  subMatrix(matrix<T> *inMat, vector<int> &inRows, vector<int> &inCols);
-
-  // have the matrix<t>::operator[] create a submatrix which, upon destruction,
-  // puts its values back into the original matrix
-  subMatrix<T> operator=(matrix<T>& inMatrix);
-
-  subMatrix<T> operator=(subMatrix<T>& inSubMatrix);
-
-private:
-  matrix<T>* mat; // Pointer to parent matrix
-  vector<int> rows, cols;
 };

@@ -1,6 +1,7 @@
 equation      1    # 0: Advection-Diffusion;  1: Euler/Navier-Stokes
 order         1    # Polynomial order to use
 dt            .000001  # Time step size
+timeType      0    # Time integration scheme.  0: Fwd Euler, 3: ...  4: ...
 
 viscous       0
 motion        0
