@@ -58,6 +58,11 @@ void writeCSV(solver *Solver, input *params)
 
   // Solution data
   for (auto& e:Solver->eles) {
+    if (params->motion != 0) {
+      e.updatePosSpts(0);
+      e.updatePosFpts(0);
+      e.setPpts();
+    }
     for (uint spt=0; spt<e.getNSpts(); spt++) {
       V = e.getPrimitives(spt);
       pt = e.getPosSpt(spt);
@@ -98,6 +103,12 @@ void writeParaview(solver *Solver, input *params)
     if (params->iter==0) Solver->extrapolateU();
 
     Solver->extrapolateUMpts();
+
+    if (params->motion != 0) {
+      e.updatePosSpts(0);
+      e.updatePosFpts(0);
+      e.setPpts();
+    }
 
     // The combination of spts + fpts will be the plot points
     matrix<double> vPpts;

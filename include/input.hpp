@@ -90,6 +90,8 @@ public:
   int nDims;
   double dt;
   int timeType;
+  double rkTime;
+  double time;
   int iterMax;
   int initIter;
   int restartIter;

@@ -124,14 +124,15 @@ void ele::setup(input *inParams, geo *inGeo)
 
   switch (params->timeType) {
     case 0:
-      divF_spts.resize(1);
+      nRKSteps = 1;
       break;
     case 4:
-      divF_spts.resize(4);
+      nRKSteps = 4;
       break;
     default:
       FatalError("Time-advancement time not recognized.");
   }
+  divF_spts.resize(nRKSteps);
   for (auto& dF:divF_spts) dF.setup(nSpts,nFields);
 
 
@@ -171,13 +172,23 @@ void ele::setup(input *inParams, geo *inGeo)
   tNorm_fpts.setup(nFpts,nDims);
   dA_fpts.resize(nFpts);
 
+  gridVel_nodes.setup(nNodes,nDims);
   gridVel_spts.setup(nSpts,nDims);
+  gridVel_nodes.initializeToZero();
   gridVel_spts.initializeToZero();
+
+  if (params->motion != 0) {
+    nodesRK.resize(nRKSteps);
+    for (auto &vec:nodesRK) {
+      vec = nodes;
+    }
+  }
 
   tempF.setup(nDims,nFields);
   tempU.assign(nFields,0);
 
   /* --- Final Step: calculate physical->reference transforms --- */
+  setShape_spts();
   setDShape_spts();
   setDShape_fpts();
   setTransformedNormals_fpts();
@@ -188,10 +199,64 @@ void ele::setup(input *inParams, geo *inGeo)
   setPpts();
 }
 
+void ele::move(int step)
+{
+  if (params->motion == 1) {
+    perturb(step);
+  }
+
+  updateTransforms(step);
+  calcGridVelocity();
+}
+
+void ele::perturb(int step)
+{
+  for (int iv=0; iv<nNodes; iv++) {
+    /// Taken from Kui, AIAA-2010-5031-661
+    nodesRK[step][iv].x = nodes[iv].x + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+    nodesRK[step][iv].y = nodes[iv].y + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+  }
+}
+
+void ele::calcGridVelocity(void)
+{
+  if (params->motion == 1) {
+    for (int iv=0; iv<nNodes; iv++) {
+      gridVel_nodes(iv,0) = 4.*pi/10.*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*cos(2*pi*params->rkTime/10.); // from Kui
+      gridVel_nodes(iv,1) = 4.*pi/10.*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*cos(2*pi*params->rkTime/10.);
+    }
+
+    gridVel_spts.initializeToZero();
+    for (int spt=0; spt<nSpts; spt++) {
+      for (int iv=0; iv<nNodes; iv++) {
+        for (int dim=0; dim<nDims; dim++) {
+          gridVel_spts(spt,dim) += shape_spts(spt,iv)*gridVel_nodes(iv,dim);
+        }
+      }
+    }
+    // replace with: calcGridVelocitySpts();
+  }
+}
+
+void ele::setShape_spts(void)
+{
+  shape_spts.setup(nSpts,nNodes);
+
+  for (int spt=0; spt<nSpts; spt++) {
+    switch(eType) {
+      case TRI:
+        break;
+      case QUAD:
+        shape_quad(loc_spts[spt],shape_spts[spt]);
+        break;
+    }
+  }
+}
+
 void ele::setDShape_spts(void)
 {
   dShape_spts.resize(nSpts);
-  for (auto& dS:dShape_spts) dS.setup(nDims,nDims);
+  for (auto& dS:dShape_spts) dS.setup(nNodes,nDims);
 
   for (int spt=0; spt<nSpts; spt++) {
     switch(eType) {
@@ -278,9 +343,6 @@ void ele::setTransformedNormals_fpts(void)
 
 void ele::calcTransforms(void)
 {
-//  if (Jac_spts.size() != (uint)nSpts) Jac_spts.resize(nSpts);
-//  if (Jac_fpts.size() != (uint)nFpts) Jac_fpts.resize(nFpts);
-
   /* --- Calculate Transformation at Solution Points --- */
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nNodes; i++) {
@@ -308,6 +370,58 @@ void ele::calcTransforms(void)
       for (int dim1=0; dim1<nDims; dim1++) {
         for (int dim2=0; dim2<nDims; dim2++) {
           Jac_fpts[fpt][dim1][dim2] += dShape_fpts[fpt][i][dim2]*nodes[i][dim1];
+        }
+      }
+    }
+
+    if (nDims==2) {
+      detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
+    }
+    if (detJac_fpts[fpt]<0) FatalError("Negative Jacobian at solution points.");
+
+    /* --- Calculate outward unit normal vector at flux point --- */
+    // Transform face normal from reference to physical space [JGinv dot tNorm]
+    norm_fpts[fpt][0] =  Jac_fpts[fpt][1][1]*tNorm_fpts[fpt][0] - Jac_fpts[fpt][1][0]*tNorm_fpts[fpt][1];
+    norm_fpts[fpt][1] = -Jac_fpts[fpt][0][1]*tNorm_fpts[fpt][0] + Jac_fpts[fpt][0][0]*tNorm_fpts[fpt][1];
+
+    // Store magnitude of face normal (equivalent to face area in finite-volume land)
+    dA_fpts[fpt] = sqrt(norm_fpts[fpt][0]*norm_fpts[fpt][0] + norm_fpts[fpt][1]*norm_fpts[fpt][1]);
+
+    // Normalize
+    for (int dim=0; dim<nDims; dim++)
+      norm_fpts[fpt][dim] /= dA_fpts[fpt];
+  }
+}
+
+void ele::updateTransforms(int step)
+{
+  /* --- Calculate Transformation at Solution Points --- */
+  for (int spt=0; spt<nSpts; spt++) {
+    for (int i=0; i<nNodes; i++) {
+      for (int dim1=0; dim1<nDims; dim1++) {
+        for (int dim2=0; dim2<nDims; dim2++) {
+          Jac_spts[spt][dim1][dim2] += dShape_spts[spt][i][dim2]*nodesRK[step][i][dim1];
+        }
+      }
+    }
+
+    if (nDims==2) {
+      // Determinant of transformation matrix
+      detJac_spts[spt] = Jac_spts[spt][0][0]*Jac_spts[spt][1][1]-Jac_spts[spt][1][0]*Jac_spts[spt][0][1];
+      // Inverse of transformation matrix (times its determinant)
+      JGinv_spts[spt][0][0] = Jac_spts[spt][1][1];  JGinv_spts[spt][0][1] =-Jac_spts[spt][0][1];
+      JGinv_spts[spt][1][0] =-Jac_spts[spt][1][0];  JGinv_spts[spt][1][1] = Jac_spts[spt][0][0];
+    }
+    if (detJac_spts[spt]<0) FatalError("Negative Jacobian at solution points.");
+  }
+
+  /* --- Calculate Transformation at Flux Points --- */
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    // Calculate transformation Jacobian matrix - [dx/dr, dx/ds; dy/dr, dy/ds]
+    for (int i=0; i<nNodes; i++) {
+      for (int dim1=0; dim1<nDims; dim1++) {
+        for (int dim2=0; dim2<nDims; dim2++) {
+          Jac_fpts[fpt][dim1][dim2] += dShape_fpts[fpt][i][dim2]*nodesRK[step][i][dim1];
         }
       }
     }
@@ -360,6 +474,37 @@ void ele::calcPosFpts(void)
     }
   }
 }
+
+void ele::updatePosSpts(int step)
+{
+  vector<double> shape;
+
+  for (int spt=0; spt<nSpts; spt++) {
+    getShape(loc_spts[spt], shape);
+    pos_spts[spt].zero();
+    for (int iv=0; iv<nNodes; iv++) {
+      for (int dim=0; dim<nDims; dim++) {
+        pos_spts[spt][dim] += shape[iv]*nodesRK[step][iv][dim];
+      }
+    }
+  }
+}
+
+void ele::updatePosFpts(int step)
+{
+  vector<double> shape;
+
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    getShape(loc_fpts[fpt], shape);
+    pos_fpts[fpt].zero();
+    for (int iv=0; iv<nNodes; iv++) {
+      for (int dim=0; dim<nDims; dim++) {
+        pos_fpts[fpt][dim] += shape[iv]*nodesRK[step][iv][dim];
+      }
+    }
+  }
+}
+
 
 void ele::setInitialCondition()
 {
@@ -576,7 +721,7 @@ void ele::getPrimitivesPlot(matrix<double> &V)
 
   if (params->equation == NAVIER_STOKES) {
     // Overwriting V, so be careful of order!
-    for (int i=0; i<V.getDim0(); i++) {
+    for (uint i=0; i<V.getDim0(); i++) {
       V[i][3] = (params->gamma-1)*(V[i][3] - (0.5*(V[i][1]*V[i][1] + V[i][2]*V[i][2])/V[i][0]));
       V[i][1] = V[i][1]/V[i][0];
       V[i][2] = V[i][2]/V[i][0];
@@ -595,10 +740,18 @@ void ele::setPpts(void)
   pos_ppts.resize(nPts1D*nPts1D);
 
   // Get mesh (corner) points
-  pos_ppts[0*nPts1D+0]               = nodes[0];
-  pos_ppts[0*nPts1D+order+2]         = nodes[1];
-  pos_ppts[(order+2)*nPts1D+0]       = nodes[3];
-  pos_ppts[(order+2)*nPts1D+order+2] = nodes[2];
+  if (params->motion != 0) {
+    pos_ppts[0*nPts1D+0]               = nodesRK[0][0];
+    pos_ppts[0*nPts1D+order+2]         = nodesRK[0][1];
+    pos_ppts[(order+2)*nPts1D+0]       = nodesRK[0][3];
+    pos_ppts[(order+2)*nPts1D+order+2] = nodesRK[0][2];
+  }
+  else {
+    pos_ppts[0*nPts1D+0]               = nodes[0];
+    pos_ppts[0*nPts1D+order+2]         = nodes[1];
+    pos_ppts[(order+2)*nPts1D+0]       = nodes[3];
+    pos_ppts[(order+2)*nPts1D+order+2] = nodes[2];
+  }
 
   // Get flux points
   for (int i=0; i<order+1; i++) {

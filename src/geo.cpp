@@ -88,7 +88,8 @@ void geo::processConnectivity()
     if (iE[i]!=-1) {
       vector<int> ie = findEq(iE,iE[i]);
       if (ie.size()>2) {
-        string errMsg = "More than 2 cells for edge " + to_string(i);
+        stringstream ss; ss << i;
+        string errMsg = "More than 2 cells for edge " + ss.str();
         FatalError(errMsg.c_str());
       }
       else if (ie.size()==2) {
@@ -300,7 +301,7 @@ void geo::readGmsh(string fileName)
     std::transform(bcStr.begin(), bcStr.end(), bcStr.begin(), ::tolower);
 
     // First, map mesh boundary to boundary condition in input file
-    if (params->meshBounds.find(bcStr)==params->meshBounds.end()) {
+    if (!params->meshBounds.count(bcStr)) {
       string errS = "Unrecognized mesh boundary: \"" + bcStr + "\"\n";
       errS += "Boundary names in input file must match those in mesh file.";
       FatalError(errS.c_str());
@@ -309,7 +310,7 @@ void geo::readGmsh(string fileName)
     bcStr = params->meshBounds[bcStr];
 
     // Next, check that the requested boundary condition exists
-    if (bcNum.find(bcStr)==bcNum.end()) {
+    if (!bcNum.count(bcStr)) {
       string errS = "Unrecognized boundary condition: \"" + bcStr + "\"";
       FatalError(errS.c_str());
     }
@@ -483,9 +484,9 @@ void geo::readGmsh(string fileName)
 
   // Copy temp boundPoints data into bndPts matrix
   bndPts.setup(nBounds,maxNBndPts);
-  set<int>::iterator it;
   for (int i=0; i<nBounds; i++) {
     int j = 0;
+    set<int>::iterator it;
     for (it=boundPoints[i].begin(); it!=boundPoints[i].end(); it++) {
       bndPts(i,j) = (*it);
       j++;

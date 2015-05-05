@@ -103,7 +103,7 @@ double ddLagrange(vector<double> &x_lag, double y, uint mode)
 
 double Legendre(double in_r, int in_mode)
 {
-  double leg;
+  double leg = 0.;
 
   if(in_mode==0) {
     leg = 1.0;
@@ -118,7 +118,7 @@ double Legendre(double in_r, int in_mode)
 
 double dLegendre(double in_r, int in_mode)
 {
-  double dLeg;
+  double dLeg = 0.;
 
   if (in_mode == 0) {
     dLeg = 0;
@@ -142,6 +142,14 @@ void shape_quad(point &in_rs, vector<double> &out_shape)
 {
   out_shape.resize(4); // nNodes
 
+  out_shape[0] = 0.25*(1-in_rs.x)*(1-in_rs.y);
+  out_shape[1] = 0.25*(1+in_rs.x)*(1-in_rs.y);
+  out_shape[2] = 0.25*(1+in_rs.x)*(1+in_rs.y);
+  out_shape[3] = 0.25*(1-in_rs.x)*(1+in_rs.y);
+}
+
+void shape_quad(point &in_rs, double* out_shape)
+{
   out_shape[0] = 0.25*(1-in_rs.x)*(1-in_rs.y);
   out_shape[1] = 0.25*(1+in_rs.x)*(1-in_rs.y);
   out_shape[2] = 0.25*(1+in_rs.x)*(1+in_rs.y);
@@ -190,7 +198,7 @@ void dshape_tri(point &in_rs, matrix<double> &out_dshape)
 // helper method to evaluate a normalized jacobi polynomial
 double eval_jacobi(double in_r, int in_alpha, int in_beta, int in_mode)
 {
-  double jacobi;
+  double jacobi = 0.;
 
   if(in_mode==0) {
     double dtemp_0, dtemp_1, dtemp_2;
@@ -243,7 +251,7 @@ double eval_jacobi(double in_r, int in_alpha, int in_beta, int in_mode)
 
 double eval_grad_jacobi(double in_r, int in_alpha, int in_beta, int in_mode)
 {
-  double grad_jacobi;
+  double grad_jacobi = 0.;
 
   if (in_mode==0){
     grad_jacobi = 0.;
@@ -256,7 +264,7 @@ double eval_grad_jacobi(double in_r, int in_alpha, int in_beta, int in_mode)
 
 double eval_dubiner_basis_2d(point &in_rs, int in_mode, int in_basis_order)
 {
-  double dubiner_basis_2d;
+  double dubiner_basis_2d = 0.;
 
   int n_dof = ((in_basis_order+1)*(in_basis_order+2))/2;
 
@@ -292,7 +300,7 @@ double eval_dubiner_basis_2d(point &in_rs, int in_mode, int in_basis_order)
 
 double eval_dr_dubiner_basis_2d(point &in_rs, int in_mode, int in_basis_order)
 {
-  double dr_dubiner_basis_2d;
+  double dr_dubiner_basis_2d = 0.;
 
   int n_dof=((in_basis_order+1)*(in_basis_order+2))/2;
 
@@ -337,7 +345,7 @@ double eval_dr_dubiner_basis_2d(point &in_rs, int in_mode, int in_basis_order)
 
 double eval_ds_dubiner_basis_2d(point &in_rs, int in_mode, int in_basis_order)
 {
-  double ds_dubiner_basis_2d;
+  double ds_dubiner_basis_2d = 0.;
 
   int n_dof=((in_basis_order+1)*(in_basis_order+2))/2;
 
@@ -443,7 +451,7 @@ double compute_eta(int vcjh_scheme, int order)
 
 double dVCJH_1d(double in_r, int in_mode, int in_order, double in_eta)
 {
-  double dtemp_0;
+  double dtemp_0 = 0.;
 
   if(in_mode==0) { // left correction function
     if(in_order == 0) {

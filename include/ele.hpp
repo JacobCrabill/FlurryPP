@@ -54,13 +54,25 @@ public:
 
   void setup(input *inParams, geo *inGeo);
 
+  void move(int step);
+
+  void calcGridVelocity(void);
+
   void calcTransforms(void);
+
+  void updateTransforms(int step);
 
   void calcPosSpts(void);
 
   void calcPosFpts(void);
 
+  void updatePosSpts(int step);
+
+  void updatePosFpts(int step);
+
   void setPpts(void);
+
+  void setShape_spts(void);
 
   void setDShape_spts(void);
 
@@ -128,6 +140,8 @@ private:
   int nSpts;   //! # of solution points in element
   int nFpts;   //! # of flux points in element
 
+  int nRKSteps;
+
   /* --- Solution Variables --- */
   // Solution, flux
   matrix<double> U_spts;           //! Solution at solution points
@@ -153,9 +167,12 @@ private:
   vector<matrix<double> > Jac_fpts;  //! Transformation Jacobian [matrix] at each flux point
   vector<matrix<double> > JGinv_spts;  //! Inverse of transformation Jacobian [matrix] at each solution point
   
+  matrix<double> shape_spts;
   vector<matrix<double>> dShape_spts;  //! Derivative of shape basis at solution points
   vector<matrix<double>> dShape_fpts;  //! Derivative of shape basis at flux points
   matrix<double> gridVel_spts;         //! Mesh velocity at solution points
+  matrix<double> gridVel_nodes;        //! Mesh velocity at mesh (corner) points
+  vector<vector<point>> nodesRK; //! Location of mesh nodes in physical space
 
   // Geometry Variables
   vector<point> pos_spts;     //! Position of solution points in physical space
@@ -171,4 +188,6 @@ private:
 
   /*! Get the values of the nodal shape bases at a solution point */
   void getShape(point loc, vector<double> &shape);
+
+  void perturb(int step);
 };
