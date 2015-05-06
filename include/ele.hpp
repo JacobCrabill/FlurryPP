@@ -60,19 +60,21 @@ public:
 
   void calcTransforms(void);
 
-  void updateTransforms(int step);
+  void updateTransforms(void);
 
   void calcPosSpts(void);
 
   void calcPosFpts(void);
 
-  void updatePosSpts(int step);
+  void updatePosSpts(void);
 
-  void updatePosFpts(int step);
+  void updatePosFpts(void);
 
   void setPpts(void);
 
   void setShape_spts(void);
+
+  void setShape_fpts(void);
 
   void setDShape_spts(void);
 
@@ -105,6 +107,9 @@ public:
 
   /*! Get the full matrix of solution values at spts + fpts combined */
   void getPrimitivesPlot(matrix<double> &V);
+
+  /*! Get the full set of grid velocity values at spts + fpts combined */
+  void getGridVelPlot(matrix<double> &GV);
 
   /*! Get the locations of the plotting points */
   vector<point> getPpts(void);
@@ -168,9 +173,11 @@ private:
   vector<matrix<double> > JGinv_spts;  //! Inverse of transformation Jacobian [matrix] at each solution point
   
   matrix<double> shape_spts;
+  matrix<double> shape_fpts;
   vector<matrix<double>> dShape_spts;  //! Derivative of shape basis at solution points
   vector<matrix<double>> dShape_fpts;  //! Derivative of shape basis at flux points
   matrix<double> gridVel_spts;         //! Mesh velocity at solution points
+  matrix<double> gridVel_fpts;         //! Mesh velocity at flux points
   matrix<double> gridVel_nodes;        //! Mesh velocity at mesh (corner) points
   vector<vector<point>> nodesRK; //! Location of mesh nodes in physical space
 
@@ -189,5 +196,5 @@ private:
   /*! Get the values of the nodal shape bases at a solution point */
   void getShape(point loc, vector<double> &shape);
 
-  void perturb(int step);
+  void perturb(void);
 };

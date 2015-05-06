@@ -59,8 +59,8 @@ void writeCSV(solver *Solver, input *params)
   // Solution data
   for (auto& e:Solver->eles) {
     if (params->motion != 0) {
-      e.updatePosSpts(0);
-      e.updatePosFpts(0);
+      e.updatePosSpts();
+      e.updatePosFpts();
       e.setPpts();
     }
     for (uint spt=0; spt<e.getNSpts(); spt++) {
@@ -105,15 +105,16 @@ void writeParaview(solver *Solver, input *params)
     Solver->extrapolateUMpts();
 
     if (params->motion != 0) {
-      e.updatePosSpts(0);
-      e.updatePosFpts(0);
+      e.updatePosSpts();
+      e.updatePosFpts();
       e.setPpts();
     }
 
     // The combination of spts + fpts will be the plot points
-    matrix<double> vPpts;
+    matrix<double> vPpts, gridVelPpts;
     vector<point> ppts;
     e.getPrimitivesPlot(vPpts);
+    e.getGridVelPlot(gridVelPpts);
     ppts = e.getPpts();
 
     int nSubCells = (e.order+2)*(e.order+2);
@@ -159,6 +160,25 @@ void writeParaview(solver *Solver, input *params)
     }
     dataFile << endl;
     dataFile << "				</DataArray>" << endl;
+
+    /* --- Velocity --- */
+    dataFile << "				<DataArray type= \"Float32\" NumberOfComponents=\"3\" Name=\"GridVelocity\" format=\"ascii\">" << endl;
+    for(int k=0; k<nPpts; k++) {
+      // Divide momentum components by density to obtain velocity components
+      dataFile << gridVelPpts(k,0) << " " << gridVelPpts(k,1) << " ";
+
+      // In 2D the z-component of velocity is not stored, but Paraview needs it so write a 0.
+      if(params->nDims==2) {
+        dataFile << 0.0 << " ";
+      }
+      else {
+        dataFile << gridVelPpts(k,2) << " ";
+      }
+    }
+    dataFile << endl;
+    dataFile << "				</DataArray>" << endl;
+
+    /* --- End of Cell's Solution Data --- */
 
     dataFile << "			</PointData>" << endl;
 

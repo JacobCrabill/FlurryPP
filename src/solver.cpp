@@ -90,8 +90,11 @@ void solver::calcResidual(int step)
 
   calcInviscidFlux_bounds();
 
-  if (params->viscous) {
+  if (params->viscous || params->motion) {
     calcGradU_spts();
+  }
+
+  if (params->viscous) {
 
     correctU();
 
@@ -112,12 +115,10 @@ void solver::calcResidual(int step)
     calcDivF_spts(step);
   }
 
-  /* Extrapolate total flux to flux points & dot with normal */
-  //extrapolateNormalFlux();
-
   correctDivFlux(step);
 
-  moveMesh(step);
+  if (params->motion)
+    moveMesh(step);
 }
 
 void solver::timeStepA(int step)

@@ -136,13 +136,11 @@ void ele::setup(input *inParams, geo *inGeo)
   for (auto& dF:divF_spts) dF.setup(nSpts,nFields);
 
 
-  dU_spts.resize(nSpts);
-  dU_fpts.resize(nFpts);
-  for (int spt=0; spt<nSpts; spt++) { // if I fix nDims (change to nSpts) code fails at line 22 of flurry.cpp!
-    dU_spts[spt].setup(nDims,nFields);
-  }
-  for (int fpt=0; fpt<nFpts; fpt++) {
-    dU_fpts[fpt].setup(nDims,nFields);
+  dU_spts.resize(nDims);
+  dU_fpts.resize(nDims);
+  for (int dim=0; dim<nDims; dim++) {
+    dU_spts[dim].setup(nSpts,nFields);
+    dU_fpts[dim].setup(nFpts,nFields);
   }
 
   F_spts.resize(nDims);
@@ -174,8 +172,10 @@ void ele::setup(input *inParams, geo *inGeo)
 
   gridVel_nodes.setup(nNodes,nDims);
   gridVel_spts.setup(nSpts,nDims);
+  gridVel_fpts.setup(nFpts,nDims);
   gridVel_nodes.initializeToZero();
   gridVel_spts.initializeToZero();
+  gridVel_fpts.initializeToZero();
 
   if (params->motion != 0) {
     nodesRK.resize(nRKSteps);
@@ -189,6 +189,7 @@ void ele::setup(input *inParams, geo *inGeo)
 
   /* --- Final Step: calculate physical->reference transforms --- */
   setShape_spts();
+  setShape_fpts();
   setDShape_spts();
   setDShape_fpts();
   setTransformedNormals_fpts();
@@ -201,20 +202,22 @@ void ele::setup(input *inParams, geo *inGeo)
 
 void ele::move(int step)
 {
+  params->rkTime = params->time;  // TODO: get RK time-step working properly here
+
   if (params->motion == 1) {
-    perturb(step);
+    perturb();
   }
 
-  updateTransforms(step);
+  updateTransforms();
   calcGridVelocity();
 }
 
-void ele::perturb(int step)
+void ele::perturb(void)
 {
   for (int iv=0; iv<nNodes; iv++) {
     /// Taken from Kui, AIAA-2010-5031-661
-    nodesRK[step][iv].x = nodes[iv].x + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
-    nodesRK[step][iv].y = nodes[iv].y + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+    nodesRK[0][iv].x = nodes[iv].x + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+    nodesRK[0][iv].y = nodes[iv].y + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
   }
 }
 
@@ -234,6 +237,15 @@ void ele::calcGridVelocity(void)
         }
       }
     }
+
+    gridVel_fpts.initializeToZero();
+    for (int fpt=0; fpt<nFpts; fpt++) {
+      for (int iv=0; iv<nNodes; iv++) {
+        for (int dim=0; dim<nDims; dim++) {
+          gridVel_fpts(fpt,dim) += shape_fpts(fpt,iv)*gridVel_nodes(iv,dim);
+        }
+      }
+    }
     // replace with: calcGridVelocitySpts();
   }
 }
@@ -248,6 +260,21 @@ void ele::setShape_spts(void)
         break;
       case QUAD:
         shape_quad(loc_spts[spt],shape_spts[spt]);
+        break;
+    }
+  }
+}
+
+void ele::setShape_fpts(void)
+{
+  shape_fpts.setup(nFpts,nNodes);
+
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    switch(eType) {
+      case TRI:
+        break;
+      case QUAD:
+        shape_quad(loc_fpts[fpt],shape_fpts[fpt]);
         break;
     }
   }
@@ -393,14 +420,16 @@ void ele::calcTransforms(void)
   }
 }
 
-void ele::updateTransforms(int step)
+void ele::updateTransforms(void)
 {
   /* --- Calculate Transformation at Solution Points --- */
+
   for (int spt=0; spt<nSpts; spt++) {
+    Jac_spts[spt].initializeToZero();
     for (int i=0; i<nNodes; i++) {
       for (int dim1=0; dim1<nDims; dim1++) {
         for (int dim2=0; dim2<nDims; dim2++) {
-          Jac_spts[spt][dim1][dim2] += dShape_spts[spt][i][dim2]*nodesRK[step][i][dim1];
+          Jac_spts[spt][dim1][dim2] += dShape_spts[spt][i][dim2]*nodesRK[0][i][dim1];
         }
       }
     }
@@ -418,10 +447,11 @@ void ele::updateTransforms(int step)
   /* --- Calculate Transformation at Flux Points --- */
   for (int fpt=0; fpt<nFpts; fpt++) {
     // Calculate transformation Jacobian matrix - [dx/dr, dx/ds; dy/dr, dy/ds]
+    Jac_fpts[fpt].initializeToZero();
     for (int i=0; i<nNodes; i++) {
       for (int dim1=0; dim1<nDims; dim1++) {
         for (int dim2=0; dim2<nDims; dim2++) {
-          Jac_fpts[fpt][dim1][dim2] += dShape_fpts[fpt][i][dim2]*nodesRK[step][i][dim1];
+          Jac_fpts[fpt][dim1][dim2] += dShape_fpts[fpt][i][dim2]*nodesRK[0][i][dim1];
         }
       }
     }
@@ -475,7 +505,7 @@ void ele::calcPosFpts(void)
   }
 }
 
-void ele::updatePosSpts(int step)
+void ele::updatePosSpts(void)
 {
   vector<double> shape;
 
@@ -484,13 +514,13 @@ void ele::updatePosSpts(int step)
     pos_spts[spt].zero();
     for (int iv=0; iv<nNodes; iv++) {
       for (int dim=0; dim<nDims; dim++) {
-        pos_spts[spt][dim] += shape[iv]*nodesRK[step][iv][dim];
+        pos_spts[spt][dim] += shape[iv]*nodesRK[0][iv][dim];
       }
     }
   }
 }
 
-void ele::updatePosFpts(int step)
+void ele::updatePosFpts(void)
 {
   vector<double> shape;
 
@@ -499,7 +529,7 @@ void ele::updatePosFpts(int step)
     pos_fpts[fpt].zero();
     for (int iv=0; iv<nNodes; iv++) {
       for (int dim=0; dim<nDims; dim++) {
-        pos_fpts[fpt][dim] += shape[iv]*nodesRK[step][iv][dim];
+        pos_fpts[fpt][dim] += shape[iv]*nodesRK[0][iv][dim];
       }
     }
   }
@@ -610,7 +640,14 @@ void ele::calcViscousFlux_spts()
 {
   for (int spt=0; spt<nSpts; spt++) {
 
-    viscousFlux(U_spts[spt], dU_spts[spt], tempF, params);
+    // TEMP HACK (inefficient, but will work fine)
+    matrix<double> tempDU(nDims,nFields);
+    for (int dim=0; dim<nDims; dim++) {
+      for (int k=0; k<nFields; k++) {
+        tempDU(dim,k) = dU_spts[dim](spt,k);
+      }
+    }
+    viscousFlux(U_spts[spt], tempDU, tempF, params);
 
     /* --- Transform back to reference domain --- */
     for (int k=0; k<nFields; k++) {
@@ -643,8 +680,8 @@ void ele::transformGradF_spts(int step)
     double A = gridVel_spts(spt,1)*Jac_spts[spt](0,1) - gridVel_spts(spt,0)*Jac_spts[spt](1,1);
     double B = gridVel_spts(spt,0)*Jac_spts[spt](1,0) - gridVel_spts(spt,1)*Jac_spts[spt](0,0);
     for (int k=0; k<nFields; k++) {
-      divF_spts[step](spt,k) = dF_spts[0][0](spt,k)*Jac_spts[spt](1,1) + dF_spts[0][1](spt,k)*Jac_spts[spt](0,1) + dU_spts[spt](0,k)*A;
-      divF_spts[step](spt,k)+= dF_spts[1][0](spt,k)*Jac_spts[spt](1,0) + dF_spts[1][1](spt,k)*Jac_spts[spt](0,0) + dU_spts[spt](1,k)*B;
+      divF_spts[step](spt,k) =  dF_spts[0][0](spt,k)*Jac_spts[spt](1,1) - dF_spts[0][1](spt,k)*Jac_spts[spt](0,1) + dU_spts[0](spt,k)*A;
+      divF_spts[step](spt,k)+= -dF_spts[1][0](spt,k)*Jac_spts[spt](1,0) + dF_spts[1][1](spt,k)*Jac_spts[spt](0,0) + dU_spts[1](spt,k)*B;
     }
   }
 }
@@ -735,6 +772,39 @@ void ele::getPrimitivesPlot(matrix<double> &V)
       V[i][3] = (params->gamma-1)*(V[i][3] - (0.5*(V[i][1]*V[i][1] + V[i][2]*V[i][2])/V[i][0]));
       V[i][1] = V[i][1]/V[i][0];
       V[i][2] = V[i][2]/V[i][0];
+    }
+  }
+}
+
+void ele::getGridVelPlot(matrix<double> &GV)
+{
+  GV.setup(nSpts+nFpts+nNodes,nDims);
+
+  // Get solution at corner points
+  for (int dim=0; dim<nDims; dim++) {
+    GV[0][dim]                     = gridVel_nodes[0][dim];
+    GV[order+2][dim]               = gridVel_nodes[1][dim];
+    GV[(order+3)*(order+3)-1][dim] = gridVel_nodes[2][dim];
+    GV[(order+3)*(order+2)][dim]   = gridVel_nodes[3][dim];
+  }
+
+  // Get solution at flux points
+  for (int i=0; i<order+1; i++) {
+    for (int dim=0; dim<nDims; dim++) {
+      GV[i+1][dim]                     = gridVel_fpts[i][dim];               // Bottom
+      GV[(i+1)*(order+3)][dim]         = gridVel_fpts[nFpts-i-1][dim];       // Left
+      GV[(i+2)*(order+3)-1][dim]       = gridVel_fpts[order+1+i][dim];       // Right
+      GV[(order+3)*(order+2)+i+1][dim] = gridVel_fpts[3*(order+1)-i-1][dim]; // Top
+    }
+  }
+
+  // Get solution at solution points
+  for (int i=0; i<order+1; i++) {
+    for (int j=0; j<order+1; j++) {
+      for (int dim=0; dim<nDims; dim++) {
+        int id = (i+1)*(order+3)+j+1;
+        GV[id][dim] = gridVel_spts[j+i*(order+1)][dim];
+      }
     }
   }
 }
