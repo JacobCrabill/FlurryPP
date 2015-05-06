@@ -58,7 +58,7 @@ public:
 
   void applySptsMpts(matrix<double> &U_spts, matrix<double> &U_mpts);
 
-  void applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts);
+  void applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts, vector<double> &dA_fpts);
 
   void applyCorrectDivF(matrix<double> &dFn_fpts, matrix<double> &divF_spts);
 

@@ -247,12 +247,6 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("lambda",lambda,1.);
     nFields = 1;
   } else if (equation==NAVIER_STOKES) {
-    if (ic_type == 0) {
-      opts.getScalarValue("rhoIC",rhoIC,1.);
-      opts.getScalarValue("vxIC",vxIC,.2);
-      opts.getScalarValue("vyIC",vyIC,0.);
-      opts.getScalarValue("pIC",pIC,.7142857143);
-    }
     opts.getScalarValue("gamma",gamma,1.4);
     opts.getScalarValue("RGas",RGas,286.9);
     opts.getScalarValue("rhoBound",rhoBound,1.);
@@ -264,6 +258,12 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("TWall",TWall,300.);
     opts.getScalarValue("beta",beta,2.);
     opts.getScalarValue("slipPenalty",slipPenalty,false);
+    if (ic_type == 0) {
+      opts.getScalarValue("rhoIC",rhoIC,rhoBound);
+      opts.getScalarValue("vxIC",vxIC,uBound);
+      opts.getScalarValue("vyIC",vyIC,vBound);
+      opts.getScalarValue("pIC",pIC,pBound);
+    }
     nFields = 4;
   }
 

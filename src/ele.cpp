@@ -439,12 +439,22 @@ void ele::calcInviscidFlux_spts()
 
     inviscidFlux(U_spts[spt], tempF, params);
 
-    /* --- Transform back to reference domain --- */
-    for (int i=0; i<nDims; i++) {
-      for (int k=0; k<nFields; k++) {
-        F_spts[i][spt][k] = 0.;
-        for (int j=0; j<nDims; j++) {
-          F_spts[i][spt][k] += JGinv_spts[spt][i][j]*tempF[j][k];
+    if (params->motion) {
+      /* --- Don't transform yet; that will be handled later --- */
+      for (int i=0; i<nDims; i++) {
+        for (int k=0; k<nFields; k++) {
+          F_spts[i][spt][k] = tempF[i][k];
+        }
+      }
+    }
+    else {
+      /* --- Transform back to reference domain --- */
+      for (int i=0; i<nDims; i++) {
+        for (int k=0; k<nFields; k++) {
+          F_spts[i][spt][k] = 0.;
+          for (int j=0; j<nDims; j++) {
+            F_spts[i][spt][k] += JGinv_spts[spt][i][j]*tempF[j][k];
+          }
         }
       }
     }
@@ -576,7 +586,7 @@ void ele::getPrimitivesPlot(matrix<double> &V)
 
   if (params->equation == NAVIER_STOKES) {
     // Overwriting V, so be careful of order!
-    for (int i=0; i<V.getDim0(); i++) {
+    for (uint i=0; i<V.getDim0(); i++) {
       V[i][3] = (params->gamma-1)*(V[i][3] - (0.5*(V[i][1]*V[i][1] + V[i][2]*V[i][2])/V[i][0]));
       V[i][1] = V[i][1]/V[i][0];
       V[i][2] = V[i][2]/V[i][0];

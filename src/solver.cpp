@@ -233,7 +233,7 @@ void solver::extrapolateNormalFlux(void)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    opers[eles[i].eType][eles[i].order].applyExtrapolateFn(eles[i].F_spts,eles[i].tNorm_fpts,eles[i].Fn_fpts);
+    opers[eles[i].eType][eles[i].order].applyExtrapolateFn(eles[i].F_spts,eles[i].tNorm_fpts,eles[i].Fn_fpts,eles[i].dA_fpts);
   }
 }
 
