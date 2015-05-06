@@ -240,9 +240,15 @@ void solver::calcDivF_spts(int step)
 
 void solver::extrapolateNormalFlux(void)
 {
+  if (params->motion)
 #pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    opers[eles[i].eType][eles[i].order].applyExtrapolateFn(eles[i].F_spts,eles[i].tNorm_fpts,eles[i].Fn_fpts,eles[i].dA_fpts);
+    for (uint i=0; i<eles.size(); i++) {
+      opers[eles[i].eType][eles[i].order].applyExtrapolateFn(eles[i].F_spts,eles[i].norm_fpts,eles[i].Fn_fpts,eles[i].dA_fpts);
+    }
+  else {
+    for (uint i=0; i<eles.size(); i++) {
+      opers[eles[i].eType][eles[i].order].applyExtrapolateFn(eles[i].F_spts,eles[i].tNorm_fpts,eles[i].Fn_fpts,eles[i].dA_fpts);
+    }
   }
 }
 

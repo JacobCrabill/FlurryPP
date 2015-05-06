@@ -59,8 +59,8 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
   dFnL.resize(nFptsL);
   dFnR.resize(nFptsR);
   Fn.setup(nFptsL,nFields);
-  normL.setup(nFptsL,nDims);
-  normR.setup(nFptsR,nDims);
+  normL.resize(nFptsL);//,nDims);
+  normR.resize(nFptsR);//,nDims);
   dAL.resize(nFptsL);
   dAR.resize(nFptsR);
   detJacL.resize(nFptsL);
@@ -74,12 +74,13 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
     UL[fpt] = (eL->U_fpts[i]);
     disFnL[fpt] = (eL->Fn_fpts[i]);
     dFnL[fpt] = (eL->dFn_fpts[i]);
-    dAL[fpt] = (eL->dA_fpts[i]);
+    dAL[fpt] = &(eL->dA_fpts[i]);
     detJacL[fpt] = (eL->detJac_fpts[i]);
     posFpts[fpt] = eL->pos_fpts[i];
+    normL[fpt] = (eL->norm_fpts[i]);
 
-    for (int dim=0; dim<nDims; dim++)
-      normL[fpt][dim] = (eL->norm_fpts[i][dim]);
+//    for (int dim=0; dim<nDims; dim++)
+//      normL[fpt][dim] = (eL->norm_fpts[i][dim]);
 
     FL[fpt].setup(nDims,nFields);
     for (int dim=0; dim<nDims; dim++)
@@ -95,11 +96,12 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID)
     UR[fpt] = (eR->U_fpts[i]);
     disFnR[fpt] = (eR->Fn_fpts[i]);
     dFnR[fpt] = (eR->dFn_fpts[i]);
-    dAR[fpt] = (eR->dA_fpts[i]);
+    dAR[fpt] = &(eR->dA_fpts[i]);
     detJacR[fpt] = (eR->detJac_fpts[i]);
+    normR[fpt] = (eR->norm_fpts[i]);
 
-    for (int dim=0; dim<nDims; dim++)
-      normR[fpt][dim] = (eR->norm_fpts[i][dim]);  // change norm to matrix<double*> for future
+//    for (int dim=0; dim<nDims; dim++)
+//      normR[fpt][dim] = (eR->norm_fpts[i][dim]);  // change norm to matrix<double*> for future
 
     FR[fpt].setup(nDims,nFields);
     for (int dim=0; dim<nDims; dim++)
@@ -139,8 +141,8 @@ void face::calcInviscidFlux(void)
     // (Each ele needs only the difference, not the actual common value, for the correction)
     // Need dAL/R to transform normal flux back to reference space
     for (int j=0; j<nFields; j++) {
-      dFnL[i][j] =  Fn[i][j]*dAL[i] - disFnL[i][j];
-      dFnR[i][j] = -Fn[i][j]*dAR[i] - disFnR[i][j]; // opposite normal direction
+      dFnL[i][j] =  Fn[i][j]*(*dAL[i]) - disFnL[i][j];
+      dFnR[i][j] = -Fn[i][j]*(*dAR[i]) - disFnR[i][j]; // opposite normal direction
     }
   }
 }

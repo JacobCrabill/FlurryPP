@@ -372,6 +372,7 @@ void ele::calcTransforms(void)
 {
   /* --- Calculate Transformation at Solution Points --- */
   for (int spt=0; spt<nSpts; spt++) {
+    Jac_spts[spt].initializeToZero();
     for (int i=0; i<nNodes; i++) {
       for (int dim1=0; dim1<nDims; dim1++) {
         for (int dim2=0; dim2<nDims; dim2++) {
@@ -393,6 +394,7 @@ void ele::calcTransforms(void)
   /* --- Calculate Transformation at Flux Points --- */
   for (int fpt=0; fpt<nFpts; fpt++) {
     // Calculate transformation Jacobian matrix - [dx/dr, dx/ds; dy/dr, dy/ds]
+    Jac_fpts[fpt].initializeToZero();
     for (int i=0; i<nNodes; i++) {
       for (int dim1=0; dim1<nDims; dim1++) {
         for (int dim2=0; dim2<nDims; dim2++) {
