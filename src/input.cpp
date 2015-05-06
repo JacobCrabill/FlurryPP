@@ -300,6 +300,7 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("mesh_file_name",meshFileName);
     opts.getMap("mesh_bound",meshBounds);
   }
+  opts.getScalarValue("periodicTol",periodicTol,1e-6);
 
   opts.getScalarValue("monitor_res_freq",monitor_res_freq,10);
   opts.getScalarValue("resType",resType,2);

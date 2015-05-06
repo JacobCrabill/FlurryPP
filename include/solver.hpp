@@ -125,6 +125,8 @@ public:
   //! Apply the correction function & add to the divergence of the flux
   void correctDivFlux(int step);
 
+  void moveMesh(int step);
+
   // **All of the following functions are just food for thought at the moment**
 
   /* === Functions for Shock Capturing & Filtering=== */

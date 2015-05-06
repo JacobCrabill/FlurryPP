@@ -26,6 +26,8 @@ void solver::setup(input *params, geo *Geo)
   this->params = params;
   this->Geo = Geo;
 
+  params->time = 0.;
+
   /* Setup the FR elements & faces which will be computed on */
   Geo->setupElesFaces(eles,faces,bounds);
 
@@ -71,6 +73,8 @@ void solver::update(void)
   for (int i=0; i<nRKSteps; i++) {
     timeStepB(i);
   }
+
+  params->time += params->dt;
 }
 
 void solver::calcResidual(int step)
@@ -112,6 +116,8 @@ void solver::calcResidual(int step)
   //extrapolateNormalFlux();
 
   correctDivFlux(step);
+
+  moveMesh(step);
 }
 
 void solver::timeStepA(int step)
@@ -120,6 +126,8 @@ void solver::timeStepA(int step)
   for (uint i=0; i<eles.size(); i++) {
     eles[i].timeStepA(step,RKa[step]);
   }
+
+  params->rkTime = params->time + RKa[step]*params->dt;
 }
 
 void solver::timeStepB(int step)
@@ -262,6 +270,14 @@ void solver::correctU()
 void solver::extrapolateGradU()
 {
 
+}
+
+void solver::moveMesh(int step)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].move(step);
+  }
 }
 
 void solver::setupOperators()

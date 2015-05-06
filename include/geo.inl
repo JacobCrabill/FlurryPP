@@ -515,7 +515,8 @@ vector<double> geo::getPts1D(string ptsType, int order)
       outPts[10]=  0.978228658146057;
     }
     else {
-      string errMsg = "Gauss-Ledgendre point locations for order " + to_string(order) + " not implemented.";
+      stringstream ss; ss << order;
+      string errMsg = "Gauss-Ledgendre point locations for order " + ss.str() + " not implemented.";
       FatalError(errMsg.c_str());
     }
   }
@@ -609,7 +610,8 @@ vector<double> geo::getPts1D(string ptsType, int order)
       outPts[10] =  1.000000000000000;
     }
     else {
-      string errMsg = "Gauss-Lobatto point locations for order " + to_string(order) + " not implemented.";
+      stringstream ss;  ss << order;
+      string errMsg = "Gauss-Lobatto point locations for order " + ss.str() + " not implemented.";
       FatalError(errMsg.c_str());
     }
   }
