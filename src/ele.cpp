@@ -202,8 +202,6 @@ void ele::setup(input *inParams, geo *inGeo)
 
 void ele::move(int step)
 {
-  params->rkTime = params->time;  // TODO: get RK time-step working properly here
-
   if (params->motion == 1) {
     perturb();
   }
@@ -664,26 +662,15 @@ void ele::calcViscousFlux_spts()
 
 void ele::transformGradF_spts(int step)
 {
-//  ! ---- LIANG-MIYAJI Mod ----
-//  ! A = ydot*xs - xdot*ys
-//  ! B = xdot*yr - ydot*xr
-//    A = solver%gridVel_spts(spt1,1,e)*Geo%Jaco(e,spt1,0,1) - solver%gridVel_spts(spt1,0,e)*Geo%Jaco(e,spt1,1,1)
-//    B = solver%gridVel_spts(spt1,0,e)*Geo%Jaco(e,spt1,1,0) - solver%gridVel_spts(spt1,1,e)*Geo%Jaco(e,spt1,0,0)
-//  ! Xi Derivative
-//  spt2i = ele%sptId(ind,j)
-//  tdF_spts(spt,:,0,e) = dF(spt,:,0,0,e)*Jaco(e,spt,1,1) - dF(spt,:,0,1,e)*Jaco(e,spt,0,1) + dU(spt,0,:,e)*A
-
-//  ! Eta Derivative
-//  spt2j = ele%sptId(i,ind)
-//  tdF_spts(spt,:,1,e) = dF(spt,:,1,0,e)*Jaco(e,spt,1,0) + dF(spt,:,1,1,e)*Jaco(e,spt,0,0) + dU(spt,1,:,e)*B
-
   // The first 'nDim' of dF is the derivative, and the 2nd is the flux direction
+
   for (int spt=0; spt<nSpts; spt++) {
     double A = gridVel_spts(spt,1)*Jac_spts[spt](0,1) - gridVel_spts(spt,0)*Jac_spts[spt](1,1);
     double B = gridVel_spts(spt,0)*Jac_spts[spt](1,0) - gridVel_spts(spt,1)*Jac_spts[spt](0,0);
     for (int k=0; k<nFields; k++) {
-      divF_spts[step](spt,k) =  dF_spts[0][0](spt,k)*Jac_spts[spt](1,1) - dF_spts[0][1](spt,k)*Jac_spts[spt](0,1) + dU_spts[0](spt,k)*A;
-      divF_spts[step](spt,k)+= -dF_spts[1][0](spt,k)*Jac_spts[spt](1,0) + dF_spts[1][1](spt,k)*Jac_spts[spt](0,0) + dU_spts[1](spt,k)*B;
+      dF_spts[0][0](spt,k) =  dF_spts[0][0](spt,k)*Jac_spts[spt](1,1) - dF_spts[0][1](spt,k)*Jac_spts[spt](0,1) + dU_spts[0](spt,k)*A;
+      dF_spts[1][1](spt,k) = -dF_spts[1][0](spt,k)*Jac_spts[spt](1,0) + dF_spts[1][1](spt,k)*Jac_spts[spt](0,0) + dU_spts[1](spt,k)*B;
+      divF_spts[step](spt,k) = dF_spts[0][0](spt,k)+dF_spts[1][1](spt,k);
     }
   }
 }
@@ -692,7 +679,6 @@ void ele::timeStepA(int step, double rkVal)
 {
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
-      //if (divF_spts[spt][i] < 1e-8) divF_spts[spt][i] = 0;
       U_spts[spt][i] = U0[spt][i] - rkVal * params->dt*divF_spts[step][spt][i]/detJac_spts[spt];
     }
   }
@@ -702,7 +688,6 @@ void ele::timeStepB(int step, double rkVal)
 {
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
-      //if (divF_spts[spt][i] < 1e-8) divF_spts[spt][i] = 0;
       U_spts[spt][i] -= rkVal * params->dt*divF_spts[step][spt][i]/detJac_spts[spt];
     }
   }

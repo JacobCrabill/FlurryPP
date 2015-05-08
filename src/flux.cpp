@@ -123,8 +123,8 @@ void rusanovFlux(double* UL, double* UR, matrix<double> &FL, matrix<double> &FR,
   double rhoR, uR, vR, wR, pR, vnR=0.0;
   double csqL, csqR, eigL, eigR, eig;
 
-  vector<double> FnL(params->nFields,0.0);
-  vector<double> FnR(params->nFields,0.0);
+  double FnL[5] = {0,0,0,0,0};
+  double FnR[5] = {0,0,0,0,0};
 
   // Get primitive variables
   rhoL = UL[0];     rhoR = UR[0];

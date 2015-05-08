@@ -58,20 +58,38 @@ void solver::update(void)
     copyUspts_U0();
 
   /* Intermediate residuals for Runge-Kutta time integration */
-  for (int i=0; i<nRKSteps-1; i++) {
-    calcResidual(i);
 
-    timeStepA(i);
+  for (int step=0; step<nRKSteps-1; step++) {
+
+    if (step == 1)
+      params->rkTime = params->time;
+    else
+      params->rkTime = params->time + RKa[step-1]*params->dt;
+
+    moveMesh(step);
+
+    calcResidual(step);
+
+    timeStepA(step);
+
   }
+
+  /* Final Runge-Kutta time advancement step */
+
+  if (nRKSteps == 1)
+    params->rkTime = params->time;
+  else
+    params->rkTime = params->time + params->dt;
+
+  moveMesh(nRKSteps-1);
 
   calcResidual(nRKSteps-1);
 
   if (nRKSteps>1)
     copyU0_Uspts();
 
-  /* Final Runge-Kutta time advancement step */
-  for (int i=0; i<nRKSteps; i++) {
-    timeStepB(i);
+  for (int step=0; step<nRKSteps; step++) {
+    timeStepB(step);
   }
 
   params->time += params->dt;
@@ -85,13 +103,14 @@ void solver::calcResidual(int step)
 
   extrapolateNormalFlux();
 
-  /* Inviscid Common Flux */
   calcInviscidFlux_faces();
 
   calcInviscidFlux_bounds();
 
   if (params->viscous || params->motion) {
+
     calcGradU_spts();
+
   }
 
   if (params->viscous) {
@@ -100,25 +119,15 @@ void solver::calcResidual(int step)
 
     extrapolateGradU();
 
-    /* Viscous Common Flux */
     calcViscousFlux_faces();
 
     calcViscousFlux_bounds();
+
   }
 
-  if (params->motion) {
-    /* Use non-conservatiion-form chain-rule formulation (Liang-Miyaji) */
-    calcGradF_spts();
-    transformGradF_spts(step);
-  }else{
-    /* Standard conservative form */
-    calcDivF_spts(step);
-  }
+  calcFluxDivergence(step);
 
   correctDivFlux(step);
-
-  if (params->motion)
-    moveMesh(step);
 }
 
 void solver::timeStepA(int step)
@@ -230,6 +239,25 @@ void solver::transformGradF_spts(int step)
   }
 }
 
+void solver::calcFluxDivergence(int step)
+{
+  if (params->motion) {
+
+    /* Use non-conservation-form chain-rule transformation
+     * (See AIAA paper 2013-0998 by Liang, Miyaji and Zhang) */
+
+    calcGradF_spts();
+
+    transformGradF_spts(step);
+
+  }else{
+
+    /* Standard conservative form */
+    calcDivF_spts(step);
+
+  }
+}
+
 void solver::calcDivF_spts(int step)
 {
 #pragma omp parallel for
@@ -281,6 +309,8 @@ void solver::extrapolateGradU()
 
 void solver::moveMesh(int step)
 {
+  if (!params->motion) return;
+
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].move(step);

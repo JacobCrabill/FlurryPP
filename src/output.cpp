@@ -93,6 +93,8 @@ void writeParaview(solver *Solver, input *params)
 
   dataFile.open(fileNameC);
 
+  cout << "Writing ParaView file " << string(fileNameC) << "...  " << flush;
+
   // File header
   dataFile << "<?xml version=\"1.0\" ?>" << endl;
   dataFile << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" compressor=\"vtkZLibDataCompressor\">" << endl;
@@ -136,47 +138,51 @@ void writeParaview(solver *Solver, input *params)
     dataFile << endl;
     dataFile << "				</DataArray>" << endl;
 
-    /* --- Pressure --- */
-    dataFile << "				<DataArray type= \"Float32\" Name=\"Pressure\" format=\"ascii\">" << endl;
-    for(int k=0; k<nPpts; k++) {
-      dataFile << vPpts(k,3) << " ";
+    if (params->equation == NAVIER_STOKES) {
+      /* --- Pressure --- */
+      dataFile << "				<DataArray type= \"Float32\" Name=\"Pressure\" format=\"ascii\">" << endl;
+      for(int k=0; k<nPpts; k++) {
+        dataFile << vPpts(k,3) << " ";
+      }
+      dataFile << endl;
+      dataFile << "				</DataArray>" << endl;
+
+      /* --- Velocity --- */
+      dataFile << "				<DataArray type= \"Float32\" NumberOfComponents=\"3\" Name=\"Velocity\" format=\"ascii\">" << endl;
+      for(int k=0; k<nPpts; k++) {
+        // Divide momentum components by density to obtain velocity components
+        dataFile << vPpts(k,1) << " " << vPpts(k,2) << " ";
+
+        // In 2D the z-component of velocity is not stored, but Paraview needs it so write a 0.
+        if(params->nDims==2) {
+          dataFile << 0.0 << " ";
+        }
+        else {
+          dataFile << vPpts[k][3] << " ";
+        }
+      }
+      dataFile << endl;
+      dataFile << "				</DataArray>" << endl;
+
+      if (params->motion) {
+        /* --- Grid Velocity --- */
+        dataFile << "				<DataArray type= \"Float32\" NumberOfComponents=\"3\" Name=\"GridVelocity\" format=\"ascii\">" << endl;
+        for(int k=0; k<nPpts; k++) {
+          // Divide momentum components by density to obtain velocity components
+          dataFile << gridVelPpts(k,0) << " " << gridVelPpts(k,1) << " ";
+
+          // In 2D the z-component of velocity is not stored, but Paraview needs it so write a 0.
+          if(params->nDims==2) {
+            dataFile << 0.0 << " ";
+          }
+          else {
+            dataFile << gridVelPpts(k,2) << " ";
+          }
+        }
+        dataFile << endl;
+        dataFile << "				</DataArray>" << endl;
+      }
     }
-    dataFile << endl;
-    dataFile << "				</DataArray>" << endl;
-
-    /* --- Velocity --- */
-    dataFile << "				<DataArray type= \"Float32\" NumberOfComponents=\"3\" Name=\"Velocity\" format=\"ascii\">" << endl;
-    for(int k=0; k<nPpts; k++) {
-      // Divide momentum components by density to obtain velocity components
-      dataFile << vPpts(k,1) << " " << vPpts(k,2) << " ";
-
-      // In 2D the z-component of velocity is not stored, but Paraview needs it so write a 0.
-      if(params->nDims==2) {
-        dataFile << 0.0 << " ";
-      }
-      else {
-        dataFile << vPpts[k][3] << " ";
-      }
-    }
-    dataFile << endl;
-    dataFile << "				</DataArray>" << endl;
-
-    /* --- Velocity --- */
-    dataFile << "				<DataArray type= \"Float32\" NumberOfComponents=\"3\" Name=\"GridVelocity\" format=\"ascii\">" << endl;
-    for(int k=0; k<nPpts; k++) {
-      // Divide momentum components by density to obtain velocity components
-      dataFile << gridVelPpts(k,0) << " " << gridVelPpts(k,1) << " ";
-
-      // In 2D the z-component of velocity is not stored, but Paraview needs it so write a 0.
-      if(params->nDims==2) {
-        dataFile << 0.0 << " ";
-      }
-      else {
-        dataFile << gridVelPpts(k,2) << " ";
-      }
-    }
-    dataFile << endl;
-    dataFile << "				</DataArray>" << endl;
 
     /* --- End of Cell's Solution Data --- */
 
@@ -248,6 +254,8 @@ void writeParaview(solver *Solver, input *params)
   dataFile << "</VTKFile>" << endl;
 
   dataFile.close();
+
+  cout << "done." <<  endl;
 }
 
 

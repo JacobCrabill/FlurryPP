@@ -110,6 +110,9 @@ public:
   //! Calculate the viscous interface flux at all boundary faces
   void calcViscousFlux_bounds(void);
 
+  //! Wrapper to calc divergence of flux (using one of two possible methods)
+  void calcFluxDivergence(int step);
+
   //! Calculate the gradient of the flux at the solution points
   void calcGradF_spts(void);
 
