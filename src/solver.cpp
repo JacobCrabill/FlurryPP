@@ -136,8 +136,6 @@ void solver::timeStepA(int step)
   for (uint i=0; i<eles.size(); i++) {
     eles[i].timeStepA(step,RKa[step]);
   }
-
-  params->rkTime = params->time + RKa[step]*params->dt;
 }
 
 void solver::timeStepB(int step)
@@ -268,14 +266,18 @@ void solver::calcDivF_spts(int step)
 
 void solver::extrapolateNormalFlux(void)
 {
-  if (params->motion)
+  if (params->motion) {
+    /* Extrapolate physical normal flux */
 #pragma omp parallel for
     for (uint i=0; i<eles.size(); i++) {
       opers[eles[i].eType][eles[i].order].applyExtrapolateFn(eles[i].F_spts,eles[i].norm_fpts,eles[i].Fn_fpts,eles[i].dA_fpts);
     }
+  }
   else {
+    /* Extrapolate transformed normal flux */
+#pragma omp parallel for
     for (uint i=0; i<eles.size(); i++) {
-      opers[eles[i].eType][eles[i].order].applyExtrapolateFn(eles[i].F_spts,eles[i].tNorm_fpts,eles[i].Fn_fpts,eles[i].dA_fpts);
+      opers[eles[i].eType][eles[i].order].applyExtrapolateFn(eles[i].F_spts,eles[i].tNorm_fpts,eles[i].Fn_fpts);
     }
   }
 }

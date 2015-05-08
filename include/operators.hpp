@@ -45,9 +45,6 @@ public:
    *  based upon the normal flux correction at the flux points */
   void setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts);
 
-  // Create a map<int,double*> (?) to get access to the correct operator
-  // i.e. somthing like: div_flux_spts_tri = oper.get_oper_div[TRI]
-
   void applyGradSpts(matrix<double> &U_spts, vector<matrix<double> > &dU_spts);
 
   void applyGradFSpts(vector<matrix<double>> &F_spts, vector<vector<matrix<double>>> &dF_spts);
@@ -58,6 +55,12 @@ public:
 
   void applySptsMpts(matrix<double> &U_spts, matrix<double> &U_mpts);
 
+  /*! For the standard FR method: extrapolate the transformed flux to the flux points
+   *  and dot with the transformed outward unit normal */
+  void applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &tnorm_fpts, matrix<double> &Fn_fpts);
+
+  /*! For the modified space-time transformation method: Extrapolate the physical flux
+   *  to the flux points and dott with the physical outward unit normal */
   void applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts, vector<double> &dA_fpts);
 
   void applyCorrectDivF(matrix<double> &dFn_fpts, matrix<double> &divF_spts);
