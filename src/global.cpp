@@ -58,3 +58,28 @@ bool checkNaN(double* vec, int size)
 
   return false;
 }
+
+
+void simTimer::startTimer(void)
+{
+  initTime = std::chrono::high_resolution_clock::now();
+}
+
+void simTimer::stopTimer(void)
+{
+  finalTime = std::chrono::high_resolution_clock::now();
+}
+
+void simTimer::showTime(void)
+{
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( finalTime - initTime ).count();
+  double execTime = (double)duration/1000.;
+  if (execTime > 60) {
+    int minutes = floor(execTime/60);
+    double seconds = execTime-(minutes*60);
+    cout << "Execution time = " << minutes << "min " << setprecision(3) << seconds << "s" << endl;
+  }
+  else {
+    cout << setprecision(3) << "Execution time = " << execTime << "s" << endl;
+  }
+}

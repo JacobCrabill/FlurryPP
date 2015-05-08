@@ -16,6 +16,7 @@
 
 #include <limits.h>
 #include <cmath>
+#include <chrono>
 #include <iostream>
 #include <fstream>
 #include <map>
@@ -244,3 +245,15 @@ vector<T> operator/(const vector<T>& lhs, double rhs)
 
   return out;
 }
+
+class simTimer {
+private:
+  std::chrono::high_resolution_clock::time_point initTime;
+  std::chrono::high_resolution_clock::time_point finalTime;
+
+public:
+  void startTimer();
+  void stopTimer();
+  void showTime();
+
+};

@@ -54,6 +54,7 @@ void solver::setup(input *params, geo *Geo)
 
 void solver::update(void)
 {
+  // For RK time-stepping, store the starting solution values
   if (nRKSteps>1)
     copyUspts_U0();
 
@@ -85,6 +86,7 @@ void solver::update(void)
 
   calcResidual(nRKSteps-1);
 
+  // Reset solution to initial-stage values
   if (nRKSteps>1)
     copyU0_Uspts();
 

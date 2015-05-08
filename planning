@@ -1,23 +1,20 @@
-==== Structure Possibilities ====
-Option 1) Element-local  *** Leaning towards this ***
---Each element stores its own solution data in, say, a vector<vector<double>>
---Each element has either a) a set of operator matrices, or b) a set of pointers to shared operator matrices
---The solver would just tell each element to apply its operator; there would be no global matrix-vector operations
---The inters class would operate like in HiFiLES
->>> Pros:
-  + Super easy to modify, add & remove elements
-  + Easy to parallelize
-  + Easy to understand
->>> Cons:
-  - Slower - (probably) no possibility of global BLAS calls
-  - More memory usage & overhead?
+==== Future Work ====	  
 
-Option 2) Global Arrays
---There would be a global solution array (or one for each ele type, like HiFiLES)
---There would not really be an ele class; just routines to set up operators & transforms for each ele type
-----If an eles class were to even store pointers to the global solution arrays, it would be a huge
-    memory overhead, so not worth it
---This would allow for (massive?) speedup through the use of BLAS
+Mesh refinement / adaptation
+--Move all mesh functions to geo class
+--Once some sensor implemented, pass to geo to refine cells
+--Upon creating new elements, each new cell can link to "parent" cell to interpolate data to its solution points
+  --More complicated if using Galerkin projection instead of collocation, but that's for later
+
+Collapsed-edge triangles
+--Set eR pointer to NULL for all collapsed edges
+--In calcInviscidFlux on faces, if eR==NULL, set Fn to 0 and return
+
+As stated above - need to modify geo class to handle, well, all geo-related operations.  Better to have
+a more global approach to many things, rather than having each ele handle it all.
+For moving grids, after geo updates node positions & velocities, have each ele grab the new values
+
+
 
 
 ??? Question - just how much slower is HiFiLES on CPU's when using BLAS vs. for-loops? Food for thought
@@ -28,17 +25,3 @@ NO_BLAS: 7.03 s
 ---> BLAS provided ~14% reduction in calculation time - less than I expected, hmm...
 maybe the global structure still helped, even without (directly) accounting for cache structure.
 After all, even without BLAS, the arrays are still stored in contiguous memory.  Hmm...
-
-
-Matrix Class Modifictions
-==Testing (and profiling with callgrind) show that matrix class (as Josh pointed out) is very inefficient
-  due to the use of vectors *of vectors*, which leads to inconsistent/nonlinear memory access.
-  --Callgrind shows matrix::operator[] as a big hitter!
-==Possible solution: Modify matrix class to use single vector<double> for data
-  --But then, how to keep *nice* features like matrix slicing?
-    --Make vector<double> data  --> vector<double> *data
-	  >>Might have to carry around ptr to 'owner' of *data so the pointer can be deleted properly
-	--Modify submatrix --> this->data = inMat->data [copy pointer to data - no data copying!]
-	--Modify submatrix --> store iStride & jStride, iStart & jStart, etc. to control how data is accessed
-	  >>i.e. to get one column, make jStart be that col index; for row, iStart = row index, etc.
-	  >>This *SHOULD* cover all of my *niceties* for slicing operations...

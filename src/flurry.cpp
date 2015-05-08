@@ -14,9 +14,6 @@
  * Copyright (C) 2014 Jacob Crabill.
  *
  */
-#include <chrono>
-
-using namespace std::chrono;
 
 #include "../include/flurry.hpp"
 
@@ -50,8 +47,9 @@ int main(int argc, char *argv[]) {
   /* Setup the solver, all elements and faces, and all FR operators for computation */
   Solver.setup(&params,&Geo);
 
-  /* Starting time for simulation (ignoring pre-processing) */
-  high_resolution_clock::time_point initTime = high_resolution_clock::now();
+  /* Stat timer for simulation (ignoring pre-processing) */
+  simTimer runTime;
+  runTime.startTimer();
 
   /* Apply the initial condition */
   Solver.initializeSolution();
@@ -70,8 +68,6 @@ int main(int argc, char *argv[]) {
   }
 
   // Get simulation wall time
-  high_resolution_clock::time_point finalTime = high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( finalTime - initTime ).count();
-  double execTime = (double)duration/1000.;
-  cout << setprecision(3) << "Execution time = " << execTime << "s" << endl;
+  runTime.stopTimer();
+  runTime.showTime();
 }

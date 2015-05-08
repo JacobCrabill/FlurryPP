@@ -68,12 +68,16 @@ public:
   //! Perform one full step of computation
   void calcResidual(int step);
 
-  //! Advance solution in time
+  //! Advance solution in time - Generate intermediate RK stage
   void timeStepA(int step);
 
+  //! Advance solution in time - Final RK stage [assemble intermediate stages]
   void timeStepB(int step);
 
+  //! For RK time-stepping - store solution at time 'n'
   void copyUspts_U0(void);
+
+  //! For RK time-stepping - recover solution at time 'n' before advancing to 'n+1'
   void copyU0_Uspts(void);
 
   //! Extrapolate the solution to the flux points
@@ -128,6 +132,7 @@ public:
   //! Apply the correction function & add to the divergence of the flux
   void correctDivFlux(int step);
 
+  //! Apply mesh motion
   void moveMesh(int step);
 
   // **All of the following functions are just food for thought at the moment**
