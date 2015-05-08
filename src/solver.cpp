@@ -272,14 +272,14 @@ void solver::extrapolateNormalFlux(void)
     /* Extrapolate physical normal flux */
 #pragma omp parallel for
     for (uint i=0; i<eles.size(); i++) {
-      opers[eles[i].eType][eles[i].order].applyExtrapolateFn(eles[i].F_spts,eles[i].norm_fpts,eles[i].Fn_fpts,eles[i].dA_fpts);
+      opers[eles[i].eType][eles[i].order].applyExtrapolateFn(eles[i].F_spts,eles[i].norm_fpts,eles[i].disFn_fpts,eles[i].dA_fpts);
     }
   }
   else {
     /* Extrapolate transformed normal flux */
 #pragma omp parallel for
     for (uint i=0; i<eles.size(); i++) {
-      opers[eles[i].eType][eles[i].order].applyExtrapolateFn(eles[i].F_spts,eles[i].tNorm_fpts,eles[i].Fn_fpts);
+      opers[eles[i].eType][eles[i].order].applyExtrapolateFn(eles[i].F_spts,eles[i].tNorm_fpts,eles[i].disFn_fpts);
     }
   }
 }
@@ -288,6 +288,7 @@ void solver::correctDivFlux(int step)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
+    eles[i].calcDeltaFn();
     opers[eles[i].eType][eles[i].order].applyCorrectDivF(eles[i].dFn_fpts,eles[i].divF_spts[step]);
   }
 

@@ -6,6 +6,11 @@ A 2D Flux Reconstruction Code in C++
 Written by Jacob Crabill
 Aerospace Computing Lab, Stanford University
 
+Current Capabilities
+====================
+
+The code is currently capable of running scalar advection or Euler (inviscid Navier-Stokes) cases on unstructured mixed grids of quadrilaterals and triangles in the Gmsh format.
+Moving grids are supported by the solver, but there are not yet any grid-motion functions implemented beyond a standard test case.
 
 Background / Goals of the Project
 =================================
@@ -34,7 +39,7 @@ Optionally, you can specify the type of build as either *debug* or *release*:
 
 where *release* turns on full optimization, and *debug* removes all optimization and adds flags for both debugging and profiling.  The code also (optionally) utilizes OpenMP to take advantage of easy parallelization on desktop computers; speedup of ~3x has been seen on 4-core processors.  To enable OpenMP when compiling, modify the 'make' command like so:
 
-'make -f Makefile.flurry CODE=release OPENMP=yes'
+`make -f Makefile.flurry CODE=release OPENMP=yes`
 
 
 Test Cases

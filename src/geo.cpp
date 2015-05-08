@@ -57,10 +57,15 @@ void geo::processConnectivity()
   for (int e=0; e<nEles; e++) {
     for (int ie=0; ie<c2nv[e]; ie++) {
       int iep1 = (ie+1)%c2nv[e];
-      if (c2v[e][ie] < c2v[e][iep1]) {
-      edge[0] = c2v[e][ie];
-      edge[1] = c2v[e][iep1];
-      } else {
+      if (c2v[e][ie] == c2v[e][iep1]) {
+        // Collapsed edge - ignore
+        continue;
+      }
+      else if (c2v[e][ie] < c2v[e][iep1]) {
+        edge[0] = c2v[e][ie];
+        edge[1] = c2v[e][iep1];
+      }
+      else {
         edge[0] = c2v[e][iep1];
         edge[1] = c2v[e][ie];
       }
@@ -86,7 +91,12 @@ void geo::processConnectivity()
 
   for (uint i=0; i<iE.size(); i++) {
     if (iE[i]!=-1) {
-      vector<int> ie = findEq(iE,iE[i]);
+      auto ie = findEq(iE,iE[i]);
+      // See if it's a collapsed edge. If so, not needed - ignore.
+//      if (e2v(ie[0],0) == e2v(ie[0],0)) {
+//        vecAssign(iE,ie,-1);
+//        continue;
+//      }
       if (ie.size()>2) {
         stringstream ss; ss << i;
         string errMsg = "More than 2 cells for edge " + ss.str();
@@ -141,34 +151,41 @@ void geo::processConnectivity()
       int jp1 = (j+1)%(c2ne[ic]);
 
       // Store edges consistently to allow matching of duplicates
-      if (c2v[ic][j] < c2v[ic][jp1]) {
-      edge[0] = c2v[ic][j];
-      edge[1] = c2v[ic][jp1];
-      } else {
-        edge[0] = c2v[ic][jp1];
-        edge[1] = c2v[ic][j];
+      if (c2v(ic,j) == c2v(ic,jp1)) {
+        // Collapsed edge; ignore
+        c2e(ic,j) = -1;
+        c2b(ic,j) = 0;
+        continue;
       }
 
-      vector<int> ie1 = findEq(e2v.getCol(0),edge[0]);
-      vector<int> col2 = (e2v.getRows(ie1)).getCol(1);
+      if (c2v(ic,j) < c2v(ic,jp1)) {
+        edge[0] = c2v(ic,j);
+        edge[1] = c2v(ic,jp1);
+      } else {
+        edge[0] = c2v(ic,jp1);
+        edge[1] = c2v(ic,j);
+      }
+
+      auto ie1 = findEq(e2v.getCol(0),edge[0]);
+      auto col2 = (e2v.getRows(ie1)).getCol(1);
       int ie2 = findFirst(col2,edge[1]);
       int ie0 = ie1[ie2];
 
       // Find ID of face within type-specific array
       if (isBnd[ie0]) {
-        c2e[ic][j] = ie0; //findFirst(bndEdges,ie0);
-        c2b[ic][j] = 1;
+        c2e(ic,j) = ie0;
+        c2b(ic,j) = 1;
       }else{
-        c2e[ic][j] = ie0; //findFirst(intEdges,ie0);
-        c2b[ic][j] = 0;
+        c2e(ic,j) = ie0;
+        c2b(ic,j) = 0;
       }
 
-      if (e2c[ie0][0] == -1) {
+      if (e2c(ie0,0) == -1) {
         // No cell yet assigned to edge; put on left
-        e2c[ie0][0] = ic;
+        e2c(ie0,0) = ic;
       }else{
         // Put cell on right
-        e2c[ie0][1] = ic;
+        e2c(ie0,1) = ic;
       }
     }
   }
@@ -223,15 +240,13 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> &
     // Find local face ID of global face within first element [on left]
     tmpEdges.assign(c2e[ic],c2e[ic]+c2ne[ic]);
     int fid1 = findFirst(tmpEdges,ie);
-    F.params = params;
     if (e2c[ie][1] == -1) {
       FatalError("Interior edge does not have a right element assigned.");
     }else{
       ic = e2c[ie][1];
-      tmpEdges.assign(c2e[ic], c2e[ic]+c2ne[ic]);
-      //tmpEdges = c2e[e2c[ie][1]]; // previous row-as-vector form
-      int fid2 = findFirst(tmpEdges,ie);
-      F.setupFace(&eles[e2c[ie][0]],&eles[e2c[ie][1]],fid1,fid2,ie);
+      tmpEdges.assign(c2e[ic], c2e[ic]+c2ne[ic]);  // List of cell's faces
+      int fid2 = findFirst(tmpEdges,ie);           // Which one is this face
+      F.setupFace(&eles[e2c[ie][0]],&eles[e2c[ie][1]],fid1,fid2,ie,params);
     }
 
     i++;
@@ -246,11 +261,10 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> &
     // Find local face ID of global face within element
     tmpEdges.assign(c2e[ic],c2e[ic]+c2ne[ic]);
     int fid1 = findFirst(tmpEdges,ie);
-    B.params = params;
     if (e2c[ie][1] != -1) {
       FatalError("Boundary edge has a right element assigned.");
     }else{
-      B.setupBound(&eles[e2c[ie][0]],fid1,bcType[i],ie);
+      B.setupBound(&eles[e2c[ie][0]],fid1,bcType[i],ie,params);
     }
 
     i++;
@@ -389,6 +403,16 @@ void geo::readGmsh(string fileName)
     if (bcList[bcid] == NONE) {
       // NOTE: Currently, only quads are supported
       switch(eType) {
+      case 2:
+          // linear triangle -> linear quad
+          //ctype(i) = 1;
+          c2nv.push_back(4);
+          c2ne.push_back(4);
+          ctype.push_back(QUAD);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2];
+          c2v_tmp[3] = c2v_tmp[2];
+          break;
+
       case 3:
         // linear quadrangle
         //ctype(i) = 1;

@@ -65,7 +65,7 @@ public:
   void setup(uint inDim0, uint inDim1);
 
   //! Adds the matrix a*A to current matrix (M += a*A)
-  void addMatrix(matrix<T> &A, double a);
+  void addMatrix(matrix<T> &A, double a=1);
 
   //! Multiplies the matrix by the matrix A and stores the result in B (B = M*A)
   void timesMatrix(matrix<T> &A, matrix<T> &B);
@@ -78,7 +78,7 @@ public:
 
   /*! Insert a row into the matrix at location rowNum [zero-indexed], with the default being at the end */
   void insertRow(vector<T> &vec, int rowNum = -1);
-  //void insertRow(T* vec, int rowNum = -1, int length);
+
   void insertRow(T* vec, int rowNum, int length);
 
   void addCol(void);

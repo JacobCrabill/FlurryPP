@@ -1,7 +1,8 @@
 #############################################################################
 # Makefile for building: Flurry
-# Command: make -f Makefile.flurry 
-#          make -f Makefile.flurry CODE="release"
+# Command: make -f Makefile.flurry
+#          make -f Makefile.flurry CODE=debug
+#          make -f Makefile.flurry CODE=release OPENMP=yes
 #############################################################################
 
 ####### Compiler, tools and options
@@ -9,44 +10,29 @@
 CODE          = debug  # debug, release, or blank for 'default' debug
 CC            = gcc
 CXX           = g++
-DEFINES       = 
+DEFINES       =
 ifeq ($(CODE),release)
-  CFLAGS      = -m64 -pipe -O3 -Wall -W $(DEFINES) 
+  CFLAGS      = -m64 -pipe -O3 -Wall -W $(DEFINES)
   CXXFLAGS    = -m64 -pipe -O3 -Wall -W -std=c++11 $(DEFINES)
 else
   ifeq ($(CODE),debug)
-    CFLAGS    = -m64 -pipe -pg -g -O0 -Wall -W $(DEFINES) 
+    CFLAGS    = -m64 -pipe -pg -g -O0 -Wall -W $(DEFINES)
     CXXFLAGS  = -m64 -pipe -pg -g -O0 -Wall -W -std=c++11 $(DEFINES)
+    DBG       = -pg
   else
     CFLAGS    = -m64 -pipe -g -O2 -Wall -W $(DEFINES)
     CXXFLAGS  = -m64 -pipe -g -O2 -Wall -W -std=c++11 $(DEFINES)
   endif
 endif
+
 INCPATH       = -I.
 LINK          = g++
 LFLAGS        = -m64
 LIBS          = $(SUBLIBS)
-AR            = ar cqs
-RANLIB        = 
-TAR           = tar -cf
-COMPRESS      = gzip -9f
-COPY          = cp -f
-SED           = sed
-COPY_FILE     = $(COPY)
-COPY_DIR      = $(COPY) -r
-STRIP         = strip
-INSTALL_FILE  = install -m 644 -p
-INSTALL_DIR   = $(COPY_DIR)
-INSTALL_PROGRAM = install -m 755 -p
-DEL_FILE      = rm -f
-SYMLINK       = ln -f -s
-DEL_DIR       = rmdir
-MOVE          = mv -f
-CHK_DIR_EXISTS= test -d
-MKDIR         = mkdir -p
+
 ifeq ($(OPENMP),yes)
     CXXFLAGS += -fopenmp
-    LFLAGS += -fopenmp -lgomp 
+    LFLAGS += -fopenmp -lgomp
 endif
 
 ####### Output directory - these do nothing currently
@@ -68,7 +54,7 @@ SOURCES       = src/global.cpp \
 		src/flux.cpp \
 		src/flurry.cpp \
 		src/solver.cpp \
-		src/bound.cpp 
+		src/bound.cpp
 OBJECTS       = obj/global.o \
 		obj/matrix.o \
 		obj/input.o \
@@ -89,10 +75,10 @@ TARGET        = Flurry
 .SUFFIXES: .o .c .cpp .cc .cxx .C
 
 .cpp.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"  
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"
 
 .cc.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"  
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"
 
 .cxx.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"
@@ -105,17 +91,11 @@ TARGET        = Flurry
 
 ####### Build rules
 
-$(TARGET):  $(OBJECTS)  
-	$(LINK) $(LFLAGS) -o $(DESTDIR)/$(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS) -pg
+$(TARGET):  $(OBJECTS)
+	$(LINK) $(LFLAGS) -o $(DESTDIR)/$(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS) $(DBG)
 
-clean:compiler_clean 
-	-$(DEL_FILE) $(OBJECTS)
-	-$(DEL_FILE) *~ core *.core
-
-####### Sub-libraries
-check: first
-
-compiler_clean: 
+clean:
+	cd obj && rm *.o && cd .. && rm bin/Flurry
 
 ####### Compile
 

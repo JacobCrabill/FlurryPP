@@ -30,7 +30,7 @@ public:
   face();
 
   /*! Setup access to the left & right elements' data */
-  void setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID);
+  void setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID, input* params);
 
   /*! Calculate the common inviscid flux on the face */
   void calcInviscidFlux(void);
@@ -47,15 +47,17 @@ private:
   int nDims, nFields;
   int locF_L, locF_R;
 
+  ele* eL;
+  ele* eR;
+
   /* --- Storage for all solution/geometry data at flux points --- */
   vector<double*> UL, UR;         //! Discontinuous solution at left and right
-  vector<double*> disFnL, disFnR; //! Discontinuous normal flux at left and right
   vector<matrix<double>*> gradUL;
   vector<matrix<double>*> gradUR;
   vector<matrix<double*>> FL; // will this even work...? if not, need vec<vec<vec<dbl*>>> ?
   vector<matrix<double*>> FR;
-  vector<double*> dFnL;   //! Common minus discontinuous normal flux for left ele
-  vector<double*> dFnR;   //! Common minus discontinuous normal flux for right ele
+  vector<double*> FnL;   //! Common minus discontinuous normal flux for left ele
+  vector<double*> FnR;   //! Common minus discontinuous normal flux for right ele
   matrix<double> Fn;     // Can't use ptr, b/c 2 eles - they need to point to this instead
   vector<double*> normL, normR; //! Unit outward normal at flux points
   vector<double*> dAL, dAR;     //! Local face-area equivalent at flux points

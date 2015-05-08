@@ -90,6 +90,8 @@ public:
 
   void transformGradF_spts(int step);
 
+  void calcDeltaFn(void);
+
   /*! Advance intermediate stages of Runge-Kutta time integration */
   void timeStepA(int step, double rkVal);
 
@@ -155,6 +157,7 @@ private:
   matrix<double> U0;               //! Solution at solution points, beginning of each time step
   vector<matrix<double> > F_spts;  //! Flux at solution points
   vector<matrix<double> > F_fpts;  //! Flux at flux points
+  matrix<double> disFn_fpts;       //! Discontinuous normal flux at flux points
   matrix<double> Fn_fpts;          //! Interface flux at flux points
   matrix<double> dFn_fpts;         //! Interface minus discontinuous flux at flux points
 

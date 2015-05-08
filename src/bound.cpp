@@ -17,13 +17,15 @@
 
 #include <array>
 
-void bound::setupBound(ele *eL, int locF_L, int bcType, int gID)
+void bound::setupBound(ele *eL, int locF_L, int bcType, int gID, input *params)
 {
   int fptStartL, fptEndL;
 
   ID = gID;
   this->bcType = bcType;
   this->locF_L = locF_L;
+  this->eL = eL;
+  this->params = params;
 
   nDims = params->nDims;
   nFields = params->nFields;
@@ -37,11 +39,10 @@ void bound::setupBound(ele *eL, int locF_L, int bcType, int gID)
 
   UL.resize(nFptsL);
   UR.setup(nFptsL,nFields);
-  disFnL.resize(nFptsL);
   FL.resize(nFptsL);
   Fn.setup(nFptsL,nFields);
   normL.setup(nFptsL,nDims);
-  dFnL.resize(nFptsL);
+  FnL.resize(nFptsL);
   dAL.resize(nFptsL);
   detJacL.resize(nFptsL);
 
@@ -49,8 +50,7 @@ void bound::setupBound(ele *eL, int locF_L, int bcType, int gID)
   int fpt=0;
   for (int i=fptStartL; i<fptEndL; i++) {
     UL[fpt] = (eL->U_fpts[i]);
-    disFnL[fpt] = (eL->Fn_fpts[i]);
-    dFnL[fpt] = (eL->dFn_fpts[i]);
+    FnL[fpt] = (eL->Fn_fpts[i]);
     dAL[fpt] = (eL->dA_fpts[i]);
     detJacL[fpt] = (eL->detJac_fpts[i]); // change to double**[] = &(eL->det[])
 
@@ -96,7 +96,7 @@ void bound::calcInviscidFlux()
     // (Each ele needs only the difference, not the actual common value, for the correction)
     // Need dAL/R to transform normal flux back to reference space
     for (int j=0; j<nFields; j++) {
-      dFnL[i][j] = Fn[i][j]*dAL[i] - disFnL[i][j];
+      FnL[i][j] = Fn[i][j]*dAL[i];
     }
   }
 }

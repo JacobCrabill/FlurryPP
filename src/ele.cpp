@@ -119,8 +119,10 @@ void ele::setup(input *inParams, geo *inGeo)
   U_spts.setup(nSpts,nFields);
   U_fpts.setup(nFpts,nFields);
   U_mpts.setup(nNodes,nFields);
-  Fn_fpts.setup(nFpts,nFields);
+  disFn_fpts.setup(nFpts,nFields);
   dFn_fpts.setup(nFpts,nFields);
+  Fn_fpts.setup(nFpts,nFields);
+  Fn_fpts.initializeToZero();
 
   switch (params->timeType) {
     case 0:
@@ -415,8 +417,16 @@ void ele::calcTransforms(void)
     dA_fpts[fpt] = sqrt(norm_fpts[fpt][0]*norm_fpts[fpt][0] + norm_fpts[fpt][1]*norm_fpts[fpt][1]);
 
     // Normalize
-    for (int dim=0; dim<nDims; dim++)
-      norm_fpts[fpt][dim] /= dA_fpts[fpt];
+    // If we have a collapsed edge, the dA will be 0, so just set the normal to 0
+    // (A normal vector at a point doesn't make sense anyways)
+    if (std::fabs(dA_fpts[fpt]) < 1e-10) {
+      for (int dim=0; dim<nDims; dim++)
+        norm_fpts(fpt,dim) = 0;
+    }
+    else {
+      for (int dim=0; dim<nDims; dim++)
+        norm_fpts(fpt,dim) /= dA_fpts[fpt];
+    }
   }
 }
 
@@ -470,8 +480,16 @@ void ele::updateTransforms(void)
     dA_fpts[fpt] = sqrt(norm_fpts[fpt][0]*norm_fpts[fpt][0] + norm_fpts[fpt][1]*norm_fpts[fpt][1]);
 
     // Normalize
-    for (int dim=0; dim<nDims; dim++)
-      norm_fpts[fpt][dim] /= dA_fpts[fpt];
+    // If we have a collapsed edge, the dA will be 0, so just set the normal to 0
+    // (A normal vector at a point doesn't make sense anyways)
+    if (std::fabs(dA_fpts[fpt]) < 1e-10) {
+      for (int dim=0; dim<nDims; dim++)
+        norm_fpts(fpt,dim) = 0;
+    }
+    else {
+      for (int dim=0; dim<nDims; dim++)
+        norm_fpts(fpt,dim) /= dA_fpts[fpt];
+    }
   }
 }
 
@@ -676,11 +694,20 @@ void ele::transformGradF_spts(int step)
   }
 }
 
+void ele::calcDeltaFn(void)
+{
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    for (int k=0; k<nFields; k++) {
+      dFn_fpts(fpt,k) = Fn_fpts(fpt,k) - disFn_fpts(fpt,k);
+    }
+  }
+}
+
 void ele::timeStepA(int step, double rkVal)
 {
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
-      U_spts[spt][i] = U0[spt][i] - rkVal * params->dt*divF_spts[step][spt][i]/detJac_spts[spt];
+      U_spts(spt,i) = U0[spt][i] - rkVal * params->dt*divF_spts[step][spt][i]/detJac_spts[spt];
     }
   }
 }
@@ -689,7 +716,7 @@ void ele::timeStepB(int step, double rkVal)
 {
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
-      U_spts[spt][i] -= rkVal * params->dt*divF_spts[step][spt][i]/detJac_spts[spt];
+      U_spts(spt,i) -= rkVal * params->dt*divF_spts[step](spt,i)/detJac_spts[spt];
     }
   }
 }

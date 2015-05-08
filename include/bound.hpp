@@ -26,7 +26,7 @@ class bound
 public:
 
   /*! Setup access to the left & right elements' data */
-  void setupBound(ele *eL, int locF_L, int bcType, int gID);
+  void setupBound(ele *eL, int locF_L, int bcType, int gID, input* params);
 
   /*! Calculate the inviscid flux from the boundary condition */
   void calcInviscidFlux(void);
@@ -45,14 +45,15 @@ private:
   int nDims, nFields;
   int bcType;
   int locF_L;
+  ele* eL;
 
   /* --- Storage for all solution/geometry data at flux points --- */
   vector<double*> UL;       //! Discontinuous solution at element boundary
   matrix<double> UR;        //! Boundary condition from "ghost right state"
-  vector<double*> disFnL;   //! Discontinuous normal flux at element boundary
   vector<matrix<double>*> gradUL;
   vector<matrix<double*>> FL;
-  vector<double*> dFnL;     //! Common minus discontinuous normal flux for ele
+  //vector<double*> dFnL;     //! Common minus discontinuous normal flux for ele
+  vector<double*> FnL;     //! Common interface flux for ele
   matrix<double> Fn;        //! Common normal flux on boundary
   vector<double*> deltaF;
   matrix<double> normL;
