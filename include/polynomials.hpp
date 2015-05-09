@@ -40,11 +40,11 @@ double dVCJH_1d(double in_r, int in_mode, int in_order, double in_eta);
 // Bilinear / Biquadratic / etc. shape functions
 
 //! Shape function for linear quad (TODO: Generalize to N-noded quad)
-void shape_quad(point &in_rs, vector<double> &out_shape);
-void shape_quad(point &in_rs, double* out_shape);
+void shape_quad(point &in_rs, vector<double> &out_shape, int nNodes);
+void shape_quad(point &in_rs, double* out_shape, int nNodes);
 
 //! Derivative of shape functions for linear quad
-void dshape_quad(point &in_rs, matrix<double> &out_dshape);
+void dshape_quad(point &in_rs, matrix<double> &out_dshape, int nNodes);
 
 //! Shape function for linear triangle (TODO: Generalize to N-noded tri)
 void shape_tri(point &in_rs, vector<double> &out_shape);

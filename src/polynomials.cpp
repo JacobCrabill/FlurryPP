@@ -138,37 +138,97 @@ double dLegendre(double in_r, int in_mode)
   return dLeg;
 }
 
-void shape_quad(point &in_rs, vector<double> &out_shape)
+void shape_quad(point &in_rs, vector<double> &out_shape, int nNodes)
 {
-  out_shape.resize(4); // nNodes
+  double xi  = in_rs.x;
+  double eta = in_rs.y;
+  out_shape.resize(nNodes);
 
-  out_shape[0] = 0.25*(1-in_rs.x)*(1-in_rs.y);
-  out_shape[1] = 0.25*(1+in_rs.x)*(1-in_rs.y);
-  out_shape[2] = 0.25*(1+in_rs.x)*(1+in_rs.y);
-  out_shape[3] = 0.25*(1-in_rs.x)*(1+in_rs.y);
+  switch(nNodes) {
+  case 4:
+    out_shape[0] = 0.25*(1-xi)*(1-eta);
+    out_shape[1] = 0.25*(1+xi)*(1-eta);
+    out_shape[2] = 0.25*(1+xi)*(1+eta);
+    out_shape[3] = 0.25*(1-xi)*(1+eta);
+    break;
+  case 8:
+    out_shape[0] = -0.25*(1-xi)*(1-eta)*(1+eta+xi);
+    out_shape[1] = -0.25*(1+xi)*(1-eta)*(1+eta-xi);
+    out_shape[2] = -0.25*(1+xi)*(1+eta)*(1-eta-xi);
+    out_shape[3] = -0.25*(1-xi)*(1+eta)*(1-eta+xi);
+    out_shape[4] = 0.5*(1-xi)*(1+ xi)*(1-eta);
+    out_shape[5] = 0.5*(1+xi)*(1+eta)*(1-eta);
+    out_shape[6] = 0.5*(1-xi)*(1+ xi)*(1+eta);
+    out_shape[7] = 0.5*(1-xi)*(1+eta)*(1-eta);
+    break;
+  }
 }
 
-void shape_quad(point &in_rs, double* out_shape)
+void shape_quad(point &in_rs, double* out_shape, int nNodes)
 {
-  out_shape[0] = 0.25*(1-in_rs.x)*(1-in_rs.y);
-  out_shape[1] = 0.25*(1+in_rs.x)*(1-in_rs.y);
-  out_shape[2] = 0.25*(1+in_rs.x)*(1+in_rs.y);
-  out_shape[3] = 0.25*(1-in_rs.x)*(1+in_rs.y);
+  double xi  = in_rs.x;
+  double eta = in_rs.y;
+
+  switch(nNodes) {
+  case 4:
+    out_shape[0] = 0.25*(1-xi)*(1-eta);
+    out_shape[1] = 0.25*(1+xi)*(1-eta);
+    out_shape[2] = 0.25*(1+xi)*(1+eta);
+    out_shape[3] = 0.25*(1-xi)*(1+eta);
+    break;
+
+  case 8:
+    out_shape[0] = -0.25*(1-xi)*(1-eta)*(1+eta+xi);
+    out_shape[1] = -0.25*(1+xi)*(1-eta)*(1+eta-xi);
+    out_shape[2] = -0.25*(1+xi)*(1+eta)*(1-eta-xi);
+    out_shape[3] = -0.25*(1-xi)*(1+eta)*(1-eta+xi);
+    out_shape[4] = 0.5*(1-xi)*(1+ xi)*(1-eta);
+    out_shape[5] = 0.5*(1+xi)*(1+eta)*(1-eta);
+    out_shape[6] = 0.5*(1-xi)*(1+ xi)*(1+eta);
+    out_shape[7] = 0.5*(1-xi)*(1+eta)*(1-eta);
+    break;
+  }
 }
 
-void dshape_quad(point &in_rs, matrix<double> &out_dshape)
+void dshape_quad(point &in_rs, matrix<double> &out_dshape, int nNodes)
 {
-  out_dshape.setup(4,2);
+  double xi  = in_rs.x;
+  double eta = in_rs.y;
+  out_dshape.setup(nNodes,2);
 
-  out_dshape[0][0] = -0.25*(1-in_rs.y);
-  out_dshape[1][0] =  0.25*(1-in_rs.y);
-  out_dshape[2][0] =  0.25*(1+in_rs.y);
-  out_dshape[3][0] = -0.25*(1+in_rs.y);
+  switch(nNodes) {
+  case 4:
+    out_dshape[0][0] = -0.25*(1-eta);
+    out_dshape[1][0] =  0.25*(1-eta);
+    out_dshape[2][0] =  0.25*(1+eta);
+    out_dshape[3][0] = -0.25*(1+eta);
 
-  out_dshape[0][1] = -0.25*(1-in_rs.x);
-  out_dshape[1][1] = -0.25*(1+in_rs.x);
-  out_dshape[2][1] =  0.25*(1+in_rs.x);
-  out_dshape[3][1] =  0.25*(1-in_rs.x);
+    out_dshape[0][1] = -0.25*(1-xi);
+    out_dshape[1][1] = -0.25*(1+xi);
+    out_dshape[2][1] =  0.25*(1+xi);
+    out_dshape[3][1] =  0.25*(1-xi);
+    break;
+
+  case 8:
+    out_dshape[0][0] = -0.25*(-1+eta)*(2*xi+eta);
+    out_dshape[1][0] =  0.25*(-1+eta)*(eta - 2*xi);
+    out_dshape[2][0] =  0.25*( 1+eta)*(2*xi+eta);
+    out_dshape[3][0] = -0.25*( 1+eta)*(eta-2*xi);
+    out_dshape[4][0] =    xi*(-1+eta);
+    out_dshape[5][0] = -0.5 *( 1+eta)*(-1+eta);
+    out_dshape[6][0] =   -xi*( 1+eta);
+    out_dshape[7][0] =  0.5 *( 1+eta)*(-1+eta);
+
+    out_dshape[0][1] = -0.25*(-1+xi)*(2*eta+xi);
+    out_dshape[1][1] =  0.25*( 1+xi)*(2*eta - xi);
+    out_dshape[2][1] =  0.25*( 1+xi)*(2*eta+xi);
+    out_dshape[3][1] = -0.25*(-1+xi)*(2*eta-xi);
+    out_dshape[4][1] =  0.5 *( 1+xi)*(-1+xi);
+    out_dshape[5][1] =  -eta*( 1+xi);
+    out_dshape[6][1] = -0.5 *( 1+xi)*(-1+xi);
+    out_dshape[7][1] =   eta*(-1+xi);
+    break;
+  }
 }
 
 void shape_tri(point &in_rs, vector<double> &out_shape)

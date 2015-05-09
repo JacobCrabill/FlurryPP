@@ -55,8 +55,8 @@ void geo::processConnectivity()
   vector<int> edge(2);
 
   for (int e=0; e<nEles; e++) {
-    for (int ie=0; ie<c2nv[e]; ie++) {
-      int iep1 = (ie+1)%c2nv[e];
+    for (int ie=0; ie<c2ne[e]; ie++) {  // NOTE: nv may be > ne
+      int iep1 = (ie+1)%c2ne[e];
       if (c2v[e][ie] == c2v[e][iep1]) {
         // Collapsed edge - ignore
         continue;
@@ -404,18 +404,26 @@ void geo::readGmsh(string fileName)
       // NOTE: Currently, only quads are supported
       switch(eType) {
       case 2:
-          // linear triangle -> linear quad
-          //ctype(i) = 1;
-          c2nv.push_back(4);
-          c2ne.push_back(4);
-          ctype.push_back(QUAD);
-          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2];
-          c2v_tmp[3] = c2v_tmp[2];
-          break;
+        // linear triangle -> linear quad
+        c2nv.push_back(4);
+        c2ne.push_back(4);
+        ctype.push_back(QUAD);
+        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2];
+        c2v_tmp[3] = c2v_tmp[2];
+        break;
+
+      case 9:
+        // quadratic triangle -> quadratic quad  [corner nodes, then edge-center nodes]
+        c2nv.push_back(8);
+        c2ne.push_back(4);
+        ctype.push_back(QUAD);
+        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[7];
+        c2v_tmp[3] = c2v_tmp[2];
+        c2v_tmp[6] = c2v_tmp[2];
+        break;
 
       case 3:
         // linear quadrangle
-        //ctype(i) = 1;
         c2nv.push_back(4);
         c2ne.push_back(4);
         ctype.push_back(QUAD);
@@ -424,15 +432,15 @@ void geo::readGmsh(string fileName)
 
       case 16:
         // quadratic 8-node (serendipity) quadrangle
-        c2nv.push_back(8); //c2nv[i] = 8;
+        c2nv.push_back(8);
         c2ne.push_back(4);
         ctype.push_back(QUAD);
         meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
         break;
 
       case 10:
-        // quadratic (9-node Lagrange) quadrangle
-        c2nv.push_back(9); //c2nv[i] = 9;
+        // quadratic (9-node Lagrange) quadrangle (read as 8-node serendipity)
+        c2nv.push_back(8);
         c2ne.push_back(4);
         ctype.push_back(QUAD);
         meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7] >> c2v_tmp[8];

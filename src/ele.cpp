@@ -259,7 +259,7 @@ void ele::setShape_spts(void)
       case TRI:
         break;
       case QUAD:
-        shape_quad(loc_spts[spt],shape_spts[spt]);
+        shape_quad(loc_spts[spt],shape_spts[spt],nNodes);
         break;
     }
   }
@@ -274,7 +274,7 @@ void ele::setShape_fpts(void)
       case TRI:
         break;
       case QUAD:
-        shape_quad(loc_fpts[fpt],shape_fpts[fpt]);
+        shape_quad(loc_fpts[fpt],shape_fpts[fpt],nNodes);
         break;
     }
   }
@@ -291,7 +291,7 @@ void ele::setDShape_spts(void)
         dshape_tri(loc_spts[spt], dShape_spts[spt]);
         break;
       case QUAD:
-        dshape_quad(loc_spts[spt], dShape_spts[spt]);
+        dshape_quad(loc_spts[spt], dShape_spts[spt],nNodes);
         break;
       default:
         FatalError("Element type not yet implemented.")
@@ -302,7 +302,7 @@ void ele::setDShape_spts(void)
 void ele::setDShape_fpts(void)
 {
   dShape_fpts.resize(nFpts);
-  for (auto& dS:dShape_fpts) dS.setup(nDims,nDims);
+  for (auto& dS:dShape_fpts) dS.setup(nNodes,nDims);
 
   for (int fpt=0; fpt<nFpts; fpt++) {
     switch(eType) {
@@ -310,7 +310,7 @@ void ele::setDShape_fpts(void)
         dshape_tri(loc_fpts[fpt], dShape_fpts[fpt]);
         break;
       case QUAD:
-        dshape_quad(loc_fpts[fpt], dShape_fpts[fpt]);
+        dshape_quad(loc_fpts[fpt], dShape_fpts[fpt],nNodes);
         break;
       default:
         FatalError("Element type not yet implemented.")
@@ -406,7 +406,7 @@ void ele::calcTransforms(void)
     if (nDims==2) {
       detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
     }
-    if (detJac_fpts[fpt]<0) FatalError("Negative Jacobian at solution points.");
+    //if (detJac_fpts[fpt]<0) FatalError("Negative Jacobian at flux points.");
 
     /* --- Calculate outward unit normal vector at flux point --- */
     // Transform face normal from reference to physical space [JGinv dot tNorm]
@@ -469,7 +469,7 @@ void ele::updateTransforms(void)
     if (nDims==2) {
       detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
     }
-    if (detJac_fpts[fpt]<0) FatalError("Negative Jacobian at solution points.");
+    //if (detJac_fpts[fpt]<0) FatalError("Negative Jacobian at solution points.");
 
     /* --- Calculate outward unit normal vector at flux point --- */
     // Transform face normal from reference to physical space [JGinv dot tNorm]
@@ -619,7 +619,7 @@ void ele::getShape(point loc, vector<double> &shape)
     shape_tri(loc, shape);
   }
   else if (eType == QUAD) {
-    shape_quad(loc, shape);
+    shape_quad(loc, shape, nNodes);
   }
   else {
     FatalError("Element Type Not Supported.");
