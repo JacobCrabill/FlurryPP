@@ -242,7 +242,7 @@ void shape_tri(point &in_rs, vector<double> &out_shape)
   out_shape[2] = 1 - in_rs.x - in_rs.y;
 }
 
-void dshape_tri(point &in_rs, matrix<double> &out_dshape)
+void dshape_tri(point &, matrix<double> &out_dshape)
 {
   out_dshape.setup(3,2); // nNodes, nDims
 

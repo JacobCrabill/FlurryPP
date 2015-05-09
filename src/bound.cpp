@@ -468,6 +468,9 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
         eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
       }
     }
+    else {
+      FatalError("Boundary condition not recognized.");
+    }
 
     // Assign calculated values to right state
     uR[0] = rhoR;
