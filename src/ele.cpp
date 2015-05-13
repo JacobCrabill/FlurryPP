@@ -185,6 +185,9 @@ void ele::setup(input *inParams, geo *inGeo)
       vec = nodes;
     }
   }
+  S_spts.setup(nSpts,1);
+  S_fpts.setup(nFpts,1);
+  S_mpts.setup(nNodes,1);
 
   tempF.setup(nDims,nFields);
   tempU.assign(nFields,0);
@@ -703,6 +706,20 @@ void ele::calcDeltaFn(void)
   }
 }
 
+void ele::calcEntropyVar_spts(void)
+{
+  for (int spt=0; spt<nSpts; spt++) {
+    auto V = getPrimitives(spt);
+    double s = log(V[3]) - params->gamma*log(V[0]); // ln(p) - gamma ln(rho)
+    S_spts(spt) = - V[0]*s/(params->gamma-1);
+  }
+}
+
+double ele::getEntropyVar(int spt)
+{
+  return S_spts(spt);
+}
+
 void ele::timeStepA(int step, double rkVal)
 {
   for (int spt=0; spt<nSpts; spt++) {
@@ -774,8 +791,8 @@ void ele::getPrimitivesPlot(matrix<double> &V)
   // Get solution at solution points
   for (int i=0; i<order+1; i++) {
     for (int j=0; j<order+1; j++) {
-      for (int k=0; k<nFields; k++) {
-        int id = (i+1)*(order+3)+j+1;
+      int id = (i+1)*(order+3)+j+1;
+      for (int k=0; k<nFields; k++) {        
         V[id][k] = U_spts[j+i*(order+1)][k];
       }
     }
@@ -816,10 +833,37 @@ void ele::getGridVelPlot(matrix<double> &GV)
   // Get solution at solution points
   for (int i=0; i<order+1; i++) {
     for (int j=0; j<order+1; j++) {
-      for (int dim=0; dim<nDims; dim++) {
-        int id = (i+1)*(order+3)+j+1;
+      int id = (i+1)*(order+3)+j+1;
+      for (int dim=0; dim<nDims; dim++) {        
         GV[id][dim] = gridVel_spts[j+i*(order+1)][dim];
       }
+    }
+  }
+}
+
+void ele::getEntropyVarPlot(matrix<double> &S)
+{
+  S.setup(nSpts+nFpts+nNodes,1);
+
+  // Get solution at corner points
+  S(0)                     = S_mpts(0);
+  S(order+2)               = S_mpts(1);
+  S((order+3)*(order+3)-1) = S_mpts(2);
+  S((order+3)*(order+2))   = S_mpts(3);
+
+  // Get solution at flux points
+  for (int i=0; i<order+1; i++) {
+      S(i+1)                     = S_fpts(i);               // Bottom
+      S((i+1)*(order+3))         = S_fpts(nFpts-i-1);       // Left
+      S((i+2)*(order+3)-1)       = S_fpts(order+1+i);       // Right
+      S((order+3)*(order+2)+i+1) = S_fpts(3*(order+1)-i-1); // Top
+  }
+
+  // Get solution at solution points
+  for (int i=0; i<order+1; i++) {
+    for (int j=0; j<order+1; j++) {
+      int id = (i+1)*(order+3)+j+1;
+      S(id) = S_spts(j+i*(order+1));
     }
   }
 }

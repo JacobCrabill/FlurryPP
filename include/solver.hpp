@@ -86,6 +86,12 @@ public:
   //! Extrapolate the solution to the mesh (corner) points
   void extrapolateUMpts(void);
 
+  //! Extrapolate entropy error-estimate variable to the mesh (corner) points
+  void extrapolateSMpts(void);
+
+  //! //! Extrapolate entropy error-estimate variable to the flux points
+  void extrapolateSFpts(void);
+
   //! Calculate the inviscid flux at the solution points
   void calcInviscidFlux_spts(void);
 
@@ -157,6 +163,7 @@ public:
 
   /* === Functions Related to Overset Grids === */
 
+  void calcEntropyVar_spts();
 private:
   //! Pointer to the parameters object for the current solution
   input *params;

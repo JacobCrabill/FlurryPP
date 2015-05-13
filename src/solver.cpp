@@ -180,6 +180,22 @@ void solver::extrapolateUMpts(void)
   }
 }
 
+void solver::extrapolateSMpts(void)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    opers[eles[i].eType][eles[i].order].applySptsMpts(eles[i].S_spts,eles[i].S_mpts);
+  }
+}
+
+void solver::extrapolateSFpts(void)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    opers[eles[i].eType][eles[i].order].applySptsFpts(eles[i].S_spts,eles[i].S_fpts);
+  }
+}
+
 void solver::calcInviscidFlux_spts(void)
 {
 #pragma omp parallel for
@@ -310,6 +326,14 @@ void solver::correctU()
 void solver::extrapolateGradU()
 {
 
+}
+
+void solver::calcEntropyVar_spts(void)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].calcEntropyVar_spts();
+  }
 }
 
 void solver::moveMesh(int step)

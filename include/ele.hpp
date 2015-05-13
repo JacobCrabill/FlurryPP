@@ -136,6 +136,9 @@ public:
   uint getNFpts() const;
   void setNFpts(int value);
 
+  void calcEntropyVar_spts(void);
+  double getEntropyVar(int spt);
+  void getEntropyVarPlot(matrix<double> &S);
 private:
 
   /* --- Simulation/Mesh Parameters --- */
@@ -191,6 +194,11 @@ private:
   matrix<double> norm_fpts;   //! Unit normal in physical space
   matrix<double> tNorm_fpts;  //! Unit normal in reference space
   vector<double> dA_fpts;     //! Local equivalent face-area at flux point
+
+  // Other
+  matrix<double> S_spts;      //! Entropy-adjoint variable used as error indicator for Euler
+  matrix<double> S_fpts;      //! Entropy-adjoint variable at flux points
+  matrix<double> S_mpts;      //! Entropy-adjoint variable at mesh points
 
   /* --- Temporary Variables --- */
   matrix<double> tempF;

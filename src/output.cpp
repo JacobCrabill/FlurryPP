@@ -106,6 +106,12 @@ void writeParaview(solver *Solver, input *params)
 
     Solver->extrapolateUMpts();
 
+    if (params->equation == NAVIER_STOKES) {
+      Solver->calcEntropyVar_spts();
+      Solver->extrapolateSFpts();
+      Solver->extrapolateSMpts();
+    }
+
     if (params->motion != 0) {
       e.updatePosSpts();
       e.updatePosFpts();
@@ -113,11 +119,14 @@ void writeParaview(solver *Solver, input *params)
     }
 
     // The combination of spts + fpts will be the plot points
-    matrix<double> vPpts, gridVelPpts;
+    matrix<double> vPpts, gridVelPpts, sPpts;
     vector<point> ppts;
     e.getPrimitivesPlot(vPpts);
     e.getGridVelPlot(gridVelPpts);
     ppts = e.getPpts();
+
+    if (params->equation == NAVIER_STOKES)
+      e.getEntropyVarPlot(sPpts);
 
     int nSubCells = (e.order+2)*(e.order+2);
     int nPpts = (e.order+3)*(e.order+3);
@@ -182,6 +191,16 @@ void writeParaview(solver *Solver, input *params)
         dataFile << endl;
         dataFile << "				</DataArray>" << endl;
       }
+    }
+
+    if (params->equation == NAVIER_STOKES) {
+      /* --- Pressure --- */
+      dataFile << "				<DataArray type= \"Float32\" Name=\"EntropyErr\" format=\"ascii\">" << endl;
+      for(int k=0; k<nPpts; k++) {
+        dataFile << sPpts(k) << " ";
+      }
+      dataFile << endl;
+      dataFile << "				</DataArray>" << endl;
     }
 
     /* --- End of Cell's Solution Data --- */
