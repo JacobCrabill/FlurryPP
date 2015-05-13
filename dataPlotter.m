@@ -1,17 +1,17 @@
-% clear all; close all;
-% 
-% datadir = 'bin'; % Location of data files
-% caseName = 'testRun'; % Name of files to be plotted
-% Iters = [0:100:10000];    % Iterations to be plotted
-% N = 300;                % # of points to use in each direction for surf plot
-% GIF = false;           % Save plots to animated GIF file?
-% 
-% data = cell(length(Iters));
-% for i=1:length(Iters)
-%     iter = Iters(i);
-%     filename = sprintf('%s/%s.csv.%09d',datadir,caseName,iter);
-%     data{i} = csvread(filename,1,0);
-% end
+clear all; close all;
+
+datadir = 'bin'; % Location of data files
+caseName = 'testRun'; % Name of files to be plotted
+Iters = [0:100:10000];    % Iterations to be plotted
+N = 300;                % # of points to use in each direction for surf plot
+GIF = false;           % Save plots to animated GIF file?
+
+data = cell(length(Iters));
+for i=1:length(Iters)
+    iter = Iters(i);
+    filename = sprintf('%s/%s.csv.%09d',datadir,caseName,iter);
+    data{i} = csvread(filename,1,0);
+end
 
 %% Assuming constant range in x,y (if not, move this inside the 'for' loop)
 x = data{1}(:,1);

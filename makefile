@@ -1,39 +1,22 @@
 #############################################################################
-# Makefile for building: Flurry
-# Command: make -f Makefile.flurry
-#          make -f Makefile.flurry CODE=debug
-#          make -f Makefile.flurry CODE=release OPENMP=yes
+# Makefile for building Flurry
+# Command: make debug
+#          make release
+#          make openmp
 #############################################################################
 
 ####### Compiler, tools and options
 
-CODE          = debug  # debug, release, or blank for 'default' debug
-CC            = gcc
-CXX           = g++
-DEFINES       =
-ifeq ($(CODE),release)
-  CFLAGS      = -m64 -pipe -O3 -Wall -W $(DEFINES)
-  CXXFLAGS    = -m64 -pipe -O3 -Wall -W -std=c++11 $(DEFINES)
-else
-  ifeq ($(CODE),debug)
-    CFLAGS    = -m64 -pipe -pg -g -O0 -Wall -W $(DEFINES)
-    CXXFLAGS  = -m64 -pipe -pg -g -O0 -Wall -W -std=c++11 $(DEFINES)
-    DBG       = -pg
-  else
-    CFLAGS    = -m64 -pipe -g -O2 -Wall -W $(DEFINES)
-    CXXFLAGS  = -m64 -pipe -g -O2 -Wall -W -std=c++11 $(DEFINES)
-  endif
-endif
-
+CXX = g++
 INCPATH       = -I.
 LINK          = g++
-LFLAGS        = -m64
 LIBS          = $(SUBLIBS)
 
-ifeq ($(OPENMP),yes)
-    CXXFLAGS += -fopenmp
-    LFLAGS += -fopenmp -lgomp
-endif
+CXXFLAGS = -pipe -g -O2 -Wall -W -std=c++11 $(DEFINES)
+
+CXXFLAGS_RELEASE = -pipe -O3 -Wall -W -std=c++11 $(DEFINES)
+CXXFLAGS_DEBUG   = -pipe -pg -g -O0 -std=c++11 $(DEFINES)
+CXXFLAGS_OPENMP  = -pipe -O3 -Wall -W -std=c++11 -fopenmp $(DEFINES)
 
 ####### Output directory - these do nothing currently
 
@@ -72,22 +55,8 @@ TARGET        = Flurry
 
 ####### Implicit rules
 
-.SUFFIXES: .o .c .cpp .cc .cxx .C
-
 .cpp.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"
-
-.cc.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"
-
-.cxx.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"
-
-.C.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"
-
-.c.o:
-	$(CC) -c $(CFLAGS) $(INCPATH) -o "$@" "$<"
 
 ####### Build rules
 
@@ -96,6 +65,19 @@ $(TARGET):  $(OBJECTS)
 
 clean:
 	cd obj && rm *.o && cd .. && rm bin/Flurry
+
+.PHONY: debug
+debug: CXXFLAGS=$(CXXFLAGS_DEBUG)
+debug: $(TARGET)
+
+.PHONY: release
+release: CXXFLAGS=$(CXXFLAGS_RELEASE)
+release: $(TARGET)
+
+.PHONY: openmp
+openmp: CXXFLAGS=$(CXXFLAGS_OPENMP)
+openmp: LIBS+= -fopenmp -lgomp
+openmp: $(TARGET)
 
 ####### Compile
 

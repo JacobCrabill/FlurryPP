@@ -31,15 +31,16 @@ Compilation Instructions
 
 To compile Flurry, you can either use QT Creator (https://www.qt.io/download-open-source/), which is an excellent C++ IDE that I use for development, or you can use the provided Makefile.flurry to compile using GNU make.  For the make option, just open a terminal and run the following:
 
-`make -f Makefile.flurry`
+`make`
 
 Optionally, you can specify the type of build as either *debug* or *release*:
 
-`make -f Makefile.flurry CODE=release`
+`make release`
 
-where *release* turns on full optimization, and *debug* removes all optimization and adds flags for both debugging and profiling.  The code also (optionally) utilizes OpenMP to take advantage of easy parallelization on desktop computers; speedup of ~3x has been seen on 4-core processors.  To enable OpenMP when compiling, modify the 'make' command like so:
+where *release* turns on full optimization, and *debug* removes all optimization and adds flags for both debugging and profiling.  
+The code also (optionally) utilizes OpenMP to take advantage of easy parallelization on desktop computers; speedup of ~3x has been seen on 4-core processors.  To enable OpenMP when compiling, just do:
 
-`make -f Makefile.flurry CODE=release OPENMP=yes`
+`make openmp`
 
 
 Test Cases
