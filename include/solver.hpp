@@ -163,7 +163,7 @@ public:
 
   /* === Functions Related to Overset Grids === */
 
-  void calcEntropyVar_spts();
+  void calcEntropyErr_spts();
 private:
   //! Pointer to the parameters object for the current solution
   input *params;

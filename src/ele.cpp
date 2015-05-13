@@ -706,18 +706,34 @@ void ele::calcDeltaFn(void)
   }
 }
 
-void ele::calcEntropyVar_spts(void)
+void ele::calcEntropyErr_spts(void)
 {
   for (int spt=0; spt<nSpts; spt++) {
-    auto V = getPrimitives(spt);
-    double s = log(V[3]) - params->gamma*log(V[0]); // ln(p) - gamma ln(rho)
-    S_spts(spt) = - V[0]*s/(params->gamma-1);
+    auto v = getEntropyVars(spt);
+    S_spts(spt) = 0;
+    for (int k=0; k<nFields; k++) {
+      S_spts(spt) += v[k]*divF_spts[0](spt,k);
+    }
+    S_spts(spt) /= detJac_spts[spt];
   }
 }
 
-double ele::getEntropyVar(int spt)
+vector<double> ele::getEntropyVars(int spt)
 {
-  return S_spts(spt);
+  vector<double> v(nFields);
+  double gamma = params->gamma;
+
+  auto phi = getPrimitives(spt);
+
+  double S = log(phi[3]) - gamma*log(phi[0]); // ln(p) - gamma ln(rho)
+  double Vmag2 = phi[1]*phi[1] + phi[2]*phi[2];
+
+  v[0] = (gamma-S)/(gamma-1) - (1/2)*phi[0]*Vmag2/phi[3];
+  v[1] = phi[0]*phi[1]/phi[3];
+  v[2] = phi[0]*phi[2]/phi[3];
+  v[3] = -phi[0]/phi[3];
+
+  return v;
 }
 
 void ele::timeStepA(int step, double rkVal)
@@ -841,7 +857,7 @@ void ele::getGridVelPlot(matrix<double> &GV)
   }
 }
 
-void ele::getEntropyVarPlot(matrix<double> &S)
+void ele::getEntropyErrPlot(matrix<double> &S)
 {
   S.setup(nSpts+nFpts+nNodes,1);
 

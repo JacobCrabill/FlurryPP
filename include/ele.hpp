@@ -136,9 +136,9 @@ public:
   uint getNFpts() const;
   void setNFpts(int value);
 
-  void calcEntropyVar_spts(void);
-  double getEntropyVar(int spt);
-  void getEntropyVarPlot(matrix<double> &S);
+  void calcEntropyErr_spts(void);
+  vector<double> getEntropyVars(int spt);
+  void getEntropyErrPlot(matrix<double> &S);
 private:
 
   /* --- Simulation/Mesh Parameters --- */

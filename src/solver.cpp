@@ -328,11 +328,11 @@ void solver::extrapolateGradU()
 
 }
 
-void solver::calcEntropyVar_spts(void)
+void solver::calcEntropyErr_spts(void)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    eles[i].calcEntropyVar_spts();
+    eles[i].calcEntropyErr_spts();
   }
 }
 
