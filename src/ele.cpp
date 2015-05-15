@@ -583,10 +583,10 @@ void ele::setInitialCondition()
       vy = params->vyIC;
       p = params->pIC;
       for (int spt=0; spt<nSpts; spt++) {
-        U_spts[spt][0] = rho;
-        U_spts[spt][1] = rho * vx;
-        U_spts[spt][2] = rho * vy;
-        U_spts[spt][3] = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+        U_spts(spt,0) = rho;
+        U_spts(spt,1) = rho * vx;
+        U_spts(spt,2) = rho * vy;
+        U_spts(spt,3) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
       }
     }
     else if (params->ic_type == 1) {
@@ -604,10 +604,10 @@ void ele::setInitialCondition()
         vy = 1. + eps*x / (2.*pi) * exp(f/2.);
         p = pow(rho,gamma);
 
-        U_spts[spt][0] = rho;
-        U_spts[spt][1] = rho * vx;
-        U_spts[spt][2] = rho * vy;
-        U_spts[spt][3] = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+        U_spts(spt,0) = rho;
+        U_spts(spt,1) = rho * vx;
+        U_spts(spt,2) = rho * vy;
+        U_spts(spt,3) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
       }
     }
   }
@@ -617,13 +617,13 @@ void ele::setInitialCondition()
     double r2;
     for (int spt=0; spt<nSpts; spt++) {
       r2 = pos_spts[spt][0]*pos_spts[spt][0] + pos_spts[spt][1]*pos_spts[spt][1];
-      U_spts[spt][0] = exp(-r2);
+      U_spts(spt,0) = exp(-r2);
     }
     }
     else if (params->ic_type == 1) {
       /* --- Test case for debugging - linear solution x+y over domain --- */
       for (int spt=0; spt<nSpts; spt++) {
-        U_spts[spt][0] = pos_spts[spt][0]+pos_spts[spt][1];
+        U_spts(spt,0) = pos_spts[spt][0]+pos_spts[spt][1];
       }
     }
   }
@@ -789,7 +789,8 @@ vector<double> ele::getPrimitives(uint spt)
     V[0] = U_spts[spt][0];
     V[1] = U_spts[spt][1]/V[0];
     V[2] = U_spts[spt][2]/V[0];
-    V[3] = (params->gamma-1)*(U_spts[spt][3] - (0.5*(U_spts[spt][1]*U_spts[spt][1] + U_spts[spt][2]*U_spts[spt][2])/U_spts[spt][0]));
+    double vMagSq = V[1]*V[1]+V[2]*V[2];
+    V[3] = (params->gamma-1)*(U_spts[spt][3] - (1/2)*V[0]*vMagSq);
   }
 
   return V;
@@ -979,9 +980,6 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
 
   loc_spts = Geo->getLocSpts(eType,order);
   loc_fpts = Geo->getLocFpts(eType,order);
-
-  nSpts = loc_spts.size();
-  nFpts = loc_fpts.size();
 
   pos_spts.resize(nSpts);
   pos_fpts.resize(nFpts);

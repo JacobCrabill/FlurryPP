@@ -92,6 +92,7 @@ void writeParaview(solver *Solver, input *params)
   sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],iter);
 
   dataFile.open(fileNameC);
+  dataFile.precision(16);
 
   cout << "Writing ParaView file " << string(fileNameC) << "...  " << flush;
 
