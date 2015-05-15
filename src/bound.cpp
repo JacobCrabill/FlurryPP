@@ -17,10 +17,8 @@
 
 #include <array>
 
-void bound::setupBound(ele *eL, int locF_L, int bcType, int gID, input *params)
+void bound::initialize(ele *eL, int locF_L, int bcType, int gID, input *params)
 {
-  int fptStartL, fptEndL;
-
   ID = gID;
   this->bcType = bcType;
   this->locF_L = locF_L;
@@ -30,12 +28,20 @@ void bound::setupBound(ele *eL, int locF_L, int bcType, int gID, input *params)
   nDims = params->nDims;
   nFields = params->nFields;
 
+  // Setup temporary vectors for later use
+  tempFL.setup(nDims,nFields);
+  tempFR.setup(nDims,nFields);
+  tempUL.resize(nFields);
+}
+
+void bound::setupBound(void)
+{
   nFptsL = eL->order+1;
 
   /* --- For 1D faces [line segments] only - find first/last ID of fpts; reverse
    * the order on the 'right' face so they match up --- */
-  fptStartL = (locF_L*(nFptsL));
-  fptEndL = (locF_L*(nFptsL)) + nFptsL;
+  int fptStartL = (locF_L*(nFptsL));
+  int fptEndL = (locF_L*(nFptsL)) + nFptsL;
 
   UL.resize(nFptsL);
   UR.setup(nFptsL,nFields);
@@ -64,11 +70,6 @@ void bound::setupBound(ele *eL, int locF_L, int bcType, int gID, input *params)
 
     fpt++;
   }
-
-  // Setup a temporary flux-storage vector for later use
-  tempFL.setup(nDims,nFields);
-  tempFR.setup(nDims,nFields);
-  tempUL.resize(nFields);
 }
 
 void bound::calcInviscidFlux()

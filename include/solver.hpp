@@ -58,6 +58,12 @@ public:
   //! Setup the FR operators for all ele types and polynomial orders which will be used in computation
   void setupOperators();
 
+  //! Run the basic setup functions for all elements and faces
+  void setupElesFaces();
+
+  //! If restarting from data file, read data and setup eles & faces accordingly
+  void readRestartFile();
+
   /* === Functions Related to Basic FR Process === */
 
   //! Apply the initial condition to all elements

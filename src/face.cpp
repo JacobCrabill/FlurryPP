@@ -22,10 +22,8 @@ face::face()
 
 }
 
-void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID, input *params)
+void face::initialize(ele *eL, ele *eR, int locF_L, int locF_R, int gID, input *params)
 {
-  int fptStartL, fptEndL, fptStartR, fptEndR, i, fpt;
-
   ID = gID;
 
   this->locF_L = locF_L;
@@ -37,6 +35,15 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID, input *p
   nDims = params->nDims;
   nFields = params->nFields;
 
+  // Setup temporary vectors for later use
+  tempFL.setup(nDims,nFields);
+  tempFR.setup(nDims,nFields);
+  tempUL.resize(nFields);
+  tempUR.resize(nFields);
+}
+
+void face::setupFace(void)
+{
   nFptsL = eL->order+1;
   nFptsR = eR->order+1;
 
@@ -48,10 +55,10 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID, input *p
 
   /* --- For 1D faces [line segments] only - find first/last ID of fpts; reverse
    * the order on the 'right' face so they match up --- */
-  fptStartL = (locF_L*(nFptsL));
-  fptEndL = (locF_L*(nFptsL)) + nFptsL;
-  fptStartR = (locF_R*(nFptsR)) + nFptsR;
-  fptEndR = (locF_R*(nFptsR));
+  int fptStartL = (locF_L*(nFptsL));
+  int fptEndL = (locF_L*(nFptsL)) + nFptsL;
+  int fptStartR = (locF_R*(nFptsR)) + nFptsR;
+  int fptEndR = (locF_R*(nFptsR));
 
   UL.resize(nFptsL);
   UR.resize(nFptsR);
@@ -70,8 +77,8 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID, input *p
   posFpts.resize(nFptsL); // Probably only needed for debugging.  Remove later.
 
   // Get access to data at left element
-  fpt = 0;
-  for (i=fptStartL; i<fptEndL; i++) {
+  int fpt = 0;
+  for (int i=fptStartL; i<fptEndL; i++) {
     UL[fpt] = (eL->U_fpts[i]);
     FnL[fpt] = (eL->Fn_fpts[i]);
     dAL[fpt] = &(eL->dA_fpts[i]);
@@ -89,7 +96,7 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID, input *p
 
   // Get access to data at right element [order reversed to match left ele]
   fpt = 0;
-  for (i=fptStartR-1; i>=fptEndR; i--) {
+  for (int i=fptStartR-1; i>=fptEndR; i--) {
     UR[fpt] = (eR->U_fpts[i]);
     FnR[fpt] = (eR->Fn_fpts[i]);
     dAR[fpt] = &(eR->dA_fpts[i]);
@@ -103,13 +110,8 @@ void face::setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID, input *p
 
     fpt++;
   }
-
-  // Setup a temporary flux-storage vector for later use
-  tempFL.setup(nDims,nFields);
-  tempFR.setup(nDims,nFields);
-  tempUL.resize(nFields);
-  tempUR.resize(nFields);
 }
+
 
 void face::calcInviscidFlux(void)
 {

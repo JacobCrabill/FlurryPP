@@ -29,8 +29,11 @@ class face
 public:
   face();
 
+  /*! Assign basic parameters to boundary */
+  void initialize(ele *eL, ele *eR, int locF_L, int locF_R, int gID, input* params);
+
   /*! Setup access to the left & right elements' data */
-  void setupFace(ele *eL, ele *eR, int locF_L, int locF_R, int gID, input* params);
+  void setupFace(void);
 
   /*! Calculate the common inviscid flux on the face */
   void calcInviscidFlux(void);

@@ -116,8 +116,8 @@ public:
   /*! Get the locations of the plotting points */
   vector<point> getPpts(void);
 
-  /*! Compute the solution residual over the element */
-  vector<double> getResidual(int normType);
+  /*! Compute the norm of the solution residual over the element */
+  vector<double> getNormResidual(int normType);
 
   /*! Get position of solution point in physical space */
   point getPosSpt(uint spt);
@@ -139,6 +139,9 @@ public:
   void calcEntropyErr_spts(void);
   vector<double> getEntropyVars(int spt);
   void getEntropyErrPlot(matrix<double> &S);
+  void setupArrays();
+  void setupAllGeometry();
+  void restart(ifstream &file, input *_params, geo *_Geo);
 private:
 
   /* --- Simulation/Mesh Parameters --- */
