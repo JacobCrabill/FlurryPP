@@ -18,6 +18,8 @@
 
 #include "../include/ele.hpp"
 
+#include <sstream>
+
 #include "../include/polynomials.hpp"
 #include "../include/flux.hpp"
 
@@ -109,13 +111,23 @@ void ele::setup(input *inParams, geo *inGeo)
   pos_spts.resize(nSpts);
   pos_fpts.resize(nFpts);
 
+  /* --- Setup all data arrays --- */
+  setupArrays();
+
+  /* --- Final Step: calculate physical->reference transforms
+   * and store shape basis values for future use --- */
+  setupAllGeometry();
+
+}
+
+void ele::setupArrays(void)
+{
   if (params->equation == ADVECTION_DIFFUSION) {
     nFields = 1;
   }else if (params->equation == NAVIER_STOKES) {
     nFields = nDims + 2;
   }
 
-  /* --- Setup all data arrays --- */
   U_spts.setup(nSpts,nFields);
   U_fpts.setup(nFpts,nFields);
   U_mpts.setup(nNodes,nFields);
@@ -185,11 +197,15 @@ void ele::setup(input *inParams, geo *inGeo)
       vec = nodes;
     }
   }
+  S_spts.setup(nSpts,1);
+  S_fpts.setup(nFpts,1);
+  S_mpts.setup(nNodes,1);
 
   tempF.setup(nDims,nFields);
   tempU.assign(nFields,0);
+}
 
-  /* --- Final Step: calculate physical->reference transforms --- */
+void ele::setupAllGeometry(void) {
   setShape_spts();
   setShape_fpts();
   setDShape_spts();
@@ -567,10 +583,10 @@ void ele::setInitialCondition()
       vy = params->vyIC;
       p = params->pIC;
       for (int spt=0; spt<nSpts; spt++) {
-        U_spts[spt][0] = rho;
-        U_spts[spt][1] = rho * vx;
-        U_spts[spt][2] = rho * vy;
-        U_spts[spt][3] = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+        U_spts(spt,0) = rho;
+        U_spts(spt,1) = rho * vx;
+        U_spts(spt,2) = rho * vy;
+        U_spts(spt,3) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
       }
     }
     else if (params->ic_type == 1) {
@@ -588,10 +604,10 @@ void ele::setInitialCondition()
         vy = 1. + eps*x / (2.*pi) * exp(f/2.);
         p = pow(rho,gamma);
 
-        U_spts[spt][0] = rho;
-        U_spts[spt][1] = rho * vx;
-        U_spts[spt][2] = rho * vy;
-        U_spts[spt][3] = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+        U_spts(spt,0) = rho;
+        U_spts(spt,1) = rho * vx;
+        U_spts(spt,2) = rho * vy;
+        U_spts(spt,3) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
       }
     }
   }
@@ -601,13 +617,13 @@ void ele::setInitialCondition()
     double r2;
     for (int spt=0; spt<nSpts; spt++) {
       r2 = pos_spts[spt][0]*pos_spts[spt][0] + pos_spts[spt][1]*pos_spts[spt][1];
-      U_spts[spt][0] = exp(-r2);
+      U_spts(spt,0) = exp(-r2);
     }
     }
     else if (params->ic_type == 1) {
       /* --- Test case for debugging - linear solution x+y over domain --- */
       for (int spt=0; spt<nSpts; spt++) {
-        U_spts[spt][0] = pos_spts[spt][0]+pos_spts[spt][1];
+        U_spts(spt,0) = pos_spts[spt][0]+pos_spts[spt][1];
       }
     }
   }
@@ -703,11 +719,41 @@ void ele::calcDeltaFn(void)
   }
 }
 
+void ele::calcEntropyErr_spts(void)
+{
+  for (int spt=0; spt<nSpts; spt++) {
+    auto v = getEntropyVars(spt);
+    S_spts(spt) = 0;
+    for (int k=0; k<nFields; k++) {
+      S_spts(spt) += v[k]*divF_spts[0](spt,k);
+    }
+    S_spts(spt) /= detJac_spts[spt];
+  }
+}
+
+vector<double> ele::getEntropyVars(int spt)
+{
+  vector<double> v(nFields);
+  double gamma = params->gamma;
+
+  auto phi = getPrimitives(spt);
+
+  double S = log(phi[3]) - gamma*log(phi[0]); // ln(p) - gamma ln(rho)
+  double Vmag2 = phi[1]*phi[1] + phi[2]*phi[2];
+
+  v[0] = (gamma-S)/(gamma-1) - (1/2)*phi[0]*Vmag2/phi[3];
+  v[1] = phi[0]*phi[1]/phi[3];
+  v[2] = phi[0]*phi[2]/phi[3];
+  v[3] = -phi[0]/phi[3];
+
+  return v;
+}
+
 void ele::timeStepA(int step, double rkVal)
 {
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
-      U_spts(spt,i) = U0[spt][i] - rkVal * params->dt*divF_spts[step][spt][i]/detJac_spts[spt];
+      U_spts(spt,i) = U0(spt,i) - rkVal * params->dt*divF_spts[step](spt,i)/detJac_spts[spt];
     }
   }
 }
@@ -743,7 +789,8 @@ vector<double> ele::getPrimitives(uint spt)
     V[0] = U_spts[spt][0];
     V[1] = U_spts[spt][1]/V[0];
     V[2] = U_spts[spt][2]/V[0];
-    V[3] = (params->gamma-1)*(U_spts[spt][3] - (0.5*(U_spts[spt][1]*U_spts[spt][1] + U_spts[spt][2]*U_spts[spt][2])/U_spts[spt][0]));
+    double vMagSq = V[1]*V[1]+V[2]*V[2];
+    V[3] = (params->gamma-1)*(U_spts[spt][3] - (1/2)*V[0]*vMagSq);
   }
 
   return V;
@@ -755,28 +802,28 @@ void ele::getPrimitivesPlot(matrix<double> &V)
 
   // Get solution at corner points
   for (int k=0; k<nFields; k++) {
-    V[0][k]                     = U_mpts[0][k];
-    V[order+2][k]               = U_mpts[1][k];
-    V[(order+3)*(order+3)-1][k] = U_mpts[2][k];
-    V[(order+3)*(order+2)][k]   = U_mpts[3][k];
+    V(0,k)                     = U_mpts(0,k);
+    V(order+2,k)               = U_mpts(1,k);
+    V((order+3)*(order+3)-1,k) = U_mpts(2,k);
+    V((order+3)*(order+2),k)   = U_mpts(3,k);
   }
 
   // Get solution at flux points
   for (int i=0; i<order+1; i++) {
     for (int k=0; k<nFields; k++) {
-      V[i+1][k]                     = U_fpts[i][k];               // Bottom
-      V[(i+1)*(order+3)][k]         = U_fpts[nFpts-i-1][k];       // Left
-      V[(i+2)*(order+3)-1][k]       = U_fpts[order+1+i][k];       // Right
-      V[(order+3)*(order+2)+i+1][k] = U_fpts[3*(order+1)-i-1][k]; // Top
+      V(i+1,k)                     = U_fpts(i,k);               // Bottom
+      V((i+1)*(order+3),k)         = U_fpts(nFpts-i-1,k);       // Left
+      V((i+2)*(order+3)-1,k)       = U_fpts(order+1+i,k);       // Right
+      V((order+3)*(order+2)+i+1,k) = U_fpts(3*(order+1)-i-1,k); // Top
     }
   }
 
   // Get solution at solution points
   for (int i=0; i<order+1; i++) {
     for (int j=0; j<order+1; j++) {
-      for (int k=0; k<nFields; k++) {
-        int id = (i+1)*(order+3)+j+1;
-        V[id][k] = U_spts[j+i*(order+1)][k];
+      int id = (i+1)*(order+3)+j+1;
+      for (int k=0; k<nFields; k++) {        
+        V(id,k) = U_spts(j+i*(order+1),k);
       }
     }
   }
@@ -784,9 +831,9 @@ void ele::getPrimitivesPlot(matrix<double> &V)
   if (params->equation == NAVIER_STOKES) {
     // Overwriting V, so be careful of order!
     for (uint i=0; i<V.getDim0(); i++) {
-      V[i][3] = (params->gamma-1)*(V[i][3] - (0.5*(V[i][1]*V[i][1] + V[i][2]*V[i][2])/V[i][0]));
-      V[i][1] = V[i][1]/V[i][0];
-      V[i][2] = V[i][2]/V[i][0];
+      V(i,3) = (params->gamma-1)*(V(i,3) - (0.5*(V(i,1)*V(i,1) + V(i,2)*V(i,2))/V(i,0)));
+      V(i,1) = V(i,1)/V(i,0);
+      V(i,2) = V(i,2)/V(i,0);
     }
   }
 }
@@ -797,29 +844,56 @@ void ele::getGridVelPlot(matrix<double> &GV)
 
   // Get solution at corner points
   for (int dim=0; dim<nDims; dim++) {
-    GV[0][dim]                     = gridVel_nodes[0][dim];
-    GV[order+2][dim]               = gridVel_nodes[1][dim];
-    GV[(order+3)*(order+3)-1][dim] = gridVel_nodes[2][dim];
-    GV[(order+3)*(order+2)][dim]   = gridVel_nodes[3][dim];
+    GV(0,dim)                     = gridVel_nodes(0,dim);
+    GV(order+2,dim)               = gridVel_nodes(1,dim);
+    GV((order+3)*(order+3)-1,dim) = gridVel_nodes(2,dim);
+    GV((order+3)*(order+2),dim)   = gridVel_nodes(3,dim);
   }
 
   // Get solution at flux points
   for (int i=0; i<order+1; i++) {
     for (int dim=0; dim<nDims; dim++) {
-      GV[i+1][dim]                     = gridVel_fpts[i][dim];               // Bottom
-      GV[(i+1)*(order+3)][dim]         = gridVel_fpts[nFpts-i-1][dim];       // Left
-      GV[(i+2)*(order+3)-1][dim]       = gridVel_fpts[order+1+i][dim];       // Right
-      GV[(order+3)*(order+2)+i+1][dim] = gridVel_fpts[3*(order+1)-i-1][dim]; // Top
+      GV(i+1,dim)                     = gridVel_fpts(i,dim);               // Bottom
+      GV((i+1)*(order+3),dim)         = gridVel_fpts(nFpts-i-1,dim);       // Left
+      GV((i+2)*(order+3)-1,dim)       = gridVel_fpts(order+1+i,dim);       // Right
+      GV((order+3)*(order+2)+i+1,dim) = gridVel_fpts(3*(order+1)-i-1,dim); // Top
     }
   }
 
   // Get solution at solution points
   for (int i=0; i<order+1; i++) {
     for (int j=0; j<order+1; j++) {
-      for (int dim=0; dim<nDims; dim++) {
-        int id = (i+1)*(order+3)+j+1;
-        GV[id][dim] = gridVel_spts[j+i*(order+1)][dim];
+      int id = (i+1)*(order+3)+j+1;
+      for (int dim=0; dim<nDims; dim++) {        
+        GV(id,dim) = gridVel_spts(j+i*(order+1),dim);
       }
+    }
+  }
+}
+
+void ele::getEntropyErrPlot(matrix<double> &S)
+{
+  S.setup(nSpts+nFpts+nNodes,1);
+
+  // Get solution at corner points
+  S(0)                     = S_mpts(0);
+  S(order+2)               = S_mpts(1);
+  S((order+3)*(order+3)-1) = S_mpts(2);
+  S((order+3)*(order+2))   = S_mpts(3);
+
+  // Get solution at flux points
+  for (int i=0; i<order+1; i++) {
+      S(i+1)                     = S_fpts(i);               // Bottom
+      S((i+1)*(order+3))         = S_fpts(nFpts-i-1);       // Left
+      S((i+2)*(order+3)-1)       = S_fpts(order+1+i);       // Right
+      S((order+3)*(order+2)+i+1) = S_fpts(3*(order+1)-i-1); // Top
+  }
+
+  // Get solution at solution points
+  for (int i=0; i<order+1; i++) {
+    for (int j=0; j<order+1; j++) {
+      int id = (i+1)*(order+3)+j+1;
+      S(id) = S_spts(j+i*(order+1));
     }
   }
 }
@@ -864,7 +938,178 @@ void ele::setPpts(void)
   }
 }
 
-vector<double> ele::getResidual(int normType)
+void ele::restart(ifstream &file, input* _params, geo* _Geo)
+{
+  params = _params;
+  Geo = _Geo;
+
+  // Get the "<Piece _ >" line
+  string str;
+  getline(file,str);
+
+  stringstream ss;
+  string str1, str2;
+  ss.str(str);
+  ss >> str >> str1 >> str2;
+
+  int nPts, nCells;
+
+  // Find quotation marks around # of points & remove
+  size_t ind = str1.find("\"");
+  str1.erase(0,ind);
+  ind = str1.find("\"");
+  str1.erase(ind,1);
+  ss.str(std::string("")); ss.clear();  // This is how to reset stringstreams!
+  ss.str(str1);
+  ss >> nPts;
+
+  // Find quotation marks around # of cells & remove
+  ind = str2.find("\"");
+  str2.erase(0,ind);
+  ind = str2.find("\"");
+  str2.erase(ind,1);
+  ss.str(""); ss.clear();
+  ss.str(str2);
+  ss >> nCells;
+
+  /* !!!! This will take some more thought once I go 3D or add (real) triangles.  !!!! */
+  nDims = 2;
+  order = sqrt(nCells) - 2;
+  nSpts = (order+1)*(order+1);
+  nFpts = 4*(order+1);
+
+  loc_spts = Geo->getLocSpts(eType,order);
+  loc_fpts = Geo->getLocFpts(eType,order);
+
+  pos_spts.resize(nSpts);
+  pos_fpts.resize(nFpts);
+
+  // Allocate memory for all data arrays
+  setupArrays();
+
+  // Move on to the first <DataArray>
+
+  matrix<double> tempV(nSpts,nDims);
+  vector<double> tempP(nSpts);
+
+  bool foundRho = false;
+  bool foundV = false;
+  bool foundP = false;
+
+  while ( !(foundRho && foundV && foundP) ) {
+
+    while (getline(file,str)) {
+      ss.str(""); ss.clear();
+      ss.str(str);
+      ss >> str1;
+      if (str1.compare("<DataArray")==0) {
+        while (str1.find("Name=") == string::npos) {
+          ss >> str1;
+        }
+        break;
+      }
+    }
+
+    // Extract field name
+    ind = str1.find("\"");
+    str1.erase(0,ind+1);
+    ind = str1.find("\"");
+    str1.erase(ind,1);
+
+    // Get the data line
+    getline(file,str);
+    ss.str(""); ss.clear();
+    ss.str(str);
+    if (str1.compare("Density")==0) {
+      foundRho = true;
+      double tmp;
+      // Skip the data at the mesh nodes and flux points along 'bottom' edge
+      for (int i=0; i<2+(order+1); i++) {
+        ss >> tmp;
+      }
+
+      // Get the data at the solution points
+      for (int i=0; i<(order+1); i++) {
+        ss >> tmp;
+        for (int j=0; j<(order+1); j++) {
+          ss >> U_spts(j+i*(order+1),0);
+        }
+        ss >> tmp;
+      }
+    }
+    else if (str1.compare("Velocity")==0) {
+      foundV = true;
+      double tmp1, tmp2, tmp3;
+      // Skip the data at the mesh nodes and flux points along 'bottom' edge
+      for (int i=0; i<2+(order+1); i++) {
+        ss >> tmp1 >> tmp2 >> tmp3;
+      }
+
+      // Get the data at the solution points; skip the flux points at
+      // either end of each row
+      for (int i=0; i<(order+1); i++) {
+        ss >> tmp1 >> tmp2 >> tmp3;
+        for (int j=0; j<(order+1); j++) {
+          ss >> tempV(j+i*(order+1),0);
+          ss >> tempV(j+i*(order+1),1);
+          ss >> tmp1;
+        }
+        ss >> tmp1 >> tmp2 >> tmp3;
+      }
+    }
+    else if (str1.compare("Pressure")==0) {
+      foundP = true;
+      double tmp;
+      // Skip the data at the mesh nodes and flux points along 'bottom' edge
+      for (int i=0; i<2+(order+1); i++) {
+        ss >> tmp;
+      }
+
+      // Get the data at the solution points
+      for (int i=0; i<(order+1); i++) {
+        ss >> tmp;
+        for (int j=0; j<(order+1); j++) {
+          ss >> tempP[j+i*(order+1)];
+        }
+        ss >> tmp;
+      }
+    }
+    else if (str1.compare("EntropyErr")==0) {
+      double tmp;
+      // Skip the data at the mesh nodes and flux points along 'bottom' edge
+      for (int i=0; i<2+(order+1); i++) {
+        ss >> tmp;
+      }
+
+      // Get the data at the solution points
+      for (int i=0; i<(order+1); i++) {
+        ss >> tmp;
+        for (int j=0; j<(order+1); j++) {
+          ss >> S_spts(j+i*(order+1));
+        }
+        ss >> tmp;
+      }
+    }
+    else {
+      // Not needed; ignore
+    }
+  }
+
+  // Convert primitive variables to conservative variables
+  for (int spt=0; spt<nSpts; spt++) {
+    U_spts(spt,1) = U_spts(spt,0)*tempV(spt,0);
+    U_spts(spt,2) = U_spts(spt,0)*tempV(spt,1);
+    double vSq = tempV(spt,0)*tempV(spt,0)+tempV(spt,1)*tempV(spt,1);
+    U_spts(spt,3) = tempP[spt]/(params->gamma-1) + (1/2)*U_spts(spt,0)*vSq;
+  }
+
+  // Move to end of this element's data
+  getline(file,str);
+  while(str.find("</Piece>")==string::npos)
+    getline(file,str);
+}
+
+vector<double> ele::getNormResidual(int normType)
 {
   vector<double> res(nFields,0);
 

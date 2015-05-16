@@ -222,8 +222,6 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> &
       e.faceID[k] = c2e[ic][k];
     }
 
-    e.setup(params,this);
-
     ic++;
   }
 
@@ -246,7 +244,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> &
       ic = e2c[ie][1];
       tmpEdges.assign(c2e[ic], c2e[ic]+c2ne[ic]);  // List of cell's faces
       int fid2 = findFirst(tmpEdges,ie);           // Which one is this face
-      F.setupFace(&eles[e2c[ie][0]],&eles[e2c[ie][1]],fid1,fid2,ie,params);
+      F.initialize(&eles[e2c[ie][0]],&eles[e2c[ie][1]],fid1,fid2,ie,params);
     }
 
     i++;
@@ -264,7 +262,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> &
     if (e2c[ie][1] != -1) {
       FatalError("Boundary edge has a right element assigned.");
     }else{
-      B.setupBound(&eles[e2c[ie][0]],fid1,bcType[i],ie,params);
+      B.initialize(&eles[e2c[ie][0]],fid1,bcType[i],ie,params);
     }
 
     i++;

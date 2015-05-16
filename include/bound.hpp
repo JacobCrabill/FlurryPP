@@ -25,8 +25,11 @@ class bound
 {
 public:
 
+  /*! Assign basic parameters to boundary */
+  void initialize(ele *eL, int locF_L, int bcType, int gID, input* params);
+
   /*! Setup access to the left & right elements' data */
-  void setupBound(ele *eL, int locF_L, int bcType, int gID, input* params);
+  void setupBound(void);
 
   /*! Calculate the inviscid flux from the boundary condition */
   void calcInviscidFlux(void);

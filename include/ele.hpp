@@ -116,8 +116,8 @@ public:
   /*! Get the locations of the plotting points */
   vector<point> getPpts(void);
 
-  /*! Compute the solution residual over the element */
-  vector<double> getResidual(int normType);
+  /*! Compute the norm of the solution residual over the element */
+  vector<double> getNormResidual(int normType);
 
   /*! Get position of solution point in physical space */
   point getPosSpt(uint spt);
@@ -136,6 +136,12 @@ public:
   uint getNFpts() const;
   void setNFpts(int value);
 
+  void calcEntropyErr_spts(void);
+  vector<double> getEntropyVars(int spt);
+  void getEntropyErrPlot(matrix<double> &S);
+  void setupArrays();
+  void setupAllGeometry();
+  void restart(ifstream &file, input *_params, geo *_Geo);
 private:
 
   /* --- Simulation/Mesh Parameters --- */
@@ -191,6 +197,11 @@ private:
   matrix<double> norm_fpts;   //! Unit normal in physical space
   matrix<double> tNorm_fpts;  //! Unit normal in reference space
   vector<double> dA_fpts;     //! Local equivalent face-area at flux point
+
+  // Other
+  matrix<double> S_spts;      //! Entropy-adjoint variable used as error indicator for Euler
+  matrix<double> S_fpts;      //! Entropy-adjoint variable at flux points
+  matrix<double> S_mpts;      //! Entropy-adjoint variable at mesh points
 
   /* --- Temporary Variables --- */
   matrix<double> tempF;

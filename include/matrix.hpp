@@ -95,7 +95,7 @@ public:
 
   T* operator[](int inDim0);
 
-  T &operator()(int i, int j);
+  T &operator()(int i, int j=0);
 
   vector<T> getData();
 

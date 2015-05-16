@@ -58,6 +58,12 @@ public:
   //! Setup the FR operators for all ele types and polynomial orders which will be used in computation
   void setupOperators();
 
+  //! Run the basic setup functions for all elements and faces
+  void setupElesFaces();
+
+  //! If restarting from data file, read data and setup eles & faces accordingly
+  void readRestartFile();
+
   /* === Functions Related to Basic FR Process === */
 
   //! Apply the initial condition to all elements
@@ -85,6 +91,12 @@ public:
 
   //! Extrapolate the solution to the mesh (corner) points
   void extrapolateUMpts(void);
+
+  //! Extrapolate entropy error-estimate variable to the mesh (corner) points
+  void extrapolateSMpts(void);
+
+  //! //! Extrapolate entropy error-estimate variable to the flux points
+  void extrapolateSFpts(void);
 
   //! Calculate the inviscid flux at the solution points
   void calcInviscidFlux_spts(void);
@@ -157,6 +169,7 @@ public:
 
   /* === Functions Related to Overset Grids === */
 
+  void calcEntropyErr_spts();
 private:
   //! Pointer to the parameters object for the current solution
   input *params;

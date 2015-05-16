@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
   runTime.startTimer();
 
   /* Apply the initial condition */
-  Solver.initializeSolution();
+  if (!params.restart)  Solver.initializeSolution();
 
   /* Write initial data file */
   writeData(&Solver,&params);

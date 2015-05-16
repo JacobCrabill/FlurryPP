@@ -92,6 +92,7 @@ void writeParaview(solver *Solver, input *params)
   sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],iter);
 
   dataFile.open(fileNameC);
+  dataFile.precision(16);
 
   cout << "Writing ParaView file " << string(fileNameC) << "...  " << flush;
 
@@ -100,12 +101,18 @@ void writeParaview(solver *Solver, input *params)
   dataFile << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" compressor=\"vtkZLibDataCompressor\">" << endl;
   dataFile << "	<UnstructuredGrid>" << endl;
 
+  // If this is the initial file, need to extrapolate solution to flux points
+  if (params->iter==params->initIter) Solver->extrapolateU();
+
+  Solver->extrapolateUMpts();
+
+  if (params->equation == NAVIER_STOKES) {
+    Solver->calcEntropyErr_spts();
+    Solver->extrapolateSFpts();
+    Solver->extrapolateSMpts();
+  }
+
   for (auto& e:Solver->eles) {
-    // If this is the initial file, need to extrapolate solution to flux points
-    if (params->iter==0) Solver->extrapolateU();
-
-    Solver->extrapolateUMpts();
-
     if (params->motion != 0) {
       e.updatePosSpts();
       e.updatePosFpts();
@@ -113,11 +120,14 @@ void writeParaview(solver *Solver, input *params)
     }
 
     // The combination of spts + fpts will be the plot points
-    matrix<double> vPpts, gridVelPpts;
+    matrix<double> vPpts, gridVelPpts, errPpts;
     vector<point> ppts;
     e.getPrimitivesPlot(vPpts);
     e.getGridVelPlot(gridVelPpts);
     ppts = e.getPpts();
+
+    if (params->equation == NAVIER_STOKES)
+      e.getEntropyErrPlot(errPpts);
 
     int nSubCells = (e.order+2)*(e.order+2);
     int nPpts = (e.order+3)*(e.order+3);
@@ -131,7 +141,7 @@ void writeParaview(solver *Solver, input *params)
     dataFile << "			<PointData>" << endl;
 
     /* --- Density --- */
-    dataFile << "				<DataArray type= \"Float32\" Name=\"Density\" format=\"ascii\">" << endl;
+    dataFile << "				<DataArray type=\"Float32\" Name=\"Density\" format=\"ascii\">" << endl;
     for(int k=0; k<nPpts; k++) {
       dataFile << vPpts(k,0) << " ";
     }
@@ -140,7 +150,7 @@ void writeParaview(solver *Solver, input *params)
 
     if (params->equation == NAVIER_STOKES) {
       /* --- Pressure --- */
-      dataFile << "				<DataArray type= \"Float32\" Name=\"Pressure\" format=\"ascii\">" << endl;
+      dataFile << "				<DataArray type=\"Float32\" Name=\"Pressure\" format=\"ascii\">" << endl;
       for(int k=0; k<nPpts; k++) {
         dataFile << vPpts(k,3) << " ";
       }
@@ -148,7 +158,7 @@ void writeParaview(solver *Solver, input *params)
       dataFile << "				</DataArray>" << endl;
 
       /* --- Velocity --- */
-      dataFile << "				<DataArray type= \"Float32\" NumberOfComponents=\"3\" Name=\"Velocity\" format=\"ascii\">" << endl;
+      dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" Name=\"Velocity\" format=\"ascii\">" << endl;
       for(int k=0; k<nPpts; k++) {
         // Divide momentum components by density to obtain velocity components
         dataFile << vPpts(k,1) << " " << vPpts(k,2) << " ";
@@ -166,7 +176,7 @@ void writeParaview(solver *Solver, input *params)
 
       if (params->motion) {
         /* --- Grid Velocity --- */
-        dataFile << "				<DataArray type= \"Float32\" NumberOfComponents=\"3\" Name=\"GridVelocity\" format=\"ascii\">" << endl;
+        dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" Name=\"GridVelocity\" format=\"ascii\">" << endl;
         for(int k=0; k<nPpts; k++) {
           // Divide momentum components by density to obtain velocity components
           dataFile << gridVelPpts(k,0) << " " << gridVelPpts(k,1) << " ";
@@ -182,6 +192,16 @@ void writeParaview(solver *Solver, input *params)
         dataFile << endl;
         dataFile << "				</DataArray>" << endl;
       }
+    }
+
+    if (params->equation == NAVIER_STOKES) {
+      /* --- Pressure --- */
+      dataFile << "				<DataArray type=\"Float32\" Name=\"EntropyErr\" format=\"ascii\">" << endl;
+      for(int k=0; k<nPpts; k++) {
+        dataFile << errPpts(k) << " ";
+      }
+      dataFile << endl;
+      dataFile << "				</DataArray>" << endl;
     }
 
     /* --- End of Cell's Solution Data --- */
@@ -261,11 +281,11 @@ void writeParaview(solver *Solver, input *params)
 
 void writeResidual(solver *Solver, input *params)
 {
-  vector<double> res(params->nFields), resTmp(params->nFields);
+  vector<double> res(params->nFields);
   int iter = params->iter;
 
   for (auto& e:Solver->eles) {
-    resTmp = e.getResidual(params->resType);
+    auto resTmp = e.getNormResidual(params->resType);
     if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
 
     for (int i=0; i<params->nFields; i++) {

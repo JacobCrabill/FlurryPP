@@ -15,6 +15,7 @@
 
 #include "../include/solver.hpp"
 
+#include <sstream>
 #include <omp.h>
 
 solver::solver()
@@ -30,6 +31,13 @@ void solver::setup(input *params, geo *Geo)
 
   /* Setup the FR elements & faces which will be computed on */
   Geo->setupElesFaces(eles,faces,bounds);
+
+  if (params->restart) {
+    readRestartFile();
+  }
+  else {
+    setupElesFaces();
+  }
 
   /* Setup the FR operators for computation */
   setupOperators();
@@ -180,6 +188,22 @@ void solver::extrapolateUMpts(void)
   }
 }
 
+void solver::extrapolateSMpts(void)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    opers[eles[i].eType][eles[i].order].applySptsMpts(eles[i].S_spts,eles[i].S_mpts);
+  }
+}
+
+void solver::extrapolateSFpts(void)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    opers[eles[i].eType][eles[i].order].applySptsFpts(eles[i].S_spts,eles[i].S_fpts);
+  }
+}
+
 void solver::calcInviscidFlux_spts(void)
 {
 #pragma omp parallel for
@@ -312,6 +336,14 @@ void solver::extrapolateGradU()
 
 }
 
+void solver::calcEntropyErr_spts(void)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].calcEntropyErr_spts();
+  }
+}
+
 void solver::moveMesh(int step)
 {
   if (!params->motion) return;
@@ -334,6 +366,81 @@ void solver::setupOperators()
     for (auto& p: polyOrders[e]) {
       opers[e][p].setupOperators(e,p,Geo,params);
     }
+  }
+}
+
+void solver::setupElesFaces(void) {
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].setup(params,Geo);
+  }
+
+  // Finish setting up internal faces
+#pragma omp parallel for
+  for (int i=0; i<faces.size(); i++) {
+    faces[i].setupFace();
+  }
+
+  // Finish setting up boundary faces
+#pragma omp parallel for
+  for (int i=0; i<bounds.size(); i++) {
+    bounds[i].setupBound();
+  }
+}
+
+void solver::readRestartFile(void) {
+
+  ifstream dataFile;
+
+  // Get the file name & open the file
+  char fileNameC[50];
+  string fileName = params->dataFileName;
+  sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],params->restartIter);
+
+  dataFile.open(fileNameC);
+
+  if (!dataFile.is_open())
+    FatalError("Cannont open restart file.");
+
+  // Find the start of the UnstructuredData region
+  bool found = false;
+  string str;
+  while (getline(dataFile,str)) {
+    stringstream ss;
+    ss.str(str);
+    ss >> str;
+    if (str.compare("<UnstructuredGrid>")==0) {
+      found = true;
+      break;
+    }
+  }
+
+  if (!found)
+    FatalError("Cannot fine UnstructuredData tag in restart file.");
+
+  // Read restart data & setup all data arrays
+  for (auto& e:eles) {
+    e.restart(dataFile,params,Geo);
+  }
+
+  dataFile.close();
+
+  // Setup all transformations and other geometry-related arrays
+#pragma omp parallel for
+  for (int i=0; i<eles.size(); i++) {
+    eles[i].setupAllGeometry();
+  }
+
+  // Finish setting up internal faces
+#pragma omp parallel for
+  for (int i=0; i<faces.size(); i++) {
+    faces[i].setupFace();
+  }
+
+  // Finish setting up boundary faces
+#pragma omp parallel for
+  for (int i=0; i<bounds.size(); i++) {
+    bounds[i].setupBound();
   }
 }
 
