@@ -1,4 +1,4 @@
-==== Future Work ====	  
+==== Future Work ====
 
 Mesh refinement / adaptation
 --Move all mesh functions to geo class
@@ -6,17 +6,34 @@ Mesh refinement / adaptation
 --Upon creating new elements, each new cell can link to "parent" cell to interpolate data to its solution points
   --More complicated if using Galerkin projection instead of collocation, but that's for later
 
-Collapsed-edge triangles
---Set eR pointer to NULL for all collapsed edges
---In calcInviscidFlux on faces, if eR==NULL, set Fn to 0 and return
-
 As stated above - need to modify geo class to handle, well, all geo-related operations.  Better to have
 a more global approach to many things, rather than having each ele handle it all.
 For moving grids, after geo updates node positions & velocities, have each ele grab the new values
 
+Overset Grids
+--Class "overset" which holds multiple "geo" objects
+--Still only one "solver" object, or one for each grid?
+  --Have to think about the best way to handle inter-grid communication, then structure accordingly
+  --Probably still have one solver, and let the overset class take care of the rest
+  --Solver can have pointers to both a "geo" and an "overset", and use whichever one it needs.
+    If no overset, it ignores that; if overset grids, overset class provides a wrapper to what
+    the geo class previously provided
+
+H-multigrid
+--Utilize the Overset class to store the different grids?
 
 
+Face Classes
+--Restructure to utilize inheritance (lots of redundancy between current classes)
+  --Perhaps the left state setup can remain constant between all types
+--Add a new 'mortar' class to handle different orders or split edges
+  --See Lala's thesis for implementation details
 
+MPI
+--Along with above face restructuring, consider doing away with the current use of pointers to ele's data and instead have a copy/update routine to grab current data at each iteration
+--Something like this will be needed for MPI anyways
+
+==== Misc. ====
 ??? Question - just how much slower is HiFiLES on CPU's when using BLAS vs. for-loops? Food for thought
 Test this out: acl-aphrodite, viscous cylinder test case, p=3, FE, 500 iterations,
 no plotting whatsoever, and no residual calculation:
