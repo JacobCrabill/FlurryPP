@@ -63,6 +63,7 @@ public:
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces, nBndEdges;
 
+  void partitionMesh(void);
 private:
 
   input *params;
@@ -84,6 +85,15 @@ private:
   //map<string,int> bcNum;         //! Maps a boundary-condition string to its integer enum
   vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
   int nBounds;  //! Number of boundaries
+
+  /* --- MPI-Related Varialbes (global vs. local data) --- */
+  matrix<int> c2v_g;
+  vector<point> xv_g;
+  vector<int> ic2icg;  //! Local cell to global cell index
+  vector<int> iv2ivg;  //! Local vertex to global vertex index
+  vector<int> ctype_g, c2ne_g, c2nv_g;
+  matrix<int> bndPts_g;
+  vector<int> nBndPts_g;
 
   //! Match up pairs of periodic boundary faces
   void processPeriodicBoundaries(void);

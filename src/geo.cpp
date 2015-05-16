@@ -20,6 +20,12 @@
 #include <map>
 #include <sstream>
 
+
+#ifdef _MPI
+#include "mpi.h"
+#include "metis.h"
+#endif
+
 geo::geo()
 {
 
@@ -41,6 +47,10 @@ void geo::setup(input* params)
     default:
       FatalError("Mesh type not recognized.");
   }
+
+#ifndef _NO_MPI
+  partitionMesh();
+#endif
 
   processConnectivity();
 
@@ -751,6 +761,91 @@ bool geo::checkPeriodicFaces(int* edge1, int* edge2)
   else {
     return false;
   }
+}
+
+
+void geo::partitionMesh(void)
+{
+#ifndef _NO_MPI
+  int rank, nproc;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &nproc);
+  vector<int> eptr(nEles+1);
+  vector<int> eind;
+
+  int nn = 0;
+  for (int i=0; i<nEles; i++) {
+    for (int j=0; i<c2nv[i]; j++) {
+      eind.push_back(c2v(i,j));
+      nn++;
+    }
+    eptr(i+1) = nn;
+  }
+
+  int objval;
+  vector<int> epart(nEles);
+  vector<int> npart(nVerts);
+  // METIS PartMeshNodal( idx t *ne, idx t *nn, idx t *eptr, idx t *eind,
+  // idx t *vwgt, idx t *vsize, idx t *nparts, real t *tpwgts, idx t *options,
+  // idx t *objval, idx t *epart, idx t *npart)
+  int errVal = METIS_PartMeshNodal(nEles,nVerts,eptr.data(),eind.data(),
+                                   NULL,NULL,&nproc,NULL,NULL,&objval,
+                                   epart.data(),npart.data());
+
+  // Copy data to the global arrays & reset local arrays
+  c2v_g     = c2v;      c2v.setup(0,0);
+  xv_g      = xv;       xv.resize(0);
+  ctype_g   = ctype;    ctype.resize(0);
+  c2nv_g    = c2nv;     c2nv.resize(0);
+  bndPts_g  = bndPts;   bndPts.setup(0,0);
+  nBndPts_g = nBndPts;  nBndPts.resize(0);
+
+  // Each processor will now grab its own data according to its rank (proc ID)
+  for (int i=0; i<nEles; i++) {
+    if (epart[i] == rank) {
+      c2v.insertRow(c2v_g[i],-1,c2nv_g[i]);
+      ic2icg.push_back(i);
+      ctype.push_back(ctype_g[i]);
+      c2nv.push_back(c2nv_g[i]);
+    }
+  }
+
+  for (int i=0; i<nVerts; i++) {
+    if (npart[i] == rank) {
+      xv.push_back(xv_g[i]);
+      iv2ivg.push_back(i);
+    }
+  }
+
+  // bndPts array was already setup globally, so remake keeping only local nodes
+  vector<set<int>> boundPoints(nBounds);
+
+  for (int i=0; i<nBounds; i++) {
+    for (int j=0; j<nBndPts_g[i]; j++) {
+      if (npart[bndPts_g(i,j)] == rank) {
+        boundPoints[i].insert(bndPts_g(i,j));
+      }
+    }
+  }
+
+  int maxNBndPts = 0;
+  for (int i=0; i<nBounds; i++) {
+    nBndPts[i] = boundPoints[i].size();
+    maxNBndPts = max(maxNBndPts,nBndPts[i]);
+  }
+
+  // Copy temp boundPoints data into bndPts matrix
+  bndPts.setup(nBounds,maxNBndPts);
+  for (int i=0; i<nBounds; i++) {
+    int j = 0;
+    set<int>::iterator it;
+    for (it=boundPoints[i].begin(); it!=boundPoints[i].end(); it++) {
+      bndPts(i,j) = (*it);
+      j++;
+    }
+  }
+
+#endif
 }
 
 #include "../include/geo.inl"

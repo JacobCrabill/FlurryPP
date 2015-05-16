@@ -11,12 +11,15 @@ CXX = g++
 INCPATH       = -I.
 LINK          = g++
 LIBS          = $(SUBLIBS)
+METIS_LIB_DIR =
+METIS_INC_DIR =
 
 CXXFLAGS = -pipe -g -O2 -Wall -W -std=c++11 $(DEFINES)
 
-CXXFLAGS_RELEASE = -pipe -O3 -Wall -W -std=c++11 $(DEFINES)
-CXXFLAGS_DEBUG   = -pipe -pg -g -O0 -std=c++11 $(DEFINES)
-CXXFLAGS_OPENMP  = -pipe -O3 -Wall -W -std=c++11 -fopenmp $(DEFINES)
+CXXFLAGS_RELEASE = -pipe -O3 -Wall -W -std=c++11 -D_NO_MPI $(DEFINES)
+CXXFLAGS_DEBUG   = -pipe -pg -g -O0 -std=c++11  -D_NO_MPI $(DEFINES)
+CXXFLAGS_OPENMP  = -pipe -O3 -Wall -W -std=c++11 -fopenmp  -D_NO_MPI $(DEFINES)
+CXXFLAGS_MPI     = -pipe -O3 -Wall -W -std=c++11 $(DEFINES) -I $(METIS_INC_DIR)
 
 ####### Output directory - these do nothing currently
 
@@ -79,6 +82,10 @@ openmp: CXXFLAGS=$(CXXFLAGS_OPENMP)
 openmp: LIBS+= -fopenmp -lgomp
 openmp: $(TARGET)
 
+.PHONY: mpi
+mpi: CXXFLAGS=$(CXXFLAGS_MPI)
+mpi: LIBS+= -L $(METIS_LIB_DIR) -lmetis
+mpi: $(TARGET)
 ####### Compile
 
 obj/global.o: src/global.cpp include/global.hpp \

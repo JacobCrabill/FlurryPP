@@ -17,10 +17,23 @@
 
 #include "../include/flurry.hpp"
 
+#ifdef _MPI
+#include <mpi.h>
+#endif
+
 int main(int argc, char *argv[]) {
   input params;
   geo Geo;
   solver Solver;
+
+  int rank = 0;
+#ifdef _MPI
+  MPI_Init(&argc, &argv);
+  int nproc;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &nproc);
+#endif
+
 
   cout << "  ========================================== " << endl;
   cout << "   _______   _                               " << endl;
