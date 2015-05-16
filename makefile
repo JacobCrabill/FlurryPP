@@ -7,19 +7,24 @@
 
 ####### Compiler, tools and options
 
-CXX = g++
+CXX           = g++
+MPICXX        = mpicxx
 INCPATH       = -I.
 LINK          = g++
 LIBS          = $(SUBLIBS)
-METIS_LIB_DIR =
-METIS_INC_DIR =
+METIS_LIB_DIR = /home/jcrabill/HiFiLES_Mesh/HiFiLES/libs/parmetis-4.0.2/metis
+METIS_INC_DIR = /home/jcrabill/HiFiLES_Mesh/HiFiLES/libs/parmetis-4.0.2/metis/include
+#METIS_LIB_DIR = /usr/lib/
+#METIS_INC_DIR = /usr/include/
+MPI_INC_DIR   = /usr/lib/openmpi/include
 
 CXXFLAGS = -pipe -g -O2 -Wall -W -std=c++11 $(DEFINES)
 
 CXXFLAGS_RELEASE = -pipe -O3 -Wall -W -std=c++11 -D_NO_MPI $(DEFINES)
 CXXFLAGS_DEBUG   = -pipe -pg -g -O0 -std=c++11  -D_NO_MPI $(DEFINES)
 CXXFLAGS_OPENMP  = -pipe -O3 -Wall -W -std=c++11 -fopenmp  -D_NO_MPI $(DEFINES)
-CXXFLAGS_MPI     = -pipe -O3 -Wall -W -std=c++11 $(DEFINES) -I $(METIS_INC_DIR)
+CXXFLAGS_MPI     = -pipe -O3 -Wall -W -std=c++11 $(DEFINES)
+CXXFLAGS_MPI    += -I$(MPI_INC_DIR) -I$(METIS_INC_DIR)
 
 ####### Output directory - these do nothing currently
 
@@ -83,9 +88,11 @@ openmp: LIBS+= -fopenmp -lgomp
 openmp: $(TARGET)
 
 .PHONY: mpi
+mpi: CXX=$(MPICXX)
 mpi: CXXFLAGS=$(CXXFLAGS_MPI)
-mpi: LIBS+= -L $(METIS_LIB_DIR) -lmetis
+mpi: LIBS+= -L$(METIS_LIB_DIR)/libmetis.a
 mpi: $(TARGET)
+
 ####### Compile
 
 obj/global.o: src/global.cpp include/global.hpp \

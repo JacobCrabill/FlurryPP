@@ -17,7 +17,7 @@
 
 #include "../include/flurry.hpp"
 
-#ifdef _MPI
+#ifndef _NO_MPI
 #include <mpi.h>
 #endif
 
@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
   solver Solver;
 
   int rank = 0;
-#ifdef _MPI
+#ifndef _NO_MPI
   MPI_Init(&argc, &argv);
   int nproc;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);

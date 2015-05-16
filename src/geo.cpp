@@ -21,7 +21,7 @@
 #include <sstream>
 
 
-#ifdef _MPI
+#ifndef _NO_MPI
 #include "mpi.h"
 #include "metis.h"
 #endif
@@ -779,7 +779,7 @@ void geo::partitionMesh(void)
       eind.push_back(c2v(i,j));
       nn++;
     }
-    eptr(i+1) = nn;
+    eptr[i+1] = nn;
   }
 
   int objval;
@@ -788,7 +788,7 @@ void geo::partitionMesh(void)
   // METIS PartMeshNodal( idx t *ne, idx t *nn, idx t *eptr, idx t *eind,
   // idx t *vwgt, idx t *vsize, idx t *nparts, real t *tpwgts, idx t *options,
   // idx t *objval, idx t *epart, idx t *npart)
-  int errVal = METIS_PartMeshNodal(nEles,nVerts,eptr.data(),eind.data(),
+  int errVal = METIS_PartMeshNodal(&nEles,&nVerts,eptr.data(),eind.data(),
                                    NULL,NULL,&nproc,NULL,NULL,&objval,
                                    epart.data(),npart.data());
 
