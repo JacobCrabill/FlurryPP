@@ -18,12 +18,15 @@ METIS_INC_DIR = /usr/include/
 MPI_INC_DIR   = /usr/lib/openmpi/include
 MPI_LIB_DIR   = /usr/lib/openmpi/lib
 
-CXXFLAGS = -pipe -g -O2 -Wall -W -std=c++11 $(DEFINES)
+CXX_BASE    = -pipe -Wall -W -std=c++11 $(DEFINES)
+CXX_STD     = -g -02
+CXX_DEBUG   = -g -pg -O0
+CXX_RELEASE = -O3
 
-CXXFLAGS_RELEASE = -pipe -O3 -Wall -W -std=c++11 -D_NO_MPI $(DEFINES)
-CXXFLAGS_DEBUG   = -pipe -pg -g -O0 -std=c++11  -D_NO_MPI $(DEFINES)
-CXXFLAGS_OPENMP  = -pipe -O3 -Wall -W -std=c++11 -fopenmp  -D_NO_MPI $(DEFINES)
-CXXFLAGS_MPI     = -pipe -O0 -g -Wall -W -std=c++11 $(DEFINES)
+CXXFLAGS_RELEASE = $(CXX_BASE) $(CXX_RELEASE) -D_NO_MPI $(DEFINES)
+CXXFLAGS_DEBUG   = $(CXX_BASE) $(CXX_DEBUG) -D_NO_MPI $(DEFINES)
+CXXFLAGS_OPENMP  = $(CXX_BASE) $(CXX_RELEASE) -fopenmp -D_NO_MPI $(DEFINES)
+CXXFLAGS_MPI     = $(CXX_BASE) $(DEFINES)
 CXXFLAGS_MPI    += -I$(MPI_INC_DIR) -I$(METIS_INC_DIR) 
 CXXFLAGS_MPI    += -L$(MPI_LIB_DIR) -L$(METIS_LIB_DIR)
 
@@ -91,10 +94,16 @@ openmp: $(TARGET)
 .PHONY: mpi
 mpi: CXX=$(MPICXX)
 mpi: LD=$(MPILD)
-mpi: CXXFLAGS=$(CXXFLAGS_MPI)
-#mpi: LIBS+= $(METIS_LIB_DIR)/libmetis.a
+mpi: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_RELEASE)
 mpi: LIBS+= -lmpi -lmpi_cxx -lmetis
 mpi: $(TARGET)
+
+.PHONY: mpidebug
+mpidebug: CXX=$(MPICXX)
+mpidebug: LD=$(MPILD)
+mpidebug: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_DEBUG)
+mpidebug: LIBS+= -lmpi -lmpi_cxx -lmetis
+mpidebug: $(TARGET)
 
 ####### Compile
 

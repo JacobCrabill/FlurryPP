@@ -14,9 +14,11 @@
 
 #include "../include/input.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <stdio.h>
 
 fileReader::fileReader()
 {
@@ -298,7 +300,15 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("create_bcRight",create_bcRight,string("periodic"));
   }else if (mesh_type == READ_MESH) {
     opts.getScalarValue("mesh_file_name",meshFileName);
-    opts.getMap("mesh_bound",meshBounds);
+    map<string,string> meshBndTmp;
+    opts.getMap("mesh_bound",meshBndTmp);
+    for (auto& B:meshBndTmp) {
+      string tmp1, tmp2;
+      tmp1 = B.first; tmp2 = B.second;
+      std::transform(tmp1.begin(), tmp1.end(), tmp1.begin(), ::tolower);
+      std::transform(tmp2.begin(), tmp2.end(), tmp2.begin(), ::tolower);
+      meshBounds[tmp1] = tmp2;
+    }
   }
   opts.getScalarValue("periodicDX",periodicDX,(double)INFINITY);
   opts.getScalarValue("periodicDY",periodicDY,(double)INFINITY);

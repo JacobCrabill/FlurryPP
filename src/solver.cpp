@@ -377,13 +377,13 @@ void solver::setupElesFaces(void) {
 
   // Finish setting up internal faces
 #pragma omp parallel for
-  for (int i=0; i<faces.size(); i++) {
+  for (uint i=0; i<faces.size(); i++) {
     faces[i].setupFace();
   }
 
   // Finish setting up boundary faces
 #pragma omp parallel for
-  for (int i=0; i<bounds.size(); i++) {
+  for (uint i=0; i<bounds.size(); i++) {
     bounds[i].setupBound();
   }
 }
@@ -427,19 +427,19 @@ void solver::readRestartFile(void) {
 
   // Setup all transformations and other geometry-related arrays
 #pragma omp parallel for
-  for (int i=0; i<eles.size(); i++) {
+  for (uint i=0; i<eles.size(); i++) {
     eles[i].setupAllGeometry();
   }
 
   // Finish setting up internal faces
 #pragma omp parallel for
-  for (int i=0; i<faces.size(); i++) {
+  for (uint i=0; i<faces.size(); i++) {
     faces[i].setupFace();
   }
 
   // Finish setting up boundary faces
 #pragma omp parallel for
-  for (int i=0; i<bounds.size(); i++) {
+  for (uint i=0; i<bounds.size(); i++) {
     bounds[i].setupBound();
   }
 }

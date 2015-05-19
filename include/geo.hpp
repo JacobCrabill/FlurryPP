@@ -94,6 +94,7 @@ private:
   vector<int> ctype_g, c2ne_g, c2nv_g;
   matrix<int> bndPts_g;
   vector<int> nBndPts_g;
+  int nEles_g, nVerts_g;
 
   //! Match up pairs of periodic boundary faces
   void processPeriodicBoundaries(void);

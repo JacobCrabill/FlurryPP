@@ -363,12 +363,12 @@ void geo::readGmsh(string fileName)
     if(meshFile.eof()) FatalError("$Nodes tag not found in Gmsh file!");
   }
 
-  uint nNodes, iv;
-  meshFile >> nNodes;
-  xv.resize(nNodes);
+  uint iv;
+  meshFile >> nVerts;
+  xv.resize(nVerts);
   getline(meshFile,str); // Clear end of line, just in case
 
-  for (uint i=0; i<nNodes; i++) {
+  for (int i=0; i<nVerts; i++) {
     meshFile >> iv >> xv[i].x >> xv[i].y >> xv[i].z;
   }
 
@@ -510,7 +510,7 @@ void geo::readGmsh(string fileName)
 
       for (int i=0; i<nPtsEdge; i++) {
         meshFile >> iv;  iv--;
-        boundPoints[bcid].insert(iv);
+        boundPoints[bcid].insert(iv);  // bcid != bnd index - FIX ME!!!
       }
       getline(meshFile,str);
     }
@@ -526,9 +526,8 @@ void geo::readGmsh(string fileName)
   bndPts.setup(nBounds,maxNBndPts);
   for (int i=0; i<nBounds; i++) {
     int j = 0;
-    set<int>::iterator it;
-    for (it=boundPoints[i].begin(); it!=boundPoints[i].end(); it++) {
-      bndPts(i,j) = (*it);
+    for (auto& it:boundPoints[i]) {
+      bndPts(i,j) = it;
       j++;
     }
   }
@@ -770,29 +769,62 @@ void geo::partitionMesh(void)
   int rank, nproc;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &nproc);
-  vector<int> eptr(nEles+1);
-  vector<int> eind;
+
+  //if (nproc <= 1) return;
+
+  vector<idx_t> eptr(nEles+1);
+  vector<idx_t> eind;
+
 
   int nn = 0;
   for (int i=0; i<nEles; i++) {
-    for (int j=0; i<c2nv[i]; j++) {
+    eind.push_back(c2v(i,0));
+    nn++;
+    for (int j=1; j<c2nv[i]; j++) {
+      if (c2v(i,j)==c2v(i,j-1)) {
+        continue; // To deal with collapsed edges
+      }
       eind.push_back(c2v(i,j));
       nn++;
     }
     eptr[i+1] = nn;
   }
 
+  // -- DEBUG --
+  nproc = 2;
+
   int objval;
   vector<int> epart(nEles);
   vector<int> npart(nVerts);
-  // idx_t errVal = METIS PartMeshNodal( idx t *ne, idx t *nn, idx t *eptr, idx t *eind,
-  // idx_t *vwgt, idx t *vsize, idx t *nparts, real t *tpwgts, idx t *options,
-  // idx_t *objval, idx t *epart, idx t *npart)
-  METIS_PartMeshNodal(&nEles,&nVerts,eptr.data(),eind.data(),
-                                   NULL,NULL,&nproc,NULL,NULL,&objval,
-                                   epart.data(),npart.data());
+
+  // int errVal = METIS PartMeshNodal( idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind,
+  // idx_t *vwgt, idx_t *vsize, idx_t *nparts, real t *tpwgts, idx t *options,
+  // idx_t *objval, idx_t *epart, idx_t *npart)
+  // int errVal = METIS PartMeshDual(idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind, idx_t *vwgt, idx_t *vsize,
+  // idx_t *ncommon, idx_t *nparts, real_t *tpwgts, idx_t *options, idx_t *objval,idx_t *epart, idx_t *npart)
+  int ncommon = 2; // 2 for 2D, ~3 for 3D
+
+  idx_t options[METIS_NOPTIONS];
+  METIS_SetDefaultOptions(options);
+  options[METIS_OPTION_NUMBERING] = 0;
+  options[METIS_OPTION_IPTYPE] = METIS_IPTYPE_NODE; // maybe?
+  options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+  options[METIS_OPTION_PTYPE] = METIS_PTYPE_KWAY;
+
+  METIS_PartMeshDual(&nEles,&nVerts,eptr.data(),eind.data(),NULL,NULL,
+                     &ncommon,&nproc,NULL,options,&objval,epart.data(),npart.data());
+  //METIS_PartMeshNodal(&nEles,&nVerts,eptr.data(),eind.data(),NULL,NULL,
+  //                    &nproc,NULL,NULL,&objval,epart.data(),npart.data());
+
+  for (int i=0; i<nEles; i++) {
+    for (int j=0; j<c2nv[i]; j++) {
+      cout << xv[c2v(i,j)][0] << "," << xv[c2v(i,j)][1] << "," << epart[i] << endl;
+    }
+  }
 
   // Copy data to the global arrays & reset local arrays
+  nEles_g   = nEles;
+  nVerts_g  = nVerts;
   c2v_g     = c2v;      c2v.setup(0,0);
   xv_g      = xv;       xv.resize(0);
   ctype_g   = ctype;    ctype.resize(0);
@@ -810,11 +842,22 @@ void geo::partitionMesh(void)
     }
   }
 
-  for (int i=0; i<nVerts; i++) {
-    if (npart[i] == rank) {
-      xv.push_back(xv_g[i]);
-      iv2ivg.push_back(i);
+  nEles = c2v.getDim0();
+
+  // Get list of all vertices used in new partition
+  set<int> myNodes;
+  for (int i=0; i<nEles; i++) {
+    for (int j=0; j<c2nv[i]; j++) {
+      myNodes.insert(c2v(i,j));
     }
+  }
+
+  nVerts = myNodes.size();
+
+  // Transfer over all needed vertices to local array
+  for (auto& iv:myNodes) {
+    xv.push_back(xv_g[iv]);
+    iv2ivg.push_back(iv);
   }
 
   // bndPts array was already setup globally, so remake keeping only local nodes
@@ -822,7 +865,7 @@ void geo::partitionMesh(void)
 
   for (int i=0; i<nBounds; i++) {
     for (int j=0; j<nBndPts_g[i]; j++) {
-      if (npart[bndPts_g(i,j)] == rank) {
+      if (findFirst(iv2ivg,bndPts_g(i,j)) != -1) {
         boundPoints[i].insert(bndPts_g(i,j));
       }
     }
@@ -838,13 +881,11 @@ void geo::partitionMesh(void)
   bndPts.setup(nBounds,maxNBndPts);
   for (int i=0; i<nBounds; i++) {
     int j = 0;
-    set<int>::iterator it;
-    for (it=boundPoints[i].begin(); it!=boundPoints[i].end(); it++) {
-      bndPts(i,j) = (*it);
+    for (auto& it:boundPoints[i]) {
+      bndPts(i,j) = it;
       j++;
     }
   }
-
 #endif
 }
 
