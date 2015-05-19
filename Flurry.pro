@@ -18,7 +18,8 @@ SOURCES += src/global.cpp \
     src/solver.cpp \
     include/geo.inl \
     src/intFace.cpp \
-    src/boundFace.cpp
+    src/boundFace.cpp \
+    src/mpiFace.cpp
 		   
 HEADERS += include/global.hpp \
     include/matrix.hpp \
@@ -34,7 +35,8 @@ HEADERS += include/global.hpp \
     include/solver.hpp \
     include/error.hpp \
     include/intFace.hpp \
-    include/boundFace.hpp
+    include/boundFace.hpp \
+    include/mpiFace.hpp
 
 DISTFILES += \
     README.md \

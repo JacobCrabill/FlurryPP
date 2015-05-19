@@ -770,7 +770,7 @@ void geo::partitionMesh(void)
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 
-  //if (nproc <= 1) return;
+  if (nproc <= 1) return;
 
   vector<idx_t> eptr(nEles+1);
   vector<idx_t> eind;
@@ -789,9 +789,6 @@ void geo::partitionMesh(void)
     }
     eptr[i+1] = nn;
   }
-
-  // -- DEBUG --
-  nproc = 2;
 
   int objval;
   vector<int> epart(nEles);
