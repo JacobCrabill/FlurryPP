@@ -22,7 +22,7 @@
 #include "ele.hpp"
 #include "input.hpp"
 #include "solver.hpp"
-#include "bound.hpp"
+#include "face.hpp"
 
 class geo
 {
@@ -38,7 +38,7 @@ public:
   void processConnectivity();
 
   //! Create the elements and faces needed for the simulation
-  void setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> &bounds);
+  void setupElesFaces(vector<ele> &eles, vector<face*> &faces);
 
   /* === Helper Routines === */
 

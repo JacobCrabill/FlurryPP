@@ -18,17 +18,16 @@
 
 #include "global.hpp"
 
-#include "bound.hpp"
-#include "face.hpp"
+//#include "face.hpp"
 #include "geo.hpp"
 #include "input.hpp"
 #include "matrix.hpp"
-#include "solver.hpp"
 
 class ele
 {
 friend class face;
-friend class bound;
+friend class boundFace;
+friend class intFace;
 friend class solver;
 
 public:

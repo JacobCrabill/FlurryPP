@@ -46,10 +46,12 @@ SOURCES       = src/global.cpp \
 		src/geo.cpp \
 		src/output.cpp \
 		src/face.cpp \
+    src/intFace.cpp \
+    src/boundFace.cpp \
 		src/flux.cpp \
 		src/flurry.cpp \
-		src/solver.cpp \
-		src/bound.cpp
+    src/solver.cpp
+
 OBJECTS       = obj/global.o \
 		obj/matrix.o \
 		obj/input.o \
@@ -59,10 +61,12 @@ OBJECTS       = obj/global.o \
 		obj/geo.o \
 		obj/output.o \
 		obj/face.o \
+    obj/intFace.o \
+    obj/boundFace.o \
 		obj/flux.o \
 		obj/flurry.o \
-		obj/solver.o \
-		obj/bound.o
+    obj/solver.o
+
 TARGET        = Flurry
 
 ####### Implicit rules
@@ -130,7 +134,6 @@ obj/ele.o: src/ele.cpp include/ele.hpp \
 		include/input.hpp \
 		include/solver.hpp \
 		include/face.hpp \
-		include/bound.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp \
 		include/flux.hpp
@@ -151,7 +154,6 @@ obj/operators.o: src/operators.cpp include/operators.hpp \
 		include/solver.hpp \
 		include/ele.hpp \
 		include/face.hpp \
-		include/bound.hpp \
 		include/polynomials.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/operators.o src/operators.cpp
 
@@ -163,7 +165,6 @@ obj/geo.o: src/geo.cpp include/geo.hpp \
 		include/solver.hpp \
 		include/ele.hpp \
 		include/face.hpp \
-		include/bound.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp \
 		include/geo.inl
@@ -177,7 +178,6 @@ obj/output.o: src/output.cpp include/output.hpp \
 		include/ele.hpp \
 		include/geo.hpp \
 		include/input.hpp \
-		include/bound.hpp \
 		include/face.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp
@@ -191,11 +191,16 @@ obj/face.o: src/face.cpp include/face.hpp \
 		include/geo.hpp \
 		include/input.hpp \
 		include/solver.hpp \
-		include/bound.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp \
 		include/flux.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/face.o src/face.cpp
+
+obj/intFace.o: src/intFace.cpp include/intFace.hpp  include/face.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/intFace.o src/intFace.cpp
+
+obj/boundFace.o: src/boundFace.cpp include/boundFace.hpp include/face.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/boundFace.o src/boundFace.cpp
 
 obj/flux.o: src/flux.cpp include/flux.hpp \
 		include/global.hpp \
@@ -213,7 +218,6 @@ obj/flurry.o: src/flurry.cpp include/flurry.hpp \
 		include/solver.hpp \
 		include/ele.hpp \
 		include/face.hpp \
-		include/bound.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp \
 		include/output.hpp
@@ -226,21 +230,7 @@ obj/solver.o: src/solver.cpp include/solver.hpp \
 		include/ele.hpp \
 		include/geo.hpp \
 		include/input.hpp \
-		include/bound.hpp \
 		include/face.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/solver.o src/solver.cpp
-
-obj/bound.o: src/bound.cpp include/bound.hpp \
-		include/global.hpp \
-		include/error.hpp \
-		include/matrix.hpp \
-		include/input.hpp \
-		include/ele.hpp \
-		include/geo.hpp \
-		include/solver.hpp \
-		include/face.hpp \
-		include/operators.hpp \
-		include/polynomials.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/bound.o src/bound.cpp

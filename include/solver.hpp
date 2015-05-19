@@ -22,11 +22,12 @@ class oper;
 
 #include "global.hpp"
 
-#include "bound.hpp"
 #include "ele.hpp"
-#include "face.hpp"
 #include "geo.hpp"
 #include "input.hpp"
+#include "face.hpp"
+#include "intFace.hpp"
+#include "boundFace.hpp"
 #include "operators.hpp"
 
 class solver
@@ -44,11 +45,8 @@ public:
   //! Vector of all eles handled by this solver
   vector<ele> eles;
 
-  //! Vector of all interior faces handled by this solver
-  vector<face> faces;
-
-  //! Vector of all boundary faces handled by this solver
-  vector<bound> bounds;
+  //! Vector of all faces handled by this solver
+  vector<face*> faces;
 
   /* === Setup Functions === */
   solver();

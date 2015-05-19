@@ -13,107 +13,31 @@
  *
  */
 
-#include "../include/bound.hpp"
+#include "../include/boundFace.hpp"
 
 #include <array>
 
-void bound::initialize(ele *eL, int locF_L, int bcType, int gID, input *params)
+void boundFace::setupRightState(void)
 {
-  ID = gID;
-  this->bcType = bcType;
-  this->locF_L = locF_L;
-  this->eL = eL;
-  this->params = params;
-
-  nDims = params->nDims;
-  nFields = params->nFields;
-
-  // Setup temporary vectors for later use
-  tempFL.setup(nDims,nFields);
-  tempFR.setup(nDims,nFields);
-  tempUL.resize(nFields);
+  // This is kinda messy, but avoids separate initialize function
+  bcType = rightParam;
 }
 
-void bound::setupBound(void)
+void boundFace::getRightState(void)
 {
-  nFptsL = eL->order+1;
-
-  /* --- For 1D faces [line segments] only - find first/last ID of fpts; reverse
-   * the order on the 'right' face so they match up --- */
-  int fptStartL = (locF_L*(nFptsL));
-  int fptEndL = (locF_L*(nFptsL)) + nFptsL;
-
-  UL.resize(nFptsL);
-  UR.setup(nFptsL,nFields);
-  FL.resize(nFptsL);
-  Fn.setup(nFptsL,nFields);
-  normL.setup(nFptsL,nDims);
-  FnL.resize(nFptsL);
-  dAL.resize(nFptsL);
-  detJacL.resize(nFptsL);
-
-  // Get access to data at left element
-  int fpt=0;
-  for (int i=fptStartL; i<fptEndL; i++) {
-    UL[fpt] = (eL->U_fpts[i]);
-    FnL[fpt] = (eL->Fn_fpts[i]);
-    dAL[fpt] = (eL->dA_fpts[i]);
-    detJacL[fpt] = (eL->detJac_fpts[i]); // change to double**[] = &(eL->det[])
-
-    for (int dim=0; dim<nDims; dim++)
-      normL[fpt][dim] = (eL->norm_fpts[i][dim]); // change to dbl ptr
-
-    FL[fpt].setup(nDims,nFields);
-    for (int dim=0; dim<nDims; dim++)
-      for (int k=0; k<nFields; k++)
-        FL[fpt][dim][k] = &(eL->F_fpts[dim][i][k]);
-
-    fpt++;
-  }
-}
-
-void bound::calcInviscidFlux()
-{
+  // Set the boundary condition [store in UR]
   for (int i=0; i<nFptsL; i++) {
-    // Set the boundary condition [store in UC]
     applyBCs(UL[i],UR[i],normL[i]);
-
-    // Calculate common inviscid flux at flux points
-    if (params->equation == ADVECTION_DIFFUSION) {
-      centralFlux(UL[i], UR[i], normL[i], Fn[i], params);
-    }
-    else if (params->equation == NAVIER_STOKES) {
-      if (params->riemann_type==0) {
-        inviscidFlux(UL[i],tempFL,params);
-        inviscidFlux(UR[i],tempFR,params);
-        centralFlux(tempFL, tempFR, normL[i], Fn[i], params);
-      }
-      else if (params->riemann_type==1) {
-        roeFlux(UL[i], UR[i], normL[i], Fn[i], params);
-      }
-    }
-
-    // Calculate difference between discontinuous & common normal flux, and store in ele
-    // (Each ele needs only the difference, not the actual common value, for the correction)
-    // Need dAL/R to transform normal flux back to reference space
-    for (int j=0; j<nFields; j++) {
-      FnL[i][j] = Fn[i][j]*dAL[i];
-    }
   }
 }
 
-void bound::calcViscousFlux()
-{
-
-}
-
-void bound::applyBCs(const double* uL, double* uR, const double *norm)
+void boundFace::applyBCs(const double* uL, double* uR, const double *norm)
 {
   uint nDims = params->nDims;
 
   if (params->equation == NAVIER_STOKES) {
     // These varibles will be used to set the right state of the boundary.
-    double rhoR, pR, eR, TR;
+    double rhoR, pR, ER, TR;
     array<double,3> vL = {0,0,0};
     array<double,3> vR = {0,0,0};
     array<double,3> vG = {0,0,0};
@@ -157,7 +81,7 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
       vSq = 0;
       for (uint i=0; i<nDims; i++)
         vSq += (vR[i]*vR[i]);
-      eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
+      ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
     }
 
     // Subsonic outflow simple (fixed pressure) //CONSIDER DELETING
@@ -175,7 +99,7 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
       for (uint i=0; i<nDims; i++)
         vSq += (vR[i]*vR[i]);
 
-      eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
+      ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
     }
 
     // Subsonic inflow characteristic
@@ -260,7 +184,7 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
         rhoR = pR/(R_ref*TR);
 
         // Compute energy
-        eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
+        ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
         */
     }
 
@@ -308,7 +232,7 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
           vR[i] = vL[i] + (vnR - vnL)*norm[i];
           vSq += (vR[i]*vR[i]);
         }
-        eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
+        ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
         */
     }
 
@@ -327,7 +251,7 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
       for (uint i=0; i<nDims; i++)
         vSq += (vR[i]*vR[i]);
 
-      eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
+      ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
     }
 
 
@@ -337,7 +261,7 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
       rhoR = rhoL;
       for (uint i=0; i<nDims; i++)
         vR[i] = vL[i];
-      eR = eL;
+      ER = eL;
     }
 
     // Slip wall
@@ -364,7 +288,7 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
       }
 
       // extrapolate energy
-      eR = eL;
+      ER = eL;
     }
 
     // Isothermal, no-slip wall (fixed)
@@ -388,7 +312,7 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
       for (uint i=0; i<nDims; i++)
         vSq += (vR[i]*vR[i]);
 
-      eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
+      ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
     }
 
     // Adiabatic, no-slip wall (fixed)
@@ -408,7 +332,7 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
       for (uint i=0; i<nDims; i++)
         vSq += (vR[i]*vR[i]);
 
-      eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
+      ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
     }
 
     // Characteristic
@@ -449,7 +373,7 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
           vR[i] = vn_star*norm[i] + (vBound[i] - vnBound*norm[i]);
 
         pR = rhoR/gamma*cStar*cStar;
-        eR = rhoR*h_free_stream - pR;
+        ER = rhoR*h_free_stream - pR;
       }
       // Outflow
       else {
@@ -466,7 +390,7 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
         vSq = 0.;
         for (uint i=0; i<nDims; i++)
           vSq += (vR[i]*vR[i]);
-        eR = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
+        ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
       }
     }
     else {
@@ -477,7 +401,7 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
     uR[0] = rhoR;
     for (uint i=0; i<nDims; i++)
       uR[i+1] = rhoR*vR[i];
-    uR[nDims+1] = eR;
+    uR[nDims+1] = ER;
   }
   else if (params->equation == ADVECTION_DIFFUSION) {
     // Trivial Dirichlet
@@ -486,4 +410,10 @@ void bound::applyBCs(const double* uL, double* uR, const double *norm)
         uR[0]=0.0;
       }*/
   }
+}
+
+
+void boundFace::setRightState(void)
+{
+  // No right state; do nothing
 }

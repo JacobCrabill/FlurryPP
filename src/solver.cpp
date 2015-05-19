@@ -18,6 +18,14 @@
 #include <sstream>
 #include <omp.h>
 
+class intFace;
+class boundFace;
+
+#include "../include/input.hpp"
+#include "../include/geo.hpp"
+#include "../include/intFace.hpp"
+#include "../include/boundFace.hpp"
+
 solver::solver()
 {
 }
@@ -30,7 +38,7 @@ void solver::setup(input *params, geo *Geo)
   params->time = 0.;
 
   /* Setup the FR elements & faces which will be computed on */
-  Geo->setupElesFaces(eles,faces,bounds);
+  Geo->setupElesFaces(eles,faces);
 
   if (params->restart) {
     readRestartFile();
@@ -105,6 +113,7 @@ void solver::update(void)
   params->time += params->dt;
 }
 
+
 void solver::calcResidual(int step)
 {
   extrapolateU();
@@ -114,8 +123,6 @@ void solver::calcResidual(int step)
   extrapolateNormalFlux();
 
   calcInviscidFlux_faces();
-
-  calcInviscidFlux_bounds();
 
   if (params->viscous || params->motion) {
 
@@ -140,6 +147,7 @@ void solver::calcResidual(int step)
   correctDivFlux(step);
 }
 
+
 void solver::timeStepA(int step)
 {
 #pragma omp parallel for
@@ -147,6 +155,7 @@ void solver::timeStepA(int step)
     eles[i].timeStepA(step,RKa[step]);
   }
 }
+
 
 void solver::timeStepB(int step)
 {
@@ -216,15 +225,7 @@ void solver::calcInviscidFlux_faces()
 {
 #pragma omp parallel for
   for (uint i=0; i<faces.size(); i++) {
-    faces[i].calcInviscidFlux();
-  }
-}
-
-void solver::calcInviscidFlux_bounds()
-{
-#pragma omp parallel for
-  for (uint i=0; i<bounds.size(); i++) {
-    bounds[i].calcInviscidFlux();
+    faces[i]->calcInviscidFlux();
   }
 }
 
@@ -378,13 +379,7 @@ void solver::setupElesFaces(void) {
   // Finish setting up internal faces
 #pragma omp parallel for
   for (uint i=0; i<faces.size(); i++) {
-    faces[i].setupFace();
-  }
-
-  // Finish setting up boundary faces
-#pragma omp parallel for
-  for (uint i=0; i<bounds.size(); i++) {
-    bounds[i].setupBound();
+    faces[i]->setupFace();
   }
 }
 
@@ -434,13 +429,7 @@ void solver::readRestartFile(void) {
   // Finish setting up internal faces
 #pragma omp parallel for
   for (uint i=0; i<faces.size(); i++) {
-    faces[i].setupFace();
-  }
-
-  // Finish setting up boundary faces
-#pragma omp parallel for
-  for (uint i=0; i<bounds.size(); i++) {
-    bounds[i].setupBound();
+    faces[i]->setupFace();
   }
 }
 

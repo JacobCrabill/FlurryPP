@@ -20,6 +20,9 @@
 #include <map>
 #include <sstream>
 
+#include "../include/face.hpp"
+#include "../include/intFace.hpp"
+#include "../include/boundFace.hpp"
 
 #ifndef _NO_MPI
 #include "/usr/lib/openmpi/include/mpi.h"
@@ -201,13 +204,12 @@ void geo::processConnectivity()
   }
 }
 
-void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> &bounds)
+void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces)
 {
   if (nEles<=0) FatalError("Cannot setup elements array - nEles = 0");
 
   eles.resize(nEles);
-  faces.resize(nFaces);
-  bounds.resize(nBndEdges);
+  faces.resize(nFaces+nBndEdges);
 
   // Setup the elements
   int ic = 0;
@@ -238,10 +240,11 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> &
   /* --- Setup the faces --- */
 
   vector<int> tmpEdges;
-  int i = 0;
 
   // Internal Faces
-  for (auto& F:faces) {
+  for (int i=0; i<nFaces; i++) {
+    intFace *F = new intFace();
+    faces[i] = F;
     // Find global face ID of current interior face
     int ie = intEdges[i];
     ic = e2c[ie][0];
@@ -254,15 +257,14 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> &
       ic = e2c[ie][1];
       tmpEdges.assign(c2e[ic], c2e[ic]+c2ne[ic]);  // List of cell's faces
       int fid2 = findFirst(tmpEdges,ie);           // Which one is this face
-      F.initialize(&eles[e2c[ie][0]],&eles[e2c[ie][1]],fid1,fid2,ie,params);
+      F->initialize(&eles[e2c[ie][0]],&eles[e2c[ie][1]],fid1,fid2,ie,params);
     }
-
-    i++;
   }
 
   // Boundary Faces
-  i = 0;
-  for (auto& B:bounds) {
+  for (int i=0; i<nBndEdges; i++) {
+    boundFace *B = new boundFace();
+    faces[nFaces+i] = B;
     // Find global face ID of current boundary face
     int ie = bndEdges[i];
     ic = e2c[ie][0];
@@ -272,10 +274,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face> &faces, vector<bound> &
     if (e2c[ie][1] != -1) {
       FatalError("Boundary edge has a right element assigned.");
     }else{
-      B.initialize(&eles[e2c[ie][0]],fid1,bcType[i],ie,params);
+      B->initialize(&eles[e2c[ie][0]],NULL,fid1,bcType[i],ie,params);
     }
-
-    i++;
   }
 }
 
@@ -815,12 +815,6 @@ void geo::partitionMesh(void)
                      &ncommon,&nproc,NULL,options,&objval,epart.data(),npart.data());
   //METIS_PartMeshNodal(&nEles,&nVerts,eptr.data(),eind.data(),NULL,NULL,
   //                    &nproc,NULL,NULL,&objval,epart.data(),npart.data());
-
-  for (int i=0; i<nEles; i++) {
-    for (int j=0; j<c2nv[i]; j++) {
-      cout << xv[c2v(i,j)][0] << "," << xv[c2v(i,j)][1] << "," << epart[i] << endl;
-    }
-  }
 
   // Copy data to the global arrays & reset local arrays
   nEles_g   = nEles;

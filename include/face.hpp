@@ -20,20 +20,33 @@
 
 #include "global.hpp"
 
-#include "ele.hpp"
+class ele;
+
 #include "matrix.hpp"
 #include "input.hpp"
 
 class face
 {
 public:
-  face();
 
   /*! Assign basic parameters to boundary */
-  void initialize(ele *eL, ele *eR, int locF_L, int locF_R, int gID, input* params);
+  void initialize(ele *eL, ele *eR, int locF_L, int rightParam, int gID, input* params);
 
-  /*! Setup access to the left & right elements' data */
+  /*! Setup access to the left elements' data */
   void setupFace(void);
+
+  /*! Setup access to the right elements' data (if it exists) */
+  virtual void setupRightState(void) =0;
+
+  /*! Get the values of the solution to the left of the face */
+  void getLeftState(void);
+
+  /*! Get the values of the solution to the right of the face */
+  virtual void getRightState(void) =0;
+
+  /*! For all internal faces, put the normal flux into the right ele
+   *  Either put directly into ele's memory, or send across MPI boundary */
+  virtual void setRightState(void) =0;
 
   /*! Calculate the common inviscid flux on the face */
   void calcInviscidFlux(void);
@@ -45,30 +58,31 @@ public:
 
   input *params; //! Input parameters for simulation
 
-private:
+protected:
   int nFptsL, nFptsR;
   int nDims, nFields;
-  int locF_L, locF_R;
+  int locF_L;
+  int fptStartL, fptEndL;
+  int rightParam;
 
   ele* eL;
   ele* eR;
 
-  /* --- Storage for all solution/geometry data at flux points --- */
-  vector<double*> UL, UR;         //! Discontinuous solution at left and right
-  vector<matrix<double>*> gradUL;
-  vector<matrix<double>*> gradUR;
-  vector<matrix<double*>> FL; // will this even work...? if not, need vec<vec<vec<dbl*>>> ?
-  vector<matrix<double*>> FR;
-  vector<double*> FnL;   //! Common minus discontinuous normal flux for left ele
-  vector<double*> FnR;   //! Common minus discontinuous normal flux for right ele
-  matrix<double> Fn;     // Can't use ptr, b/c 2 eles - they need to point to this instead
-  vector<double*> normL, normR; //! Unit outward normal at flux points
-  vector<double*> dAL, dAR;     //! Local face-area equivalent at flux points
-  vector<double> detJacL;
-  vector<double> detJacR;
+  /* --- Storage for all solution/geometry data at flux points [left state] --- */
+  matrix<double> UL;      //! Discontinuous solution at left, right eles [nFpts, nFields]
+  matrix<double> UR;      //! Discontinuous solution at left, right eles [nFpts, nFields]
+  vector<matrix<double>> gradUL; //! Solution gradient at left side
+  vector<matrix<double>> gradUR; //! Solution gradient at right side
+  vector<matrix<double>> FL; //! Flux matrix at each flux point [nFpts, nDims, nFields]
+  vector<double*> FnL;    //! Common normal flux for left ele (in ele's memory)  [nDims, nFpts, nFields]
+  matrix<double> Fn;      //! Common numerical flux at interface  [nFpts, nFields]
+  matrix<double> normL;   //! Unit outward normal at flux points
+  vector<double> dAL;     //! Local face-area equivalent (aka edge Jacobian) at flux points
+  vector<double> detJacL; //! Determinant of transformation Jacobian at flux points
 
+  //! Temporary vectors for calculating common flux
   matrix<double> tempFL, tempFR;
-  vector<double> tempUL, tempUR;
+  vector<double> tempUL;
 
   // Probably only needed for debugging... remove this later
   vector<point> posFpts;

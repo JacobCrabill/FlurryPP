@@ -36,8 +36,6 @@
 // Forward declarations of basic Flurry classes
 class geo;
 class ele;
-class face;
-class bound;
 class solver;
 
 using namespace std;

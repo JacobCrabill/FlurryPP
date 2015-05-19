@@ -17,7 +17,8 @@ SOURCES += src/global.cpp \
     src/flurry.cpp \
     src/solver.cpp \
     include/geo.inl \
-    src/bound.cpp
+    src/intFace.cpp \
+    src/boundFace.cpp
 		   
 HEADERS += include/global.hpp \
     include/matrix.hpp \
@@ -32,8 +33,10 @@ HEADERS += include/global.hpp \
     include/flurry.hpp \
     include/solver.hpp \
     include/error.hpp \
-    include/bound.hpp
+    include/intFace.hpp \
+    include/boundFace.hpp
 
 DISTFILES += \
     README.md \
-    planning
+    planning \
+    makefile
