@@ -152,6 +152,10 @@ public:
   int vcjhSchemeTri;
   int vcjhSchemeQuad;
 
+  /* --- Other --- */
+  int rank;
+  int nproc;
+
 private:
   fileReader opts;
 };

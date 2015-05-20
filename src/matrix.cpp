@@ -188,7 +188,7 @@ void matrix<T>::insertRow(vector<T> &vec, int rowNum)
 {
   if (dim1!= 0 && vec.size()!=dim1) FatalError("Attempting to assign row of wrong size to matrix.");
 
-  if (rowNum==-1 || rowNum==(int)dim0) {
+  if (rowNum==INSERT_AT_END || rowNum==(int)dim0) {
     // Default action - add to end
     data.insert(data.end(),vec.begin(),vec.end());
   }else{
@@ -205,7 +205,7 @@ void matrix<T>::insertRow(T *vec, int rowNum, int length)
 {
   if (dim1!=0 && length!=dim1) FatalError("Attempting to assign row of wrong size to matrix.");
 
-  if (rowNum==-1 || rowNum==(int)dim0) {
+  if (rowNum==INSERT_AT_END || rowNum==(int)dim0) {
     // Default action - add to end
     data.insert(data.end(),vec,vec+length);
   }else{
@@ -294,9 +294,9 @@ void matrix<T>::unique(matrix<T> &out, vector<int> &iRow)
 }
 
 template<typename T>
-vector<T> matrix<T>::getData(void)
+T *matrix<T>::getData(void)
 {
-  return data;
+  return data.data();
 }
 
 // Fix for compiler to know which template types will be needed later (and therefore must now be compiled):

@@ -38,7 +38,6 @@ private:
   int fptStartR, fptEndR;
 
   /* --- Storage for all solution/geometry data at flux points [right state] --- */
-  vector<matrix<double>> gradUR;
   vector<matrix<double>> FR;   //! Flux array [nFpts, nDims, nFields]
   vector<double*> FnR;    //! Common normal flux for right ele [in ele's memory]
   matrix<double> normR;   //! Unit outward normal at flux points  [nFpts, nDims]

@@ -18,11 +18,14 @@
 #include <algorithm>
 #include <cstdlib>
 #include <map>
+#include <set>
 #include <sstream>
+#include <unordered_set>
 
 #include "../include/face.hpp"
 #include "../include/intFace.hpp"
 #include "../include/boundFace.hpp"
+#include "../include/mpiFace.hpp"
 
 #ifndef _NO_MPI
 #include "/usr/lib/openmpi/include/mpi.h"
@@ -70,17 +73,17 @@ void geo::processConnectivity()
   for (int e=0; e<nEles; e++) {
     for (int ie=0; ie<c2ne[e]; ie++) {  // NOTE: nv may be > ne
       int iep1 = (ie+1)%c2ne[e];
-      if (c2v[e][ie] == c2v[e][iep1]) {
+      if (c2v(e,ie) == c2v(e,iep1)) {
         // Collapsed edge - ignore
         continue;
       }
-      else if (c2v[e][ie] < c2v[e][iep1]) {
-        edge[0] = c2v[e][ie];
-        edge[1] = c2v[e][iep1];
+      else if (c2v[e][ie] < c2v(e,iep1)) {
+        edge[0] = c2v(e,ie);
+        edge[1] = c2v(e,iep1);
       }
       else {
-        edge[0] = c2v[e][iep1];
-        edge[1] = c2v[e][ie];
+        edge[0] = c2v(e,iep1);
+        edge[1] = c2v(e,ie);
       }
       e2v1.insertRow(edge);
     }
@@ -100,16 +103,11 @@ void geo::processConnectivity()
   isBnd.assign(nEdges,0);
 
   nFaces = 0;
-  nBndEdges = 0;
+  nBndFaces = 0;
 
   for (uint i=0; i<iE.size(); i++) {
     if (iE[i]!=-1) {
       auto ie = findEq(iE,iE[i]);
-      // See if it's a collapsed edge. If so, not needed - ignore.
-//      if (e2v(ie[0],0) == e2v(ie[0],0)) {
-//        vecAssign(iE,ie,-1);
-//        continue;
-//      }
       if (ie.size()>2) {
         stringstream ss; ss << i;
         string errMsg = "More than 2 cells for edge " + ss.str();
@@ -124,7 +122,7 @@ void geo::processConnectivity()
         // Boundary Edge
         bndEdges.push_back(iE[i]);
         isBnd[iE[i]] = true;
-        nBndEdges++;
+        nBndFaces++;
       }
 
       // Mark edges as completed
@@ -135,21 +133,65 @@ void geo::processConnectivity()
   /* --- Match Boundary Faces to Boundary Conditions --- */
   // Since bndFaces was setup during createMesh, and will be created
   // here anyways, clear bndFaces & re-setup
-  bndFaces.clear();
   bndFaces.resize(nBounds);
-  bcType.assign(nBndEdges,-1);
-  for (int i=0; i<nBndEdges; i++) {
-    int iv1 = e2v[bndEdges[i]][0];
-    int iv2 = e2v[bndEdges[i]][1];
+  bcType.assign(nBndFaces,-1);
+  for (int i=0; i<nBndFaces; i++) {
+    int iv1 = e2v(bndEdges[i],0);
+    int iv2 = e2v(bndEdges[i],1);
     for (int bnd=0; bnd<nBounds; bnd++) {
       if (findFirst(bndPts[bnd],iv1,bndPts.dim1)!=-1 && findFirst(bndPts[bnd],iv2,bndPts.dim1)!=-1) {
         // The edge lies on this boundary
         bcType[i] = bcList[bnd];
-        bndFaces[bnd].insertRow(e2v[bndEdges[i]],-1,e2v.dim1);
+        bndFaces[bnd].insertRow(e2v[bndEdges[i]],INSERT_AT_END,e2v.dim1);
         break;
       }
     }
   }
+
+  /* --- Setup MPI Processor Boundary Faces --- */
+  nMpiFaces = 0;
+#ifndef _NO_MPI
+  // 1) Get a list of all the MPI faces on the processor
+  // These will be all unassigned boundary faces (bcType == -1) - copy over to mpiEdges
+  for (auto &ib: bndEdges) {
+    if (ib < 0) mpiEdges.push_back(ib);
+  }
+  nMpiFaces = mpiEdges.size();
+
+  for (int i=0; i<nMpiFaces; i++) {
+    mpiFaces.insertRow(e2v[mpiEdges[i]],INSERT_AT_END,e2v.dim1);
+  }
+
+  // Get a (unique) list of all (global) node IDs which lie on the MPI boundary
+  unordered_set<int> mpiNodesTmp;
+  for (auto &ie: mpiEdges) {
+    mpiNodesTmp.insert(iv2ivg[e2v(ie,0)]);
+    mpiNodesTmp.insert(iv2ivg[e2v(ie,1)]);
+  }
+  int nMpiNodes = mpiNodesTmp.size();
+
+  vector<int> mpiNodes(nMpiNodes);
+  for (auto &iv: mpiNodesTmp) mpiNodes.push_back(iv);
+
+  // Get the number of mpiFaces on each processor (for later communication)
+  vector<int> nMpiFaces_proc(params->nproc);
+  MPI_Allgather(&nMpiFaces,1,MPI_INT,nMpiFaces_proc.data(),1,MPI_INT,MPI_COMM_WORLD);
+
+  // Get the number of mpiNodes on each processor (for later communication)
+  vector<int> nMpiNodes_proc(params->nproc);
+  MPI_Allgather(&nMpiNodes,1,MPI_INT,nMpiNodes_proc.data(),1,MPI_INT,MPI_COMM_WORLD);
+
+  int maxNMpiNodes = getMax(nMpiNodes_proc);
+  mpiNodes.reserve(maxNMpiNodes);
+  matrix<int> mpiNodes_proc(nproc,maxNMpiNodes);
+
+  MPI_Scatter(mpiNodes.data(),maxNMpiNodes,MPI_INT,mpiNodes_proc.getData(),maxNMpiNodes,MPI_INT,MPI_COMM_WORLD);
+
+  // Find out what processor each face is adjacent to
+  procR.resize(nMpiFaces);
+
+
+#endif
 
   /* --- Setup Cell-To-Edge, Edge-To-Cell --- */
 
@@ -209,7 +251,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces)
   if (nEles<=0) FatalError("Cannot setup elements array - nEles = 0");
 
   eles.resize(nEles);
-  faces.resize(nFaces+nBndEdges);
+  faces.resize(nFaces+nBndFaces+nMpiFaces);
 
   // Setup the elements
   int ic = 0;
@@ -252,7 +294,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces)
     tmpEdges.assign(c2e[ic],c2e[ic]+c2ne[ic]);
     int fid1 = findFirst(tmpEdges,ie);
     if (e2c[ie][1] == -1) {
-      FatalError("Interior edge does not have a right element assigned.");
+      FatalError("Interior face does not have a right element assigned.");
     }else{
       ic = e2c[ie][1];
       tmpEdges.assign(c2e[ic], c2e[ic]+c2ne[ic]);  // List of cell's faces
@@ -262,7 +304,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces)
   }
 
   // Boundary Faces
-  for (int i=0; i<nBndEdges; i++) {
+  for (int i=0; i<nBndFaces; i++) {
     boundFace *B = new boundFace();
     faces[nFaces+i] = B;
     // Find global face ID of current boundary face
@@ -272,11 +314,30 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces)
     tmpEdges.assign(c2e[ic],c2e[ic]+c2ne[ic]);
     int fid1 = findFirst(tmpEdges,ie);
     if (e2c[ie][1] != -1) {
-      FatalError("Boundary edge has a right element assigned.");
+      FatalError("Boundary face has a right element assigned.");
     }else{
       B->initialize(&eles[e2c[ie][0]],NULL,fid1,bcType[i],ie,params);
     }
   }
+
+#ifndef _NO_MPI
+  // MPI Faces
+  for (int i=0; i<nMpiFaces; i++) {
+    mpiFace *F = new mpiFace();
+    faces[nFaces+nBndFaces+i] = F;
+    // Find global face ID of current boundary face
+    int ie = bndEdges[i];
+    ic = e2c[ie][0];
+    // Find local face ID of global face within element
+    tmpEdges.assign(c2e[ic],c2e[ic]+c2ne[ic]);
+    int fid1 = findFirst(tmpEdges,ie);
+    if (e2c[ie][1] != -1) {
+      FatalError("MPI face has a right element assigned.");
+    }else{
+      F->initialize(&eles[e2c[ie][0]],NULL,fid1,procR[i],ie,params);
+    }
+  }
+#endif
 }
 
 void geo::readGmsh(string fileName)
@@ -614,7 +675,7 @@ void geo::createMesh()
   map<int,int> bc2bcList;
 
   // Setup boundary connectivity storage
-  nBndFaces.assign(nBounds,0);
+  nFacesPerBnd.assign(nBounds,0);
   bndPts.setup(nBounds,4*nx+4*ny); //(nx+1)*(ny+1));
   nBndPts.resize(nBounds);
   for (int i=0; i<nBounds; i++) {
@@ -623,43 +684,43 @@ void geo::createMesh()
 
   // Bottom Edge Faces
   int ib = bc2bcList[bcNum[params->create_bcBottom]];
-  int ne = nBndFaces[ib];
+  int ne = nFacesPerBnd[ib];
   for (int ix=0; ix<nx; ix++) {
     bndPts[ib][2*ne]   = ix;
     bndPts[ib][2*ne+1] = ix+1;
     ne++;
   }
-  nBndFaces[ib] = ne;
+  nFacesPerBnd[ib] = ne;
 
   // Top Edge Faces
   ib = bc2bcList[bcNum[params->create_bcTop]];
-  ne = nBndFaces[ib];
+  ne = nFacesPerBnd[ib];
   for (int ix=0; ix<nx; ix++) {
     bndPts[ib][2*ne]   = (nx+1)*ny + ix+1;
     bndPts[ib][2*ne+1] = (nx+1)*ny + ix;
     ne++;
   }
-  nBndFaces[ib] = ne;
+  nFacesPerBnd[ib] = ne;
 
   // Left Edge Faces
   ib = bc2bcList[bcNum[params->create_bcLeft]];
-  ne = nBndFaces[ib];
+  ne = nFacesPerBnd[ib];
   for (int iy=0; iy<ny; iy++) {
     bndPts[ib][2*ne]   = (iy+1)*(nx+1);
     bndPts[ib][2*ne+1] = iy*(nx+1);
     ne++;
   }
-  nBndFaces[ib] = ne;
+  nFacesPerBnd[ib] = ne;
 
   // Right Edge Faces
   ib = bc2bcList[bcNum[params->create_bcRight]];
-  ne = nBndFaces[ib];
+  ne = nFacesPerBnd[ib];
   for (int iy=0; iy<ny; iy++) {
     bndPts[ib][2*ne]   = iy*(nx+1) + nx;
     bndPts[ib][2*ne+1] = (iy+1)*(nx+1) + nx;
     ne++;
   }
-  nBndFaces[ib] = ne;
+  nFacesPerBnd[ib] = ne;
 
   // Remove duplicates in bndPts
   for (int i=0; i<nBounds; i++) {
@@ -674,7 +735,7 @@ void geo::processPeriodicBoundaries(void)
   uint nPeriodic, bi, bj, ic;
   vector<int> iPeriodic(0);
 
-  for (int i=0; i<nBndEdges; i++) {
+  for (int i=0; i<nBndFaces; i++) {
     if (bcType[i] == PERIODIC) {
       iPeriodic.push_back(i);
     }
@@ -725,7 +786,7 @@ void geo::processPeriodicBoundaries(void)
 
   // Remove no-longer-existing periodic boundary edges and update nBndEdges
   bndEdges.erase(std::remove(bndEdges.begin(), bndEdges.end(), -1), bndEdges.end());
-  nBndEdges = bndEdges.size();
+  nBndFaces = bndEdges.size();
   nFaces = intEdges.size();
 }
 

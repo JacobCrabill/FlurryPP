@@ -37,7 +37,7 @@ DESTDIR       = ./bin
 
 ####### Files
 
-SOURCES       = src/global.cpp \
+SOURCES = 	src/global.cpp \
 		src/matrix.cpp \
 		src/input.cpp \
 		src/ele.cpp \
@@ -46,13 +46,14 @@ SOURCES       = src/global.cpp \
 		src/geo.cpp \
 		src/output.cpp \
 		src/face.cpp \
-    src/intFace.cpp \
-    src/boundFace.cpp \
+		src/intFace.cpp \
+		src/boundFace.cpp \
+		src/mpiFace.cpp \
 		src/flux.cpp \
 		src/flurry.cpp \
-    src/solver.cpp
+		src/solver.cpp
 
-OBJECTS       = obj/global.o \
+OBJECTS = 	obj/global.o \
 		obj/matrix.o \
 		obj/input.o \
 		obj/ele.o \
@@ -61,11 +62,12 @@ OBJECTS       = obj/global.o \
 		obj/geo.o \
 		obj/output.o \
 		obj/face.o \
-    obj/intFace.o \
-    obj/boundFace.o \
+		obj/intFace.o \
+		obj/boundFace.o \
+		obj/mpiFace.o \
 		obj/flux.o \
 		obj/flurry.o \
-    obj/solver.o
+		obj/solver.o
 
 TARGET        = Flurry
 
@@ -201,6 +203,9 @@ obj/intFace.o: src/intFace.cpp include/intFace.hpp  include/face.hpp
 
 obj/boundFace.o: src/boundFace.cpp include/boundFace.hpp include/face.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/boundFace.o src/boundFace.cpp
+
+obj/mpiFace.o: src/mpiFace.cpp include/mpiFace.hpp include/face.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/mpiFace.o src/mpiFace.cpp
 
 obj/flux.o: src/flux.cpp include/flux.hpp \
 		include/global.hpp \

@@ -41,9 +41,7 @@ private:
   int fptStartR, fptEndR;
 
   /* --- Storage for all solution/geometry data at flux points [right state] --- */
-  vector<matrix<double>> gradUR;
-  vector<matrix<double>> FR;   //! Flux array [nFpts, nDims, nFields]
-  vector<double*> FnR;    //! Common normal flux for right ele [in ele's memory]
+  //vector<matrix<double>> FR;   //! Flux array [nFpts, nDims, nFields]
   matrix<double> normR;   //! Unit outward normal at flux points  [nFpts, nDims]
   vector<double> dAR;     //! Local face-area equivalent at flux points
   vector<double> detJacR; //! Determinant of transformation Jacobian

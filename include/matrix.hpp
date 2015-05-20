@@ -27,12 +27,11 @@
 #include "error.hpp"
 
 
+#define INSERT_AT_END -1
+
 using namespace std;
 
 typedef unsigned int uint;
-
-// Forward declaration needed for matrix class
-template <typename T> class subMatrix;
 
 template <typename T>
 class matrix
@@ -97,7 +96,7 @@ public:
 
   T &operator()(int i, int j=0);
 
-  vector<T> getData();
+  T* getData();
 
   /* --- Search Operations --- */
 

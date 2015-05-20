@@ -50,12 +50,22 @@ void face::setupFace(void)
 
   UL.setup(nFptsL,nFields);
   UR.setup(nFptsL,nFields);
-  FL.resize(nFptsL);
+  //FL.resize(nFptsL);
   FnL.resize(nFptsL);
   Fn.setup(nFptsL,nFields);
   normL.setup(nFptsL,nDims);
   dAL.resize(nFptsL);
   detJacL.resize(nFptsL);
+
+  if (params->viscous) {
+    // just a placeholder.  Need to properly size/reorder dimensions later.
+    gradUL.resize(nDims);
+    gradUR.resize(nDims);
+    for (int i=0; i<nDims; i++) {
+      gradUL[i].setup(nFptsL,nFields);
+      gradUR[i].setup(nFptsR,nFields);
+    }
+  }
 
   //posFpts.resize(nFptsL); // Probably only needed for debugging.  Remove later.
 
@@ -63,7 +73,7 @@ void face::setupFace(void)
   int fpt = 0;
   for (int i=fptStartL; i<fptEndL; i++) {
     FnL[fpt] = (eL->Fn_fpts[i]);
-    FL[fpt].setup(nDims,nFields);
+    //FL[fpt].setup(nDims,nFields);
     fpt++;
   }
 
@@ -78,9 +88,10 @@ void face::getLeftState()
     for (int j=0; j<nFields; j++)
       UL(fpt,j) = (eL->U_fpts(i,j));
 
-    for (int dim=0; dim<nDims; dim++)
+    // Not needed currently, so remove for speed.
+    /*for (int dim=0; dim<nDims; dim++)
       for (int k=0; k<nFields; k++)
-        FL[fpt](dim,k) = (eL->F_fpts[dim](i,k));
+        FL[fpt](dim,k) = (eL->F_fpts[dim](i,k));*/
 
 
     // For dynamic grids, need to update geometry-related data

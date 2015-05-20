@@ -43,9 +43,7 @@ void mpiFace::setupRightState(void)
   fptStartR = (locF_R*(nFptsR)) + nFptsR;
   fptEndR = (locF_R*(nFptsR));
 
-  UR.setup(nFptsR,nFields);
-  FR.resize(nFptsR);
-  FnR.resize(nFptsR);
+  //FR.resize(nFptsR);
   normR.setup(nFptsR,nDims);
   dAR.resize(nFptsR);
   detJacR.resize(nFptsL);
@@ -53,8 +51,7 @@ void mpiFace::setupRightState(void)
   // Get access to normal flux storage at right element [order reversed to match left ele]
   int fpt = 0;
   for (int i=fptStartR-1; i>=fptEndR; i--) {
-    FnR[fpt] = (eR->Fn_fpts[i]);
-    FR[fpt].setup(nDims,nFields);
+    //FR[fpt].setup(nDims,nFields);
     fpt++;
   }
 }

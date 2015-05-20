@@ -61,9 +61,11 @@ public:
   vector<double> getPts1D(string ptsType, int order);
 
   int nDims, nFields;
-  int nEles, nVerts, nEdges, nFaces, nBndEdges;
+  int nEles, nVerts, nEdges, nFaces, nBndFaces, nMpiFaces;
+  int nBounds;  //! Number of boundaries
 
   void partitionMesh(void);
+
 private:
 
   input *params;
@@ -75,16 +77,17 @@ private:
   // Additional Connectivity Data
   matrix<int> c2e, c2b, e2c, e2v, v2e, v2v, v2c;
   vector<int> v2nv, v2nc, c2nv, c2ne, ctype;
-  vector<int> intEdges, bndEdges;
+  vector<int> intEdges, bndEdges, mpiEdges;
   vector<int> bcList;            //! List of boundary conditions for each boundary
   vector<int> bcType;            //! Boundary condition for each boundary edge
   matrix<int> bndPts;            //! List of node IDs on each boundary
   vector<int> nBndPts;           //! Number of points on each boudary
   vector<matrix<int> > bndFaces; //! List of nodes on each face (edge) on each boundary
-  vector<int> nBndFaces;         //! List of # of faces on each boundary
+  vector<int> nFacesPerBnd;         //! List of # of faces on each boundary
+  matrix<int> mpiFaces;          //! List of nodes on each MPI face on processor
+  vector<int> procR;             //! What processor lies to the 'right' of this face
   //map<string,int> bcNum;         //! Maps a boundary-condition string to its integer enum
   vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
-  int nBounds;  //! Number of boundaries
 
   /* --- MPI-Related Varialbes (global vs. local data) --- */
   matrix<int> c2v_g;

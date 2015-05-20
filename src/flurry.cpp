@@ -27,13 +27,14 @@ int main(int argc, char *argv[]) {
   solver Solver;
 
   int rank = 0;
+  int nproc = 1;
 #ifndef _NO_MPI
   MPI_Init(&argc, &argv);
-  int nproc;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 #endif
-
+  params.rank = rank;
+  params.nproc = nproc;
 
   cout << "  ========================================== " << endl;
   cout << "   _______   _                               " << endl;

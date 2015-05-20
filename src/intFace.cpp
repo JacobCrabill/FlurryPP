@@ -36,8 +36,7 @@ void intFace::setupRightState(void)
   fptStartR = (locF_R*(nFptsR)) + nFptsR;
   fptEndR = (locF_R*(nFptsR));
 
-  UR.setup(nFptsR,nFields);
-  FR.resize(nFptsR);
+  //FR.resize(nFptsR);
   FnR.resize(nFptsR);
   normR.setup(nFptsR,nDims);
   dAR.resize(nFptsR);
@@ -47,7 +46,7 @@ void intFace::setupRightState(void)
   int fpt = 0;
   for (int i=fptStartR-1; i>=fptEndR; i--) {
     FnR[fpt] = (eR->Fn_fpts[i]);
-    FR[fpt].setup(nDims,nFields);
+    //FR[fpt].setup(nDims,nFields);
     fpt++;
   }
 }
@@ -60,9 +59,10 @@ void intFace::getRightState(void)
     for (int j=0; j<nFields; j++)
       UR(fpt,j) = (eR->U_fpts(i,j));
 
-    for (int dim=0; dim<nDims; dim++)
+    // Not needed currently, so remove for speed.
+    /*for (int dim=0; dim<nDims; dim++)
       for (int k=0; k<nFields; k++)
-        FR[fpt](dim,k) = (eR->F_fpts[dim](i,k));
+        FR[fpt](dim,k) = (eR->F_fpts[dim](i,k));*/
 
 
     // For dynamic grids, need to update geometry-related data
