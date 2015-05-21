@@ -38,7 +38,7 @@ void solver::setup(input *params, geo *Geo)
   params->time = 0.;
 
   /* Setup the FR elements & faces which will be computed on */
-  Geo->setupElesFaces(eles,faces);
+  Geo->setupElesFaces(eles,faces,mpiFaces);
 
   if (params->restart) {
     readRestartFile();
@@ -66,6 +66,10 @@ void solver::setup(input *params, geo *Geo)
     default:
       FatalError("Time-Stepping type not supported.");
   }
+
+#ifndef _NO_MPI
+  finishMpiSetup();
+#endif
 }
 
 void solver::update(void)
@@ -118,17 +122,25 @@ void solver::calcResidual(int step)
 {
   extrapolateU();
 
-  calcInviscidFlux_spts();
-
-  extrapolateNormalFlux();
-
-  calcInviscidFlux_faces();
+#ifndef _NO_MPI
+  doCommunication();
+#endif
 
   if (params->viscous || params->motion) {
 
     calcGradU_spts();
 
   }
+
+  calcInviscidFlux_spts();
+
+  extrapolateNormalFlux();
+
+  calcInviscidFlux_faces();
+
+#ifndef _NO_MPI
+  calcInviscidFlux_mpi();
+#endif
 
   if (params->viscous) {
 
@@ -138,10 +150,13 @@ void solver::calcResidual(int step)
 
     calcViscousFlux_faces();
 
-    calcViscousFlux_bounds();
+#ifndef _NO_MPI
+    calcViscousFlux_mpi();
+#endif
 
   }
 
+  //cout << "Calculating divF" << endl;
   calcFluxDivergence(step);
 
   correctDivFlux(step);
@@ -221,11 +236,27 @@ void solver::calcInviscidFlux_spts(void)
   }
 }
 
+void solver::doCommunication()
+{
+#pragma omp parallel for
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->communicate();
+  }
+}
+
 void solver::calcInviscidFlux_faces()
 {
 #pragma omp parallel for
   for (uint i=0; i<faces.size(); i++) {
     faces[i]->calcInviscidFlux();
+  }
+}
+
+void solver::calcInviscidFlux_mpi()
+{
+#pragma omp parallel for
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->calcInviscidFlux();
   }
 }
 
@@ -239,13 +270,21 @@ void solver::calcViscousFlux_spts(void)
 
 void solver::calcViscousFlux_faces()
 {
-
+#pragma omp parallel for
+  for (uint i=0; i<faces.size(); i++) {
+    faces[i]->calcViscousFlux();
+  }
 }
 
-void solver::calcViscousFlux_bounds()
+
+void solver::calcViscousFlux_mpi()
 {
-
+#pragma omp parallel for
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->calcViscousFlux();
+  }
 }
+
 
 void solver::calcGradF_spts(void)
 {
@@ -376,10 +415,24 @@ void solver::setupElesFaces(void) {
     eles[i].setup(params,Geo);
   }
 
-  // Finish setting up internal faces
+  // Finish setting up internal & boundary faces
 #pragma omp parallel for
   for (uint i=0; i<faces.size(); i++) {
     faces[i]->setupFace();
+  }
+
+  // Finish setting up MPI faces
+#pragma omp parallel for
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->setupFace();
+  }
+}
+
+void solver::finishMpiSetup(void)
+{
+#pragma omp parallel for
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->finishRightSetup();
   }
 }
 

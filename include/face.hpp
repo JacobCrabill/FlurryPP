@@ -86,4 +86,6 @@ protected:
 
   // Probably only needed for debugging... remove this later
   vector<point> posFpts;
+
+  int faceType; // ---- DEBUG ----
 };

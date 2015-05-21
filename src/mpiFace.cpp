@@ -16,7 +16,7 @@
 #include "../include/mpiFace.hpp"
 
 #ifndef _NO_MPI
-#include <mpi.h>
+#include "mpi.h"
 #endif
 
 #include "../include/flux.hpp"
@@ -28,9 +28,22 @@ void mpiFace::setupRightState(void)
   FatalError("Trying to setup an MPI face but code is not compiled for MPI.");
 #endif
 
-  // TODO: set procR, idR, etc.
-  procR = rightParam;
+#ifndef _NO_MPI
+  IDR = rightParam;
 
+  // Send/Get # of flux points to/from right element [order reversed to match left ele]
+  MPI_Isend(&nFptsL,1,MPI_INT,procR,IDR,MPI_COMM_WORLD,&nFpts_out);
+  MPI_Irecv(&nFptsR,1,MPI_INT,procR,ID,MPI_COMM_WORLD,&nFpts_in);
+
+  faceType = 1; // --- DEBUG ----
+#endif
+}
+
+void mpiFace::finishRightSetup(void)
+{
+#ifndef _NO_MPI
+  MPI_Wait(&nFpts_out,MPI_STATUSES_IGNORE);
+  MPI_Wait(&nFpts_in,MPI_STATUSES_IGNORE);
 
   /* --- Will have to introduce 'mortar' elements in the future [for p-adaptation],
    * but for now just force all faces to have same # of flux points [order] --- */
@@ -39,31 +52,47 @@ void mpiFace::setupRightState(void)
     FatalError("Mortar elements not yet implemented - must have nFptsL==nFptsR");
 
   /* --- For 1D faces [line segments] only - find first/last ID of fpts; reverse
-   * the order on the 'right' face so they match up --- */
-  fptStartR = (locF_R*(nFptsR)) + nFptsR;
-  fptEndR = (locF_R*(nFptsR));
+   * the order on the 'right' face so they match up
+   * NOTE THAT THIS IS DIFFERENT THAN IN intFaces --- */
+  fptStartR = nFptsR;
+  fptEndR = 0;
 
-  //FR.resize(nFptsR);
-  normR.setup(nFptsR,nDims);
-  dAR.resize(nFptsR);
-  detJacR.resize(nFptsL);
+  UR.setup(nFptsR,nFields);
+  bufUR.setup(nFptsR,nFields);
+#endif
+}
 
-  // Get access to normal flux storage at right element [order reversed to match left ele]
-  int fpt = 0;
-  for (int i=fptStartR-1; i>=fptEndR; i--) {
-    //FR[fpt].setup(nDims,nFields);
-    fpt++;
-  }
+void mpiFace::communicate(void)
+{
+#ifndef _NO_MPI
+  /* Send/Get data to/from right element [order reversed to match left ele] */
+  MPI_Isend(UL.getData(),UL.getSize(),MPI_DOUBLE,procR,IDR,MPI_COMM_WORLD,&UL_out);
+  MPI_Irecv(bufUR.getData(),UR.getSize(),MPI_DOUBLE,procR,ID,MPI_COMM_WORLD,&UR_in);
+#endif
 }
 
 void mpiFace::getRightState(void)
 {
-  // Get data from right element [order reversed to match left ele]
+#ifndef _NO_MPI
+  // Make sure the communication is complete & transfer from buffer
+  MPI_Wait(&UR_in,&status);
+  if (params->viscous) MPI_Wait(&gradUR_in,&status);
 
+  // Copy UR from the buffer to the proper matrix
+  int fpt = 0;
+  for (int i=fptStartR-1; i>=fptEndR; i--) {
+    for (int j=0; j<nFields; j++) {
+      UR(fpt,j) = bufUR(i,j);
+    }
+
+    fpt++;
+  }
+#endif
 }
 
 void mpiFace::setRightState(void)
 {
+#ifndef _NO_MPI
   /* Options:
    * 1) Have duplicate mpiFaces (one on either side of mpi boundary);
    *    each one sends left state to the other's right state here
@@ -71,6 +100,6 @@ void mpiFace::setRightState(void)
    *    / where to put MPI calls?]
    */
   // -- Going with Option 1 --
-  // Create outgoing, incoming buffers
-
+  // Create outgoing, incoming buffers and ignore this function [do nothing here]
+#endif
 }

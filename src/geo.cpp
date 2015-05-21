@@ -28,7 +28,7 @@
 #include "../include/mpiFace.hpp"
 
 #ifndef _NO_MPI
-#include "/usr/lib/openmpi/include/mpi.h"
+#include "mpi.h"
 #include "metis.h"
 #endif
 
@@ -99,11 +99,13 @@ void geo::processConnectivity()
 
   /* --- Determine interior vs. boundary edges/faces --- */
 
-  // Flag for whether global face ID corresponds to interior or boundary face
+  /* Flag for whether global face ID corresponds to interior or boundary face
+     (note that, at this stage, MPI faces will be considered boundary faces) */
   isBnd.assign(nEdges,0);
 
   nFaces = 0;
   nBndFaces = 0;
+  nMpiFaces = 0;
 
   for (uint i=0; i<iE.size(); i++) {
     if (iE[i]!=-1) {
@@ -119,7 +121,7 @@ void geo::processConnectivity()
         nFaces++;
       }
       else if (ie.size()==1) {
-        // Boundary Edge
+        // Boundary or MPI Edge
         bndEdges.push_back(iE[i]);
         isBnd[iE[i]] = true;
         nBndFaces++;
@@ -131,8 +133,7 @@ void geo::processConnectivity()
   }
 
   /* --- Match Boundary Faces to Boundary Conditions --- */
-  // Since bndFaces was setup during createMesh, and will be created
-  // here anyways, clear bndFaces & re-setup
+
   bndFaces.resize(nBounds);
   bcType.assign(nBndFaces,-1);
   for (int i=0; i<nBndFaces; i++) {
@@ -149,48 +150,192 @@ void geo::processConnectivity()
   }
 
   /* --- Setup MPI Processor Boundary Faces --- */
-  nMpiFaces = 0;
 #ifndef _NO_MPI
-  // 1) Get a list of all the MPI faces on the processor
-  // These will be all unassigned boundary faces (bcType == -1) - copy over to mpiEdges
-  for (auto &ib: bndEdges) {
-    if (ib < 0) mpiEdges.push_back(ib);
-  }
-  nMpiFaces = mpiEdges.size();
+  if (params->nproc > 1) {
 
-  for (int i=0; i<nMpiFaces; i++) {
-    mpiFaces.insertRow(e2v[mpiEdges[i]],INSERT_AT_END,e2v.dim1);
-  }
+    if (params->rank == 1) cout << "-- Matching MPI faces --" << endl;
 
-  // Get a (unique) list of all (global) node IDs which lie on the MPI boundary
-  unordered_set<int> mpiNodesTmp;
-  for (auto &ie: mpiEdges) {
-    mpiNodesTmp.insert(iv2ivg[e2v(ie,0)]);
-    mpiNodesTmp.insert(iv2ivg[e2v(ie,1)]);
-  }
-  int nMpiNodes = mpiNodesTmp.size();
+    // 1) Get a list of all the MPI faces on the processor
+    // These will be all unassigned boundary faces (bcType == -1) - copy over to mpiEdges
+    for (int i=0; i<nBndFaces; i++) {
+      if (bcType[i] < 0) {
+        mpiEdges.push_back(bndEdges[i]);
+        bndEdges[i] = -1;
+      }
+    }
+    nMpiFaces = mpiEdges.size();
 
-  vector<int> mpiNodes(nMpiNodes);
-  for (auto &iv: mpiNodesTmp) mpiNodes.push_back(iv);
+    // Clean up the bcType and bndEdges arrays now that it's safe to do so [remove mpiFaces from them]
+    bndEdges.erase(std::remove(bndEdges.begin(), bndEdges.end(), -1), bndEdges.end());
+    bcType.erase(std::remove(bcType.begin(), bcType.end(), -1), bcType.end());
+    nBndFaces = bndEdges.size();
 
-  // Get the number of mpiFaces on each processor (for later communication)
-  vector<int> nMpiFaces_proc(params->nproc);
-  MPI_Allgather(&nMpiFaces,1,MPI_INT,nMpiFaces_proc.data(),1,MPI_INT,MPI_COMM_WORLD);
+    /*
+    for (int i=0; i<nMpiFaces; i++) {
+      mpiFaces.insertRow(e2v[mpiEdges[i]],INSERT_AT_END,e2v.dim1);
+    }
+    //  // Get a (unique) list of all (global) node IDs which lie on the MPI boundary
+    //  unordered_set<int> mpiNodesTmp;
+    //  for (auto &ie: mpiEdges) {
+    //    mpiNodesTmp.insert(iv2ivg[e2v(ie,0)]);
+    //    mpiNodesTmp.insert(iv2ivg[e2v(ie,1)]);
+    //  }
+    //  int nMpiNodes = mpiNodesTmp.size();
 
-  // Get the number of mpiNodes on each processor (for later communication)
-  vector<int> nMpiNodes_proc(params->nproc);
-  MPI_Allgather(&nMpiNodes,1,MPI_INT,nMpiNodes_proc.data(),1,MPI_INT,MPI_COMM_WORLD);
+    //  // Setup the outgoint data buffer
+    //  vector<int> mpiNodes;
+    //  for (auto &iv:mpiNodesTmp) mpiNodes.push_back(iv);
 
-  int maxNMpiNodes = getMax(nMpiNodes_proc);
-  mpiNodes.reserve(maxNMpiNodes);
-  matrix<int> mpiNodes_proc(nproc,maxNMpiNodes);
+    //  // Get the number of mpiNodes on each processor (for later communication)
+    //  vector<int> nMpiNodes_proc(params->nproc);
+    //  MPI_Allgather(&nMpiNodes,1,MPI_INT,nMpiNodes_proc.data(),1,MPI_INT,MPI_COMM_WORLD);
 
-  MPI_Scatter(mpiNodes.data(),maxNMpiNodes,MPI_INT,mpiNodes_proc.getData(),maxNMpiNodes,MPI_INT,MPI_COMM_WORLD);
+    //  int maxNMpiNodes = getMax(nMpiNodes_proc);
+    //  matrix<int> mpiNodes_proc(params->nproc,maxNMpiNodes);
+    //  //mpiNodes.reserve(maxNMpiNodes);
+*/
+    // For future compatibility with 3D mixed meshes: allow faces with different #'s nodes
+    // mpi_fptr is like csr matrix ptr (or like eptr from METIS, but for faces instead of eles)
+    matrix<int> mpiFaceNodes;
+    vector<int> mpiFptr(nMpiFaces+1);
+    for (int i=0; i<nMpiFaces; i++) {
+      mpiFaceNodes.insertRow(e2v[mpiEdges[i]],INSERT_AT_END,2);
+      mpiFptr[i+1] = mpiFptr[i]+2;
+    }
+    int nMpiNodes = mpiFptr[nMpiFaces];
 
-  // Find out what processor each face is adjacent to
-  procR.resize(nMpiFaces);
+//    // ---- DEBUG ----
+//    for (int p=0; p<params->nproc; p++) {
+//      if (params->rank==p) {
+//        cout << " -- RANK = " << p << " --" << endl;
+//        cout << "iv2ivg: ";
+//        for (auto &iv:iv2ivg) cout << iv << ", ";
+//        cout << endl;
+
+//        cout << "ic2icg: ";
+//        for (auto &ic:ic2icg) cout << ic << ", ";
+//        cout << endl;
+
+//        cout << "\ne2v: " << endl;
+//        for (int i=0; i<nEdges; i++) {
+//          for (int j=0; j<2; j++) {
+//            cout << e2v(i,j) << ", ";
+//          }
+//          cout << endl;
+//        }
+//        cout << endl;
+
+//        cout << "mpiEdges: ";
+//        for (auto &ie:mpiEdges) cout << ie << ", ";
+//        cout << endl;
+
+//        for (int i=0; i<nMpiFaces; i++) {
+//          for (int j=0; j<2; j++) {
+//            cout << mpiFaceNodes(i,j) << ", ";
+//          }
+//        }
+//        cout << endl;
+//        cout << " -- END RANK = " << p << " --" << endl;
+//      }
+//      MPI_Barrier(MPI_COMM_WORLD);
+//    }
+//    // ---- DEBUG ----
+
+    // Convert local node ID's to global
+    std::transform(mpiFaceNodes.getData(),mpiFaceNodes.getData()+mpiFaceNodes.getSize(),mpiFaceNodes.getData(), [=](int iv){return iv2ivg[iv];} );
+
+//    // ---- DEBUG ----
+//    for (int p=0; p<params->nproc; p++) {
+//      if (params->rank==p) {
+//        cout << " -- RANK = " << p << " --" << endl;
+//        for (int i=0; i<nMpiFaces; i++) {
+//          for (int j=0; j<2; j++) {
+//            cout << mpiFaceNodes(i,j) << ", ";
+//          }
+//        }
+//          cout << endl;
+//        }
+//        MPI_Barrier(MPI_COMM_WORLD);
+//      }
+//    // ---- DEBUG ----
+
+    // Get the number of mpiFaces on each processor (for later communication)
+    vector<int> nMpiFaces_proc(params->nproc);
+    MPI_Allgather(&nMpiFaces,1,MPI_INT,nMpiFaces_proc.data(),1,MPI_INT,MPI_COMM_WORLD);
+
+    // Get the total number of face nodes to be sent on each processor (for later communication)
+    vector<int> nMpiNodes_proc(params->nproc);
+    MPI_Allgather(&nMpiNodes,1,MPI_INT,nMpiNodes_proc.data(),1,MPI_INT,MPI_COMM_WORLD);
+
+    // 2 for 2D, 4 for 3D; recall that we're treating all elements as being linear, as
+    // the extra nodes for quadratic edges or faces are unimportant for determining connectivity
+    int maxNodesPerFace = (nDims==2) ? 2 : 4;
+    int maxNMpiNodes = getMax(nMpiNodes_proc);
+    int maxNMpiFaces = getMax(nMpiFaces_proc);
+    matrix<int> mpiFaceNodes_proc(params->nproc,maxNMpiFaces*maxNodesPerFace);
+    matrix<int> mpiFptr_proc(params->nproc,maxNMpiFaces+1);
+    MPI_Allgather(mpiFaceNodes.getData(),mpiFaceNodes.getSize(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,MPI_COMM_WORLD);
+    MPI_Allgather(mpiFptr.data(),mpiFptr.size(),MPI_INT,mpiFptr_proc.getData(),maxNMpiFaces+1,MPI_INT,MPI_COMM_WORLD);
+
+    //if (params->rank==0) cout << "-- Before MPI_Allgather for MPI Face Nodes" << endl;
+    //if (params->rank==0) cout << "-- After MPI_Allgather for MPI Fptr" << endl;
+//    // ---- DEBUG ----
+//    if (params->rank==0) {
+//      cout << "MPI Face nodes for proc 1:" << endl;
+//      for (int i=0; i<nMpiFaces_proc[1]; i++) {
+//        for (int j=mpiFptr_proc(1,i); j<mpiFptr_proc(1,i+1); j++) {
+//          cout << mpiFaceNodes_proc(1,j) << ", ";
+//        }
+//        cout << endl;
+//      }
+//      cout << endl;
+//    }
+//    // ---- DEBUG ----
 
 
+    // Now that we have each processor's boundary nodes, start matching faces
+    // Again, note that this is written for to be entirely general instead of 2D-specific
+    // Find out what processor each face is adjacent to
+    procR.resize(nMpiFaces);
+    locF_R.resize(nMpiFaces);
+    for (auto &P:procR) P = -1;
+
+    vector<int> tmpFace(maxNodesPerFace);
+    vector<int> myFace(maxNodesPerFace);
+    for (int p=0; p<params->nproc; p++) {
+      if (p == params->rank) continue;
+
+      // Check all of the processor's faces to see if any match our faces
+      for (int i=0; i<nMpiFaces_proc[p]; i++) {
+        tmpFace.resize(maxNodesPerFace);
+        int k = 0;
+        for (int j=mpiFptr_proc(p,i); j<mpiFptr_proc(p,i+1); j++) {
+          tmpFace[k] = mpiFaceNodes_proc(p,j);
+          k++;
+        }
+        tmpFace.resize(k);
+
+        // See if this face matches any on this processor
+        for (int F=0; F<nMpiFaces; F++) {
+          if (procR[F] != -1) continue; // Face already matched
+
+          for (int j=0; j<2; j++) {  // crap.  I'll need to set up an 'e2nv' to use here later.
+            myFace[j] = mpiFaceNodes(F,j);
+          }
+          if (compareFaces(myFace,tmpFace)) {
+            procR[F] = p;
+            locF_R[F] = i;
+            break;
+          }
+        }
+      }
+    }
+
+    for (auto &P:procR)
+      if (P==-1) FatalError("MPI face left unmatched!");
+
+    if (params->rank == 0) cout << "-- All MPI faces matched! --" << endl;
+  } // nproc > 1
 #endif
 
   /* --- Setup Cell-To-Edge, Edge-To-Cell --- */
@@ -246,12 +391,13 @@ void geo::processConnectivity()
   }
 }
 
-void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces)
+void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace*> &mpiFacesVec)
 {
   if (nEles<=0) FatalError("Cannot setup elements array - nEles = 0");
 
   eles.resize(nEles);
-  faces.resize(nFaces+nBndFaces+nMpiFaces);
+  faces.resize(nFaces+nBndFaces);
+  mpiFacesVec.resize(nMpiFaces);
 
   // Setup the elements
   int ic = 0;
@@ -264,16 +410,16 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces)
     e.nodeID.resize(c2nv[ic]);
     e.nodes.resize(c2nv[ic]);
     for (int iv=0; iv<c2nv[ic]; iv++) {
-      e.nodeID[iv] = c2v[ic][iv];
-      e.nodes[iv] = xv[c2v[ic][iv]];
+      e.nodeID[iv] = c2v(ic,iv);
+      e.nodes[iv] = xv[c2v(ic,iv)];
     }
 
     // Global face IDs for internal & boundary faces
     e.faceID.resize(c2ne[ic]);
     e.bndFace.resize(c2ne[ic]);
     for (int k=0; k<c2ne[ic]; k++) {
-      e.bndFace[k] = c2b[ic][k];
-      e.faceID[k] = c2e[ic][k];
+      e.bndFace[k] = c2b(ic,k);
+      e.faceID[k] = c2e(ic,k);
     }
 
     ic++;
@@ -289,17 +435,17 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces)
     faces[i] = F;
     // Find global face ID of current interior face
     int ie = intEdges[i];
-    ic = e2c[ie][0];
+    ic = e2c(ie,0);
     // Find local face ID of global face within first element [on left]
     tmpEdges.assign(c2e[ic],c2e[ic]+c2ne[ic]);
     int fid1 = findFirst(tmpEdges,ie);
-    if (e2c[ie][1] == -1) {
+    if (e2c(ie,1) == -1) {
       FatalError("Interior face does not have a right element assigned.");
     }else{
-      ic = e2c[ie][1];
+      ic = e2c(ie,1);
       tmpEdges.assign(c2e[ic], c2e[ic]+c2ne[ic]);  // List of cell's faces
       int fid2 = findFirst(tmpEdges,ie);           // Which one is this face
-      F->initialize(&eles[e2c[ie][0]],&eles[e2c[ie][1]],fid1,fid2,ie,params);
+      F->initialize(&eles[e2c(ie,0)],&eles[e2c(ie,1)],fid1,fid2,ie,params);
     }
   }
 
@@ -309,32 +455,36 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces)
     faces[nFaces+i] = B;
     // Find global face ID of current boundary face
     int ie = bndEdges[i];
-    ic = e2c[ie][0];
+    ic = e2c(ie,0);
     // Find local face ID of global face within element
     tmpEdges.assign(c2e[ic],c2e[ic]+c2ne[ic]);
     int fid1 = findFirst(tmpEdges,ie);
-    if (e2c[ie][1] != -1) {
+    if (e2c(ie,1) != -1) {
       FatalError("Boundary face has a right element assigned.");
     }else{
-      B->initialize(&eles[e2c[ie][0]],NULL,fid1,bcType[i],ie,params);
+      B->initialize(&eles[e2c(ie,0)],NULL,fid1,bcType[i],ie,params);
     }
   }
 
 #ifndef _NO_MPI
   // MPI Faces
-  for (int i=0; i<nMpiFaces; i++) {
-    mpiFace *F = new mpiFace();
-    faces[nFaces+nBndFaces+i] = F;
-    // Find global face ID of current boundary face
-    int ie = bndEdges[i];
-    ic = e2c[ie][0];
-    // Find local face ID of global face within element
-    tmpEdges.assign(c2e[ic],c2e[ic]+c2ne[ic]);
-    int fid1 = findFirst(tmpEdges,ie);
-    if (e2c[ie][1] != -1) {
-      FatalError("MPI face has a right element assigned.");
-    }else{
-      F->initialize(&eles[e2c[ie][0]],NULL,fid1,procR[i],ie,params);
+  if (params->nproc > 1) {
+    for (int i=0; i<nMpiFaces; i++) {
+      mpiFace *F = new mpiFace();
+      mpiFacesVec[i] = F;
+      // Find global face ID of current boundary face
+      int ie = bndEdges[i];
+      ic = e2c(ie,0);
+      // Find local face ID of global face within element
+      tmpEdges.assign(c2e[ic],c2e[ic]+c2ne[ic]);
+      int fid1 = findFirst(tmpEdges,ie);
+      if (e2c[ie][1] != -1) {
+        FatalError("MPI face has a right element assigned.");
+      }else{
+        F->procL = params->rank;
+        F->procR = procR[i];
+        F->initialize(&eles[e2c[ie][0]],NULL,fid1,locF_R[i],i,params);
+      }
     }
   }
 #endif
@@ -790,6 +940,29 @@ void geo::processPeriodicBoundaries(void)
   nFaces = intEdges.size();
 }
 
+bool geo::compareFaces(vector<int> &face1, vector<int> &face2)
+{
+  uint nv = face1.size();
+  if (face2.size() != nv) return false;
+
+  //vector<bool> found(nv);
+
+  bool found = false;
+  // 2D: Check the two possible permuations
+  if (nv == 2) {
+    if (face1[0] == face2[0] && face1[1] == face2[1]) found = true;
+    if (face1[0] == face2[1] && face1[1] == face2[0]) found = true;
+  }
+  else {
+    FatalError("3D not implemented, and expecting linear faces for MPI face-matching.");
+  }
+
+  return found;
+
+  //bool found = false;
+  //for (auto &F:found) found == (found || F);
+}
+
 bool geo::checkPeriodicFaces(int* edge1, int* edge2)
 {
   double x11, x12, y11, y12, x21, x22, y21, y22;
@@ -833,9 +1006,11 @@ void geo::partitionMesh(void)
 
   if (nproc <= 1) return;
 
+  if (rank == 0) cout << "Partitionin mesh across " << nproc << " processes" << endl;
+  if (rank == 0) cout << "  Number of elements globally: " << nEles << endl;
+
   vector<idx_t> eptr(nEles+1);
   vector<idx_t> eind;
-
 
   int nn = 0;
   for (int i=0; i<nEles; i++) {
@@ -881,6 +1056,7 @@ void geo::partitionMesh(void)
   xv_g      = xv;       xv.resize(0);
   ctype_g   = ctype;    ctype.resize(0);
   c2nv_g    = c2nv;     c2nv.resize(0);
+  c2ne_g    = c2ne;     c2ne.resize(0);
   bndPts_g  = bndPts;   bndPts.setup(0,0);
   nBndPts_g = nBndPts;  nBndPts.resize(0);
 
@@ -891,12 +1067,13 @@ void geo::partitionMesh(void)
       ic2icg.push_back(i);
       ctype.push_back(ctype_g[i]);
       c2nv.push_back(c2nv_g[i]);
+      c2ne.push_back(c2ne_g[i]);
     }
   }
 
   nEles = c2v.getDim0();
 
-  // Get list of all vertices used in new partition
+  // Get list of all vertices (their global IDs) used in new partition
   set<int> myNodes;
   for (int i=0; i<nEles; i++) {
     for (int j=0; j<c2nv[i]; j++) {
@@ -906,10 +1083,17 @@ void geo::partitionMesh(void)
 
   nVerts = myNodes.size();
 
+  // Map from global to local to reset c2v array using local data
+  vector<int> ivg2iv(nVerts_g);
+  for (auto &iv:ivg2iv) iv = -1;
+
   // Transfer over all needed vertices to local array
-  for (auto& iv:myNodes) {
+  int nv = 0;
+  for (auto &iv: myNodes) {
     xv.push_back(xv_g[iv]);
     iv2ivg.push_back(iv);
+    ivg2iv[iv] = nv;
+    nv++;
   }
 
   // bndPts array was already setup globally, so remake keeping only local nodes
@@ -930,14 +1114,23 @@ void geo::partitionMesh(void)
   }
 
   // Copy temp boundPoints data into bndPts matrix
+  // [Transform global node IDs --> local]
   bndPts.setup(nBounds,maxNBndPts);
   for (int i=0; i<nBounds; i++) {
     int j = 0;
     for (auto& it:boundPoints[i]) {
-      bndPts(i,j) = it;
+      bndPts(i,j) = ivg2iv[it];
       j++;
     }
   }
+
+  // Lastly, update c2v and bndPts from global --> local node IDs
+  std::transform(c2v.getData(),c2v.getData()+c2v.getSize(),c2v.getData(), [=](int ivg){return ivg2iv[ivg];});
+
+  cout << "  On rank " << rank << ": nEles = " << nEles << endl;
+
+  if (rank == 0) cout << "Done partitioning mesh" << endl;
+  MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
 

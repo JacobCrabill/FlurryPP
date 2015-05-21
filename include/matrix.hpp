@@ -60,6 +60,9 @@ public:
   /*! Get dim1 [number of columns] */
   uint getDim1(void) {return dim1;}
 
+  /*! Get the size of the underlying data array (total number of matrix elements) */
+  uint getSize(void) {return data.size();}
+
   /* --- Member Functions --- */
   void setup(uint inDim0, uint inDim1);
 

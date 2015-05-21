@@ -37,6 +37,8 @@ void face::initialize(ele *eL, ele *eR, int locF_L, int rightParam, int gID, inp
   tempFL.setup(nDims,nFields);
   tempFR.setup(nDims,nFields);
   tempUL.resize(nFields);
+
+  faceType = 0; // --- DEBUG ----
 }
 
 void face::setupFace(void)
@@ -138,9 +140,7 @@ void face::calcInviscidFlux(void)
 
 void face::calcViscousFlux(void)
 {
-  int i;
-
-  for (i=0; i<nFptsL; i++) {
+  for (int i=0; i<nFptsL; i++) {
     // Calculate discontinuous viscous flux at flux points
     viscousFlux(UL[i], gradUL[i], tempFL, params);
     viscousFlux(UR[i], gradUR[i], tempFR, params);

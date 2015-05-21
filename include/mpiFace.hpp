@@ -18,6 +18,10 @@
 
 #include <vector>
 
+#ifndef _NO_MPI
+#include "mpi.h"
+#endif
+
 #include "matrix.hpp"
 #include "face.hpp"
 
@@ -29,14 +33,21 @@ public:
 
   void setupRightState(void);
 
+  /*! Wait to receive # of flux points from right side of proccessor */
+  void finishRightSetup(void);
+
   void getRightState(void);
 
   void setRightState(void);
 
-private:
+  /*! Perform the MPI communication across the processor boundary */
+  void communicate(void);
+
   int procL;               //! Processor ID for left
   int procR;               //! Processor ID for right
-  int idR;                 //! Local face ID of face on right processor
+  int IDR;                 //! Local face ID of face on right processor
+
+private:
   int locF_R;              //! Right element's local face ID
   int fptStartR, fptEndR;
 
@@ -45,4 +56,21 @@ private:
   matrix<double> normR;   //! Unit outward normal at flux points  [nFpts, nDims]
   vector<double> dAR;     //! Local face-area equivalent at flux points
   vector<double> detJacR; //! Determinant of transformation Jacobian
+
+  matrix<double> bufUR;      //! Incoming buffer for receving UR
+  matrix<double> bufGradUR;  //! Incoming buffer for receving gradUR
+
+#ifndef _NO_MPI
+  MPI_Request UL_out;
+  MPI_Request UR_in;
+  MPI_Request gradUL_out;
+  MPI_Request gradUR_in;
+  MPI_Request nFpts_out;
+  MPI_Request nFpts_in;
+
+  MPI_Status status;
+
+  int* fptsBuffOut;
+  int* fptsBuffIn;
+#endif
 };

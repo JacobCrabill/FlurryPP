@@ -28,6 +28,7 @@ class oper;
 #include "face.hpp"
 #include "intFace.hpp"
 #include "boundFace.hpp"
+#include "mpiFace.hpp"
 #include "operators.hpp"
 
 class solver
@@ -45,8 +46,11 @@ public:
   //! Vector of all eles handled by this solver
   vector<ele> eles;
 
-  //! Vector of all faces handled by this solver
+  //! Vector of all non-MPI faces handled by this solver
   vector<face*> faces;
+
+  //! Vector of all MPI faces handled by this solver
+  vector<mpiFace*> mpiFaces;
 
   /* === Setup Functions === */
   solver();
@@ -61,6 +65,9 @@ public:
 
   //! If restarting from data file, read data and setup eles & faces accordingly
   void readRestartFile();
+
+  //! Finish setting up the MPI faces
+  void finishMpiSetup(void);
 
   /* === Functions Related to Basic FR Process === */
 
@@ -102,8 +109,11 @@ public:
   //! Calculate the inviscid interface flux at all element faces
   void calcInviscidFlux_faces(void);
 
-  //! Calculate the inviscid interface flux at all boundary faces
-  void calcInviscidFlux_bounds(void);
+  //! Calculate the inviscid interface flux at all element faces
+  void calcInviscidFlux_mpi(void);
+
+  //! Have all MPI faces begin their communication
+  void doCommunication(void);
 
   //! Calculate the gradient of the solution at the solution points
   void calcGradU_spts(void);
@@ -121,8 +131,8 @@ public:
   //! Calculate the viscous interface flux at all element faces
   void calcViscousFlux_faces(void);
 
-  //! Calculate the viscous interface flux at all boundary faces
-  void calcViscousFlux_bounds(void);
+  //! Calculate the viscous interface flux at all MPI boundary faces
+  void calcViscousFlux_mpi(void);
 
   //! Wrapper to calc divergence of flux (using one of two possible methods)
   void calcFluxDivergence(int step);

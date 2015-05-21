@@ -16,6 +16,14 @@
 
 #include <iomanip>
 
+// Used for making sub-directories
+#ifndef _NO_MPI
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include "mpi.h"
+#endif
+
 void writeData(solver *Solver, input *params)
 {
   if (params->plot_type == 0) {
@@ -89,12 +97,73 @@ void writeParaview(solver *Solver, input *params)
 
   char fileNameC[50];
   string fileName = params->dataFileName;
+
+#ifndef _NO_MPI
+  /* --- All processors write their solution to their own .vtu file --- */
+  sprintf(fileNameC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,params->rank);
+
+  /* --- Write 'master' .pvtu file --- */
+  if (params->rank == 0) {
+    ofstream pVTU;
+    char pvtuC[50];
+    sprintf(pvtuC,"%s_%.09d.pvtu",&fileName[0],iter);
+
+    pVTU.open(pvtuC);
+
+    pVTU << "<?xml version=\"1.0\" ?>" << endl;
+    pVTU << "<VTKFile type=\"PUnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" compressor=\"vtkZLibDataCompressor\">" << endl;
+    pVTU << "  <PUnstructuredGrid GhostLevel=\"1\">" << endl;
+    pVTU << "    <PPointData>" << endl;
+    pVTU << "      <PDataArray type=\"Float32\" Name=\"Density\" />" << endl;
+    if (params->equation == NAVIER_STOKES) {
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"Pressure\" />" << endl;
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"EntropyErr\" />" << endl;
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"Velocity\" NumberOfComponents=\"3\" />" << endl;
+      if (params->motion) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"GridVelocity\" NumberOfComponents=\"3\" />" << endl;
+      }
+    }
+    pVTU << "    </PPointData>" << endl;
+    pVTU << "    <PPoints>" << endl;
+    pVTU << "      <PDataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\" />" << endl;
+    pVTU << "    </PPoints>" << endl;
+
+    char filnameTmpC[50];
+    for (int p=0; p<params->nproc; p++) {
+      sprintf(filnameTmpC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,p);
+      pVTU << "    <Piece Source=\"" << string(filnameTmpC) << "\" />" << endl;
+    }
+    pVTU << "  </PUnstructuredGrid>" << endl;
+    pVTU << "</VTKFile>" << endl;
+
+    pVTU.close();
+
+    char datadirC[50];
+    char *datadir = &datadirC[0];
+    sprintf(datadirC,"%s_%.09d",&fileName[0],iter);
+
+    /* --- Master node creates a subdirectory to store .vtu files --- */
+    if (params->rank == 0) {
+      struct stat st = {0};
+      if (stat(datadir, &st) == -1) {
+        mkdir(datadir, 0755);
+      }
+    }
+  }
+
+  /* --- Wait for all processes to get here, otherwise there won't be a
+   *     directory to put .vtus into --- */
+  MPI_Barrier(MPI_COMM_WORLD);
+#else
+  /* --- Filename to write to --- */
   sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],iter);
+#endif
 
   dataFile.open(fileNameC);
   dataFile.precision(16);
 
-  cout << "Writing ParaView file " << string(fileNameC) << "...  " << flush;
+  if (params->rank == 0)
+    cout << "Writing ParaView file " << string(fileNameC) << "...  " << flush;
 
   // File header
   dataFile << "<?xml version=\"1.0\" ?>" << endl;
@@ -195,7 +264,7 @@ void writeParaview(solver *Solver, input *params)
     }
 
     if (params->equation == NAVIER_STOKES) {
-      /* --- Pressure --- */
+      /* --- Entropy Error Estimate --- */
       dataFile << "				<DataArray type=\"Float32\" Name=\"EntropyErr\" format=\"ascii\">" << endl;
       for(int k=0; k<nPpts; k++) {
         dataFile << errPpts(k) << " ";
@@ -275,7 +344,7 @@ void writeParaview(solver *Solver, input *params)
 
   dataFile.close();
 
-  cout << "done." <<  endl;
+  if (params->rank == 0) cout << "done." <<  endl;
 }
 
 

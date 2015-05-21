@@ -23,6 +23,7 @@
 #include "input.hpp"
 #include "solver.hpp"
 #include "face.hpp"
+#include "mpiFace.hpp"
 
 class geo
 {
@@ -38,7 +39,7 @@ public:
   void processConnectivity();
 
   //! Create the elements and faces needed for the simulation
-  void setupElesFaces(vector<ele> &eles, vector<face*> &faces);
+  void setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace*> &mpiFacesVec);
 
   /* === Helper Routines === */
 
@@ -66,6 +67,8 @@ public:
 
   void partitionMesh(void);
 
+  bool compareFaces(vector<int> &face1, vector<int> &face2);
+
 private:
 
   input *params;
@@ -83,9 +86,10 @@ private:
   matrix<int> bndPts;            //! List of node IDs on each boundary
   vector<int> nBndPts;           //! Number of points on each boudary
   vector<matrix<int> > bndFaces; //! List of nodes on each face (edge) on each boundary
-  vector<int> nFacesPerBnd;         //! List of # of faces on each boundary
+  vector<int> nFacesPerBnd;      //! List of # of faces on each boundary
   matrix<int> mpiFaces;          //! List of nodes on each MPI face on processor
   vector<int> procR;             //! What processor lies to the 'right' of this face
+  vector<int> locF_R;            //! The local mpiFace ID of each mpiFace on the opposite processor
   //map<string,int> bcNum;         //! Maps a boundary-condition string to its integer enum
   vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
 
