@@ -438,6 +438,7 @@ void solver::finishMpiSetup(void)
 void solver::readRestartFile(void) {
 
   ifstream dataFile;
+  dataFile.precision(15);
 
   // Get the file name & open the file
   char fileNameC[50];
