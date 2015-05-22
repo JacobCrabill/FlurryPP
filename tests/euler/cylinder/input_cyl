@@ -1,6 +1,6 @@
 equation      1    # 0: Advection-Diffusion;  1: Euler/Navier-Stokes
 order         2    # Polynomial order to use
-dt            .000005  # Time step size
+dt            .00001  # Time step size
 
 viscous       0
 motion        0
@@ -14,13 +14,13 @@ advectVy      1    # Advection wave speed, y-component
 #   N-S: 0-Uniform flow, 1-Uniform+Vortex
 ic_type       0    
 test_case     0
-iterMax       40000
+iterMax       5000
 restart       0
 restartIter   10
 resType       3
 
 # Plotting/Output Parameters
-plot_freq     1000
+plot_freq     100
 monitor_res_freq  100
 
 # mesh_type - 0: Read mesh, 1: Create mesh
@@ -53,13 +53,8 @@ mesh_bound    circle  slip_wall
 mesh_bound    fluid   fluid
 
 # Boundary & Initial Conditions
-vxIC     50.
-vyIC     0.
-rhoIC    1.168
-pIC      100000
-
 rhoBound 1.168
-uBound   50.
+uBound   300.
 vBound   0.
 pBound   100000
 
@@ -74,3 +69,7 @@ beta          50   # 'Penalty' factor
 
 # Other FR-method parameters
 spts_type_quad  Legendre
+
+# Shock Capturing Parameters
+shockCapture 1
+threshold 1

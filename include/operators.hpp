@@ -30,7 +30,7 @@ public:
   void setupOperators(uint eType, uint order, geo* inGeo, input* inParams);
 
   //! Setup operator for extrapolation from solution points to flux points
-  void setupExtrapolateSptsFpts(vector<point> &loc_spts, vector<point> &loc_fpts);
+  void setupExtrapolateSptsFpts(vector<point> &loc_fpts);
 
   //! Setup operator for extrapolation from solution points to mesh (corner) points
   void setupExtrapolateSptsMpts(vector<point> &loc_spts);
@@ -65,6 +65,9 @@ public:
 
   void applyCorrectDivF(matrix<double> &dFn_fpts, matrix<double> &divF_spts);
 
+  /*! Shock Capturing in the element */
+  double shockCaptureInEle(matrix<double> &U_spts, double threshold);
+
   const matrix<double>& get_oper_div_spts();
   const matrix<double>& get_oper_spts_fpts();
 
@@ -74,7 +77,7 @@ public:
 private:
   geo *Geo;
   input *params;
-  uint nDims, nFields, eType, order;
+  uint nDims, nFields, eType, order, nSpts, nFpts;
 
   matrix<double> opp_spts_to_fpts;
   matrix<double> opp_spts_to_mpts;
@@ -84,4 +87,15 @@ private:
 
   /*! Evaluate the divergence of the (VCJH) correction function at a solution point from a flux point */
   double divVCJH_quad(int in_fpt, vector<double> &loc, vector<double> &loc_1d_spts, uint vcjh, uint order);
+
+  /* Stuff required for Shock Capturing */
+  matrix<double> vandermonde1D;
+  matrix<double> inv_vandermonde1D;
+  matrix<double> vandermonde2D;
+  matrix<double> inv_vandermonde2D;
+  matrix<double> sensingMatrix;
+  matrix<double> filterMatrix;
+  void setupVandermonde(vector<point> &loc_spts);
+  void setupSensingMatrix(void);
+  void setupFilterMatrix(void);
 };

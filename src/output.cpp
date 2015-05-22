@@ -126,6 +126,12 @@ void writeParaview(solver *Solver, input *params)
     e.getGridVelPlot(gridVelPpts);
     ppts = e.getPpts();
 
+    // Shock Capturing stuff
+    double sensor;
+    if(params->scFlag == 1){
+        sensor = e.getSensor();
+    }
+
     if (params->equation == NAVIER_STOKES)
       e.getEntropyErrPlot(errPpts);
 
@@ -147,6 +153,17 @@ void writeParaview(solver *Solver, input *params)
     }
     dataFile << endl;
     dataFile << "				</DataArray>" << endl;
+
+    if(params->scFlag == 1){
+        /* --- Shock Sensor --- */
+        dataFile << "				<DataArray type=\"Float32\" Name=\"Sensor\" format=\"ascii\">" << endl;
+        for(int k=0; k<nPpts; k++) {
+          dataFile << sensor << " ";
+        }
+        dataFile << endl;
+        dataFile << "				</DataArray>" << endl;
+    }
+
 
     if (params->equation == NAVIER_STOKES) {
       /* --- Pressure --- */

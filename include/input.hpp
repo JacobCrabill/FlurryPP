@@ -152,6 +152,10 @@ public:
   int vcjhSchemeTri;
   int vcjhSchemeQuad;
 
+  /* --- Shock Capturing Parameters --- */
+  int scFlag;       // Shock Capturing Flag
+  double threshold; // Threshold for considering as shock -Set to 1.0 by default
+
 private:
   fileReader opts;
 };

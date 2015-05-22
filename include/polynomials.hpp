@@ -24,9 +24,17 @@ double dLagrange(vector<double> &x_lag, double y, uint mode);
 /*! Evaluate the second derivative of the 1D Lagrange polynomial mode based on points x_lag at point y */
 double ddLagrange(vector<double> &x_lag, double y, uint mode);
 
+/*! Evaluate the 1D Legendre polynomial mode number in_mode based at point location in_r*/
 double Legendre(double in_r, int in_mode);
 
+/*! Evaluate the derivative of the 1D Legendre polynomial mode number in_mode based at point location in_r*/
 double dLegendre(double in_r, int in_mode);
+
+/*! Evaluate the 2D Legendre polynomial mode number in_mode based at point location in_r*/
+double Legendre2D_hierarchical(int in_mode, vector<double> in_loc, int in_basis_order);
+
+/*! Method to calculate co-efficients of the exponential filter */
+double exponential_filter(int in_mode, int in_basis_order, double exponent);
 
 double compute_eta(int vcjh_scheme, int order);
 

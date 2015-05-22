@@ -150,7 +150,8 @@ public:
   // **All of the following functions are just food for thought at the moment**
 
   /* === Functions for Shock Capturing & Filtering=== */
-  void shockCapturing();
+  //! Shock Capturing Wrapper
+  void shockCapture(void);
 
   /* === Functions Related to Adaptation === */
   void get_r_adapt_cells();

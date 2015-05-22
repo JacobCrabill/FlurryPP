@@ -138,6 +138,78 @@ double dLegendre(double in_r, int in_mode)
   return dLeg;
 }
 
+double Legendre2D_hierarchical(int in_mode, vector<double> in_loc, int in_basis_order)
+{
+    double leg_basis;
+    int n_dof=(in_basis_order+1)*(in_basis_order+1);
+
+    if(in_mode<n_dof)
+      {
+        int i,j,k;
+        int mode;
+
+        mode = 0;
+        for (k=0;k<in_basis_order*in_basis_order+1;k++)
+          {
+            for (j=0;j<k+1;j++)
+              {
+                i = k-j;
+                if(i<=in_basis_order && j<=in_basis_order){
+
+                    if(mode==in_mode) // found the correct mode
+                        leg_basis=Legendre(in_loc[0],i)*Legendre(in_loc[1],j);
+
+                    mode++;
+                }
+              }
+          }
+      }
+    else
+      {
+        cout << "ERROR: Invalid mode when evaluating Legendre basis ...." << endl;
+      }
+
+    return leg_basis;
+}
+
+double exponential_filter(int in_mode, int in_basis_order, double exponent)
+{
+    double sigma, eta;
+
+    int n_dof=(in_basis_order+1)*(in_basis_order+1);
+
+    if(in_mode<n_dof)
+    {
+        int i,j,k;
+        int mode;
+
+        mode = 0;
+        for (k=0;k<in_basis_order*in_basis_order+1;k++)
+        {
+            for (j=0;j<k+1;j++)
+            {
+                i = k-j;
+                if(i<=in_basis_order && j<=in_basis_order){
+
+                    if(mode==in_mode) // found the correct mode
+                    {
+                        eta = (double)(i+j)/n_dof;
+                        sigma = exp(-1*pow(eta,exponent));
+                        //cout<<"sigma values are "<<sigma<<endl;
+                    }
+                    mode++;
+                }
+            }
+        }
+    }
+    else
+    {
+        cout << "ERROR: Invalid mode when evaluating exponential filter ...." << endl;
+    }
+
+    return sigma;
+}
+
 void shape_quad(point &in_rs, vector<double> &out_shape, int nNodes)
 {
   double xi  = in_rs.x;

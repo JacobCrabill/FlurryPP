@@ -1178,6 +1178,8 @@ void ele::setNFpts(int value)
   nFpts = value;
 }
 
-
-
+double ele::getSensor(void)
+{
+   return sensor;
+}
 

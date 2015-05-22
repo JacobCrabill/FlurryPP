@@ -91,6 +91,12 @@ public:
 
   void print(void);
 
+  /*! Invert the current matrix */
+  matrix<T> invertMatrix(void);
+
+  /*! Fill a vector into a matrix by resizing */
+  void vecToMatrixResize(vector<T> &A);
+
   /* --- Data-Access Operators --- */
 
   T* operator[](int inDim0);

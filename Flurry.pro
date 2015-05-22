@@ -37,3 +37,7 @@ HEADERS += include/global.hpp \
 DISTFILES += \
     README.md \
     planning
+
+OTHER_FILES += \
+    bin/input_supwall \
+    tests/euler/cylinder/input_cyl

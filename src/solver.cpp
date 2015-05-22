@@ -107,6 +107,10 @@ void solver::update(void)
 
 void solver::calcResidual(int step)
 {
+  if(params->scFlag == 1) {
+    shockCapture();
+  }
+
   extrapolateU();
 
   calcInviscidFlux_spts();
@@ -449,5 +453,14 @@ void solver::initializeSolution()
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].setInitialCondition();
+  }
+}
+
+// Method for shock capturing
+void solver::shockCapture(void)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].sensor = opers[eles[i].eType][eles[i].order].shockCaptureInEle(eles[i].U_spts,params->threshold);
   }
 }
