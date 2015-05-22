@@ -180,6 +180,10 @@ public:
   /* === Functions Related to Overset Grids === */
 
   void calcEntropyErr_spts();
+
+  //! FOR AA222 PROJECT: use solver as 'function evaluator' - single-call simulation run from main()
+  vector<double> runSim(void);
+
 private:
   //! Pointer to the parameters object for the current solution
   input *params;

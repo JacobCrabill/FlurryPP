@@ -25,6 +25,7 @@ class boundFace;
 #include "../include/geo.hpp"
 #include "../include/intFace.hpp"
 #include "../include/boundFace.hpp"
+#include "../include/output.hpp"
 
 solver::solver()
 {
@@ -70,6 +71,29 @@ void solver::setup(input *params, geo *Geo)
 #ifndef _NO_MPI
   finishMpiSetup();
 #endif
+}
+
+
+vector<double> solver::runSim(void)
+{
+  simTimer runTime;
+  runTime.startTimer();
+
+  /* Apply the initial condition */
+  initializeSolution();
+
+  for (params->iter = params->initIter+1; params->iter<finalIter; initIter++) {
+    update();
+
+//    if ((params->iter)%params->monitor_res_freq == 0 || params->iter==1) writeResidual(this,params);
+//    if ((params->iter)%params->plot_freq == 0) writeData(this,params);
+  }
+
+  writeResidual(this,params);
+  writeData(this,params);
+
+  runTime.stopTimer();
+  runTime.showTime();
 }
 
 void solver::update(void)

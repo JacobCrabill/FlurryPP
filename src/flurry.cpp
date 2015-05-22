@@ -69,23 +69,15 @@ int main(int argc, char *argv[]) {
   simTimer runTime;
   runTime.startTimer();
 
-  /* Apply the initial condition */
-  if (!params.restart)  Solver.initializeSolution();
+  /* ---- SIMPLIFIED / MODIFIED SIMULATION RUNNING FOR AA222 FINAL PROJECT ---- */
 
-  /* Write initial data file */
-  writeData(&Solver,&params);
+  for (int eval=0; eval<maxEvals; eval++) {
 
-  /* --- Calculation Loop --- */
-  for (params.iter=params.initIter+1; params.iter<=params.iterMax; params.iter++) {
-
-    Solver.update();
-
-    if ((params.iter)%params.monitor_res_freq == 0 || params.iter==1) writeResidual(&Solver,&params);
-    if ((params.iter)%params.plot_freq == 0) writeData(&Solver,&params);
+    /* Initialize & run entire simulation from initIter to iterMax */
+    Solver.runSim();
 
   }
 
-  // Get simulation wall time
   runTime.stopTimer();
   runTime.showTime();
 
