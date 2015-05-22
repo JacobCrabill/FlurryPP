@@ -87,5 +87,5 @@ protected:
   // Probably only needed for debugging... remove this later
   vector<point> posFpts;
 
-  int faceType; // ---- DEBUG ----
+  int isMPI;  //! Flag for MPI faces to separate communication from flux calculation
 };

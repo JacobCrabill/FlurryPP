@@ -55,6 +55,8 @@ public:
   /* === Setup Functions === */
   solver();
 
+  ~solver();
+
   void setup(input *params, geo *Geo);
 
   //! Setup the FR operators for all ele types and polynomial orders which will be used in computation

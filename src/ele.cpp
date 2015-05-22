@@ -712,11 +712,15 @@ void ele::transformGradF_spts(int step)
 
 void ele::calcDeltaFn(void)
 {
+  //if (params->rank==0) cout << "Fn_fpts = " << endl;
   for (int fpt=0; fpt<nFpts; fpt++) {
     for (int k=0; k<nFields; k++) {
       dFn_fpts(fpt,k) = Fn_fpts(fpt,k) - disFn_fpts(fpt,k);
+//      if (params->rank==0) cout << Fn_fpts(fpt,k) << ", ";
     }
+//    if (params->rank==0) cout << endl;
   }
+//  if (params->rank==0) cout << endl;
 }
 
 void ele::calcEntropyErr_spts(void)
@@ -1116,14 +1120,14 @@ vector<double> ele::getNormResidual(int normType)
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
       if (normType == 1) {
-        res[i] += abs(divF_spts[0][spt][i]);
+        res[i] += abs(divF_spts[0](spt,i)) / detJac_spts[spt];
       }
       else if (normType == 2) {
-        res[i] += divF_spts[0][spt][i]*divF_spts[0][spt][i];
+        res[i] += divF_spts[0](spt,i)*divF_spts[0](spt,i) / (detJac_spts[spt]*detJac_spts[spt]);
       }
       else if (normType == 3) {
         // Infinity norm
-        res[i] = max(abs(divF_spts[0][spt][i]),res[i]);
+        res[i] = max(abs(divF_spts[0](spt,i))/detJac_spts[spt],res[i]);
       }
     }
   }

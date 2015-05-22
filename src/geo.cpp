@@ -153,7 +153,7 @@ void geo::processConnectivity()
 #ifndef _NO_MPI
   if (params->nproc > 1) {
 
-    if (params->rank == 1) cout << "-- Matching MPI faces --" << endl;
+    if (params->rank == 0) cout << "Geo: Matching MPI faces" << endl;
 
     // 1) Get a list of all the MPI faces on the processor
     // These will be all unassigned boundary faces (bcType == -1) - copy over to mpiEdges
@@ -170,30 +170,6 @@ void geo::processConnectivity()
     bcType.erase(std::remove(bcType.begin(), bcType.end(), -1), bcType.end());
     nBndFaces = bndEdges.size();
 
-    /*
-    for (int i=0; i<nMpiFaces; i++) {
-      mpiFaces.insertRow(e2v[mpiEdges[i]],INSERT_AT_END,e2v.dim1);
-    }
-    //  // Get a (unique) list of all (global) node IDs which lie on the MPI boundary
-    //  unordered_set<int> mpiNodesTmp;
-    //  for (auto &ie: mpiEdges) {
-    //    mpiNodesTmp.insert(iv2ivg[e2v(ie,0)]);
-    //    mpiNodesTmp.insert(iv2ivg[e2v(ie,1)]);
-    //  }
-    //  int nMpiNodes = mpiNodesTmp.size();
-
-    //  // Setup the outgoint data buffer
-    //  vector<int> mpiNodes;
-    //  for (auto &iv:mpiNodesTmp) mpiNodes.push_back(iv);
-
-    //  // Get the number of mpiNodes on each processor (for later communication)
-    //  vector<int> nMpiNodes_proc(params->nproc);
-    //  MPI_Allgather(&nMpiNodes,1,MPI_INT,nMpiNodes_proc.data(),1,MPI_INT,MPI_COMM_WORLD);
-
-    //  int maxNMpiNodes = getMax(nMpiNodes_proc);
-    //  matrix<int> mpiNodes_proc(params->nproc,maxNMpiNodes);
-    //  //mpiNodes.reserve(maxNMpiNodes);
-*/
     // For future compatibility with 3D mixed meshes: allow faces with different #'s nodes
     // mpi_fptr is like csr matrix ptr (or like eptr from METIS, but for faces instead of eles)
     matrix<int> mpiFaceNodes;
@@ -204,60 +180,8 @@ void geo::processConnectivity()
     }
     int nMpiNodes = mpiFptr[nMpiFaces];
 
-//    // ---- DEBUG ----
-//    for (int p=0; p<params->nproc; p++) {
-//      if (params->rank==p) {
-//        cout << " -- RANK = " << p << " --" << endl;
-//        cout << "iv2ivg: ";
-//        for (auto &iv:iv2ivg) cout << iv << ", ";
-//        cout << endl;
-
-//        cout << "ic2icg: ";
-//        for (auto &ic:ic2icg) cout << ic << ", ";
-//        cout << endl;
-
-//        cout << "\ne2v: " << endl;
-//        for (int i=0; i<nEdges; i++) {
-//          for (int j=0; j<2; j++) {
-//            cout << e2v(i,j) << ", ";
-//          }
-//          cout << endl;
-//        }
-//        cout << endl;
-
-//        cout << "mpiEdges: ";
-//        for (auto &ie:mpiEdges) cout << ie << ", ";
-//        cout << endl;
-
-//        for (int i=0; i<nMpiFaces; i++) {
-//          for (int j=0; j<2; j++) {
-//            cout << mpiFaceNodes(i,j) << ", ";
-//          }
-//        }
-//        cout << endl;
-//        cout << " -- END RANK = " << p << " --" << endl;
-//      }
-//      MPI_Barrier(MPI_COMM_WORLD);
-//    }
-//    // ---- DEBUG ----
-
     // Convert local node ID's to global
     std::transform(mpiFaceNodes.getData(),mpiFaceNodes.getData()+mpiFaceNodes.getSize(),mpiFaceNodes.getData(), [=](int iv){return iv2ivg[iv];} );
-
-//    // ---- DEBUG ----
-//    for (int p=0; p<params->nproc; p++) {
-//      if (params->rank==p) {
-//        cout << " -- RANK = " << p << " --" << endl;
-//        for (int i=0; i<nMpiFaces; i++) {
-//          for (int j=0; j<2; j++) {
-//            cout << mpiFaceNodes(i,j) << ", ";
-//          }
-//        }
-//          cout << endl;
-//        }
-//        MPI_Barrier(MPI_COMM_WORLD);
-//      }
-//    // ---- DEBUG ----
 
     // Get the number of mpiFaces on each processor (for later communication)
     vector<int> nMpiFaces_proc(params->nproc);
@@ -276,22 +200,6 @@ void geo::processConnectivity()
     matrix<int> mpiFptr_proc(params->nproc,maxNMpiFaces+1);
     MPI_Allgather(mpiFaceNodes.getData(),mpiFaceNodes.getSize(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,MPI_COMM_WORLD);
     MPI_Allgather(mpiFptr.data(),mpiFptr.size(),MPI_INT,mpiFptr_proc.getData(),maxNMpiFaces+1,MPI_INT,MPI_COMM_WORLD);
-
-    //if (params->rank==0) cout << "-- Before MPI_Allgather for MPI Face Nodes" << endl;
-    //if (params->rank==0) cout << "-- After MPI_Allgather for MPI Fptr" << endl;
-//    // ---- DEBUG ----
-//    if (params->rank==0) {
-//      cout << "MPI Face nodes for proc 1:" << endl;
-//      for (int i=0; i<nMpiFaces_proc[1]; i++) {
-//        for (int j=mpiFptr_proc(1,i); j<mpiFptr_proc(1,i+1); j++) {
-//          cout << mpiFaceNodes_proc(1,j) << ", ";
-//        }
-//        cout << endl;
-//      }
-//      cout << endl;
-//    }
-//    // ---- DEBUG ----
-
 
     // Now that we have each processor's boundary nodes, start matching faces
     // Again, note that this is written for to be entirely general instead of 2D-specific
@@ -334,7 +242,7 @@ void geo::processConnectivity()
     for (auto &P:procR)
       if (P==-1) FatalError("MPI face left unmatched!");
 
-    if (params->rank == 0) cout << "-- All MPI faces matched! --" << endl;
+    if (params->rank == 0) cout << "Geo: All MPI faces matched!  nMpiFaces = " << nMpiFaces << endl;
   } // nproc > 1
 #endif
 
@@ -473,17 +381,17 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace
       mpiFace *F = new mpiFace();
       mpiFacesVec[i] = F;
       // Find global face ID of current boundary face
-      int ie = bndEdges[i];
+      int ie = mpiEdges[i];
       ic = e2c(ie,0);
       // Find local face ID of global face within element
       tmpEdges.assign(c2e[ic],c2e[ic]+c2ne[ic]);
       int fid1 = findFirst(tmpEdges,ie);
-      if (e2c[ie][1] != -1) {
+      if (e2c(ie,1) != -1) {
         FatalError("MPI face has a right element assigned.");
       }else{
         F->procL = params->rank;
         F->procR = procR[i];
-        F->initialize(&eles[e2c[ie][0]],NULL,fid1,locF_R[i],i,params);
+        F->initialize(&eles[e2c(ie,0)],NULL,fid1,locF_R[i],i,params);
       }
     }
   }
@@ -787,16 +695,6 @@ void geo::createMesh()
     }
   }
 
-//  // Add a random perturbation of +/- dx/4 to interior points
-//  for (i=1; i<ny; i++) {
-//    for (j=1; j<nx; j++) {
-//      pt.x = (dx/4)*(-1+((double)(rand()%1000))/500.);
-//      pt.y = (dy/4)*(-1+((double)(rand()%1000))/500.);
-//      xv[i*(ny+1)+j].x += pt.x;
-//      xv[i*(ny+1)+j].y += pt.y;
-//    }
-//  }
-
   /* --- Setup Elements --- */
   for (int i=0; i<nx; i++) {
     for (int j=0; j<ny; j++) {
@@ -892,6 +790,10 @@ void geo::processPeriodicBoundaries(void)
   }
 
   nPeriodic = iPeriodic.size();
+#ifndef _NO_MPI
+  if (nPeriodic > 0)
+    FatalError("Periodic boundaries not implemented yet with MPI! Recompile for serial.");
+#endif
   if (nPeriodic == 0) return;
   if (nPeriodic%2 != 0) FatalError("Expecting even number of periodic faces; have odd number.");
 
@@ -1006,8 +908,8 @@ void geo::partitionMesh(void)
 
   if (nproc <= 1) return;
 
-  if (rank == 0) cout << "Partitionin mesh across " << nproc << " processes" << endl;
-  if (rank == 0) cout << "  Number of elements globally: " << nEles << endl;
+  if (rank == 0) cout << "Geo: Partitioning mesh across " << nproc << " processes" << endl;
+  if (rank == 0) cout << "Geo:   Number of elements globally: " << nEles << endl;
 
   vector<idx_t> eptr(nEles+1);
   vector<idx_t> eind;
@@ -1030,9 +932,6 @@ void geo::partitionMesh(void)
   vector<int> epart(nEles);
   vector<int> npart(nVerts);
 
-  // int errVal = METIS PartMeshNodal( idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind,
-  // idx_t *vwgt, idx_t *vsize, idx_t *nparts, real t *tpwgts, idx t *options,
-  // idx_t *objval, idx_t *epart, idx_t *npart)
   // int errVal = METIS PartMeshDual(idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind, idx_t *vwgt, idx_t *vsize,
   // idx_t *ncommon, idx_t *nparts, real_t *tpwgts, idx_t *options, idx_t *objval,idx_t *epart, idx_t *npart)
   int ncommon = 2; // 2 for 2D, ~3 for 3D
@@ -1040,14 +939,12 @@ void geo::partitionMesh(void)
   idx_t options[METIS_NOPTIONS];
   METIS_SetDefaultOptions(options);
   options[METIS_OPTION_NUMBERING] = 0;
-  options[METIS_OPTION_IPTYPE] = METIS_IPTYPE_NODE; // maybe?
+  options[METIS_OPTION_IPTYPE] = METIS_IPTYPE_NODE; // needed?
   options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
   options[METIS_OPTION_PTYPE] = METIS_PTYPE_KWAY;
 
   METIS_PartMeshDual(&nEles,&nVerts,eptr.data(),eind.data(),NULL,NULL,
                      &ncommon,&nproc,NULL,options,&objval,epart.data(),npart.data());
-  //METIS_PartMeshNodal(&nEles,&nVerts,eptr.data(),eind.data(),NULL,NULL,
-  //                    &nproc,NULL,NULL,&objval,epart.data(),npart.data());
 
   // Copy data to the global arrays & reset local arrays
   nEles_g   = nEles;
@@ -1127,7 +1024,7 @@ void geo::partitionMesh(void)
   // Lastly, update c2v and bndPts from global --> local node IDs
   std::transform(c2v.getData(),c2v.getData()+c2v.getSize(),c2v.getData(), [=](int ivg){return ivg2iv[ivg];});
 
-  cout << "  On rank " << rank << ": nEles = " << nEles << endl;
+  cout << "Geo:   On rank " << rank << ": nEles = " << nEles << endl;
 
   if (rank == 0) cout << "Done partitioning mesh" << endl;
   MPI_Barrier(MPI_COMM_WORLD);

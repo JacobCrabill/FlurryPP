@@ -49,9 +49,6 @@ public:
   //! Create a simple Cartesian mesh from input parameters
   void createMesh();
 
-  void createQuadMesh(); // or lump into createMesh()
-  void createTriMesh();
-
   //! Get the reference-domain location of the solution points for the given element & polynomial order
   vector<point> getLocSpts(int eType, int order);
 
@@ -64,10 +61,6 @@ public:
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces, nBndFaces, nMpiFaces;
   int nBounds;  //! Number of boundaries
-
-  void partitionMesh(void);
-
-  bool compareFaces(vector<int> &face1, vector<int> &face2);
 
 private:
 
@@ -94,13 +87,13 @@ private:
   vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
 
   /* --- MPI-Related Varialbes (global vs. local data) --- */
-  matrix<int> c2v_g;
-  vector<point> xv_g;
+  matrix<int> c2v_g;   //! Global element connectivity
+  vector<point> xv_g;  //! Global mesh node locations
   vector<int> ic2icg;  //! Local cell to global cell index
   vector<int> iv2ivg;  //! Local vertex to global vertex index
-  vector<int> ctype_g, c2ne_g, c2nv_g;
-  matrix<int> bndPts_g;
-  vector<int> nBndPts_g;
+  vector<int> ctype_g, c2ne_g, c2nv_g; //! Global element info
+  matrix<int> bndPts_g;  //! Global lists of points on boundaries
+  vector<int> nBndPts_g; //! Global number of points on each boundary
   int nEles_g, nVerts_g;
 
   //! Match up pairs of periodic boundary faces
@@ -108,4 +101,10 @@ private:
 
   //! Check if two given periodic edges match up
   bool checkPeriodicFaces(int *edge1, int *edge2);
+
+  //! For MPI runs, partition the mesh across all processors
+  void partitionMesh(void);
+
+  //! Compare two faces [lists of nodes] to see if they match [used for MPI]
+  bool compareFaces(vector<int> &face1, vector<int> &face2);
 };

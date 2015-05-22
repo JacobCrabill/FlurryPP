@@ -35,7 +35,8 @@ void mpiFace::setupRightState(void)
   MPI_Isend(&nFptsL,1,MPI_INT,procR,IDR,MPI_COMM_WORLD,&nFpts_out);
   MPI_Irecv(&nFptsR,1,MPI_INT,procR,ID,MPI_COMM_WORLD,&nFpts_in);
 
-  faceType = 1; // --- DEBUG ----
+  // Sloppy, but necessary to breakup communication from computation more efficiently
+  isMPI = 1;
 #endif
 }
 
@@ -64,6 +65,7 @@ void mpiFace::finishRightSetup(void)
 
 void mpiFace::communicate(void)
 {
+  getLeftState();
 #ifndef _NO_MPI
   /* Send/Get data to/from right element [order reversed to match left ele] */
   MPI_Isend(UL.getData(),UL.getSize(),MPI_DOUBLE,procR,IDR,MPI_COMM_WORLD,&UL_out);
@@ -93,13 +95,6 @@ void mpiFace::getRightState(void)
 void mpiFace::setRightState(void)
 {
 #ifndef _NO_MPI
-  /* Options:
-   * 1) Have duplicate mpiFaces (one on either side of mpi boundary);
-   *    each one sends left state to the other's right state here
-   * 2) Don't duplicate mpiFaces; have it set FnR in the right ele [but how
-   *    / where to put MPI calls?]
-   */
-  // -- Going with Option 1 --
-  // Create outgoing, incoming buffers and ignore this function [do nothing here]
+  // Right state handled by counterpart across boundary - do nothing.
 #endif
 }

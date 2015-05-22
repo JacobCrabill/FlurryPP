@@ -38,7 +38,8 @@ void face::initialize(ele *eL, ele *eR, int locF_L, int rightParam, int gID, inp
   tempFR.setup(nDims,nFields);
   tempUL.resize(nFields);
 
-  faceType = 0; // --- DEBUG ----
+  // Needed for MPI faces to separate communication from flux calculation
+  isMPI = 0;
 }
 
 void face::setupFace(void)
@@ -52,7 +53,6 @@ void face::setupFace(void)
 
   UL.setup(nFptsL,nFields);
   UR.setup(nFptsL,nFields);
-  //FL.resize(nFptsL);
   FnL.resize(nFptsL);
   Fn.setup(nFptsL,nFields);
   normL.setup(nFptsL,nDims);
@@ -69,13 +69,10 @@ void face::setupFace(void)
     }
   }
 
-  //posFpts.resize(nFptsL); // Probably only needed for debugging.  Remove later.
-
   // Get access to data at left element
   int fpt = 0;
   for (int i=fptStartL; i<fptEndL; i++) {
     FnL[fpt] = (eL->Fn_fpts[i]);
-    //FL[fpt].setup(nDims,nFields);
     fpt++;
   }
 
@@ -87,14 +84,9 @@ void face::getLeftState()
   // Get data from left element
   int fpt = 0;
   for (int i=fptStartL; i<fptEndL; i++) {
-    for (int j=0; j<nFields; j++)
+    for (int j=0; j<nFields; j++) {
       UL(fpt,j) = (eL->U_fpts(i,j));
-
-    // Not needed currently, so remove for speed.
-    /*for (int dim=0; dim<nDims; dim++)
-      for (int k=0; k<nFields; k++)
-        FL[fpt](dim,k) = (eL->F_fpts[dim](i,k));*/
-
+    }
 
     // For dynamic grids, need to update geometry-related data
     if ((params->iter == params->initIter+1) || (params->motion != 0)) {
@@ -103,7 +95,6 @@ void face::getLeftState()
       }
       dAL[fpt] = (eL->dA_fpts[i]);
       detJacL[fpt] = (eL->detJac_fpts[i]);
-      //posFpts[fpt] = eL->pos_fpts[i];
     }
 
     fpt++;
@@ -112,7 +103,8 @@ void face::getLeftState()
 
 void face::calcInviscidFlux(void)
 {
-  getLeftState();  // Idea: instead of using ptrs to ele data, do copy?
+  if (!isMPI)
+    getLeftState();  // Idea: instead of using ptrs to ele data, do copy?
   this->getRightState(); // <-- makes this more general for all face types, and allows face memory to be contiguous
 
   for (int i=0; i<nFptsL; i++) {
@@ -134,6 +126,13 @@ void face::calcInviscidFlux(void)
   for (int i=0; i<nFptsL; i++)
     for (int j=0; j<nFields; j++)
       FnL[i][j] =  Fn(i,j)*dAL[i];
+
+//  cout << "Fn : " << params->rank << " " << ID << ": ";
+//  for (int i=0; i<nFptsL; i++)
+//    for (int j=0; j<nFields; j++)
+//      cout << FnL[i][j] << ", ";
+//  cout << endl;
+
 
   this->setRightState();
 }

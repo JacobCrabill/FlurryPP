@@ -18,6 +18,10 @@
 #include <cstdlib>
 #include <string>
 
+#ifndef _NO_MPI
+#include "mpi.h"
+#endif
+
 /* --- Misc. Common Constants --- */
 double pi = 4.0*atan(1);
 
@@ -72,6 +76,12 @@ void simTimer::stopTimer(void)
 
 void simTimer::showTime(void)
 {
+#ifndef _NO_MPI
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+  if (rank == 0) {
+#endif
+
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( finalTime - initTime ).count();
   double execTime = (double)duration/1000.;
   if (execTime > 60) {
@@ -82,4 +92,8 @@ void simTimer::showTime(void)
   else {
     cout << setprecision(3) << "Execution time = " << execTime << "s" << endl;
   }
+
+#ifndef _NO_MPI
+  }
+#endif
 }

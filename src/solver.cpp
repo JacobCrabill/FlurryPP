@@ -156,7 +156,6 @@ void solver::calcResidual(int step)
 
   }
 
-  //cout << "Calculating divF" << endl;
   calcFluxDivergence(step);
 
   correctDivFlux(step);
@@ -491,5 +490,17 @@ void solver::initializeSolution()
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].setInitialCondition();
+  }
+}
+
+solver::~solver()
+{
+  // Clean up memory allocated with 'new'
+  for (uint i=0; i<faces.size(); i++) {
+    faces[i]->~face();
+  }
+
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->~face();
   }
 }

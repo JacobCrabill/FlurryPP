@@ -85,11 +85,11 @@ int main(int argc, char *argv[]) {
 
   }
 
-#ifndef _NO_MPI
- MPI_Finalize();
-#endif
-
   // Get simulation wall time
   runTime.stopTimer();
   runTime.showTime();
+
+#ifndef _NO_MPI
+ MPI_Finalize();
+#endif
 }

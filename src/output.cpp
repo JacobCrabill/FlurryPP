@@ -237,7 +237,7 @@ void writeParaview(solver *Solver, input *params)
           dataFile << 0.0 << " ";
         }
         else {
-          dataFile << vPpts[k][3] << " ";
+          dataFile << vPpts(k,3) << " ";
         }
       }
       dataFile << endl;
@@ -353,45 +353,69 @@ void writeResidual(solver *Solver, input *params)
   vector<double> res(params->nFields);
   int iter = params->iter;
 
-  for (auto& e:Solver->eles) {
-    auto resTmp = e.getNormResidual(params->resType);
-    if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
+  if (params->resType == 3) {
+    // Infinity Norm
+#pragma omp parallel for
+    for (uint e=0; e<Solver->eles.size(); e++) {
+      auto resTmp = Solver->eles[e].getNormResidual(params->resType);
+      if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
 
-    for (int i=0; i<params->nFields; i++) {
-      if (params->resType == 3) {
-        // Infinity norm [max residual over all spts]
+      for (int i=0; i<params->nFields; i++)
         res[i] = max(res[i],resTmp[i]);
-      }else{
-        res[i] += resTmp[i];
-      }
     }
   }
+  else if (params->resType == 1 || params->resType == 2) {
+    // 1-Norm or 2-Norm
+#pragma omp parallel for
+    for (uint e=0; e<Solver->eles.size(); e++) {
+      auto resTmp = Solver->eles[e].getNormResidual(params->resType);
+      if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
+
+      for (int i=0; i<params->nFields; i++)
+        res[i] += resTmp[i];
+    }
+  }
+
+#ifndef _NO_MPI
+  if (params->nproc > 1) {
+    if (params->resType == 3) {
+      vector<double> resTmp = res;
+      MPI_Reduce(resTmp.data(), res.data(), params->nFields, MPI_DOUBLE, MPI_MAX, 0,MPI_COMM_WORLD);
+    }
+    else if (params->resType == 1 || params->resType == 2) {
+      vector<double> resTmp = res;
+      MPI_Reduce(resTmp.data(), res.data(), params->nFields, MPI_DOUBLE, MPI_SUM, 0,MPI_COMM_WORLD);
+    }
+  }
+#endif
 
   // If taking 2-norm, res is sum squared; take sqrt to complete
-  if (params->resType == 2) {
-    for (auto& i:res) i = sqrt(i);
-  }
+  if (params->rank == 0) {
+    if (params->resType == 2) {
+      for (auto& R:res) R = sqrt(R);
+    }
 
-  int colW = 16;
-  cout.precision(8);
-  cout.setf(ios::fixed, ios::floatfield);
-  if (iter==1 || (iter/params->monitor_res_freq)%25==0) {
-    cout << endl;
-    cout << setw(8) << left << "Iter";
-    if (params->equation == ADVECTION_DIFFUSION) {
-      cout << " Residual " << endl;
-    }else if (params->equation == NAVIER_STOKES) {
-      cout << setw(colW) << left << "rho";
-      cout << setw(colW) << left << "rhoU";
-      cout << setw(colW) << left << "rhoV";
-      cout << setw(colW) << left << "rhoE";
+    int colW = 16;
+    cout.precision(8);
+    cout.setf(ios::fixed, ios::floatfield);
+    if (iter==1 || (iter/params->monitor_res_freq)%25==0) {
+      cout << endl;
+      cout << setw(8) << left << "Iter";
+      if (params->equation == ADVECTION_DIFFUSION) {
+        cout << " Residual " << endl;
+      }else if (params->equation == NAVIER_STOKES) {
+        cout << setw(colW) << left << "rho";
+        cout << setw(colW) << left << "rhoU";
+        cout << setw(colW) << left << "rhoV";
+        cout << setw(colW) << left << "rhoE";
+      }
+      cout << endl;
+    }
+
+    cout << setw(8) << left << iter;
+    for (int i=0; i<params->nFields; i++) {
+      cout << setw(colW) << left << res[i];
     }
     cout << endl;
   }
-
-  cout << setw(8) << left << iter;
-  for (int i=0; i<params->nFields; i++) {
-    cout << setw(colW) << left << res[i];
-  }
-  cout << endl;
 }

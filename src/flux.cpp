@@ -303,7 +303,6 @@ void roeFlux(double *uL, double *uR, double* norm, double* Fn, input *params)
     Fn[1] -= lambda0*du[1]+aL1*um[0]+bL1*norm[0];
     Fn[2] -= lambda0*du[2]+aL1*um[1]+bL1*norm[1];
     Fn[3] -= lambda0*du[3]+aL1*hm   +bL1*unm;
-
   }
   else if (nDims==3) {
     Fn[0] -= lambda0*du[0]+aL1;
