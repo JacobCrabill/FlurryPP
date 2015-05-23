@@ -105,6 +105,9 @@ void ele::setup(input *inParams, geo *inGeo)
   loc_spts = Geo->getLocSpts(eType,order);
   loc_fpts = Geo->getLocFpts(eType,order);
 
+  // --- ONLY FOR AA22 CURRENTLY | GENERALIZE LATER ----
+  QWts_spts = Geo->getQptWeights(order);
+
   nSpts = loc_spts.size();
   nFpts = loc_fpts.size();
 
@@ -179,6 +182,9 @@ void ele::setupArrays(void)
   for (auto& spt:Jac_spts) spt.setup(nDims,nDims);
   for (auto& fpt:Jac_fpts) fpt.setup(nDims,nDims);
   for (auto& spt:JGinv_spts) spt.setup(nDims,nDims);
+
+  //QWts_spts.resize(nSpts);
+  URef_spts.setup(nSpts,nFields);
 
   norm_fpts.setup(nFpts,nDims);
   tNorm_fpts.setup(nFpts,nDims);
@@ -1113,6 +1119,164 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
     getline(file,str);
 }
 
+
+void ele::readReferenceSolution(ifstream &file, input* _params, geo* _Geo)
+{
+  params = _params;
+  Geo = _Geo;
+
+  // Get the "<Piece _ >" line
+  string str;
+  getline(file,str);
+
+  stringstream ss;
+  ss.precision(15);
+  string str1, str2;
+  ss.str(str);
+  ss >> str >> str1 >> str2;
+
+  int nPts, nCells;
+
+  // Find quotation marks around # of points & remove
+  size_t ind = str1.find("\"");
+  str1.erase(0,ind);
+  ind = str1.find("\"");
+  str1.erase(ind,1);
+  ss.str(std::string("")); ss.clear();  // This is how to reset stringstreams!
+  ss.str(str1);
+  ss >> nPts;
+
+  // Find quotation marks around # of cells & remove
+  ind = str2.find("\"");
+  str2.erase(0,ind);
+  ind = str2.find("\"");
+  str2.erase(ind,1);
+  ss.str(""); ss.clear();
+  ss.str(str2);
+  ss >> nCells;
+
+  // Move on to the first <DataArray>
+
+  matrix<double> tempV(nSpts,nDims);
+  vector<double> tempP(nSpts);
+
+  bool foundRho = false;
+  bool foundV = false;
+  bool foundP = false;
+
+  while ( !(foundRho && foundV && foundP) ) {
+
+    while (getline(file,str)) {
+      ss.str(""); ss.clear();
+      ss.str(str);
+      ss >> str1;
+      if (str1.compare("<DataArray")==0) {
+        while (str1.find("Name=") == string::npos) {
+          ss >> str1;
+        }
+        break;
+      }
+    }
+
+    // Extract field name
+    ind = str1.find("\"");
+    str1.erase(0,ind+1);
+    ind = str1.find("\"");
+    str1.erase(ind,1);
+
+    // Get the data line
+    getline(file,str);
+    ss.str(""); ss.clear(); ss.precision(15);
+    ss.str(str);
+    if (str1.compare("Density")==0) {
+      foundRho = true;
+      double tmp;
+      // Skip the data at the mesh nodes and flux points along 'bottom' edge
+      for (int i=0; i<2+(order+1); i++) {
+        ss >> tmp;
+      }
+
+      // Get the data at the solution points
+      for (int i=0; i<(order+1); i++) {
+        ss >> tmp;
+        for (int j=0; j<(order+1); j++) {
+          ss >> URef_spts(j+i*(order+1),0);
+        }
+        ss >> tmp;
+      }
+    }
+    else if (str1.compare("Velocity")==0) {
+      foundV = true;
+      double tmp1, tmp2, tmp3;
+      // Skip the data at the mesh nodes and flux points along 'bottom' edge
+      for (int i=0; i<2+(order+1); i++) {
+        ss >> tmp1 >> tmp2 >> tmp3;
+      }
+
+      // Get the data at the solution points; skip the flux points at
+      // either end of each row
+      for (int i=0; i<(order+1); i++) {
+        ss >> tmp1 >> tmp2 >> tmp3;
+        for (int j=0; j<(order+1); j++) {
+          ss >> tempV(j+i*(order+1),0);
+          ss >> tempV(j+i*(order+1),1);
+          ss >> tmp1;
+        }
+        ss >> tmp1 >> tmp2 >> tmp3;
+      }
+    }
+    else if (str1.compare("Pressure")==0) {
+      foundP = true;
+      double tmp;
+      // Skip the data at the mesh nodes and flux points along 'bottom' edge
+      for (int i=0; i<2+(order+1); i++) {
+        ss >> tmp;
+      }
+
+      // Get the data at the solution points
+      for (int i=0; i<(order+1); i++) {
+        ss >> tmp;
+        for (int j=0; j<(order+1); j++) {
+          ss >> tempP[j+i*(order+1)];
+        }
+        ss >> tmp;
+      }
+    }
+    else if (str1.compare("EntropyErr")==0) {
+      double tmp;
+      // Skip the data at the mesh nodes and flux points along 'bottom' edge
+      for (int i=0; i<2+(order+1); i++) {
+        ss >> tmp;
+      }
+
+      // Get the data at the solution points
+      for (int i=0; i<(order+1); i++) {
+        ss >> tmp;
+        for (int j=0; j<(order+1); j++) {
+          ss >> S_spts(j+i*(order+1));
+        }
+        ss >> tmp;
+      }
+    }
+    else {
+      // Not needed; ignore
+    }
+  }
+
+  // Convert primitive variables to conservative variables
+  for (int spt=0; spt<nSpts; spt++) {
+    URef_spts(spt,1) = URef_spts(spt,0)*tempV(spt,0);
+    URef_spts(spt,2) = URef_spts(spt,0)*tempV(spt,1);
+    double vSq = tempV(spt,0)*tempV(spt,0)+tempV(spt,1)*tempV(spt,1);
+    URef_spts(spt,3) = tempP[spt]/(params->gamma-1) + 0.5*URef_spts(spt,0)*vSq;
+  }
+
+  // Move to end of this element's data
+  getline(file,str);
+  while(str.find("</Piece>")==string::npos)
+    getline(file,str);
+}
+
 vector<double> ele::getNormResidual(int normType)
 {
   vector<double> res(nFields,0);
@@ -1133,6 +1297,21 @@ vector<double> ele::getNormResidual(int normType)
   }
 
   return res;
+}
+
+vector<double> ele::getNormError(void)
+{
+  vector<double> err(nFields,0);
+
+  // Calculate the L2 integral norm of the error using Gaussian quadrature
+  for (int spt=0; spt<nSpts; spt++) {
+    for (int i=0; i<nFields; i++) {
+      double eTmp = U_spts(spt,i) - URef_spts(spt,i);
+      err[i] += QWts_spts[spt]*detJac_spts[spt]*(eTmp*eTmp);
+    }
+  }
+
+  return err;
 }
 
 point ele::getPosSpt(uint spt)

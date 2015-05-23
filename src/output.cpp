@@ -15,6 +15,7 @@
 #include "../include/output.hpp"
 
 #include <iomanip>
+#include <stdexcept>
 
 // Used for making sub-directories
 #ifndef _NO_MPI
@@ -348,17 +349,17 @@ void writeParaview(solver *Solver, input *params)
 }
 
 
-void writeResidual(solver *Solver, input *params)
+vector<double> writeResidual(solver *Solver, input *params)
 {
   vector<double> res(params->nFields);
   int iter = params->iter;
 
   if (params->resType == 3) {
     // Infinity Norm
-#pragma omp parallel for
+//#pragma omp parallel for
     for (uint e=0; e<Solver->eles.size(); e++) {
       auto resTmp = Solver->eles[e].getNormResidual(params->resType);
-      if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
+      if(checkNaN(resTmp)) throw std::runtime_error("NaN Encountered in Solution Residual!");
 
       for (int i=0; i<params->nFields; i++)
         res[i] = max(res[i],resTmp[i]);
@@ -366,10 +367,10 @@ void writeResidual(solver *Solver, input *params)
   }
   else if (params->resType == 1 || params->resType == 2) {
     // 1-Norm or 2-Norm
-#pragma omp parallel for
+//#pragma omp parallel for
     for (uint e=0; e<Solver->eles.size(); e++) {
       auto resTmp = Solver->eles[e].getNormResidual(params->resType);
-      if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
+      if(checkNaN(resTmp)) throw std::runtime_error("NaN Encountered in Solution Residual!");
 
       for (int i=0; i<params->nFields; i++)
         res[i] += resTmp[i];
@@ -396,8 +397,8 @@ void writeResidual(solver *Solver, input *params)
     }
 
     int colW = 16;
-    cout.precision(8);
-    cout.setf(ios::fixed, ios::floatfield);
+    cout.precision(6);
+    cout.setf(ios::scientific, ios::floatfield);
     if (iter==1 || (iter/params->monitor_res_freq)%25==0) {
       cout << endl;
       cout << setw(8) << left << "Iter";
@@ -418,4 +419,6 @@ void writeResidual(solver *Solver, input *params)
     }
     cout << endl;
   }
+
+  return res;
 }

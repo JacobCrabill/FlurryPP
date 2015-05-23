@@ -17,6 +17,7 @@
 
 #include <sstream>
 #include <omp.h>
+#include <stdexcept>
 
 class intFace;
 class boundFace;
@@ -74,26 +75,67 @@ void solver::setup(input *params, geo *Geo)
 }
 
 
-vector<double> solver::runSim(void)
+double solver::runSim(const vector<double> &X, int field)
 {
+  params->Kp = X[0];
+  params->Kd = X[1];
+  params->Ki = X[2];
+
+  cout << endl;
+  cout << setw(5) << left << "Kp: " << setw(8) << setprecision(4) << params->Kp << setw(2) << " ";
+  cout << setw(5) << left << "Kd: " << setw(8) << setprecision(4) << params->Kd << setw(2) << " ";
+  cout << setw(5) << left << "Ki: " << setw(8) << setprecision(4) << params->Ki << setw(2) << " ";
+  cout << endl;
+
+  params->hist << params->Kp << "," << params->Kd << "," << params->Ki << ",";
+
   simTimer runTime;
   runTime.startTimer();
 
   /* Apply the initial condition */
+  resetBoundFaces();
   initializeSolution();
 
-  for (params->iter = params->initIter+1; params->iter<finalIter; initIter++) {
-    update();
+  params->dataFileName = params->outputPrefix + "_" + to_string(params->evals);
+  double err;
 
-//    if ((params->iter)%params->monitor_res_freq == 0 || params->iter==1) writeResidual(this,params);
-//    if ((params->iter)%params->plot_freq == 0) writeData(this,params);
+  try {
+    for (params->iter = params->initIter+1; params->iter < params->iterMax; params->iter++) {
+      update();
+
+      if ((params->iter)%params->monitor_res_freq == 0 || params->iter==1) writeResidual(this,params);
+      if ((params->iter)%params->plot_freq == 0) writeData(this,params);
+    }
+    params->evals++;
+
+    err = calcNormError(field);
+    writeData(this,params);
+  }
+  catch (std::exception e) {
+    cout << "NaN Encountered.  Setting function value to INFINITY." << endl;
+
+    runTime.stopTimer();
+    runTime.showTime();
+
+    params->evals++;
+
+    err = (double)INFINITY;
   }
 
-  writeResidual(this,params);
-  writeData(this,params);
+  cout << endl;
+  cout << "Final L2 Error: " << setprecision(8) << err << endl;
+  cout << endl;
 
-  runTime.stopTimer();
-  runTime.showTime();
+  params->hist << err << endl;
+
+  return err;
+}
+
+void solver::resetBoundFaces(void)
+{
+  for (int i = Geo->nFaces; i<Geo->nFaces+Geo->nBndFaces; i++) {
+    faces[i]->setupRightState();
+  }
 }
 
 void solver::update(void)
@@ -407,6 +449,18 @@ void solver::calcEntropyErr_spts(void)
   }
 }
 
+double solver::calcNormError(int field)
+{
+  double err = 0;
+#pragma omp parallel for reduction(+:err)
+  for (uint i=0; i<eles.size(); i++) {
+    auto tmpErr = eles[i].getNormError();
+    err += tmpErr[field];
+  }
+
+  return sqrt(err);
+}
+
 void solver::moveMesh(int step)
 {
   if (!params->motion) return;
@@ -488,7 +542,7 @@ void solver::readRestartFile(void) {
   }
 
   if (!found)
-    FatalError("Cannot fine UnstructuredData tag in restart file.");
+    FatalError("Cannot find UnstructuredData tag in restart file.");
 
   // Read restart data & setup all data arrays
   for (auto& e:eles) {
@@ -508,6 +562,45 @@ void solver::readRestartFile(void) {
   for (uint i=0; i<faces.size(); i++) {
     faces[i]->setupFace();
   }
+}
+
+
+void solver::readReferenceSolution(string fileName, int iter) {
+
+  ifstream dataFile;
+  dataFile.precision(15);
+
+  // Get the file name & open the file
+  char fileNameC[50];
+  sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],iter);
+
+  dataFile.open(fileNameC);
+
+  if (!dataFile.is_open())
+    FatalError("Cannont open reference-solution file.");
+
+  // Find the start of the UnstructuredData region
+  bool found = false;
+  string str;
+  while (getline(dataFile,str)) {
+    stringstream ss;
+    ss.str(str);
+    ss >> str;
+    if (str.compare("<UnstructuredGrid>")==0) {
+      found = true;
+      break;
+    }
+  }
+
+  if (!found)
+    FatalError("Cannot find UnstructuredData tag in reference-data file.");
+
+  // Read restart data & setup all data arrays
+  for (auto& e:eles) {
+    e.readReferenceSolution(dataFile,params,Geo);
+  }
+
+  dataFile.close();
 }
 
 void solver::initializeSolution()

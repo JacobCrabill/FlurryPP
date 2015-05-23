@@ -29,4 +29,4 @@ void writeCSV(solver *Solver, input *params);
 void writeParaview(solver *Solver, input *params);
 
 /*! Compute the residual and print to the screen. */
-void writeResidual(solver *Solver, input *params);
+vector<double> writeResidual(solver *Solver, input *params);

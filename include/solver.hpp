@@ -182,7 +182,15 @@ public:
   void calcEntropyErr_spts();
 
   //! FOR AA222 PROJECT: use solver as 'function evaluator' - single-call simulation run from main()
-  vector<double> runSim(void);
+  double runSim(const vector<double> &X, int field);
+
+  //! Calculate the L2 integral norm of the error wrt the reference solution
+  double calcNormError(int field);
+
+  //! FOR AA222 PROJECT: Read in the reference solution to calculate error against
+  void readReferenceSolution(string fileName, int iter);
+
+  void resetBoundFaces(void);
 
 private:
   //! Pointer to the parameters object for the current solution

@@ -200,6 +200,8 @@ void addVectors(vector<T> &vec1, vector<T> &vec2)
   for (unsigned int i=0; i<vec1.size(); i++) vec1[i] += vec2[i];
 }
 
+vector<int> getOrder(vector<double> &data);
+
 template<typename T>
 vector<T> & operator+=(vector<T>& lhs, vector<T>& rhs)
 {

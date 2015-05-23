@@ -118,6 +118,9 @@ public:
   /*! Compute the norm of the solution residual over the element */
   vector<double> getNormResidual(int normType);
 
+  /*! Compute the L2 norm of the error [wrt URef] over the element */
+  vector<double> getNormError(void);
+
   /*! Get position of solution point in physical space */
   point getPosSpt(uint spt);
 
@@ -140,7 +143,13 @@ public:
   void getEntropyErrPlot(matrix<double> &S);
   void setupArrays();
   void setupAllGeometry();
+
+  //! Read solution from restart file & setup data arrays accordingly
   void restart(ifstream &file, input *_params, geo *_Geo);
+
+  //! For AA222: Read in a solution from a .vtu file and store in URef
+  void readReferenceSolution(ifstream &file, input *_params, geo *_Geo);
+
 private:
 
   /* --- Simulation/Mesh Parameters --- */
@@ -179,7 +188,7 @@ private:
   vector<matrix<double> > Jac_spts;  //! Transformation Jacobian [matrix] at each solution point
   vector<matrix<double> > Jac_fpts;  //! Transformation Jacobian [matrix] at each flux point
   vector<matrix<double> > JGinv_spts;  //! Inverse of transformation Jacobian [matrix] at each solution point
-  
+
   matrix<double> shape_spts;
   matrix<double> shape_fpts;
   vector<matrix<double>> dShape_spts;  //! Derivative of shape basis at solution points
@@ -201,6 +210,10 @@ private:
   matrix<double> S_spts;      //! Entropy-adjoint variable used as error indicator for Euler
   matrix<double> S_fpts;      //! Entropy-adjoint variable at flux points
   matrix<double> S_mpts;      //! Entropy-adjoint variable at mesh points
+
+  // Error Calculation
+  matrix<double> URef_spts;  //! Reference solution to calculate error against
+  vector<double> QWts_spts;  //! Guass quadrature weights at the solution points [only for Gauss-Legendre points]
 
   /* --- Temporary Variables --- */
   matrix<double> tempF;

@@ -27,7 +27,7 @@ public:
   void setupRightState(void);
 
   //! Apply boundary conditions to the solution
-  void applyBCs(const double *uL, double* uR, const double* norm);
+  void applyBCs(const double *uL, double* uR, const double* norm, int fpt);
 
   void getRightState(void);
 
@@ -35,4 +35,8 @@ public:
 
 private:
   int bcType;  //! Boundary condition to apply to this face
+
+  matrix<double> deltaU;
+  matrix<double> deltaUdot;
+  matrix<double> deltaUint;
 };

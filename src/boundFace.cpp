@@ -21,17 +21,25 @@ void boundFace::setupRightState(void)
 {
   // This is kinda messy, but avoids separate initialize function
   bcType = rightParam;
+
+  deltaU.setup(nFptsL,nDims);
+  deltaUdot.setup(nFptsL,nDims);
+  deltaUint.setup(nFptsL,nDims);
+  deltaU.initializeToZero();
+  deltaUdot.initializeToZero();
+  deltaUint.initializeToZero();
+  UR.initializeToZero();
 }
 
 void boundFace::getRightState(void)
 {
   // Set the boundary condition [store in UR]
   for (int i=0; i<nFptsL; i++) {
-    applyBCs(UL[i],UR[i],normL[i]);
+    applyBCs(UL[i],UR[i],normL[i],i);
   }
 }
 
-void boundFace::applyBCs(const double* uL, double* uR, const double *norm)
+void boundFace::applyBCs(const double* uL, double* uR, const double *norm, int fpt)
 {
   uint nDims = params->nDims;
 
@@ -55,7 +63,7 @@ void boundFace::applyBCs(const double* uL, double* uR, const double *norm)
     for (uint i=0; i<nDims; i++)
       vSq += (vL[i]*vL[i]);
 
-    // --------- TESTING -----------
+    // --------- AA222 -----------
     if (uR[0]==0) {
       uR[0] = uL[0];
       uR[1] = uL[1];
@@ -63,7 +71,7 @@ void boundFace::applyBCs(const double* uL, double* uR, const double *norm)
     }
     vR[0] = uR[1]/uR[0];
     vR[1] = uR[2]/uR[0];
-    // --------- TESTING -----------
+    // --------- AA222 -----------
 
     double pL = (gamma-1.0)*(eL - 0.5*rhoL*vSq);
 
@@ -100,140 +108,6 @@ void boundFace::applyBCs(const double* uL, double* uR, const double *norm)
         vSq += (vR[i]*vR[i]);
 
       ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
-    }
-
-    // Subsonic inflow characteristic
-    // there is one outgoing characteristic (u-c), therefore we can specify
-    // all but one state variable at the inlet. The outgoing Riemann invariant
-    // provides the final piece of info. Adapted from an implementation in
-    // SU2.
-    else if(bcType == SUB_IN_CHAR) {
-      /*
-        double vR;
-        double cL, cR_sq, c_total_sq;
-        double R_plus, h_total;
-        double aa, bb, cc, dd;
-        double Mach_sq, alpha;
-
-        // Specify Inlet conditions
-        double p_total_bound = bdy_params[9];
-        double T_total_bound = bdy_params[10];
-        double *n_free_stream = &bdy_params[11];
-
-        // Compute normal velocity on left side
-        vnL = 0.;
-        for (int i=0; i<nDims; i++)
-          vnL += vL[i]*norm[i];
-
-        // Compute speed of sound
-        cL = sqrt(gamma*pL/rhoL);
-
-        // Extrapolate Riemann invariant
-        R_plus = vnL + 2.0*cL/(gamma-1.0);
-
-        // Specify total enthalpy
-        h_total = gamma*R_ref/(gamma-1.0)*T_total_bound;
-
-        // Compute total speed of sound squared
-        vSq = 0.;
-        for (int i=0; i<nDims; i++)
-          vSq += vL[i]*vL[i];
-
-        c_total_sq = (gamma-1.0)*(h_total - (eL/rhoL + pL/rhoL) + 0.5*vSq) + cL*cL;
-
-        // Dot product of normal flow velocity
-        alpha = 0.;
-        for (int i=0; i<nDims; i++)
-          alpha += norm[i]*n_free_stream[i];
-
-        // Coefficients of quadratic equation
-        aa = 1.0 + 0.5*(gamma-1.0)*alpha*alpha;
-        bb = -(gamma-1.0)*alpha*R_plus;
-        cc = 0.5*(gamma-1.0)*R_plus*R_plus - 2.0*c_total_sq/(gamma-1.0);
-
-        // Solve quadratic equation for velocity on right side
-        // (Note: largest value will always be the positive root)
-        // (Note: Will be set to zero if NaN)
-        dd = bb*bb - 4.0*aa*cc;
-        dd = sqrt(max(dd, 0.0));
-        vR = (-bb + dd)/(2.0*aa);
-        vR = max(vR, 0.0);
-        vSq = vR*vR;
-
-        // Compute speed of sound
-        cR_sq = c_total_sq - 0.5*(gamma-1.0)*vSq;
-
-        // Compute Mach number (cutoff at Mach = 1.0)
-        Mach_sq = vSq/(cR_sq);
-        Mach_sq = min(Mach_sq, 1.0);
-        vSq = Mach_sq*cR_sq;
-        vR = sqrt(vSq);
-        cR_sq = c_total_sq - 0.5*(gamma-1.0)*vSq;
-
-        // Compute velocity (based on free stream direction)
-        for (int i=0; i<nDims; i++)
-          vR[i] = vR*n_free_stream[i];
-
-        // Compute temperature
-        TR = cR_sq/(gamma*R_ref);
-
-        // Compute pressure
-        pR = p_total_bound*pow(TR/T_total_bound, gamma/(gamma-1.0));
-
-        // Compute density
-        rhoR = pR/(R_ref*TR);
-
-        // Compute energy
-        ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
-        */
-    }
-
-    // Subsonic outflow characteristic
-    // there is one incoming characteristic, therefore one variable can be
-    // specified (back pressure) and is used to update the conservative
-    // variables. Compute the entropy and the acoustic Riemann variable.
-    // These invariants, as well as the tangential velocity components,
-    // are extrapolated. Adapted from an implementation in SU2.
-    else if(bcType == SUB_OUT_CHAR) {
-      /*
-        double cL, cR;
-        double R_plus, s;
-        double vnR;
-
-        // Compute normal velocity on left side
-        vnL = 0.;
-        for (int i=0; i<nDims; i++)
-          vnL += vL[i]*norm[i];
-
-        // Compute speed of sound
-        cL = sqrt(gamma*pL/rhoL);
-
-        // Extrapolate Riemann invariant
-        R_plus = vnL + 2.0*cL/(gamma-1.0);
-
-        // Extrapolate entropy
-        s = pL/pow(rhoL,gamma);
-
-        // fix pressure on the right side
-        pR = pBound;
-
-        // Compute density
-        rhoR = pow(pR/s, 1.0/gamma);
-
-        // Compute speed of sound
-        cR = sqrt(gamma*pR/rhoR);
-
-        // Compute normal velocity
-        vnR = R_plus - 2.0*cR/(gamma-1.0);
-
-        // Compute velocity and energy
-        vSq = 0.;
-        for (int i=0; i<nDims; i++) {
-          vR[i] = vL[i] + (vnR - vnL)*norm[i];
-          vSq += (vR[i]*vR[i]);
-        }
-        ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
-        */
     }
 
     // Supersonic inflow
@@ -276,9 +150,16 @@ void boundFace::applyBCs(const double* uL, double* uR, const double *norm)
 
       // reflect normal velocity
       if (params->slipPenalty) {
+        double duOld[2];
+        for (uint i=0; i<nDims; i++)
+          duOld[i] = deltaU(fpt,i);
+
         for (uint i=0; i<nDims; i++) {
-          vR[i] = vR[i] - params->beta*params->dt*(vR[i] - (vL[i] - (2.0)*vnL*norm[i]));
-          //vR[i] = vL[i] - (2.0-(double)5000./(params->iter+2500.))*vnL*norm[i];
+          double u_bc = vL[i] - (2.0)*vnL*norm[i];
+          deltaU(fpt,i) = u_bc - vR[i];
+          deltaUdot(fpt,i) = (deltaU(fpt,i) - duOld[i]) / params->dt;
+          deltaUint(fpt,i)+= (deltaU(fpt,i) + duOld[i]) * params->dt/2.0;
+          vR[i] += params->dt*(params->Kp*20.*deltaU(fpt,i) + params->Kd/10.*deltaUdot(fpt,i) + params->Ki*deltaUint(fpt,i));
         }
       }
       else {

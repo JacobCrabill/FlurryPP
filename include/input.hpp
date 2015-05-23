@@ -156,6 +156,14 @@ public:
   int rank;
   int nproc;
 
+  /* --- AA222 Final Project --- */
+  double Kp;
+  double Kd;
+  double Ki;
+  int evals;
+  string outputPrefix;
+  ofstream hist;
+
 private:
   fileReader opts;
 };
