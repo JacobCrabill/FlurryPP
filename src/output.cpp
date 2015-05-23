@@ -113,12 +113,13 @@ void writeParaview(solver *Solver, input *params)
     pVTU << "<?xml version=\"1.0\" ?>" << endl;
     pVTU << "<VTKFile type=\"PUnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" compressor=\"vtkZLibDataCompressor\">" << endl;
     pVTU << "  <PUnstructuredGrid GhostLevel=\"1\">" << endl;
-    pVTU << "    <PPointData>" << endl;
+    // NOTE: Must be careful with order here [particularly of vector data], or else ParaView gets confused
+    pVTU << "    <PPointData Scalars=\"Density\" Vectors=\"Velocity\" >" << endl;
     pVTU << "      <PDataArray type=\"Float32\" Name=\"Density\" />" << endl;
     if (params->equation == NAVIER_STOKES) {
-      pVTU << "      <PDataArray type=\"Float32\" Name=\"Pressure\" />" << endl;
-      pVTU << "      <PDataArray type=\"Float32\" Name=\"EntropyErr\" />" << endl;
       pVTU << "      <PDataArray type=\"Float32\" Name=\"Velocity\" NumberOfComponents=\"3\" />" << endl;
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"Pressure\" />" << endl;
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"EntropyErr\" />" << endl;      
       if (params->motion) {
         pVTU << "      <PDataArray type=\"Float32\" Name=\"GridVelocity\" NumberOfComponents=\"3\" />" << endl;
       }
@@ -218,18 +219,9 @@ void writeParaview(solver *Solver, input *params)
     dataFile << "				</DataArray>" << endl;
 
     if (params->equation == NAVIER_STOKES) {
-      /* --- Pressure --- */
-      dataFile << "				<DataArray type=\"Float32\" Name=\"Pressure\" format=\"ascii\">" << endl;
-      for(int k=0; k<nPpts; k++) {
-        dataFile << vPpts(k,3) << " ";
-      }
-      dataFile << endl;
-      dataFile << "				</DataArray>" << endl;
-
       /* --- Velocity --- */
       dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" Name=\"Velocity\" format=\"ascii\">" << endl;
       for(int k=0; k<nPpts; k++) {
-        // Divide momentum components by density to obtain velocity components
         dataFile << vPpts(k,1) << " " << vPpts(k,2) << " ";
 
         // In 2D the z-component of velocity is not stored, but Paraview needs it so write a 0.
@@ -239,6 +231,14 @@ void writeParaview(solver *Solver, input *params)
         else {
           dataFile << vPpts(k,3) << " ";
         }
+      }
+      dataFile << endl;
+      dataFile << "				</DataArray>" << endl;
+
+      /* --- Pressure --- */
+      dataFile << "				<DataArray type=\"Float32\" Name=\"Pressure\" format=\"ascii\">" << endl;
+      for(int k=0; k<nPpts; k++) {
+        dataFile << vPpts(k,3) << " ";
       }
       dataFile << endl;
       dataFile << "				</DataArray>" << endl;
@@ -396,8 +396,8 @@ void writeResidual(solver *Solver, input *params)
     }
 
     int colW = 16;
-    cout.precision(8);
-    cout.setf(ios::fixed, ios::floatfield);
+    cout.precision(6);
+    cout.setf(ios::scientific, ios::floatfield);
     if (iter==1 || (iter/params->monitor_res_freq)%25==0) {
       cout << endl;
       cout << setw(8) << left << "Iter";

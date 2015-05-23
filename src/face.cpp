@@ -127,13 +127,6 @@ void face::calcInviscidFlux(void)
     for (int j=0; j<nFields; j++)
       FnL[i][j] =  Fn(i,j)*dAL[i];
 
-//  cout << "Fn : " << params->rank << " " << ID << ": ";
-//  for (int i=0; i<nFptsL; i++)
-//    for (int j=0; j<nFields; j++)
-//      cout << FnL[i][j] << ", ";
-//  cout << endl;
-
-
   this->setRightState();
 }
 

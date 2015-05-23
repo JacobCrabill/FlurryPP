@@ -66,6 +66,8 @@ void geo::setup(input* params)
 
 void geo::processConnectivity()
 {
+  if (params->rank==0) cout << "Geo: Processing element connectivity" << endl;
+
   /* --- Setup Edges --- */
   matrix<int> e2v1;
   vector<int> edge(2);
@@ -307,6 +309,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace
   faces.resize(nFaces+nBndFaces);
   mpiFacesVec.resize(nMpiFaces);
 
+  if (params->rank==0) cout << "Geo: Setting up elements" << endl;
+
   // Setup the elements
   int ic = 0;
   for (auto& e:eles) {
@@ -337,6 +341,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace
 
   vector<int> tmpEdges;
 
+  if (params->rank==0) cout << "Geo: Setting up internal faces" << endl;
+
   // Internal Faces
   for (int i=0; i<nFaces; i++) {
     intFace *F = new intFace();
@@ -356,6 +362,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace
       F->initialize(&eles[e2c(ie,0)],&eles[e2c(ie,1)],fid1,fid2,ie,params);
     }
   }
+
+  if (params->rank==0) cout << "Geo: Setting up boundary faces" << endl;
 
   // Boundary Faces
   for (int i=0; i<nBndFaces; i++) {
@@ -377,6 +385,9 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace
 #ifndef _NO_MPI
   // MPI Faces
   if (params->nproc > 1) {
+
+    if (params->rank==0) cout << "Geo: Setting up MPI faces" << endl;
+
     for (int i=0; i<nMpiFaces; i++) {
       mpiFace *F = new mpiFace();
       mpiFacesVec[i] = F;
@@ -402,6 +413,8 @@ void geo::readGmsh(string fileName)
 {
   ifstream meshFile;
   string str;
+
+  if (params->rank==0) cout << "Geo: Reading mesh file " << fileName << endl;
 
   meshFile.open(fileName.c_str());
   if (!meshFile.is_open())
@@ -662,6 +675,9 @@ void geo::createMesh()
   int ny = params->ny;
   nDims = params->nDims; // Since I may implement createMesh for 3D later
 
+  if (params->rank==0)
+    cout << "Geo: Creating " << nx << "x" << ny << " cartesian mesh" << endl;
+
   double xmin = params->xmin;
   double xmax = params->xmax;
   double ymin = params->ymin;
@@ -790,12 +806,15 @@ void geo::processPeriodicBoundaries(void)
   }
 
   nPeriodic = iPeriodic.size();
+
 #ifndef _NO_MPI
   if (nPeriodic > 0)
     FatalError("Periodic boundaries not implemented yet with MPI! Recompile for serial.");
 #endif
+
   if (nPeriodic == 0) return;
   if (nPeriodic%2 != 0) FatalError("Expecting even number of periodic faces; have odd number.");
+  if (params->rank==0) cout << "Geo: Processing periodic boundaries" << endl;
 
   for (auto& i:iPeriodic) {
     if (bndEdges[i]==-1) continue;
@@ -818,16 +837,16 @@ void geo::processPeriodicBoundaries(void)
         isBnd[bj] = false;
 
         // Fix e2c - add right cell to combined edge, make left cell = -1 in 'deleted' edge
-        e2c[bi][1] = e2c[bj][0];
-        e2c[bj][0] = -1;
+        e2c(bi,1) = e2c[bj][0];
+        e2c(bj,0) = -1;
 
         // Fix c2e - replace 'deleted' edge from right cell with combined edge
         ic = e2c[bi][1];
         int fID = findFirst(c2e[ic],(int)bj,c2ne[ic]);
-        c2e[e2c[bi][1]][fID] = bi;
+        c2e(e2c(bi,1),fID) = bi;
 
         // Fix c2b - set element-local face to be internal face
-        c2b[e2c[bi][1]][fID] = false;
+        c2b(e2c(bi,1),fID) = false;
 
         // Flag edges as gone in boundary edges list
         bndEdges[i] = -1;
@@ -847,8 +866,6 @@ bool geo::compareFaces(vector<int> &face1, vector<int> &face2)
   uint nv = face1.size();
   if (face2.size() != nv) return false;
 
-  //vector<bool> found(nv);
-
   bool found = false;
   // 2D: Check the two possible permuations
   if (nv == 2) {
@@ -860,9 +877,6 @@ bool geo::compareFaces(vector<int> &face1, vector<int> &face2)
   }
 
   return found;
-
-  //bool found = false;
-  //for (auto &F:found) found == (found || F);
 }
 
 bool geo::checkPeriodicFaces(int* edge1, int* edge2)
@@ -1026,7 +1040,7 @@ void geo::partitionMesh(void)
 
   cout << "Geo:   On rank " << rank << ": nEles = " << nEles << endl;
 
-  if (rank == 0) cout << "Done partitioning mesh" << endl;
+  if (rank == 0) cout << "Geo: Done partitioning mesh" << endl;
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }

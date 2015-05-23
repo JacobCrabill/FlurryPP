@@ -58,6 +58,12 @@ public:
   //! Get the point locations of the requested type (i.e. Gauss, Lobatto) for the given order
   vector<double> getPts1D(string ptsType, int order);
 
+  //! Get the Gauss quadrature weights for the Gauss points of the given order [2D]
+  vector<double> getQptWeights(int order);
+
+  //! Get the Gauss quadrature weights for the Gauss points of the given order [1D]
+  vector<double> getQptWeights1D(int order);
+
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces, nBndFaces, nMpiFaces;
   int nBounds;  //! Number of boundaries

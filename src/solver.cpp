@@ -395,6 +395,8 @@ void solver::moveMesh(int step)
 
 void solver::setupOperators()
 {
+  if (params->rank==0) cout << "Solver: Setting up FR operators" << endl;
+
   // Get all element types & olynomial orders in mesh
   for (auto& e:eles) {
     eTypes.insert(e.eType);
@@ -409,6 +411,9 @@ void solver::setupOperators()
 }
 
 void solver::setupElesFaces(void) {
+
+  if (params->rank==0) cout << "Solver: Setting up elements & faces" << endl;
+
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].setup(params,Geo);
@@ -429,6 +434,7 @@ void solver::setupElesFaces(void) {
 
 void solver::finishMpiSetup(void)
 {
+  if (params->rank==0) cout << "Solver: Setting up MPI face communicataions" << endl;
 #pragma omp parallel for
   for (uint i=0; i<mpiFaces.size(); i++) {
     mpiFaces[i]->finishRightSetup();
@@ -446,6 +452,8 @@ void solver::readRestartFile(void) {
   sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],params->restartIter);
 
   dataFile.open(fileNameC);
+
+  if (params->rank==0) cout << "Solver: Restarting from " << fileNameC << endl;
 
   if (!dataFile.is_open())
     FatalError("Cannont open restart file.");
@@ -488,6 +496,8 @@ void solver::readRestartFile(void) {
 
 void solver::initializeSolution()
 {
+  if (params->rank==0) cout << "Solver: Initializing Solution" << endl;
+
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].setInitialCondition();

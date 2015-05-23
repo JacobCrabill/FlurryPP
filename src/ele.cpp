@@ -422,7 +422,6 @@ void ele::calcTransforms(void)
     if (nDims==2) {
       detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
     }
-    //if (detJac_fpts[fpt]<0) FatalError("Negative Jacobian at flux points.");
 
     /* --- Calculate outward unit normal vector at flux point --- */
     // Transform face normal from reference to physical space [JGinv dot tNorm]
@@ -485,7 +484,6 @@ void ele::updateTransforms(void)
     if (nDims==2) {
       detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
     }
-    //if (detJac_fpts[fpt]<0) FatalError("Negative Jacobian at solution points.");
 
     /* --- Calculate outward unit normal vector at flux point --- */
     // Transform face normal from reference to physical space [JGinv dot tNorm]
