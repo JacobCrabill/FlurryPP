@@ -1,7 +1,9 @@
 equation      1    # 0: Advection-Diffusion;  1: Euler/Navier-Stokes
-order         2    # Polynomial order to use
+order         3    # Polynomial order to use
 dt            .000002  # Time step size
-timeType      0    # Time integration scheme.  0: Fwd Euler, 3: ...  4: ...
+dtType        1    # 0: User-supplied constant dt, 1: CFL-based dt
+CFL           .5   # CFL number for calculating stable dt
+timeType      4    # Time integration scheme.  0: Fwd Euler, 4: RK44
 
 viscous       0
 motion        0
@@ -28,7 +30,7 @@ resType           2    # 1: 1-norm, 2: 2-norm, 3: Inf-norm
 
 # mesh_type - 0: Read mesh, 1: Create mesh
 mesh_type     0
-mesh_file_name  ACL_Gmsh.msh
+mesh_file_name  ACL_Gmsh2.msh
 #mesh_file_name  QuadBox_10x10.msh
 
 # The following parameters are only needed when creating a mesh:
@@ -50,7 +52,9 @@ create_bcRight   sup_out
 # Boundary Conditions for Gmsh File
 # (first column is physical name in Gmsh file; 2nd column is the Flurry boundary condition)
 mesh_bound    fluid   fluid
-mesh_bound    acl     slip_wall
+mesh_bound    A     slip_wall
+mesh_bound    C     slip_wall
+mesh_bound    L     slip_wall
 mesh_bound    farfield  char
 # mesh_bound    top     sup_in
 # mesh_bound    bottom  slip_wall

@@ -79,6 +79,7 @@ protected:
   matrix<double> normL;   //! Unit outward normal at flux points
   vector<double> dAL;     //! Local face-area equivalent (aka edge Jacobian) at flux points
   vector<double> detJacL; //! Determinant of transformation Jacobian at flux points
+  vector<double*> waveSp; //! Maximum numerical wave speed at flux point (in left ele's memory)
 
   //! Temporary vectors for calculating common flux
   matrix<double> tempFL, tempFR;

@@ -183,6 +183,7 @@ void ele::setupArrays(void)
   norm_fpts.setup(nFpts,nDims);
   tNorm_fpts.setup(nFpts,nDims);
   dA_fpts.resize(nFpts);
+  waveSp_fpts.resize(nFpts);
 
   gridVel_nodes.setup(nNodes,nDims);
   gridVel_spts.setup(nSpts,nDims);
@@ -197,6 +198,7 @@ void ele::setupArrays(void)
       vec = nodes;
     }
   }
+
   S_spts.setup(nSpts,1);
   S_fpts.setup(nFpts,1);
   S_mpts.setup(nNodes,1);
@@ -435,6 +437,7 @@ void ele::calcTransforms(void)
     // If we have a collapsed edge, the dA will be 0, so just set the normal to 0
     // (A normal vector at a point doesn't make sense anyways)
     if (std::fabs(dA_fpts[fpt]) < 1e-10) {
+      dA_fpts[fpt] = 0.;
       for (int dim=0; dim<nDims; dim++)
         norm_fpts(fpt,dim) = 0;
     }
@@ -763,6 +766,17 @@ void ele::timeStepB(int step, double rkVal)
       U_spts(spt,i) -= rkVal * params->dt*divF_spts[step](spt,i)/detJac_spts[spt];
     }
   }
+}
+
+double ele::calcDt(void)
+{
+  double waveSp = 0.;
+
+  for (int fpt=0; fpt<nFpts; fpt++)
+    if (dA_fpts[fpt] > 0) // ignore collapsed edges
+      waveSp = max(waveSp,waveSp_fpts[fpt]);
+
+  return (params->CFL) * getCFLLimit(order) * (2.0 / (waveSp+1.e-10));
 }
 
 

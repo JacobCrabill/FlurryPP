@@ -45,7 +45,7 @@ typedef unsigned int uint;
 /* --- Misc. Common Constants / Globally-Useful Variables --- */
 extern double pi;
 
-extern map<string,int> bcNum; //! Maps a boundary-condition string to its integer enum
+extern map<string,int> bcStr2Num; //! Maps a boundary-condition string to its integer enum
 
 /*! enumeration for element type */
 enum ETYPE {
@@ -130,6 +130,9 @@ void setGlobalVariables(void);
 bool checkNaN(vector<double> &vec);
 
 bool checkNaN(double* vec, int size);
+
+/*! Get polynomial-order-based CFL limit.  Borrowed from Josh's zefr code. */
+double getCFLLimit(int order);
 
 //double randRange(double xMin, double xMax);
 

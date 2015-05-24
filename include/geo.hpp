@@ -100,6 +100,7 @@ private:
   vector<int> ctype_g, c2ne_g, c2nv_g; //! Global element info
   matrix<int> bndPts_g;  //! Global lists of points on boundaries
   vector<int> nBndPts_g; //! Global number of points on each boundary
+  map<int,int> bcIdMap;  //! Map from Gmsh boundary ID to Flurry BC ID
   int nEles_g, nVerts_g;
 
   //! Match up pairs of periodic boundary faces

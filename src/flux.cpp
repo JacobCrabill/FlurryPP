@@ -101,7 +101,7 @@ void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *
 }
 
 //void rusanovFlux(vector<double> &UL, vector<double> &UR, vector<vector<double*>> &FL, vector<vector<double*>> &FR, vector<double> &norm, vector<double> &Fn, input *params)
-void rusanovFlux(double* UL, double* UR, matrix<double> &FL, matrix<double> &FR, double* norm, double* Fn, input *params)
+void rusanovFlux(double* UL, double* UR, matrix<double> &FL, matrix<double> &FR, double* norm, double* Fn, double* waveSp, input *params)
 {
   double wL, pL, vnL=0.;
   double wR, pR, vnR=0.;
@@ -141,13 +141,13 @@ void rusanovFlux(double* UL, double* UR, matrix<double> &FL, matrix<double> &FR,
   // Get maximum eigenvalue for diffusion coefficient
   double csqL = max(params->gamma*pL/rhoL,0.0);
   double csqR = max(params->gamma*pR/rhoR,0.0);
-  double eigL = fabs(vnL) + sqrt(csqL);
-  double eigR = fabs(vnR) + sqrt(csqR);
-  double eig = max(eigL,eigR);
+  double eigL = std::fabs(vnL) + sqrt(csqL);
+  double eigR = std::fabs(vnR) + sqrt(csqR);
+  *waveSp = max(eigL,eigR);
 
   // Calculate Rusanov flux
   for (int i=0; i<params->nFields; i++) {
-    Fn[i] = 0.5*(FnL[i]+FnR[i] - eig*(UR[i]-UL[i]));
+    Fn[i] = 0.5*(FnL[i]+FnR[i] - (*waveSp)*(UR[i]-UL[i]));
   }
 }
 

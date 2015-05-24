@@ -4,6 +4,8 @@ CONFIG -= qt
 
 QMAKE_CXXFLAGS += -std=c++11
 
+INCLUDEPATH += $$PWD/include
+
 SOURCES += src/global.cpp \
     src/matrix.cpp \
     src/input.cpp \

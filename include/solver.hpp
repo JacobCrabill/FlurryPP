@@ -81,6 +81,9 @@ public:
   //! Perform one full step of computation
   void calcResidual(int step);
 
+  //! Calculate the stable time step limit based upon given CFL
+  void calcDt(void);
+
   //! Advance solution in time - Generate intermediate RK stage
   void timeStepA(int step);
 

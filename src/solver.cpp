@@ -40,12 +40,10 @@ void solver::setup(input *params, geo *Geo)
   /* Setup the FR elements & faces which will be computed on */
   Geo->setupElesFaces(eles,faces,mpiFaces);
 
-  if (params->restart) {
+  if (params->restart)
     readRestartFile();
-  }
-  else {
+  else
     setupElesFaces();
-  }
 
   /* Setup the FR operators for computation */
   setupOperators();
@@ -91,16 +89,23 @@ void solver::update(void)
 
     calcResidual(step);
 
+    /* If in first stage, compute CFL-based timestep */
+    if (step == 0 && params->dtType == 1) calcDt();
+
     timeStepA(step);
 
   }
 
   /* Final Runge-Kutta time advancement step */
 
-  if (nRKSteps == 1)
+  if (nRKSteps == 1) {
     params->rkTime = params->time;
-  else
+    /* Calculate CFL-based timestep */
+    if (params->dtType == 1) calcDt();
+  }
+  else {
     params->rkTime = params->time + params->dt;
+  }
 
   moveMesh(nRKSteps-1);
 
@@ -110,9 +115,8 @@ void solver::update(void)
   if (nRKSteps>1)
     copyU0_Uspts();
 
-  for (int step=0; step<nRKSteps; step++) {
+  for (int step=0; step<nRKSteps; step++)
     timeStepB(step);
-  }
 
   params->time += params->dt;
 }
@@ -159,6 +163,23 @@ void solver::calcResidual(int step)
   calcFluxDivergence(step);
 
   correctDivFlux(step);
+}
+
+void solver::calcDt(void)
+{
+  double dt = INFINITY;
+
+#pragma omp parallel for reduction(min:dt)
+  for (uint i=0; i<eles.size(); i++) {
+    dt = min(dt, eles[i].calcDt());
+  }
+
+#ifndef _NO_MPI
+  double dtTmp = dt;
+  MPI_Allreduce(&dtTmp, &dt, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+#endif
+
+  params->dt = dt;
 }
 
 
@@ -298,7 +319,6 @@ void solver::transformGradF_spts(int step)
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].transformGradF_spts(step);
-    //opers[eles[i].eType][eles[i].order].applyTransformGradFSpts(eles[i].dF_spts,eles[i].JGinv_spts,eles[i].gridVel_spts);
   }
 }
 
@@ -502,6 +522,10 @@ void solver::initializeSolution()
   for (uint i=0; i<eles.size(); i++) {
     eles[i].setInitialCondition();
   }
+
+  /* If running a moving-mesh case and using CFL-based time-stepping,
+   * calc initial dt for grid velocity calculation */
+  if (params->motion != 0 && params->dtType == 1) calcDt();
 }
 
 solver::~solver()

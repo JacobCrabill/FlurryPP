@@ -464,12 +464,14 @@ void geo::readGmsh(string fileName)
     bcStr = params->meshBounds[bcStr];
 
     // Next, check that the requested boundary condition exists
-    if (!bcNum.count(bcStr)) {
+    if (!bcStr2Num.count(bcStr)) {
       string errS = "Unrecognized boundary condition: \"" + bcStr + "\"";
       FatalError(errS.c_str());
     }
 
-    bcList.push_back(bcNum[bcStr]);
+    bcList.push_back(bcStr2Num[bcStr]);
+
+    bcIdMap[bcid] = i; // Map Gmsh bcid to Flurry bound index
 
     if (bcStr.compare("fluid")==0) {
       nDims = bcdim;
@@ -536,7 +538,8 @@ void geo::readGmsh(string fileName)
   for (int k=0; k<nElesGmsh; k++) {
     int id, eType, nTags, bcid, tmp;
     meshFile >> id >> eType >> nTags;
-    meshFile >> bcid; bcid--; // NOTE: Gmsh is 1-indexed
+    meshFile >> bcid;
+    bcid = bcIdMap[bcid];
     for (int tag=0; tag<nTags-1; tag++)
       meshFile >> tmp;
 
@@ -724,10 +727,10 @@ void geo::createMesh()
 
   /* --- Setup Boundaries --- */
   // List of all boundary conditions being used (bcNum maps string->int)
-  bcList.push_back(bcNum[params->create_bcBottom]);
-  bcList.push_back(bcNum[params->create_bcRight]);
-  bcList.push_back(bcNum[params->create_bcTop]);
-  bcList.push_back(bcNum[params->create_bcLeft]);
+  bcList.push_back(bcStr2Num[params->create_bcBottom]);
+  bcList.push_back(bcStr2Num[params->create_bcRight]);
+  bcList.push_back(bcStr2Num[params->create_bcTop]);
+  bcList.push_back(bcStr2Num[params->create_bcLeft]);
 
   // Sort the list & remove any duplicates
   std::sort(bcList.begin(), bcList.end());
@@ -747,7 +750,7 @@ void geo::createMesh()
   }
 
   // Bottom Edge Faces
-  int ib = bc2bcList[bcNum[params->create_bcBottom]];
+  int ib = bc2bcList[bcStr2Num[params->create_bcBottom]];
   int ne = nFacesPerBnd[ib];
   for (int ix=0; ix<nx; ix++) {
     bndPts[ib][2*ne]   = ix;
@@ -757,7 +760,7 @@ void geo::createMesh()
   nFacesPerBnd[ib] = ne;
 
   // Top Edge Faces
-  ib = bc2bcList[bcNum[params->create_bcTop]];
+  ib = bc2bcList[bcStr2Num[params->create_bcTop]];
   ne = nFacesPerBnd[ib];
   for (int ix=0; ix<nx; ix++) {
     bndPts[ib][2*ne]   = (nx+1)*ny + ix+1;
@@ -767,7 +770,7 @@ void geo::createMesh()
   nFacesPerBnd[ib] = ne;
 
   // Left Edge Faces
-  ib = bc2bcList[bcNum[params->create_bcLeft]];
+  ib = bc2bcList[bcStr2Num[params->create_bcLeft]];
   ne = nFacesPerBnd[ib];
   for (int iy=0; iy<ny; iy++) {
     bndPts[ib][2*ne]   = (iy+1)*(nx+1);
@@ -777,7 +780,7 @@ void geo::createMesh()
   nFacesPerBnd[ib] = ne;
 
   // Right Edge Faces
-  ib = bc2bcList[bcNum[params->create_bcRight]];
+  ib = bc2bcList[bcStr2Num[params->create_bcRight]];
   ne = nFacesPerBnd[ib];
   for (int iy=0; iy<ny; iy++) {
     bndPts[ib][2*ne]   = iy*(nx+1) + nx;

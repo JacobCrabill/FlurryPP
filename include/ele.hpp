@@ -91,6 +91,9 @@ public:
 
   void calcDeltaFn(void);
 
+  /*! Calculate the maximum stable time step based upon CFL */
+  double calcDt(void);
+
   /*! Advance intermediate stages of Runge-Kutta time integration */
   void timeStepA(int step, double rkVal);
 
@@ -165,6 +168,7 @@ private:
   matrix<double> disFn_fpts;       //! Discontinuous normal flux at flux points
   matrix<double> Fn_fpts;          //! Interface flux at flux points
   matrix<double> dFn_fpts;         //! Interface minus discontinuous flux at flux points
+  vector<double> waveSp_fpts;      //! Maximum wave speed at each flux point
 
   // Gradients
   vector<matrix<double> > dU_spts;  //! Gradient of solution at solution points

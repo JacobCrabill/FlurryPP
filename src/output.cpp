@@ -408,6 +408,8 @@ void writeResidual(solver *Solver, input *params)
         cout << setw(colW) << left << "rhoU";
         cout << setw(colW) << left << "rhoV";
         cout << setw(colW) << left << "rhoE";
+        if (params->dtType == 1)
+          cout << setw(colW) << left << "deltaT";
       }
       cout << endl;
     }
@@ -416,6 +418,8 @@ void writeResidual(solver *Solver, input *params)
     for (int i=0; i<params->nFields; i++) {
       cout << setw(colW) << left << res[i];
     }
+    if (params->dtType == 1)
+      cout << setw(colW) << left << params->dt;
     cout << endl;
   }
 }
