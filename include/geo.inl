@@ -618,3 +618,61 @@ vector<double> geo::getPts1D(string ptsType, int order)
 
   return outPts;
 }
+
+vector<double> geo::getQptWeights(int order)
+{
+  // Tensor-product element
+  vector<double> qwts1D = getQptWeights1D(order);
+  vector<double> outWts;
+  outWts.resize((order+1)*(order+1));
+  for (int i=0; i<order+1; i++) {
+    for (int j=0; j<order+1; j++) {
+      outWts[j+i*(order+1)] = qwts1D[i]*qwts1D[j];
+    }
+  }
+
+  return outWts;
+}
+
+
+vector<double> geo::getQptWeights1D(int order)
+{
+  // Order refers to the order of a polynomial fit through the
+  // Gauss points, not the order of accuracy of integration using
+  // the same number of points
+
+  vector<double> outWts(order+1);
+
+  if (order == 0) {
+    outWts[0] =  2.0;
+  }
+  else if(order == 1) {
+    outWts[0] = 1.0;
+    outWts[1] = 1.0;
+  }
+  else if(order == 2) {
+    outWts[0] = 0.5555555555555556;
+    outWts[1] = 0.8888888888888888;
+    outWts[2] = 0.5555555555555556;
+  }
+  else if(order == 3) {
+    outWts[0] = 0.3478548451374538;
+    outWts[1] = 0.6521451548625461;
+    outWts[2] = 0.6521451548625461;
+    outWts[3] = 0.3478548451374538;
+  }
+  else if(order == 4) {
+    outWts[0] = 0.2369268850561891;
+    outWts[1] = 0.4786286704993665;
+    outWts[2] = 0.000000000000000;
+    outWts[3] = 0.4786286704993665;
+    outWts[4] = 0.2369268850561891;
+  }
+  else {
+    stringstream ss; ss << order;
+    string errMsg = "Gauss quadrature weights for order " + ss.str() + " not implemented.";
+    FatalError(errMsg.c_str());
+  }
+
+  return outWts;
+}

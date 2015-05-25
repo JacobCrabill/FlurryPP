@@ -14,9 +14,11 @@
 
 #include "../include/input.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <stdio.h>
 
 fileReader::fileReader()
 {
@@ -267,15 +269,19 @@ void input::readInputFile(char *filename)
     nFields = 4;
   }
 
-  opts.getScalarValue("dt",dt);
+  opts.getScalarValue("timeType",timeType,0);
+  opts.getScalarValue("dtType",dtType,0);
+  if (dtType == 1)
+    opts.getScalarValue("CFL",CFL);
+  else
+    opts.getScalarValue("dt",dt);
+
   opts.getScalarValue("viscous",viscous,0);
   opts.getScalarValue("motion",motion,0);
   opts.getScalarValue("order",order,3);
   opts.getScalarValue("riemann_type",riemann_type,0);
   opts.getScalarValue("test_case",test_case,0);
   opts.getScalarValue("iterMax",iterMax);
-
-  opts.getScalarValue("timeType",timeType,0);
 
   opts.getScalarValue("restart",restart,0);
   if (restart) {
@@ -298,7 +304,15 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("create_bcRight",create_bcRight,string("periodic"));
   }else if (mesh_type == READ_MESH) {
     opts.getScalarValue("mesh_file_name",meshFileName);
-    opts.getMap("mesh_bound",meshBounds);
+    map<string,string> meshBndTmp;
+    opts.getMap("mesh_bound",meshBndTmp);
+    for (auto& B:meshBndTmp) {
+      string tmp1, tmp2;
+      tmp1 = B.first; tmp2 = B.second;
+      std::transform(tmp1.begin(), tmp1.end(), tmp1.begin(), ::tolower);
+      std::transform(tmp2.begin(), tmp2.end(), tmp2.begin(), ::tolower);
+      meshBounds[tmp1] = tmp2;
+    }
   }
   opts.getScalarValue("periodicDX",periodicDX,(double)INFINITY);
   opts.getScalarValue("periodicDY",periodicDY,(double)INFINITY);

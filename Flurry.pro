@@ -4,6 +4,8 @@ CONFIG -= qt
 
 QMAKE_CXXFLAGS += -std=c++11
 
+INCLUDEPATH += $$PWD/include
+
 SOURCES += src/global.cpp \
     src/matrix.cpp \
     src/input.cpp \
@@ -17,7 +19,9 @@ SOURCES += src/global.cpp \
     src/flurry.cpp \
     src/solver.cpp \
     include/geo.inl \
-    src/bound.cpp
+    src/intFace.cpp \
+    src/boundFace.cpp \
+    src/mpiFace.cpp
 		   
 HEADERS += include/global.hpp \
     include/matrix.hpp \
@@ -32,12 +36,15 @@ HEADERS += include/global.hpp \
     include/flurry.hpp \
     include/solver.hpp \
     include/error.hpp \
-    include/bound.hpp
+    include/intFace.hpp \
+    include/boundFace.hpp \
+    include/mpiFace.hpp
 
 DISTFILES += \
     README.md \
-    planning
 
 OTHER_FILES += \
     bin/input_supwall \
-    tests/euler/cylinder/input_cyl
+    tests/euler/cylinder/input_cyl \
+    planning \
+    makefile

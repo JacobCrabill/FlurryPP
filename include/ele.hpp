@@ -18,17 +18,16 @@
 
 #include "global.hpp"
 
-#include "bound.hpp"
-#include "face.hpp"
+//#include "face.hpp"
 #include "geo.hpp"
 #include "input.hpp"
 #include "matrix.hpp"
-#include "solver.hpp"
 
 class ele
 {
 friend class face;
-friend class bound;
+friend class boundFace;
+friend class intFace;
 friend class solver;
 
 public:
@@ -91,6 +90,9 @@ public:
   void transformGradF_spts(int step);
 
   void calcDeltaFn(void);
+
+  /*! Calculate the maximum stable time step based upon CFL */
+  double calcDt(void);
 
   /*! Advance intermediate stages of Runge-Kutta time integration */
   void timeStepA(int step, double rkVal);
@@ -168,6 +170,7 @@ private:
   matrix<double> disFn_fpts;       //! Discontinuous normal flux at flux points
   matrix<double> Fn_fpts;          //! Interface flux at flux points
   matrix<double> dFn_fpts;         //! Interface minus discontinuous flux at flux points
+  vector<double> waveSp_fpts;      //! Maximum wave speed at each flux point
 
   // Gradients
   vector<matrix<double> > dU_spts;  //! Gradient of solution at solution points

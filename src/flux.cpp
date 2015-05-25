@@ -25,8 +25,8 @@ void inviscidFlux(double* U, matrix<double> &F, input *params)
 {
   /* --- Note: Flux matrix expected to be <nDims x nFields> --- */
   if (params->equation == ADVECTION_DIFFUSION) {
-    F[0][0] = params->advectVx*U[0];
-    F[1][0] = params->advectVy*U[0];
+    F(0,0) = params->advectVx*U[0];
+    F(1,0) = params->advectVy*U[0];
   }
   else if (params->equation == NAVIER_STOKES) {
     double rho = U[0];
@@ -35,10 +35,10 @@ void inviscidFlux(double* U, matrix<double> &F, input *params)
     double p = (params->gamma-1.0)*(U[3]-(0.5*rho*((u*u)+(v*v))));
 
     /* --- Assuming F has already been sized properly... --- */
-    F[0][0] =  U[1];       F[1][0] =  U[2];
-    F[0][1] =  U[1]*u+p;   F[1][1] =  U[1]*v;
-    F[0][2] =  U[2]*u;     F[1][2] =  U[2]*v+p;
-    F[0][3] = (U[3]+p)*u;  F[1][3] = (U[3]+p)*v;
+    F(0,0) =  U[1];       F(1,0) =  U[2];
+    F(0,1) =  U[1]*u+p;   F(1,1) =  U[1]*v;
+    F(0,2) =  U[2]*u;     F(1,2) =  U[2]*v+p;
+    F(0,3) = (U[3]+p)*u;  F(1,3) = (U[3]+p)*v;
   }
 }
 
@@ -52,15 +52,15 @@ void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *
   double e   = U[3]/rho - 0.5*(u*u+v*v);
 
   /* --- Get Gradients --- */
-  double dRho_dx	 = gradU[0][0];
-  double dRhoU_dx = gradU[0][1];
-  double dRhoV_dx = gradU[0][2];
-  double dE_dx	   = gradU[0][3];
+  double dRho_dx	 = gradU(0,0);
+  double dRhoU_dx = gradU(0,1);
+  double dRhoV_dx = gradU(0,2);
+  double dE_dx	   = gradU(0,3);
 
-  double dRho_dy	 = gradU[1][0];
-  double dRhoU_dy = gradU[1][1];
-  double dRhoV_dy = gradU[1][2];
-  double dE_dy	   = gradU[1][3];
+  double dRho_dy	 = gradU(1,0);
+  double dRhoU_dy = gradU(1,1);
+  double dRhoV_dy = gradU(1,2);
+  double dE_dy	   = gradU(1,3);
 
   /* --- Calculate Viscosity --- */
   double rt_ratio = (params->gamma-1.0)*e/(params->rt_inf);
@@ -89,22 +89,25 @@ void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *
   double tauyy = 2.0*(mu+mu_t)*(dv_dy-diag);
 
   /* --- Calculate Viscous Flux --- */
-  Fvis[0][0] =  0.0;
-  Fvis[0][1] = -tauxx;
-  Fvis[0][2] = -tauxy;
-  Fvis[0][3] = -(u*tauxx+v*tauxy+(mu/params->prandtl)*(params->gamma)*de_dx);
+  Fvis(0,0) =  0.0;
+  Fvis(0.1) = -tauxx;
+  Fvis(0.2) = -tauxy;
+  Fvis(0,3) = -(u*tauxx+v*tauxy+(mu/params->prandtl)*(params->gamma)*de_dx);
 
-  Fvis[1][0] =  0.0;
-  Fvis[1][1] = -tauxy;
-  Fvis[1][2] = -tauyy;
-  Fvis[1][3] = -(u*tauxy+v*tauyy+(mu/params->prandtl)*(params->gamma)*de_dy);
+  Fvis(1,0) =  0.0;
+  Fvis(1,1) = -tauxy;
+  Fvis(1,2) = -tauyy;
+  Fvis(1,3) = -(u*tauxy+v*tauyy+(mu/params->prandtl)*(params->gamma)*de_dy);
 }
 
 //void rusanovFlux(vector<double> &UL, vector<double> &UR, vector<vector<double*>> &FL, vector<vector<double*>> &FR, vector<double> &norm, vector<double> &Fn, input *params)
-void rusanovFlux(double* UL, double* UR, matrix<double> &FL, matrix<double> &FR, double* norm, double* Fn, input *params)
+void rusanovFlux(double* UL, double* UR, matrix<double> &FL, matrix<double> &FR, double* norm, double* Fn, double* waveSp, input *params)
 {
   double wL, pL, vnL=0.;
   double wR, pR, vnR=0.;
+
+  inviscidFlux(UL,FL,params);
+  inviscidFlux(UR,FR,params);
 
   double FnL[5] = {0,0,0,0,0};
   double FnR[5] = {0,0,0,0,0};
@@ -130,21 +133,21 @@ void rusanovFlux(double* UL, double* UR, matrix<double> &FL, matrix<double> &FR,
     vnL += norm[j]*UL[j+1]/rhoL;
     vnR += norm[j]*UR[j+1]/rhoR;
     for (int i=0; i<params->nFields; i++) {
-      FnL[i] += norm[j]*FL[j][i];
-      FnR[i] += norm[j]*FR[j][i];
+      FnL[i] += norm[j]*FL(j,i);
+      FnR[i] += norm[j]*FR(j,i);
     }
   }
 
   // Get maximum eigenvalue for diffusion coefficient
   double csqL = max(params->gamma*pL/rhoL,0.0);
   double csqR = max(params->gamma*pR/rhoR,0.0);
-  double eigL = fabs(vnL) + sqrt(csqL);
-  double eigR = fabs(vnR) + sqrt(csqR);
-  double eig = max(eigL,eigR);
+  double eigL = std::fabs(vnL) + sqrt(csqL);
+  double eigR = std::fabs(vnR) + sqrt(csqR);
+  *waveSp = max(eigL,eigR);
 
   // Calculate Rusanov flux
   for (int i=0; i<params->nFields; i++) {
-    Fn[i] = 0.5*(FnL[i]+FnR[i] - eig*(UR[i]-UL[i]));
+    Fn[i] = 0.5*(FnL[i]+FnR[i] - (*waveSp)*(UR[i]-UL[i]));
   }
 }
 
@@ -300,7 +303,6 @@ void roeFlux(double *uL, double *uR, double* norm, double* Fn, input *params)
     Fn[1] -= lambda0*du[1]+aL1*um[0]+bL1*norm[0];
     Fn[2] -= lambda0*du[2]+aL1*um[1]+bL1*norm[1];
     Fn[3] -= lambda0*du[3]+aL1*hm   +bL1*unm;
-
   }
   else if (nDims==3) {
     Fn[0] -= lambda0*du[0]+aL1;

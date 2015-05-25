@@ -16,6 +16,14 @@
 
 #include <iomanip>
 
+// Used for making sub-directories
+#ifndef _NO_MPI
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include "mpi.h"
+#endif
+
 void writeData(solver *Solver, input *params)
 {
   if (params->plot_type == 0) {
@@ -89,12 +97,74 @@ void writeParaview(solver *Solver, input *params)
 
   char fileNameC[50];
   string fileName = params->dataFileName;
+
+#ifndef _NO_MPI
+  /* --- All processors write their solution to their own .vtu file --- */
+  sprintf(fileNameC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,params->rank);
+
+  /* --- Write 'master' .pvtu file --- */
+  if (params->rank == 0) {
+    ofstream pVTU;
+    char pvtuC[50];
+    sprintf(pvtuC,"%s_%.09d.pvtu",&fileName[0],iter);
+
+    pVTU.open(pvtuC);
+
+    pVTU << "<?xml version=\"1.0\" ?>" << endl;
+    pVTU << "<VTKFile type=\"PUnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" compressor=\"vtkZLibDataCompressor\">" << endl;
+    pVTU << "  <PUnstructuredGrid GhostLevel=\"1\">" << endl;
+    // NOTE: Must be careful with order here [particularly of vector data], or else ParaView gets confused
+    pVTU << "    <PPointData Scalars=\"Density\" Vectors=\"Velocity\" >" << endl;
+    pVTU << "      <PDataArray type=\"Float32\" Name=\"Density\" />" << endl;
+    if (params->equation == NAVIER_STOKES) {
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"Velocity\" NumberOfComponents=\"3\" />" << endl;
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"Pressure\" />" << endl;
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"EntropyErr\" />" << endl;      
+      if (params->motion) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"GridVelocity\" NumberOfComponents=\"3\" />" << endl;
+      }
+    }
+    pVTU << "    </PPointData>" << endl;
+    pVTU << "    <PPoints>" << endl;
+    pVTU << "      <PDataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\" />" << endl;
+    pVTU << "    </PPoints>" << endl;
+
+    char filnameTmpC[50];
+    for (int p=0; p<params->nproc; p++) {
+      sprintf(filnameTmpC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,p);
+      pVTU << "    <Piece Source=\"" << string(filnameTmpC) << "\" />" << endl;
+    }
+    pVTU << "  </PUnstructuredGrid>" << endl;
+    pVTU << "</VTKFile>" << endl;
+
+    pVTU.close();
+
+    char datadirC[50];
+    char *datadir = &datadirC[0];
+    sprintf(datadirC,"%s_%.09d",&fileName[0],iter);
+
+    /* --- Master node creates a subdirectory to store .vtu files --- */
+    if (params->rank == 0) {
+      struct stat st = {0};
+      if (stat(datadir, &st) == -1) {
+        mkdir(datadir, 0755);
+      }
+    }
+  }
+
+  /* --- Wait for all processes to get here, otherwise there won't be a
+   *     directory to put .vtus into --- */
+  MPI_Barrier(MPI_COMM_WORLD);
+#else
+  /* --- Filename to write to --- */
   sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],iter);
+#endif
 
   dataFile.open(fileNameC);
   dataFile.precision(16);
 
-  cout << "Writing ParaView file " << string(fileNameC) << "...  " << flush;
+  if (params->rank == 0)
+    cout << "Writing ParaView file " << string(fileNameC) << "...  " << flush;
 
   // File header
   dataFile << "<?xml version=\"1.0\" ?>" << endl;
@@ -166,18 +236,9 @@ void writeParaview(solver *Solver, input *params)
 
 
     if (params->equation == NAVIER_STOKES) {
-      /* --- Pressure --- */
-      dataFile << "				<DataArray type=\"Float32\" Name=\"Pressure\" format=\"ascii\">" << endl;
-      for(int k=0; k<nPpts; k++) {
-        dataFile << vPpts(k,3) << " ";
-      }
-      dataFile << endl;
-      dataFile << "				</DataArray>" << endl;
-
       /* --- Velocity --- */
       dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" Name=\"Velocity\" format=\"ascii\">" << endl;
       for(int k=0; k<nPpts; k++) {
-        // Divide momentum components by density to obtain velocity components
         dataFile << vPpts(k,1) << " " << vPpts(k,2) << " ";
 
         // In 2D the z-component of velocity is not stored, but Paraview needs it so write a 0.
@@ -185,8 +246,16 @@ void writeParaview(solver *Solver, input *params)
           dataFile << 0.0 << " ";
         }
         else {
-          dataFile << vPpts[k][3] << " ";
+          dataFile << vPpts(k,3) << " ";
         }
+      }
+      dataFile << endl;
+      dataFile << "				</DataArray>" << endl;
+
+      /* --- Pressure --- */
+      dataFile << "				<DataArray type=\"Float32\" Name=\"Pressure\" format=\"ascii\">" << endl;
+      for(int k=0; k<nPpts; k++) {
+        dataFile << vPpts(k,3) << " ";
       }
       dataFile << endl;
       dataFile << "				</DataArray>" << endl;
@@ -212,7 +281,7 @@ void writeParaview(solver *Solver, input *params)
     }
 
     if (params->equation == NAVIER_STOKES) {
-      /* --- Pressure --- */
+      /* --- Entropy Error Estimate --- */
       dataFile << "				<DataArray type=\"Float32\" Name=\"EntropyErr\" format=\"ascii\">" << endl;
       for(int k=0; k<nPpts; k++) {
         dataFile << errPpts(k) << " ";
@@ -292,7 +361,7 @@ void writeParaview(solver *Solver, input *params)
 
   dataFile.close();
 
-  cout << "done." <<  endl;
+  if (params->rank == 0) cout << "done." <<  endl;
 }
 
 
@@ -301,45 +370,73 @@ void writeResidual(solver *Solver, input *params)
   vector<double> res(params->nFields);
   int iter = params->iter;
 
-  for (auto& e:Solver->eles) {
-    auto resTmp = e.getNormResidual(params->resType);
-    if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
+  if (params->resType == 3) {
+    // Infinity Norm
+#pragma omp parallel for
+    for (uint e=0; e<Solver->eles.size(); e++) {
+      auto resTmp = Solver->eles[e].getNormResidual(params->resType);
+      if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
 
-    for (int i=0; i<params->nFields; i++) {
-      if (params->resType == 3) {
-        // Infinity norm [max residual over all spts]
+      for (int i=0; i<params->nFields; i++)
         res[i] = max(res[i],resTmp[i]);
-      }else{
-        res[i] += resTmp[i];
-      }
     }
   }
+  else if (params->resType == 1 || params->resType == 2) {
+    // 1-Norm or 2-Norm
+#pragma omp parallel for
+    for (uint e=0; e<Solver->eles.size(); e++) {
+      auto resTmp = Solver->eles[e].getNormResidual(params->resType);
+      if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
+
+      for (int i=0; i<params->nFields; i++)
+        res[i] += resTmp[i];
+    }
+  }
+
+#ifndef _NO_MPI
+  if (params->nproc > 1) {
+    if (params->resType == 3) {
+      vector<double> resTmp = res;
+      MPI_Reduce(resTmp.data(), res.data(), params->nFields, MPI_DOUBLE, MPI_MAX, 0,MPI_COMM_WORLD);
+    }
+    else if (params->resType == 1 || params->resType == 2) {
+      vector<double> resTmp = res;
+      MPI_Reduce(resTmp.data(), res.data(), params->nFields, MPI_DOUBLE, MPI_SUM, 0,MPI_COMM_WORLD);
+    }
+  }
+#endif
 
   // If taking 2-norm, res is sum squared; take sqrt to complete
-  if (params->resType == 2) {
-    for (auto& i:res) i = sqrt(i);
-  }
-
-  int colW = 16;
-  cout.precision(8);
-  cout.setf(ios::fixed, ios::floatfield);
-  if (iter==1 || (iter/params->monitor_res_freq)%25==0) {
-    cout << endl;
-    cout << setw(8) << left << "Iter";
-    if (params->equation == ADVECTION_DIFFUSION) {
-      cout << " Residual " << endl;
-    }else if (params->equation == NAVIER_STOKES) {
-      cout << setw(colW) << left << "rho";
-      cout << setw(colW) << left << "rhoU";
-      cout << setw(colW) << left << "rhoV";
-      cout << setw(colW) << left << "rhoE";
+  if (params->rank == 0) {
+    if (params->resType == 2) {
+      for (auto& R:res) R = sqrt(R);
     }
+
+    int colW = 16;
+    cout.precision(6);
+    cout.setf(ios::scientific, ios::floatfield);
+    if (iter==1 || (iter/params->monitor_res_freq)%25==0) {
+      cout << endl;
+      cout << setw(8) << left << "Iter";
+      if (params->equation == ADVECTION_DIFFUSION) {
+        cout << " Residual " << endl;
+      }else if (params->equation == NAVIER_STOKES) {
+        cout << setw(colW) << left << "rho";
+        cout << setw(colW) << left << "rhoU";
+        cout << setw(colW) << left << "rhoV";
+        cout << setw(colW) << left << "rhoE";
+        if (params->dtType == 1)
+          cout << setw(colW) << left << "deltaT";
+      }
+      cout << endl;
+    }
+
+    cout << setw(8) << left << iter;
+    for (int i=0; i<params->nFields; i++) {
+      cout << setw(colW) << left << res[i];
+    }
+    if (params->dtType == 1)
+      cout << setw(colW) << left << params->dt;
     cout << endl;
   }
-
-  cout << setw(8) << left << iter;
-  for (int i=0; i<params->nFields; i++) {
-    cout << setw(colW) << left << res[i];
-  }
-  cout << endl;
 }

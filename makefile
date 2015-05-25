@@ -7,16 +7,28 @@
 
 ####### Compiler, tools and options
 
-CXX = g++
+CXX           = g++
+MPICXX        = mpicxx
+MPILD         = mpicxx
 INCPATH       = -I.
 LINK          = g++
 LIBS          = $(SUBLIBS)
+METIS_LIB_DIR = /usr/lib/
+METIS_INC_DIR = /usr/include/
+MPI_INC_DIR   = /usr/lib/openmpi/include
+MPI_LIB_DIR   = /usr/lib/openmpi/lib
 
-CXXFLAGS = -pipe -g -O2 -Wall -W -std=c++11 $(DEFINES)
+CXX_BASE    = -pipe -Wall -W -std=c++11 $(DEFINES)
+CXX_STD     = -g -02
+CXX_DEBUG   = -g -pg -O0
+CXX_RELEASE = -O3
 
-CXXFLAGS_RELEASE = -pipe -O3 -Wall -W -std=c++11 $(DEFINES)
-CXXFLAGS_DEBUG   = -pipe -pg -g -O0 -std=c++11 $(DEFINES)
-CXXFLAGS_OPENMP  = -pipe -O3 -Wall -W -std=c++11 -fopenmp $(DEFINES)
+CXXFLAGS_RELEASE = $(CXX_BASE) $(CXX_RELEASE) -D_NO_MPI $(DEFINES)
+CXXFLAGS_DEBUG   = $(CXX_BASE) $(CXX_DEBUG) -D_NO_MPI $(DEFINES)
+CXXFLAGS_OPENMP  = $(CXX_BASE) $(CXX_RELEASE) -fopenmp -D_NO_MPI $(DEFINES)
+CXXFLAGS_MPI     = $(CXX_BASE) $(DEFINES)
+CXXFLAGS_MPI    += -I$(MPI_INC_DIR) -I$(METIS_INC_DIR) 
+CXXFLAGS_MPI    += -L$(MPI_LIB_DIR) -L$(METIS_LIB_DIR)
 
 ####### Output directory - these do nothing currently
 
@@ -25,7 +37,7 @@ DESTDIR       = ./bin
 
 ####### Files
 
-SOURCES       = src/global.cpp \
+SOURCES = 	src/global.cpp \
 		src/matrix.cpp \
 		src/input.cpp \
 		src/ele.cpp \
@@ -34,11 +46,14 @@ SOURCES       = src/global.cpp \
 		src/geo.cpp \
 		src/output.cpp \
 		src/face.cpp \
+		src/intFace.cpp \
+		src/boundFace.cpp \
+		src/mpiFace.cpp \
 		src/flux.cpp \
 		src/flurry.cpp \
-		src/solver.cpp \
-		src/bound.cpp
-OBJECTS       = obj/global.o \
+		src/solver.cpp
+
+OBJECTS = 	obj/global.o \
 		obj/matrix.o \
 		obj/input.o \
 		obj/ele.o \
@@ -47,10 +62,13 @@ OBJECTS       = obj/global.o \
 		obj/geo.o \
 		obj/output.o \
 		obj/face.o \
+		obj/intFace.o \
+		obj/boundFace.o \
+		obj/mpiFace.o \
 		obj/flux.o \
 		obj/flurry.o \
-		obj/solver.o \
-		obj/bound.o
+		obj/solver.o
+
 TARGET        = Flurry
 
 ####### Implicit rules
@@ -79,6 +97,20 @@ openmp: CXXFLAGS=$(CXXFLAGS_OPENMP)
 openmp: LIBS+= -fopenmp -lgomp
 openmp: $(TARGET)
 
+.PHONY: mpi
+mpi: CXX=$(MPICXX)
+mpi: LD=$(MPILD)
+mpi: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_RELEASE)
+mpi: LIBS+= -lmpi -lmpi_cxx -lmetis
+mpi: $(TARGET)
+
+.PHONY: mpidebug
+mpidebug: CXX=$(MPICXX)
+mpidebug: LD=$(MPILD)
+mpidebug: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_DEBUG)
+mpidebug: LIBS+= -lmpi -lmpi_cxx -lmetis
+mpidebug: $(TARGET)
+
 ####### Compile
 
 obj/global.o: src/global.cpp include/global.hpp \
@@ -104,7 +136,6 @@ obj/ele.o: src/ele.cpp include/ele.hpp \
 		include/input.hpp \
 		include/solver.hpp \
 		include/face.hpp \
-		include/bound.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp \
 		include/flux.hpp
@@ -125,7 +156,6 @@ obj/operators.o: src/operators.cpp include/operators.hpp \
 		include/solver.hpp \
 		include/ele.hpp \
 		include/face.hpp \
-		include/bound.hpp \
 		include/polynomials.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/operators.o src/operators.cpp
 
@@ -137,7 +167,6 @@ obj/geo.o: src/geo.cpp include/geo.hpp \
 		include/solver.hpp \
 		include/ele.hpp \
 		include/face.hpp \
-		include/bound.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp \
 		include/geo.inl
@@ -151,7 +180,6 @@ obj/output.o: src/output.cpp include/output.hpp \
 		include/ele.hpp \
 		include/geo.hpp \
 		include/input.hpp \
-		include/bound.hpp \
 		include/face.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp
@@ -165,11 +193,19 @@ obj/face.o: src/face.cpp include/face.hpp \
 		include/geo.hpp \
 		include/input.hpp \
 		include/solver.hpp \
-		include/bound.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp \
 		include/flux.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/face.o src/face.cpp
+
+obj/intFace.o: src/intFace.cpp include/intFace.hpp  include/face.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/intFace.o src/intFace.cpp
+
+obj/boundFace.o: src/boundFace.cpp include/boundFace.hpp include/face.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/boundFace.o src/boundFace.cpp
+
+obj/mpiFace.o: src/mpiFace.cpp include/mpiFace.hpp include/face.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/mpiFace.o src/mpiFace.cpp
 
 obj/flux.o: src/flux.cpp include/flux.hpp \
 		include/global.hpp \
@@ -187,7 +223,6 @@ obj/flurry.o: src/flurry.cpp include/flurry.hpp \
 		include/solver.hpp \
 		include/ele.hpp \
 		include/face.hpp \
-		include/bound.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp \
 		include/output.hpp
@@ -200,21 +235,7 @@ obj/solver.o: src/solver.cpp include/solver.hpp \
 		include/ele.hpp \
 		include/geo.hpp \
 		include/input.hpp \
-		include/bound.hpp \
 		include/face.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/solver.o src/solver.cpp
-
-obj/bound.o: src/bound.cpp include/bound.hpp \
-		include/global.hpp \
-		include/error.hpp \
-		include/matrix.hpp \
-		include/input.hpp \
-		include/ele.hpp \
-		include/geo.hpp \
-		include/solver.hpp \
-		include/face.hpp \
-		include/operators.hpp \
-		include/polynomials.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/bound.o src/bound.cpp

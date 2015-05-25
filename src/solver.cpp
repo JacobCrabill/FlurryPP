@@ -18,6 +18,14 @@
 #include <sstream>
 #include <omp.h>
 
+class intFace;
+class boundFace;
+
+#include "../include/input.hpp"
+#include "../include/geo.hpp"
+#include "../include/intFace.hpp"
+#include "../include/boundFace.hpp"
+
 solver::solver()
 {
 }
@@ -30,14 +38,12 @@ void solver::setup(input *params, geo *Geo)
   params->time = 0.;
 
   /* Setup the FR elements & faces which will be computed on */
-  Geo->setupElesFaces(eles,faces,bounds);
+  Geo->setupElesFaces(eles,faces,mpiFaces);
 
-  if (params->restart) {
+  if (params->restart)
     readRestartFile();
-  }
-  else {
+  else
     setupElesFaces();
-  }
 
   /* Setup the FR operators for computation */
   setupOperators();
@@ -58,6 +64,10 @@ void solver::setup(input *params, geo *Geo)
     default:
       FatalError("Time-Stepping type not supported.");
   }
+
+#ifndef _NO_MPI
+  finishMpiSetup();
+#endif
 }
 
 void solver::update(void)
@@ -79,16 +89,23 @@ void solver::update(void)
 
     calcResidual(step);
 
+    /* If in first stage, compute CFL-based timestep */
+    if (step == 0 && params->dtType == 1) calcDt();
+
     timeStepA(step);
 
   }
 
   /* Final Runge-Kutta time advancement step */
 
-  if (nRKSteps == 1)
+  if (nRKSteps == 1) {
     params->rkTime = params->time;
-  else
+    /* Calculate CFL-based timestep */
+    if (params->dtType == 1) calcDt();
+  }
+  else {
     params->rkTime = params->time + params->dt;
+  }
 
   moveMesh(nRKSteps-1);
 
@@ -98,12 +115,12 @@ void solver::update(void)
   if (nRKSteps>1)
     copyU0_Uspts();
 
-  for (int step=0; step<nRKSteps; step++) {
+  for (int step=0; step<nRKSteps; step++)
     timeStepB(step);
-  }
 
   params->time += params->dt;
 }
+
 
 void solver::calcResidual(int step)
 {
@@ -113,19 +130,25 @@ void solver::calcResidual(int step)
 
   extrapolateU();
 
-  calcInviscidFlux_spts();
-
-  extrapolateNormalFlux();
-
-  calcInviscidFlux_faces();
-
-  calcInviscidFlux_bounds();
+#ifndef _NO_MPI
+  doCommunication();
+#endif
 
   if (params->viscous || params->motion) {
 
     calcGradU_spts();
 
   }
+
+  calcInviscidFlux_spts();
+
+  extrapolateNormalFlux();
+
+  calcInviscidFlux_faces();
+
+#ifndef _NO_MPI
+  calcInviscidFlux_mpi();
+#endif
 
   if (params->viscous) {
 
@@ -135,7 +158,9 @@ void solver::calcResidual(int step)
 
     calcViscousFlux_faces();
 
-    calcViscousFlux_bounds();
+#ifndef _NO_MPI
+    calcViscousFlux_mpi();
+#endif
 
   }
 
@@ -144,6 +169,24 @@ void solver::calcResidual(int step)
   correctDivFlux(step);
 }
 
+void solver::calcDt(void)
+{
+  double dt = INFINITY;
+
+#pragma omp parallel for reduction(min:dt)
+  for (uint i=0; i<eles.size(); i++) {
+    dt = min(dt, eles[i].calcDt());
+  }
+
+#ifndef _NO_MPI
+  double dtTmp = dt;
+  MPI_Allreduce(&dtTmp, &dt, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+#endif
+
+  params->dt = dt;
+}
+
+
 void solver::timeStepA(int step)
 {
 #pragma omp parallel for
@@ -151,6 +194,7 @@ void solver::timeStepA(int step)
     eles[i].timeStepA(step,RKa[step]);
   }
 }
+
 
 void solver::timeStepB(int step)
 {
@@ -216,19 +260,27 @@ void solver::calcInviscidFlux_spts(void)
   }
 }
 
+void solver::doCommunication()
+{
+#pragma omp parallel for
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->communicate();
+  }
+}
+
 void solver::calcInviscidFlux_faces()
 {
 #pragma omp parallel for
   for (uint i=0; i<faces.size(); i++) {
-    faces[i].calcInviscidFlux();
+    faces[i]->calcInviscidFlux();
   }
 }
 
-void solver::calcInviscidFlux_bounds()
+void solver::calcInviscidFlux_mpi()
 {
 #pragma omp parallel for
-  for (uint i=0; i<bounds.size(); i++) {
-    bounds[i].calcInviscidFlux();
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->calcInviscidFlux();
   }
 }
 
@@ -242,13 +294,21 @@ void solver::calcViscousFlux_spts(void)
 
 void solver::calcViscousFlux_faces()
 {
-
+#pragma omp parallel for
+  for (uint i=0; i<faces.size(); i++) {
+    faces[i]->calcViscousFlux();
+  }
 }
 
-void solver::calcViscousFlux_bounds()
+
+void solver::calcViscousFlux_mpi()
 {
-
+#pragma omp parallel for
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->calcViscousFlux();
+  }
 }
+
 
 void solver::calcGradF_spts(void)
 {
@@ -263,7 +323,6 @@ void solver::transformGradF_spts(int step)
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].transformGradF_spts(step);
-    //opers[eles[i].eType][eles[i].order].applyTransformGradFSpts(eles[i].dF_spts,eles[i].JGinv_spts,eles[i].gridVel_spts);
   }
 }
 
@@ -360,6 +419,8 @@ void solver::moveMesh(int step)
 
 void solver::setupOperators()
 {
+  if (params->rank==0) cout << "Solver: Setting up FR operators" << endl;
+
   // Get all element types & olynomial orders in mesh
   for (auto& e:eles) {
     eTypes.insert(e.eType);
@@ -374,27 +435,40 @@ void solver::setupOperators()
 }
 
 void solver::setupElesFaces(void) {
+
+  if (params->rank==0) cout << "Solver: Setting up elements & faces" << endl;
+
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].setup(params,Geo);
   }
 
-  // Finish setting up internal faces
+  // Finish setting up internal & boundary faces
 #pragma omp parallel for
-  for (int i=0; i<faces.size(); i++) {
-    faces[i].setupFace();
+  for (uint i=0; i<faces.size(); i++) {
+    faces[i]->setupFace();
   }
 
-  // Finish setting up boundary faces
+  // Finish setting up MPI faces
 #pragma omp parallel for
-  for (int i=0; i<bounds.size(); i++) {
-    bounds[i].setupBound();
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->setupFace();
+  }
+}
+
+void solver::finishMpiSetup(void)
+{
+  if (params->rank==0) cout << "Solver: Setting up MPI face communicataions" << endl;
+#pragma omp parallel for
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->finishRightSetup();
   }
 }
 
 void solver::readRestartFile(void) {
 
   ifstream dataFile;
+  dataFile.precision(15);
 
   // Get the file name & open the file
   char fileNameC[50];
@@ -402,6 +476,8 @@ void solver::readRestartFile(void) {
   sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],params->restartIter);
 
   dataFile.open(fileNameC);
+
+  if (params->rank==0) cout << "Solver: Restarting from " << fileNameC << endl;
 
   if (!dataFile.is_open())
     FatalError("Cannont open restart file.");
@@ -431,28 +507,40 @@ void solver::readRestartFile(void) {
 
   // Setup all transformations and other geometry-related arrays
 #pragma omp parallel for
-  for (int i=0; i<eles.size(); i++) {
+  for (uint i=0; i<eles.size(); i++) {
     eles[i].setupAllGeometry();
   }
 
   // Finish setting up internal faces
 #pragma omp parallel for
-  for (int i=0; i<faces.size(); i++) {
-    faces[i].setupFace();
-  }
-
-  // Finish setting up boundary faces
-#pragma omp parallel for
-  for (int i=0; i<bounds.size(); i++) {
-    bounds[i].setupBound();
+  for (uint i=0; i<faces.size(); i++) {
+    faces[i]->setupFace();
   }
 }
 
 void solver::initializeSolution()
 {
+  if (params->rank==0) cout << "Solver: Initializing Solution" << endl;
+
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].setInitialCondition();
+  }
+
+  /* If running a moving-mesh case and using CFL-based time-stepping,
+   * calc initial dt for grid velocity calculation */
+  if (params->motion != 0 && params->dtType == 1) calcDt();
+}
+
+solver::~solver()
+{
+  // Clean up memory allocated with 'new'
+  for (uint i=0; i<faces.size(); i++) {
+    faces[i]->~face();
+  }
+
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->~face();
   }
 }
 

@@ -183,6 +183,7 @@ void ele::setupArrays(void)
   norm_fpts.setup(nFpts,nDims);
   tNorm_fpts.setup(nFpts,nDims);
   dA_fpts.resize(nFpts);
+  waveSp_fpts.resize(nFpts);
 
   gridVel_nodes.setup(nNodes,nDims);
   gridVel_spts.setup(nSpts,nDims);
@@ -197,6 +198,7 @@ void ele::setupArrays(void)
       vec = nodes;
     }
   }
+
   S_spts.setup(nSpts,1);
   S_fpts.setup(nFpts,1);
   S_mpts.setup(nNodes,1);
@@ -422,7 +424,6 @@ void ele::calcTransforms(void)
     if (nDims==2) {
       detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
     }
-    //if (detJac_fpts[fpt]<0) FatalError("Negative Jacobian at flux points.");
 
     /* --- Calculate outward unit normal vector at flux point --- */
     // Transform face normal from reference to physical space [JGinv dot tNorm]
@@ -436,6 +437,7 @@ void ele::calcTransforms(void)
     // If we have a collapsed edge, the dA will be 0, so just set the normal to 0
     // (A normal vector at a point doesn't make sense anyways)
     if (std::fabs(dA_fpts[fpt]) < 1e-10) {
+      dA_fpts[fpt] = 0.;
       for (int dim=0; dim<nDims; dim++)
         norm_fpts(fpt,dim) = 0;
     }
@@ -485,7 +487,6 @@ void ele::updateTransforms(void)
     if (nDims==2) {
       detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
     }
-    //if (detJac_fpts[fpt]<0) FatalError("Negative Jacobian at solution points.");
 
     /* --- Calculate outward unit normal vector at flux point --- */
     // Transform face normal from reference to physical space [JGinv dot tNorm]
@@ -741,7 +742,7 @@ vector<double> ele::getEntropyVars(int spt)
   double S = log(phi[3]) - gamma*log(phi[0]); // ln(p) - gamma ln(rho)
   double Vmag2 = phi[1]*phi[1] + phi[2]*phi[2];
 
-  v[0] = (gamma-S)/(gamma-1) - (1/2)*phi[0]*Vmag2/phi[3];
+  v[0] = (gamma-S)/(gamma-1) - 0.5*phi[0]*Vmag2/phi[3];
   v[1] = phi[0]*phi[1]/phi[3];
   v[2] = phi[0]*phi[2]/phi[3];
   v[3] = -phi[0]/phi[3];
@@ -767,6 +768,17 @@ void ele::timeStepB(int step, double rkVal)
   }
 }
 
+double ele::calcDt(void)
+{
+  double waveSp = 0.;
+
+  for (int fpt=0; fpt<nFpts; fpt++)
+    if (dA_fpts[fpt] > 0) // ignore collapsed edges
+      waveSp = max(waveSp,waveSp_fpts[fpt]);
+
+  return (params->CFL) * getCFLLimit(order) * (2.0 / (waveSp+1.e-10));
+}
+
 
 void ele::copyUspts_U0(void)
 {
@@ -786,11 +798,11 @@ vector<double> ele::getPrimitives(uint spt)
     V[0] = U_spts[spt][0];
   }
   else if (params->equation == NAVIER_STOKES) {
-    V[0] = U_spts[spt][0];
-    V[1] = U_spts[spt][1]/V[0];
-    V[2] = U_spts[spt][2]/V[0];
+    V[0] = U_spts(spt,0);
+    V[1] = U_spts(spt,1)/V[0];
+    V[2] = U_spts(spt,2)/V[0];
     double vMagSq = V[1]*V[1]+V[2]*V[2];
-    V[3] = (params->gamma-1)*(U_spts[spt][3] - (1/2)*V[0]*vMagSq);
+    V[3] = (params->gamma-1)*(U_spts(spt,3) - 0.5*V[0]*vMagSq);
   }
 
   return V;
@@ -831,9 +843,12 @@ void ele::getPrimitivesPlot(matrix<double> &V)
   if (params->equation == NAVIER_STOKES) {
     // Overwriting V, so be careful of order!
     for (uint i=0; i<V.getDim0(); i++) {
-      V(i,3) = (params->gamma-1)*(V(i,3) - (0.5*(V(i,1)*V(i,1) + V(i,2)*V(i,2))/V(i,0)));
-      V(i,1) = V(i,1)/V(i,0);
-      V(i,2) = V(i,2)/V(i,0);
+      double u = V(i,1)/V(i,0);
+      double v = V(i,2)/V(i,0);
+      double vSq = u*u + v*v;
+      V(i,3) = (params->gamma-1)*(V(i,3) - 0.5*V(i,0)*vSq);
+      V(i,1) = u;
+      V(i,2) = v;
     }
   }
 }
@@ -948,6 +963,7 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
   getline(file,str);
 
   stringstream ss;
+  ss.precision(15);
   string str1, str2;
   ss.str(str);
   ss >> str >> str1 >> str2;
@@ -1018,7 +1034,7 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
 
     // Get the data line
     getline(file,str);
-    ss.str(""); ss.clear();
+    ss.str(""); ss.clear(); ss.precision(15);
     ss.str(str);
     if (str1.compare("Density")==0) {
       foundRho = true;
@@ -1100,7 +1116,7 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
     U_spts(spt,1) = U_spts(spt,0)*tempV(spt,0);
     U_spts(spt,2) = U_spts(spt,0)*tempV(spt,1);
     double vSq = tempV(spt,0)*tempV(spt,0)+tempV(spt,1)*tempV(spt,1);
-    U_spts(spt,3) = tempP[spt]/(params->gamma-1) + (1/2)*U_spts(spt,0)*vSq;
+    U_spts(spt,3) = tempP[spt]/(params->gamma-1) + 0.5*U_spts(spt,0)*vSq;
   }
 
   // Move to end of this element's data
@@ -1116,14 +1132,14 @@ vector<double> ele::getNormResidual(int normType)
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
       if (normType == 1) {
-        res[i] += abs(divF_spts[0][spt][i]);
+        res[i] += abs(divF_spts[0](spt,i)) / detJac_spts[spt];
       }
       else if (normType == 2) {
-        res[i] += divF_spts[0][spt][i]*divF_spts[0][spt][i];
+        res[i] += divF_spts[0](spt,i)*divF_spts[0](spt,i) / (detJac_spts[spt]*detJac_spts[spt]);
       }
       else if (normType == 3) {
         // Infinity norm
-        res[i] = max(abs(divF_spts[0][spt][i]),res[i]);
+        res[i] = max(abs(divF_spts[0](spt,i))/detJac_spts[spt],res[i]);
       }
     }
   }

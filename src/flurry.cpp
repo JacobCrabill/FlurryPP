@@ -17,22 +17,40 @@
 
 #include "../include/flurry.hpp"
 
+#ifndef _NO_MPI
+#include <mpi.h>
+#endif
+
 int main(int argc, char *argv[]) {
   input params;
   geo Geo;
   solver Solver;
 
-  cout << "  ========================================== " << endl;
-  cout << "   _______   _                               " << endl;
-  cout << "  |   ____| | |                              " << endl;
-  cout << "  |  |___   | |  _   _   _     _     _    _  " << endl;
-  cout << "  |   ___|  | | | | | | | |/| | |/| | |  | | " << endl;
-  cout << "  |  |      | | | |_| | |  /  |  /  \\  \\/  / " << endl;
-  cout << "  |__|      |_| \\_____/ |_|   |_|    \\    /  " << endl;
-  cout << "                                      |  /   " << endl;
-  cout << "                                      /_/    " << endl;
-  cout << "  ----    Flux Reconstruction in C++   ----" << endl;
-  cout << "  ========================================== " << endl;
+  int rank = 0;
+  int nproc = 1;
+#ifndef _NO_MPI
+  MPI_Init(&argc, &argv);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &nproc);
+#endif
+  params.rank = rank;
+  params.nproc = nproc;
+
+  if (rank == 0) {
+    cout << endl;
+    cout << "  ========================================== " << endl;
+    cout << "   _______   _                               " << endl;
+    cout << "  |   ____| | |                              " << endl;
+    cout << "  |  |___   | |  _   _   _     _     _    _  " << endl;
+    cout << "  |   ___|  | | | | | | | |/| | |/| | |  | | " << endl;
+    cout << "  |  |      | | | |_| | |  /  |  /  \\  \\/  / " << endl;
+    cout << "  |__|      |_| \\_____/ |_|   |_|    \\    /  " << endl;
+    cout << "                                      |  /   " << endl;
+    cout << "                                      /_/    " << endl;
+    cout << "  ----    Flux Reconstruction in C++   ----" << endl;
+    cout << "  ========================================== " << endl;
+    cout << endl;
+  }
 
   if (argc<2) FatalError("No input file specified.");
 
@@ -70,4 +88,8 @@ int main(int argc, char *argv[]) {
   // Get simulation wall time
   runTime.stopTimer();
   runTime.showTime();
+
+#ifndef _NO_MPI
+ MPI_Finalize();
+#endif
 }

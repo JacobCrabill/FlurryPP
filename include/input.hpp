@@ -89,6 +89,8 @@ public:
   int nFields;
   int nDims;
   double dt;
+  double CFL;
+  int dtType;
   int timeType;
   double rkTime;
   double time;
@@ -155,6 +157,10 @@ public:
   /* --- Shock Capturing Parameters --- */
   int scFlag;       // Shock Capturing Flag
   double threshold; // Threshold for considering as shock -Set to 1.0 by default
+
+  /* --- Other --- */
+  int rank;
+  int nproc;
 
 private:
   fileReader opts;
