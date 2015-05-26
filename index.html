@@ -20,28 +20,28 @@
 
     <section class="main-content">
       <h1>
-<a id="flurrypp" class="anchor" href="#flurrypp" aria-hidden="true"><span class="octicon octicon-link"></span></a>FlurryPP</h1>
+<a id="flurry" class="anchor" href="#flurry" aria-hidden="true"><span class="octicon octicon-link"></span></a>Flurry++</h1>
 
-<p>A 2D Flux Reconstruction Code in C++</p>
+<p>A 2D Flux Reconstruction CFD Code in C++</p>
 
-<p>Written by Jacob Crabill
-Aerospace Computing Lab, Stanford University</p>
+<p>Written by Jacob Crabill</p>
 
-<h1>
-<a id="current-capabilities" class="anchor" href="#current-capabilities" aria-hidden="true"><span class="octicon octicon-link"></span></a>Current Capabilities</h1>
-
-<p>The code is currently capable of running scalar advection or Euler (inviscid Navier-Stokes) cases on unstructured mixed grids of quadrilaterals and triangles in the Gmsh format.
-Moving grids are supported by the solver, but there are not yet any grid-motion functions implemented beyond a standard test case.</p>
+<p>Aerospace Computing Lab, Stanford University</p>
 
 <h1>
 <a id="background--goals-of-the-project" class="anchor" href="#background--goals-of-the-project" aria-hidden="true"><span class="octicon octicon-link"></span></a>Background / Goals of the Project</h1>
 
-<p>This is not intended to be a high-performance CFD tool, but rather a learning experience and testbed for new ideas and methods.  The idea is to have a simple, easy to understand codebase which has been created from the ground up to be easy to modify in the future.  As a developer of HiFiLES, I have great respect for the high-performance aspect of the code, and the thought that went into optimizing its performance for a specific application.  However, I've also learned the hard way that it's rather difficult to make an established code do things that it wasn't designed to do.</p>
+<p>Flurry is not intended to be a high-performance CFD tool, but rather a 'simple' code to learn about high-order methods, as well as being a testbed for new ideas and methods.  The idea is to have a simple, easy to understand codebase which has been designed from the ground up to be easy to modify in the future.  As a developer of <a href="https://github.com/HiFiLES/HiFiLES-solver">HiFiLES</a>, I have great respect for the high-performance aspect of that code, and the thought that went into optimizing its performance for a specific application.  However, I've also learned the hard way that it's rather difficult to make a large, established code do things that it wasn't designed to do.</p>
 
 <p>Hence, Flurry was born.  To start with, my goal is to create a plain 2D Euler and Navier-Stokes solver on quadrilateral and/or triangular elements, mostly as a learning experience.  As more long-term goals, however, I hope to implement various mesh adaptation and deformation methods, p-adaptation, h- and p-multigrid, etc., and as such the code will be structured in such a way to make that possible some day.</p>
 
-<p>In the meantime, if you actually took the time to read this, then you should really check out the high-performance GPU-capable Flux Reconstruction code HiFiLES: <a href="http://github.com/HiFiLES/HiFiLES-solver">http://github.com/HiFiLES/HiFiLES-solver</a>
-This open-source code is under development by the Aerospace Computing Lab at Stanford, with new features in the works all the time (it is a research code, after all).</p>
+<p>In the meantime, if you actually took the time to read this, then you should really check out the high-performance GPU-capable Flux Reconstruction code HiFiLES: <a href="http://github.com/HiFiLES/HiFiLES-solver">http://github.com/HiFiLES/HiFiLES-solver</a>.
+This open-source code is under development by the Aerospace Computing Lab at Stanford, with new features in the works all the time in its various branches (it is a research code, after all).</p>
+
+<h1>
+<a id="current-capabilities" class="anchor" href="#current-capabilities" aria-hidden="true"><span class="octicon octicon-link"></span></a>Current Capabilities</h1>
+
+<p>Flurry is currently capable of running scalar advection or Euler (inviscid Navier-Stokes) cases on unstructured mixed grids of quadrilaterals and triangles in the Gmsh format.  It can either run in serial, pseudo-parallel using OpenMP, or completely parallel using MPI (the code has been tested on up to 24 cores of a computing cluster).  Moving grids are supported by the solver, but there are not yet any grid-motion functions implemented beyond a standard test case.  Shock capturing has also been implemented, and will be pulled into the master branch soon.</p>
 
 <h1>
 <a id="quick-start" class="anchor" href="#quick-start" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick Start</h1>
@@ -49,7 +49,7 @@ This open-source code is under development by the Aerospace Computing Lab at Sta
 <h2>
 <a id="compilation-instructions" class="anchor" href="#compilation-instructions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Compilation Instructions</h2>
 
-<p>To compile Flurry, you can either use QT Creator (<a href="https://www.qt.io/download-open-source/">https://www.qt.io/download-open-source/</a>), which is an excellent C++ IDE that I use for development, or you can use the provided Makefile.flurry to compile using GNU make.  For the make option, just open a terminal and run the following:</p>
+<p>To compile Flurry, you can either use QT Creator (<a href="https://www.qt.io/download-open-source/">https://www.qt.io/download-open-source/</a>), which is an excellent C++ IDE that I use for development, or you can use the provided makefile to compile using GNU make.  For the make option, just open a terminal and run the following:</p>
 
 <p><code>make</code></p>
 
@@ -58,9 +58,13 @@ This open-source code is under development by the Aerospace Computing Lab at Sta
 <p><code>make release</code></p>
 
 <p>where <em>release</em> turns on full optimization, and <em>debug</em> removes all optimization and adds flags for both debugging and profiling.<br>
-The code also (optionally) utilizes OpenMP to take advantage of easy parallelization on desktop computers; speedup of ~3x has been seen on 4-core processors.  To enable OpenMP when compiling, just do:</p>
+The code also (optionally) utilizes either OpenMP to take advantage of easy parallelization on desktop computers, or MPI to completely parallelize on both shared- and distributed-memory systems.  To enable OpenMP or MPI when compiling, just do one of the following:</p>
 
 <p><code>make openmp</code></p>
+
+<p><code>make mpi</code></p>
+
+<p>Note that compiling with MPI requires several external libraries and header files (metis.h/metis.a, mpi.h), the location of which must be specified in the makefile.</p>
 
 <h2>
 <a id="test-cases" class="anchor" href="#test-cases" aria-hidden="true"><span class="octicon octicon-link"></span></a>Test Cases</h2>
@@ -68,17 +72,17 @@ The code also (optionally) utilizes OpenMP to take advantage of easy paralleliza
 <p>Several basic test cases have been created to verify the functionality of the code.  The first test case is for the advection equation (in 'tests/advection'), and is simply the advection of a Gaussian bump in a periodic domain.
 The other two test cases are for the inviscid Navier-Stokes (Euler) equations.<br>
 One is for supersonic flow over a wedge, and the other is for subsonic flow over a circular cylinder.<br>
-Note that Flurry does not currently have any shock-capturing methods implemented, so although this test case works, general transonic and supersonic cases should be approached with caution.
-The cylinder test case uses a very coarse mesh, and is intended purely for the purpose of testing the functionality of the code on arbitrary unstructured quad meshes from Gmsh, and demonstrating the method for applying boundary conditions to Gmsh meshes.</p>
+Note that the shock capturing capability is still under development, so transonic/supersonic flows should be approached with caution.
+The cylinder test case uses a very coarse mesh, and is intended purely for the purpose of testing the functionality of the code on arbitrary unstructured quad/tri meshes from <a href="geuz.org/gmsh/">Gmsh</a>, and demonstrating the method for applying boundary conditions to Gmsh meshes.</p>
 
 <h2>
 <a id="post-processing" class="anchor" href="#post-processing" aria-hidden="true"><span class="octicon octicon-link"></span></a>Post-Processing</h2>
 
-<p>Flurry currently has two options for viewing simulation data: ParaView .vtu files, and a super-simple .csv file.  In both cases, the output values are the primitive variables, not the conservative variables.  </p>
+<p>Flurry currently has two options for viewing simulation data: ParaView .vtu files, and a super-simple .csv file.  In both cases, the output values are the primitive variables, not the conservative variables.  The ParaView files may also be used as 'checkpoints' for restarting a simulation.</p>
 
 <p>ParaView is a free, cross-platform visualization tool that works quite well for visualizing CFD data; you can get it from <a href="http://www.paraview.org/">http://www.paraview.org/</a>.</p>
 
-<p>The CSV output method, on the other hand, simply outputs the x,y,z coordinates of the solution points in each element, along with the solution vector at each point. This can either be plotted using the provided Matlab script.
+<p>The CSV output method, on the other hand, simply outputs the x,y,z coordinates of the solution points in each element, along with the solution vector at each point. This can be plotted using the provided Matlab script.
 If you write any similar scripts for plotting in other languages (e.g. Python or Julia), please let me know so I can add them here!</p>
 
 <h1>
@@ -145,47 +149,17 @@ If you write any similar scripts for plotting in other languages (e.g. Python or
 <li>Face
 
 <ul>
-<li>Each face stores the ID of the L/R cells &amp; local face ID of each</li>
+<li>Either an internal face, boundary face, or MPI face</li>
+<li>Each face stores the ID of the L/R cells (or the boundary condition) &amp; local face ID of each</li>
 <li>Calculates interface flux or boundary flux</li>
 <li>Passes the interface flux difference (common minus discontinuous) back to the L/R elements</li>
-</ul>
-</li>
-<li>Bound
-
-<ul>
-<li>Each 'bound' is just like a face, except that the 'right' element is replaced by a 'ghost' right state from boundary conditions</li>
-<li>The boundary conditions are applied to the right state in such a way that a central flux between the left and right states produces the necessary common flux</li>
+<li>Boundary conditions are applied weakly; the right state of boundary faces is such that a central flux between the left and right states produces the correct common flux</li>
 </ul>
 </li>
 <li>Solver
 
 <ul>
 <li>Applies the various FR operations to a solution (set of eles, faces, operators, and geometry)</li>
-</ul>
-</li>
-</ul>
-
-<h2>
-<a id="potential-classes-food-for-thought" class="anchor" href="#potential-classes-food-for-thought" aria-hidden="true"><span class="octicon octicon-link"></span></a>Potential Classes (Food for thought)</h2>
-
-<ul>
-<li>Solution
-
-<ul>
-<li>Wrapper for all data needed for a solution; for h-multigrid or overset, can have several, with methods to transfer data between the two?</li>
-<li>Alternatively - have a "solution" class/struct which just holds the global solution, flux, common flux vectors, and then have the eles (and inters?) classes link to this global array somehow (hopefully, something a little more clean/elegant that HiFiLES's "inters" class; sure, pointers work, but having to dereference a pointer on every single variable gets annoying)</li>
-</ul>
-</li>
-</ul>
-
-<h2>
-<a id="future-classes-" class="anchor" href="#future-classes-" aria-hidden="true"><span class="octicon octicon-link"></span></a>Future Classes (?)</h2>
-
-<ul>
-<li>Overset
-
-<ul>
-<li>given 2 grids, find the overlapping region and handle data transfer between the two solutions</li>
 </ul>
 </li>
 </ul>
