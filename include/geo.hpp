@@ -68,8 +68,6 @@ public:
   int nEles, nVerts, nEdges, nFaces, nBndFaces, nMpiFaces;
   int nBounds;  //! Number of boundaries
 
-private:
-
   input *params;
 
   // Basic [essential] Connectivity Data
@@ -102,6 +100,9 @@ private:
   vector<int> nBndPts_g; //! Global number of points on each boundary
   map<int,int> bcIdMap;  //! Map from Gmsh boundary ID to Flurry BC ID
   int nEles_g, nVerts_g;
+
+
+private:
 
   //! Match up pairs of periodic boundary faces
   void processPeriodicBoundaries(void);

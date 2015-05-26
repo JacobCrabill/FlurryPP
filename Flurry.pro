@@ -21,7 +21,8 @@ SOURCES += src/global.cpp \
     include/geo.inl \
     src/intFace.cpp \
     src/boundFace.cpp \
-    src/mpiFace.cpp
+    src/mpiFace.cpp \
+    src/multigrid.cpp
 		   
 HEADERS += include/global.hpp \
     include/matrix.hpp \
@@ -38,7 +39,8 @@ HEADERS += include/global.hpp \
     include/error.hpp \
     include/intFace.hpp \
     include/boundFace.hpp \
-    include/mpiFace.hpp
+    include/mpiFace.hpp \
+    include/multigrid.hpp
 
 DISTFILES += \
     README.md \
