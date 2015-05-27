@@ -14,6 +14,7 @@
  */
 #pragma once
 
+#include <memory>
 #include <map>
 #include <set>
 #include <vector>
@@ -47,10 +48,10 @@ public:
   vector<ele> eles;
 
   //! Vector of all non-MPI faces handled by this solver
-  vector<face*> faces;
+  vector<shared_ptr<face>> faces;
 
   //! Vector of all MPI faces handled by this solver
-  vector<mpiFace*> mpiFaces;
+  vector<shared_ptr<mpiFace>> mpiFaces;
 
   /* === Setup Functions === */
   solver();

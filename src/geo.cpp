@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <map>
+#include <memory>
 #include <set>
 #include <sstream>
 #include <unordered_set>
@@ -301,7 +302,7 @@ void geo::processConnectivity()
   }
 }
 
-void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace*> &mpiFacesVec)
+void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec)
 {
   if (nEles<=0) FatalError("Cannot setup elements array - nEles = 0");
 
@@ -345,8 +346,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace
 
   // Internal Faces
   for (int i=0; i<nFaces; i++) {
-    intFace *F = new intFace();
-    faces[i] = F;
+    faces[i] = make_shared<intFace>();
     // Find global face ID of current interior face
     int ie = intEdges[i];
     ic = e2c(ie,0);
@@ -359,7 +359,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace
       ic = e2c(ie,1);
       tmpEdges.assign(c2e[ic], c2e[ic]+c2ne[ic]);  // List of cell's faces
       int fid2 = findFirst(tmpEdges,ie);           // Which one is this face
-      F->initialize(&eles[e2c(ie,0)],&eles[e2c(ie,1)],fid1,fid2,ie,params);
+      faces[i]->initialize(&eles[e2c(ie,0)],&eles[e2c(ie,1)],fid1,fid2,ie,params);
     }
   }
 
@@ -367,8 +367,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace
 
   // Boundary Faces
   for (int i=0; i<nBndFaces; i++) {
-    boundFace *B = new boundFace();
-    faces[nFaces+i] = B;
+    faces[nFaces+i] = make_shared<boundFace>();
     // Find global face ID of current boundary face
     int ie = bndEdges[i];
     ic = e2c(ie,0);
@@ -378,7 +377,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace
     if (e2c(ie,1) != -1) {
       FatalError("Boundary face has a right element assigned.");
     }else{
-      B->initialize(&eles[e2c(ie,0)],NULL,fid1,bcType[i],ie,params);
+      faces[nFaces+i]->initialize(&eles[e2c(ie,0)],NULL,fid1,bcType[i],ie,params);
     }
   }
 
@@ -389,8 +388,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace
     if (params->rank==0) cout << "Geo: Setting up MPI faces" << endl;
 
     for (int i=0; i<nMpiFaces; i++) {
-      mpiFace *F = new mpiFace();
-      mpiFacesVec[i] = F;
+      //mpiFace *F = new mpiFace();
+      mpiFacesVec[i] = make_shared<mpiFace>();
       // Find global face ID of current boundary face
       int ie = mpiEdges[i];
       ic = e2c(ie,0);
@@ -400,9 +399,9 @@ void geo::setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace
       if (e2c(ie,1) != -1) {
         FatalError("MPI face has a right element assigned.");
       }else{
-        F->procL = params->rank;
-        F->procR = procR[i];
-        F->initialize(&eles[e2c(ie,0)],NULL,fid1,locF_R[i],i,params);
+        mpiFacesVec[i]->procL = params->rank;
+        mpiFacesVec[i]->procR = procR[i];
+        mpiFacesVec[i]->initialize(&eles[e2c(ie,0)],NULL,fid1,locF_R[i],i,params);
       }
     }
   }
