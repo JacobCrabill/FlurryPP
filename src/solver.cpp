@@ -532,18 +532,6 @@ void solver::initializeSolution()
   if (params->motion != 0 && params->dtType == 1) calcDt();
 }
 
-solver::~solver()
-{
-  // Clean up memory allocated with 'new'
-  for (uint i=0; i<faces.size(); i++) {
-    faces[i]->~face();
-  }
-
-  for (uint i=0; i<mpiFaces.size(); i++) {
-    mpiFaces[i]->~face();
-  }
-}
-
 // Method for shock capturing
 void solver::shockCapture(void)
 {

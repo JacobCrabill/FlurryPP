@@ -17,7 +17,7 @@
 
 #include "../include/polynomials.hpp"
 
-// Defining a binary helper operation
+//! Binary helper operation [for use with STL algorithms]
 static bool abs_compare(int a, int b)
 {
     return (std::abs(a) < std::abs(b));
@@ -51,11 +51,13 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
   setupCorrection(loc_spts,loc_fpts);
 
   // Operators needed for Shock capturing
-  setupVandermonde(loc_spts);
+  if (params->scFlag) {
+    setupVandermonde(loc_spts);
 
-  setupSensingMatrix();
+    setupSensingMatrix();
 
-  setupFilterMatrix();
+    setupFilterMatrix();
+  }
 }
 
 void oper::setupExtrapolateSptsFpts(vector<point> &loc_fpts)
@@ -232,132 +234,104 @@ void oper::setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
 // Setup Vandermonde Matrices
 void oper::setupVandermonde(vector<point> &loc_spts)
 {
-    if (eType == TRI) {
-      // Not yet implemented
+  if (eType == TRI) {
+    // Not yet implemented
+  }
+  else if (eType == QUAD) {
+    vandermonde1D.setup(order+1,order+1);
+    vandermonde2D.setup(nSpts,nSpts);
+    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    vector<double> loc(nDims);
+
+    // Create 1D Vandermonde matrix
+    for (uint i=0;i<order+1;i++)
+      for (uint j=0;j<order+1;j++)
+        vandermonde1D(i,j) = Legendre(loc_spts_1D[i],j);
+
+    // Store its inverse
+    inv_vandermonde1D = vandermonde1D.invertMatrix();
+
+    // Create 2D Vandermonde matrix
+    for (uint i=0;i<nSpts;i++){
+      loc[0] = loc_spts[i].x;
+      loc[1] = loc_spts[i].y;
+
+      for (uint j=0;j<nSpts;j++)
+        vandermonde2D(i,j) = Legendre2D_hierarchical(j,loc,order);
     }
-    else if (eType == QUAD) {
-        vandermonde1D.setup(order+1,order+1);
-        vandermonde2D.setup(nSpts,nSpts);
-        vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
-        vector<double> loc(nDims);
 
-        // Create 1D Vandermonde matrix
-        for (uint i=0;i<order+1;i++)
-            for (uint j=0;j<order+1;j++)
-                vandermonde1D(i,j) = Legendre(loc_spts_1D[i],j);
-
-        // Store its inverse
-        inv_vandermonde1D = vandermonde1D.invertMatrix();
-
-        // Create 2D Vandermonde matrix
-        for (uint i=0;i<nSpts;i++){
-            loc[0] = loc_spts[i].x;
-            loc[1] = loc_spts[i].y;
-
-            for (uint j=0;j<nSpts;j++)
-                vandermonde2D(i,j) = Legendre2D_hierarchical(j,loc,order);
-        }
-
-        // Store its inverse
-        inv_vandermonde2D = vandermonde2D.invertMatrix();
-    }
+    // Store its inverse
+    inv_vandermonde2D = vandermonde2D.invertMatrix();
+  }
 }
 
 // Set the 1D concentration matrix based on 1D-loc_spts
 void oper::setupSensingMatrix(void)
 {
-    if (eType == TRI) {
-      // Not yet implemented
+  if (eType == TRI) {
+    // Not yet implemented
+  }
+  else if (eType == QUAD) {
+    int concen_type = 1;    //Considering getting this from input file
+    matrix<double> concentration_factor(order+1,1);
+    matrix<double> grad_vandermonde;
+    grad_vandermonde.setup(order+1,order+1);
+    matrix<double> concentrationMatrix(order+1,order+1);
+
+    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+
+    // create the vandermonde matrix
+    for(uint i=0;i<order+1;i++)
+      for (uint j=0;j<order+1;j++)
+        grad_vandermonde(i,j) = dLegendre(loc_spts_1D[i],j);
+
+    // create concentration factor array
+    for(uint j=0; j <order+1; j++){
+      if(concen_type == 0){ // exponential
+        if(j==0)
+          concentration_factor(j) = 0;
+        else
+          concentration_factor(j) = exp(1/(6*j*(j+1)));
+      }
+      else if(concen_type == 1) // linear
+        concentration_factor(j) = 1;
+
+      else
+        cout<<"Concentration factor not setup"<<endl;
     }
-    else if (eType == QUAD) {
-        int concen_type = 1;    //Considering getting this from input file
-        matrix<double> concentration_factor(order+1,1);
-        matrix<double> grad_vandermonde;
-        grad_vandermonde.setup(order+1,order+1);
-        matrix<double> concentrationMatrix(order+1,order+1);
 
-        vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    // Prepare concentration matrix as in paper
+    for(uint i=0;i<order+1;i++)
+      for(uint j=0;j<order+1;j++)
+        concentrationMatrix(i,j) = (3.1415/(order+1))*concentration_factor(j)*sqrt(1 - loc_spts_1D[i]*loc_spts_1D[i])*grad_vandermonde(i,j);
 
-          // create the vandermonde matrix
-          for(uint i=0;i<order+1;i++)
-              for (uint j=0;j<order+1;j++)
-                  grad_vandermonde(i,j) = dLegendre(loc_spts_1D[i],j);
-
-          // create concentration factor array
-          for(uint j=0; j <order+1; j++){
-              if(concen_type == 0){ // exponential
-                  if(j==0)
-                      concentration_factor(j) = 0;
-                  else
-                      concentration_factor(j) = exp(1/(6*j*(j+1)));
-              }
-              else if(concen_type == 1) // linear
-                  concentration_factor(j) = 1;
-
-              else
-                  cout<<"Concentration factor not setup"<<endl;
-           }
-
-          // Prepare concentration matrix as in paper
-          for(uint i=0;i<order+1;i++)
-            for(uint j=0;j<order+1;j++)
-                concentrationMatrix(i,j) = (3.1415/(order+1))*concentration_factor(j)*sqrt(1 - loc_spts_1D[i]*loc_spts_1D[i])*grad_vandermonde(i,j);
-
-          concentrationMatrix.timesMatrix(inv_vandermonde1D,sensingMatrix);
-    }
+    concentrationMatrix.timesMatrix(inv_vandermonde1D,sensingMatrix);
+  }
 }
 
 void oper::setupFilterMatrix(void)
 {
-    if (eType == TRI) {
-      // Not yet implemented
-    }
-    else if (eType == QUAD) {
-        matrix<double> filterWeights(nSpts,nSpts);
-        matrix<double> tempMatrix(nSpts,nSpts);
-        filterMatrix.setup(nSpts,nSpts);
-        double exponent = 1;     // Governs filter strength - Take as input?
+  if (eType == TRI) {
+    // Not yet implemented
+  }
+  else if (eType == QUAD) {
+    matrix<double> filterWeights(nSpts,nSpts);
+    matrix<double> tempMatrix(nSpts,nSpts);
+    filterMatrix.setup(nSpts,nSpts);
+    double exponent = 1;     // Governs filter strength - Take as input?
 
-        // create the filter weights matrix as a diagonal matrix
-        for (uint i=0;i<nSpts;i++)
-           filterWeights(i,i) = exponential_filter(i,order,exponent);
+    // create the filter weights matrix as a diagonal matrix
+    for (uint i=0;i<nSpts;i++)
+      filterWeights(i,i) = exponential_filter(i,order,exponent);
 
-        filterWeights.print();
+    filterWeights.print();
 
-        // Filter matrix is SigmaMatrix*V_inverse (so it can directly
-        // operate on nodal solution)
-        filterWeights.timesMatrix(inv_vandermonde2D,tempMatrix);
-        vandermonde2D.timesMatrix(tempMatrix,filterMatrix);
-    }
+    // Filter matrix is SigmaMatrix*V_inverse (so it can directly
+    // operate on nodal solution)
+    filterWeights.timesMatrix(inv_vandermonde2D,tempMatrix);
+    vandermonde2D.timesMatrix(tempMatrix,filterMatrix);
+  }
 }
-
-//void oper::setupGradCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
-//{
-//  uint nSpts, nFpts, spt, fpt, dim;
-//  vector<double> loc(nDims);
-//  nSpts = loc_spts.size();
-//  nFpts = loc_fpts.size();
-
-//  opp_grad_correction.setup(nSpts,nFpts);
-//  opp_grad_correction.initializeToZero();
-
-//  if (eType == TRI) {
-//    // Not yet implemented
-//  }
-//  else if (eType == QUAD) {
-//    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
-//    for(spt=0; spt<nSpts; spt++) {
-//      for(dim=0; dim<nDims; dim++){
-//        loc[dim] = loc_spts[spt][dim];
-//      }
-
-//      for(fpt=0; fpt<nFpts; fpt++) {
-//        opp_grad_correction[dim][spt][fpt] = divVCJH_quad(fpt,loc,loc_spts_1D,params->vcjhSchemeQuad,order);
-//      }
-//    }
-//  }
-//}
-
 
 void oper::applyGradSpts(matrix<double> &U_spts, vector<matrix<double> > &dU_spts)
 {
@@ -464,70 +438,43 @@ double oper::divVCJH_quad(int in_fpt, vector<double>& loc, vector<double>& loc_1
 // Method to capture shock in the element
 double oper::shockCaptureInEle(matrix<double> &U_spts, double threshold)
 {
-    double sensor = 0;
-    if(eType == TRI)
-        cout<<"Shock capturing not implemented yet"<<endl;
-    else if (eType == QUAD) {
+  double sensor = 0;
+  if(eType == TRI)
+    cout << "Shock capturing not implemented yet for Dubiner-basis triangles" << endl;
+  else if (eType == QUAD) {
 
-        // Sensing Part
-        int p = 3;  // Exponent of concentration method
-        matrix<double> Rho(order+1,order+1);
-        vector<double> rho = U_spts.getCol(0);
-        vector<double> rho_x, rho_y, uEx, uEy;
-        std::vector<double>::iterator maxuEx, maxuEy;
-        double newmax, currmax = 0;
+    // Sensing Part
+    int p = 3;  // Exponent of concentration method
+    matrix<double> Rho(order+1,order+1);
+    vector<double> rho = U_spts.getCol(0);
+    vector<double> rho_x, rho_y, uEx, uEy;
+    std::vector<double>::iterator maxuEx, maxuEy;
+    double newmax, currmax = 0;
 
-        // Put the density into a 2D matrix- to access as row,col
-        Rho.vecToMatrixResize(rho);
+    // Put the density into a 2D matrix- to access as row,col
+    Rho.vecToMatrixResize(rho);
 
-        // Sense along the X and Y-slices
-        for(uint i=0; i<order+1; i++){
-            rho_x = Rho.getRow(i);
-            rho_y = Rho.getCol(i);
-            sensingMatrix.timesVector(rho_x,uEx);
-            sensingMatrix.timesVector(rho_x,uEy);
-            maxuEx = max_element(uEx.begin(), uEx.end(),abs_compare);
-            maxuEy = max_element(uEx.begin(), uEx.end(),abs_compare);
-            newmax = max(abs(*maxuEx),abs(*maxuEy));
-            currmax = max(currmax,newmax);
-        }
-
-        sensor = pow(currmax,p)*pow(order+1,p/2);
-
-        //Filtering Part
-        if(sensor >= threshold){
-            //cout<<"It is filtering!"<<endl;
-            matrix<double> tempMatrix(U_spts.getDim0(),U_spts.getDim1());
-            filterMatrix.timesMatrix(U_spts,tempMatrix);
-            U_spts = tempMatrix;
-        }
+    // Sense along the X and Y-slices
+    for(uint i=0; i<order+1; i++) {
+      rho_x = Rho.getRow(i);
+      rho_y = Rho.getCol(i);
+      sensingMatrix.timesVector(rho_x,uEx);
+      sensingMatrix.timesVector(rho_x,uEy);
+      maxuEx = max_element(uEx.begin(), uEx.end(),abs_compare);
+      maxuEy = max_element(uEx.begin(), uEx.end(),abs_compare);
+      newmax = max(abs(*maxuEx),abs(*maxuEy));
+      currmax = max(currmax,newmax);
     }
-    return sensor;
+
+    sensor = pow(currmax,p)*pow(order+1,p/2);
+
+    //Filtering Part
+    if(sensor >= threshold) {
+      //cout<<"It is filtering!"<<endl;
+      matrix<double> tempMatrix(U_spts.getDim0(),U_spts.getDim1());
+      filterMatrix.timesMatrix(U_spts,tempMatrix);
+      U_spts = tempMatrix;
+    }
+  }
+  return sensor;
 }
-
-//double oper::dVCJH_quad(int fpt, int dim, vector<double>& loc, vector<double>& loc_1d_spts, uint vcjh, uint order)
-//{
-//  uint i,j;
-//  double eta;
-//  double div_vcjh_basis;
-
-//  if (vcjh == DG)
-//    eta = 0.; // HiFiLES: run_input.eta_quad;
-//  else
-//    eta = compute_eta(vcjh,order);
-
-//  i = fpt / (order+1);      // Face upon which the flux point lies [0,1,2, or 3]
-//  j = fpt - (order+1)*i;    // Face-local index of flux point [0 to n_fpts_per_face-1]
-
-//  if(i==0)
-//    div_vcjh_basis = -Lagrange(loc_1d_spts,loc[0],j) * dVCJH_1d(loc[1],0,order,eta); // was -'ve
-//  else if(i==1)
-//    div_vcjh_basis =  Lagrange(loc_1d_spts,loc[1],j) * dVCJH_1d(loc[0],1,order,eta);
-//  else if(i==2)
-//    div_vcjh_basis =  Lagrange(loc_1d_spts,loc[0],order-j) * dVCJH_1d(loc[1],1,order,eta);
-//  else if(i==3)
-//    div_vcjh_basis =-Lagrange(loc_1d_spts,loc[1],order-j) * dVCJH_1d(loc[0],0,order,eta); // was -'ve
-
-
-//  return div_vcjh_basis;
-//}

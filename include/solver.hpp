@@ -14,6 +14,7 @@
  */
 #pragma once
 
+#include <memory>
 #include <map>
 #include <set>
 #include <vector>
@@ -47,16 +48,16 @@ public:
   vector<ele> eles;
 
   //! Vector of all non-MPI faces handled by this solver
-  vector<face*> faces;
+  vector<shared_ptr<face>> faces;
 
   //! Vector of all MPI faces handled by this solver
-  vector<mpiFace*> mpiFaces;
+  vector<shared_ptr<mpiFace>> mpiFaces;
 
   /* === Setup Functions === */
+
   solver();
 
-  ~solver();
-
+  //! Setup the solver with the given simulation parameters & geometry
   void setup(input *params, geo *Geo);
 
   //! Setup the FR operators for all ele types and polynomial orders which will be used in computation
@@ -160,13 +161,19 @@ public:
   //! Apply mesh motion
   void moveMesh(int step);
 
-  // **All of the following functions are just food for thought at the moment**
 
   /* === Functions for Shock Capturing & Filtering=== */
-  //! Shock Capturing Wrapper
+
+  //! Use concentration sensor + exponential modal filter to capture discontinuities
   void shockCapture(void);
 
   /* === Functions Related to Adaptation === */
+
+  //! Calculate an entropy-adjoint-based error indicator
+  void calcEntropyErr_spts();
+
+  // **All of the following functions are just food for thought at the moment**
+
   void get_r_adapt_cells();
 
   void get_p_adapt_cells();
@@ -183,7 +190,7 @@ public:
 
   /* === Functions Related to Overset Grids === */
 
-  void calcEntropyErr_spts();
+
 private:
   //! Pointer to the parameters object for the current solution
   input *params;

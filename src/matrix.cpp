@@ -309,127 +309,122 @@ T *matrix<T>::getData(void)
 template<typename T>
 matrix<T> matrix<T>::invertMatrix(void)
 {
-    if(dim0==dim1)
-      {
-        // Gaussian elimination with full pivoting
-        // not to be used where speed is paramount
+  if (dim0 != dim1)
+    FatalError("Can only obtain inverse of a square matrix.");
 
-        int i,j,k;
-        int pivot_i, pivot_j;
-        int itemp_0;
-        double mag;
-        double max;
-        double dtemp_0;
-        double first;
-        matrix <T> atemp_0(dim0,1);
-        matrix <T> identity(dim0,dim0);
-        matrix <T> input(dim0,dim0);
-        matrix <T> inverse(dim0,dim0);
-        matrix <T> inverse_out(dim0,dim0);
-        matrix <int> swap_0(dim0,1);
-        matrix <int> swap_1(dim0,1);
+  // Gaussian elimination with full pivoting
+  // not to be used where speed is paramount
 
-        input = *this;
+  int i,j,k;
+  int pivot_i, pivot_j;
+  int itemp_0;
+  double mag;
+  double max;
+  double dtemp_0;
+  double first;
+  matrix <T> atemp_0(dim0,1);
+  matrix <T> identity(dim0,dim0);
+  matrix <T> input(dim0,dim0);
+  matrix <T> inverse(dim0,dim0);
+  matrix <T> inverse_out(dim0,dim0);
+  matrix <int> swap_0(dim0,1);
+  matrix <int> swap_1(dim0,1);
 
-        // setup swap arrays
-        for(i=0;i<dim0;i++) {
-            swap_0(i)=i;
-            swap_1(i)=i;
-          }
+  input = *this;
 
-        // setup identity array
-        for(i=0;i<dim0;i++) {
-            for(j=0;j<dim0;j++) {
-                identity(i,j)=0.0;
-              }
-            identity(i,i)=1.0;
-          }
+  // setup swap arrays
+  for(i=0;i<dim0;i++) {
+    swap_0(i)=i;
+    swap_1(i)=i;
+  }
 
-        // make triangular
-        for(k=0;k<dim0-1;k++) {
-            max=0;
+  // setup identity array
+  for(i=0;i<dim0;i++) {
+    for(j=0;j<dim0;j++) {
+      identity(i,j)=0.0;
+    }
+    identity(i,i)=1.0;
+  }
 
-            // find pivot
-            for(i=k;i<dim0;i++) {
-                for(j=k;j<dim0;j++) {
-                    mag=input(i,j)*input(i,j);
-                    if(mag>max) {
-                        pivot_i=i;
-                        pivot_j=j;
-                        max=mag;
-                      }
-                  }
-              }
+  // make triangular
+  for(k=0;k<dim0-1;k++) {
+    max=0;
 
-            // swap the swap arrays
-            itemp_0=swap_0(k);
-            swap_0(k)=swap_0(pivot_i);
-            swap_0(pivot_i)=itemp_0;
-            itemp_0=swap_1(k);
-            swap_1(k)=swap_1(pivot_j);
-            swap_1(pivot_j)=itemp_0;
-
-            // swap the columns
-            for(i=0;i<dim0;i++) {
-                atemp_0(i)=input(i,pivot_j);
-                input(i,pivot_j)=input(i,k);
-                input(i,k)=atemp_0(i);
-              }
-
-            // swap the rows
-            for(j=0;j<dim0;j++) {
-                atemp_0(j)=input(pivot_i,j);
-                input(pivot_i,j)=input(k,j);
-                input(k,j)=atemp_0(j);
-                atemp_0(j)=identity(pivot_i,j);
-                identity(pivot_i,j)=identity(k,j);
-                identity(k,j)=atemp_0(j);
-              }
-
-            // subtraction
-            for(i=k+1;i<dim0;i++) {
-                first=input(i,k);
-                for(j=0;j<dim0;j++) {
-                    if(j>=k) {
-                        input(i,j)=input(i,j)-((first/input(k,k))*input(k,j));
-                      }
-                    identity(i,j)=identity(i,j)-((first/input(k,k))*identity(k,j));
-                  }
-              }
-
-            //exact zero
-            for(j=0;j<k+1;j++) {
-                for(i=j+1;i<dim0;i++) {
-                    input(i,j)=0.0;
-                  }
-              }
-          }
-
-        // back substitute
-        for(i=dim0-1;i>=0;i=i-1) {
-            for(j=0;j<dim0;j++) {
-                dtemp_0=0.0;
-                for(k=i+1;k<dim0;k++) {
-                    dtemp_0=dtemp_0+(input(i,k)*inverse(k,j));
-                  }
-                inverse(i,j)=(identity(i,j)-dtemp_0)/input(i,i);
-              }
-          }
-
-        // swap solution rows
-        for(i=0;i<dim0;i++) {
-            for(j=0;j<dim0;j++) {
-                inverse_out(swap_1(i),j)=inverse(i,j);
-              }
-          }
-
-        return inverse_out;
+    // find pivot
+    for(i=k;i<dim0;i++) {
+      for(j=k;j<dim0;j++) {
+        mag=input(i,j)*input(i,j);
+        if(mag>max) {
+          pivot_i=i;
+          pivot_j=j;
+          max=mag;
+        }
       }
+    }
 
-      else {
-        cout << "ERROR: Can only obtain inverse of a square array" << endl;
-        exit(1);
+    // swap the swap arrays
+    itemp_0=swap_0(k);
+    swap_0(k)=swap_0(pivot_i);
+    swap_0(pivot_i)=itemp_0;
+    itemp_0=swap_1(k);
+    swap_1(k)=swap_1(pivot_j);
+    swap_1(pivot_j)=itemp_0;
+
+    // swap the columns
+    for(i=0;i<dim0;i++) {
+      atemp_0(i)=input(i,pivot_j);
+      input(i,pivot_j)=input(i,k);
+      input(i,k)=atemp_0(i);
+    }
+
+    // swap the rows
+    for(j=0;j<dim0;j++) {
+      atemp_0(j)=input(pivot_i,j);
+      input(pivot_i,j)=input(k,j);
+      input(k,j)=atemp_0(j);
+      atemp_0(j)=identity(pivot_i,j);
+      identity(pivot_i,j)=identity(k,j);
+      identity(k,j)=atemp_0(j);
+    }
+
+    // subtraction
+    for(i=k+1;i<dim0;i++) {
+      first=input(i,k);
+      for(j=0;j<dim0;j++) {
+        if(j>=k) {
+          input(i,j)=input(i,j)-((first/input(k,k))*input(k,j));
+        }
+        identity(i,j)=identity(i,j)-((first/input(k,k))*identity(k,j));
       }
+    }
+
+    //exact zero
+    for(j=0;j<k+1;j++) {
+      for(i=j+1;i<dim0;i++) {
+        input(i,j)=0.0;
+      }
+    }
+  }
+
+  // back substitute
+  for(i=dim0-1;i>=0;i=i-1) {
+    for(j=0;j<dim0;j++) {
+      dtemp_0=0.0;
+      for(k=i+1;k<dim0;k++) {
+        dtemp_0=dtemp_0+(input(i,k)*inverse(k,j));
+      }
+      inverse(i,j)=(identity(i,j)-dtemp_0)/input(i,i);
+    }
+  }
+
+  // swap solution rows
+  for(i=0;i<dim0;i++) {
+    for(j=0;j<dim0;j++) {
+      inverse_out(swap_1(i),j)=inverse(i,j);
+    }
+  }
+
+  return inverse_out;
  }
 
 // Method to resize a std Vector to a matrix

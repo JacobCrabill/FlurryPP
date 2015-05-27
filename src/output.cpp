@@ -119,7 +119,9 @@ void writeParaview(solver *Solver, input *params)
     if (params->equation == NAVIER_STOKES) {
       pVTU << "      <PDataArray type=\"Float32\" Name=\"Velocity\" NumberOfComponents=\"3\" />" << endl;
       pVTU << "      <PDataArray type=\"Float32\" Name=\"Pressure\" />" << endl;
-      pVTU << "      <PDataArray type=\"Float32\" Name=\"EntropyErr\" />" << endl;      
+      if (params->calcEntropySensor) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"EntropyErr\" />" << endl;
+      }
       if (params->motion) {
         pVTU << "      <PDataArray type=\"Float32\" Name=\"GridVelocity\" NumberOfComponents=\"3\" />" << endl;
       }
@@ -198,11 +200,11 @@ void writeParaview(solver *Solver, input *params)
 
     // Shock Capturing stuff
     double sensor;
-    if(params->scFlag == 1){
+    if(params->scFlag == 1) {
         sensor = e.getSensor();
     }
 
-    if (params->equation == NAVIER_STOKES)
+    if (params->equation == NAVIER_STOKES && params->calcEntropySensor)
       e.getEntropyErrPlot(errPpts);
 
     int nSubCells = (e.order+2)*(e.order+2);
@@ -225,13 +227,13 @@ void writeParaview(solver *Solver, input *params)
     dataFile << "				</DataArray>" << endl;
 
     if(params->scFlag == 1){
-        /* --- Shock Sensor --- */
-        dataFile << "				<DataArray type=\"Float32\" Name=\"Sensor\" format=\"ascii\">" << endl;
-        for(int k=0; k<nPpts; k++) {
-          dataFile << sensor << " ";
-        }
-        dataFile << endl;
-        dataFile << "				</DataArray>" << endl;
+      /* --- Shock Sensor --- */
+      dataFile << "				<DataArray type=\"Float32\" Name=\"Sensor\" format=\"ascii\">" << endl;
+      for(int k=0; k<nPpts; k++) {
+        dataFile << sensor << " ";
+      }
+      dataFile << endl;
+      dataFile << "				</DataArray>" << endl;
     }
 
 
@@ -280,7 +282,7 @@ void writeParaview(solver *Solver, input *params)
       }
     }
 
-    if (params->equation == NAVIER_STOKES) {
+    if (params->equation == NAVIER_STOKES && params->calcEntropySensor) {
       /* --- Entropy Error Estimate --- */
       dataFile << "				<DataArray type=\"Float32\" Name=\"EntropyErr\" format=\"ascii\">" << endl;
       for(int k=0; k<nPpts; k++) {

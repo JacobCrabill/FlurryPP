@@ -64,6 +64,7 @@ public:
   uint getSize(void) {return data.size();}
 
   /* --- Member Functions --- */
+
   void setup(uint inDim0, uint inDim1);
 
   //! Adds the matrix a*A to current matrix (M += a*A)
@@ -91,20 +92,24 @@ public:
 
   vector<T> getCol(int col);
 
+  /*! Prints the contents of the matrix to the console */
   void print(void);
 
-  /*! Invert the current matrix */
+  /*! Invert the current matrix using Gauss elimination with pivots */
   matrix<T> invertMatrix(void);
 
-  /*! Fill a vector into a matrix by resizing */
+  /*! Reshape a 1D vector into a 2D matrix */
   void vecToMatrixResize(vector<T> &A);
 
   /* --- Data-Access Operators --- */
 
+  /*! Returns a pointer to the first element of row inDim0 */
   T* operator[](int inDim0);
 
+  /*! Standard (i,j) access operator */
   T &operator()(int i, int j=0);
 
+  /*! Returns the .data() pointer of the underlying vector<T> data */
   T* getData();
 
   /* --- Search Operations --- */

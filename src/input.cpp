@@ -258,8 +258,13 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("pBound",pBound,.7142857143);
     opts.getScalarValue("TBound",TBound,300.);
     opts.getScalarValue("TWall",TWall,300.);
-    opts.getScalarValue("beta",beta,2.);
+    opts.getScalarValue("entropySensor",calcEntropySensor,false);
     opts.getScalarValue("slipPenalty",slipPenalty,false);
+    if (slipPenalty) {
+     opts.getScalarValue("Kp",Kp);
+     opts.getScalarValue("Kd",Kd);
+     opts.getScalarValue("Ki",Ki);
+    }
     if (ic_type == 0) {
       opts.getScalarValue("rhoIC",rhoIC,rhoBound);
       opts.getScalarValue("vxIC",vxIC,uBound);
@@ -304,6 +309,7 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("create_bcRight",create_bcRight,string("periodic"));
   }else if (mesh_type == READ_MESH) {
     opts.getScalarValue("mesh_file_name",meshFileName);
+    // Get mesh boundaries, boundary conditions & convert to lowercase
     map<string,string> meshBndTmp;
     opts.getMap("mesh_bound",meshBndTmp);
     for (auto& B:meshBndTmp) {

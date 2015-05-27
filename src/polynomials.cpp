@@ -140,74 +140,57 @@ double dLegendre(double in_r, int in_mode)
 
 double Legendre2D_hierarchical(int in_mode, vector<double> in_loc, int in_basis_order)
 {
-    double leg_basis;
-    int n_dof=(in_basis_order+1)*(in_basis_order+1);
+  double leg_basis = 0;
+  int n_dof = (in_basis_order+1)*(in_basis_order+1);
 
-    if(in_mode<n_dof)
-      {
-        int i,j,k;
-        int mode;
+  if ( !(in_mode<n_dof) )
+    FatalError("Invalid mode when evaluating Legendre basis.");
 
-        mode = 0;
-        for (k=0;k<in_basis_order*in_basis_order+1;k++)
-          {
-            for (j=0;j<k+1;j++)
-              {
-                i = k-j;
-                if(i<=in_basis_order && j<=in_basis_order){
+  int mode = 0;
+  for (int k=0; k<in_basis_order*in_basis_order+1; k++) {
+    for (int j=0; j<k+1; j++) {
+      int i = k-j;
+      if(i<=in_basis_order && j<=in_basis_order){
 
-                    if(mode==in_mode) // found the correct mode
-                        leg_basis=Legendre(in_loc[0],i)*Legendre(in_loc[1],j);
+        if(mode == in_mode) // found the correct mode
+          leg_basis = Legendre(in_loc[0],i)*Legendre(in_loc[1],j);
 
-                    mode++;
-                }
-              }
-          }
+        mode++;
       }
-    else
-      {
-        cout << "ERROR: Invalid mode when evaluating Legendre basis ...." << endl;
-      }
+    }
+  }
 
-    return leg_basis;
+  return leg_basis;
 }
 
-double exponential_filter(int in_mode, int in_basis_order, double exponent)
+double exponential_filter(int in_mode, int inBasisOrder, double exponent)
 {
-    double sigma, eta;
+  double sigma = 0;
+  double eta;
 
-    int n_dof=(in_basis_order+1)*(in_basis_order+1);
+  int n_dof=(inBasisOrder+1)*(inBasisOrder+1);
 
-    if(in_mode<n_dof)
-    {
-        int i,j,k;
-        int mode;
+  if( !(in_mode<n_dof) )
+    FatalError("Invalid mode when evaluating exponential filter.");
 
-        mode = 0;
-        for (k=0;k<in_basis_order*in_basis_order+1;k++)
-        {
-            for (j=0;j<k+1;j++)
-            {
-                i = k-j;
-                if(i<=in_basis_order && j<=in_basis_order){
+  int mode = 0;
+  for (int k=0; k<inBasisOrder*inBasisOrder+1; k++) {
+    for (int j=0; j<k+1; j++) {
+      int i = k-j;
+      if(i<=inBasisOrder && j<=inBasisOrder) {
 
-                    if(mode==in_mode) // found the correct mode
-                    {
-                        eta = (double)(i+j)/n_dof;
-                        sigma = exp(-1*pow(eta,exponent));
-                        //cout<<"sigma values are "<<sigma<<endl;
-                    }
-                    mode++;
-                }
-            }
+        if (mode == in_mode) {
+          // found the correct mode
+          eta = (double)(i+j)/n_dof;
+          sigma = exp(-1*pow(eta,exponent));
+          //cout<<"sigma values are "<<sigma<<endl;
         }
+        mode++;
+      }
     }
-    else
-    {
-        cout << "ERROR: Invalid mode when evaluating exponential filter ...." << endl;
-    }
+  }
 
-    return sigma;
+  return sigma;
 }
 
 void shape_quad(point &in_rs, vector<double> &out_shape, int nNodes)
@@ -240,7 +223,6 @@ void shape_quad(point &in_rs, double* out_shape, int nNodes)
 {
   double xi  = in_rs.x;
   double eta = in_rs.y;
-
   switch(nNodes) {
   case 4:
     out_shape[0] = 0.25*(1-xi)*(1-eta);

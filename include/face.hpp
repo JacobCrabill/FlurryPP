@@ -1,8 +1,8 @@
 /*!
  * \file face.hpp
- * \brief Header file for the face class
+ * \brief Header file for the abstract face parent class
  *
- * Class to handle calculation of interfce fluxes between elements
+ * Abstract parent class to handle calculation of interfce fluxes at all faces
  *
  * \author - Jacob Crabill
  *           Aerospace Computing Laboratory (ACL)
@@ -53,6 +53,15 @@ public:
 
   /*! Calculate the common viscous flux on the face */
   void calcViscousFlux(void);
+
+  /*! Calculate the common flux using the Rusanov method */
+  void rusanovFlux(void);
+
+  /*! Calculate the common flux using the Roe method */
+  void roeFlux(void);
+
+  /*! Calculate the common flux using the Lax-Friedrichs method [scalar advection] */
+  void laxFriedrichsFlux(void);
 
   int ID; //! Global ID of face
 

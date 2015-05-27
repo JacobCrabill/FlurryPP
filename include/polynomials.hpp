@@ -34,7 +34,7 @@ double dLegendre(double in_r, int in_mode);
 double Legendre2D_hierarchical(int in_mode, vector<double> in_loc, int in_basis_order);
 
 /*! Method to calculate co-efficients of the exponential filter */
-double exponential_filter(int in_mode, int in_basis_order, double exponent);
+double exponential_filter(int in_mode, int inBasisOrder, double exponent);
 
 double compute_eta(int vcjh_scheme, int order);
 
