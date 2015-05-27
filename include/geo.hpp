@@ -39,7 +39,7 @@ public:
   void processConnectivity();
 
   //! Create the elements and faces needed for the simulation
-  void setupElesFaces(vector<ele> &eles, vector<face*> &faces, vector<mpiFace*> &mpiFacesVec);
+  void setupElesFaces(vector<ele> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec);
 
   /* === Helper Routines === */
 

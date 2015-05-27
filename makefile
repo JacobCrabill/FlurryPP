@@ -8,15 +8,17 @@
 ####### Compiler, tools and options
 
 CXX           = g++
+LINK          = g++
 MPICXX        = mpicxx
 MPILD         = mpicxx
-INCPATH       = -I.
-LINK          = g++
 LIBS          = $(SUBLIBS)
+
+# Location of libmetis.a, metis.h
 METIS_LIB_DIR = /usr/lib/
 METIS_INC_DIR = /usr/include/
+
+# Location of mpi.h 
 MPI_INC_DIR   = /usr/lib/openmpi/include
-MPI_LIB_DIR   = /usr/lib/openmpi/lib
 
 CXX_BASE    = -pipe -Wall -W -std=c++11 $(DEFINES)
 CXX_STD     = -g -02
@@ -27,8 +29,8 @@ CXXFLAGS_RELEASE = $(CXX_BASE) $(CXX_RELEASE) -D_NO_MPI $(DEFINES)
 CXXFLAGS_DEBUG   = $(CXX_BASE) $(CXX_DEBUG) -D_NO_MPI $(DEFINES)
 CXXFLAGS_OPENMP  = $(CXX_BASE) $(CXX_RELEASE) -fopenmp -D_NO_MPI $(DEFINES)
 CXXFLAGS_MPI     = $(CXX_BASE) $(DEFINES)
-CXXFLAGS_MPI    += -I$(MPI_INC_DIR) -I$(METIS_INC_DIR) 
-CXXFLAGS_MPI    += -L$(MPI_LIB_DIR) -L$(METIS_LIB_DIR)
+CXXFLAGS_MPI    += -I$(METIS_INC_DIR) -I$(MPI_INC_DIR) 
+CXXFLAGS_MPI    += -L$(METIS_LIB_DIR)
 
 ####### Output directory - these do nothing currently
 
@@ -99,16 +101,16 @@ openmp: $(TARGET)
 
 .PHONY: mpi
 mpi: CXX=$(MPICXX)
-mpi: LD=$(MPILD)
+mpi: LINK=$(MPILD)
 mpi: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_RELEASE)
-mpi: LIBS+= -lmpi -lmpi_cxx -lmetis
+mpi: LIBS+= -lmetis
 mpi: $(TARGET)
 
 .PHONY: mpidebug
 mpidebug: CXX=$(MPICXX)
-mpidebug: LD=$(MPILD)
+mpidebug: LINK=$(MPILD)
 mpidebug: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_DEBUG)
-mpidebug: LIBS+= -lmpi -lmpi_cxx -lmetis
+mpidebug: LIBS+= -lmetis
 mpidebug: $(TARGET)
 
 ####### Compile

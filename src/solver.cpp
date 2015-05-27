@@ -530,12 +530,12 @@ void solver::initializeSolution()
 
 solver::~solver()
 {
-  // Clean up memory allocated with 'new'
-  for (uint i=0; i<faces.size(); i++) {
-    faces[i]->~face();
-  }
+//  // Clean up memory allocated with 'new'
+//  for (uint i=0; i<faces.size(); i++) {
+//    faces[i]->~face();
+//  }
 
-  for (uint i=0; i<mpiFaces.size(); i++) {
-    mpiFaces[i]->~face();
-  }
+//  for (uint i=0; i<mpiFaces.size(); i++) {
+//    mpiFaces[i]->~face();
+//  }
 }
