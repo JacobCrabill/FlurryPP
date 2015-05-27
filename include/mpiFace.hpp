@@ -1,8 +1,9 @@
 /*!
- * \file face.hpp
- * \brief Header file for the face class
+ * \file mpiFace.hpp
+ * \brief Header file for the mpiFace class
  *
- * Class to handle calculation of interfce fluxes between elements
+ * Class to handle calculation of interfce fluxes between elements across
+ * processor boundaries
  *
  * \author - Jacob Crabill
  *           Aerospace Computing Laboratory (ACL)
@@ -31,24 +32,27 @@ class mpiFace : public face
 {
 public:
 
+  //! Get/send information from/to the opposite processor
   void setupRightState(void);
 
-  /*! Wait to receive # of flux points from right side of proccessor */
+  //! Wait to receive # of flux points from opposite proccessor
   void finishRightSetup(void);
 
+  //! Receive the right-state data from the opposite processor
   void getRightState(void);
 
+  //! Do nothing [handled sparately via comminicate()]
   void setRightState(void);
 
-  /*! Perform the MPI communication across the processor boundary */
+  //! Send the right-state data across the processor boundary using MPI
   void communicate(void);
 
-  int procL;               //! Processor ID for left
-  int procR;               //! Processor ID for right
+  int procL;               //! Processor ID on left  [this face]
+  int procR;               //! Processor ID on right [opposite face]
   int IDR;                 //! Local face ID of face on right processor
 
 private:
-  int locF_R;              //! Right element's local face ID
+  int locF_R;              //! Right element's element-local face ID
   int fptStartR, fptEndR;
 
   /* --- Storage for all solution/geometry data at flux points [right state] --- */

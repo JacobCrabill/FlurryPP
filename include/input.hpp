@@ -98,16 +98,19 @@ public:
   int initIter;
   int restartIter;
   int restart;
-  int plot_freq;
-  int plot_type;
   int restart_freq;
-  int resType;
-  int monitor_res_freq;
+
   int iter;
-  double beta;
-  bool slipPenalty;  //! Use "penalty method" on slip-wall boundary
+
+  /* --- Output Parameters --- */
 
   string dataFileName;
+  int resType;
+  int monitor_res_freq;
+  int plot_freq;
+  int plot_type;
+
+  bool calcEntropySensor;
 
   /* --- Boundary & Initial Condition Parameters --- */
   double Uinf;
@@ -122,6 +125,8 @@ public:
 
   double rhoBound, uBound, vBound, wBound, pBound, TBound;
   double TWall;
+
+  bool slipPenalty;  //! Use "penalty method" on slip-wall boundary
 
   /* --- Misc. Physical/Equation Parameters --- */
   double gamma;
@@ -153,6 +158,11 @@ public:
   string sptsTypeQuad;
   int vcjhSchemeTri;
   int vcjhSchemeQuad;
+
+  /* --- PID Boundary Conditions --- */
+  double Kp;
+  double Kd;
+  double Ki;
 
   /* --- Other --- */
   int rank;

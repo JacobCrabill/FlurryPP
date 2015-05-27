@@ -1,8 +1,8 @@
 /*!
- * \file face.hpp
- * \brief Header file for the face class
+ * \file intFace.hpp
+ * \brief Header file for the intFace class
  *
- * Class to handle calculation of interfce fluxes between elements
+ * Class to handle calculation of interfce fluxes between all elements
  *
  * \author - Jacob Crabill
  *           Aerospace Computing Laboratory (ACL)
@@ -16,21 +16,20 @@
  */
 #pragma once
 
-#include <vector>
-
-#include "matrix.hpp"
-#include "face.hpp"
-
 class face;
+
+#include "face.hpp"
 
 class intFace : public face
 {
 public:
-
+  //! Setup arrays to handle getting/setting data at right element
   void setupRightState(void);
 
+  //! Get data from the right element
   void getRightState(void);
 
+  //! Put the calculated interface flux into the right element's memory
   void setRightState(void);
 
 private:
