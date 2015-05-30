@@ -1,5 +1,7 @@
 equation      1    # 0: Advection-Diffusion;  1: Euler/Navier-Stokes
 order         2    # Polynomial order to use
+dtType        0
+CFL           .5
 dt            .00001  # Time step size
 
 viscous       0
@@ -54,13 +56,13 @@ mesh_bound    fluid   fluid
 
 # Boundary & Initial Conditions
 rhoBound 1.168
-uBound   300.
+uBound   50.
 vBound   0.
 pBound   100000
 
 # Slip-Wall Boundary Condition Parameters
 # Trying out 'penalty' method to reduce initial 'shock'
-slipPenalty   1    # 0 (false-default)  or 1 (true)
+slipPenalty   0    # 0 (false-default)  or 1 (true)
 beta          50   # 'Penalty' factor
 
 # In order to set a = 1:
@@ -71,5 +73,5 @@ beta          50   # 'Penalty' factor
 spts_type_quad  Legendre
 
 # Shock Capturing Parameters
-shockCapture 1
-threshold 1
+shockCapture 0
+threshold .1

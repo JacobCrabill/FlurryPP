@@ -209,7 +209,7 @@ void matrix<T>::insertRow(vector<T> &vec, int rowNum)
 template<typename T>
 void matrix<T>::insertRow(T *vec, int rowNum, int length)
 {
-  if (dim1!=0 && length!=dim1) FatalError("Attempting to assign row of wrong size to matrix.");
+  if (dim1!=0 && length!=(int)dim1) FatalError("Attempting to assign row of wrong size to matrix.");
 
   if (rowNum==INSERT_AT_END || rowNum==(int)dim0) {
     // Default action - add to end
@@ -315,8 +315,8 @@ matrix<T> matrix<T>::invertMatrix(void)
   // Gaussian elimination with full pivoting
   // not to be used where speed is paramount
 
-  int i,j,k;
-  int pivot_i, pivot_j;
+  int pivot_i = 0;
+  int pivot_j = 0;
   int itemp_0;
   double mag;
   double max;
@@ -333,26 +333,26 @@ matrix<T> matrix<T>::invertMatrix(void)
   input = *this;
 
   // setup swap arrays
-  for(i=0;i<dim0;i++) {
+  for(uint i=0;i<dim0;i++) {
     swap_0(i)=i;
     swap_1(i)=i;
   }
 
   // setup identity array
-  for(i=0;i<dim0;i++) {
-    for(j=0;j<dim0;j++) {
+  for(uint i=0; i<dim0; i++) {
+    for(uint j=0; j<dim0; j++) {
       identity(i,j)=0.0;
     }
     identity(i,i)=1.0;
   }
 
   // make triangular
-  for(k=0;k<dim0-1;k++) {
+  for(uint k=0; k<dim0-1; k++) {
     max=0;
 
     // find pivot
-    for(i=k;i<dim0;i++) {
-      for(j=k;j<dim0;j++) {
+    for(uint i=k; i<dim0; i++) {
+      for(uint j=k; j<dim0; j++) {
         mag=input(i,j)*input(i,j);
         if(mag>max) {
           pivot_i=i;
@@ -371,14 +371,14 @@ matrix<T> matrix<T>::invertMatrix(void)
     swap_1(pivot_j)=itemp_0;
 
     // swap the columns
-    for(i=0;i<dim0;i++) {
+    for(uint i=0; i<dim0; i++) {
       atemp_0(i)=input(i,pivot_j);
       input(i,pivot_j)=input(i,k);
       input(i,k)=atemp_0(i);
     }
 
     // swap the rows
-    for(j=0;j<dim0;j++) {
+    for(uint j=0; j<dim0; j++) {
       atemp_0(j)=input(pivot_i,j);
       input(pivot_i,j)=input(k,j);
       input(k,j)=atemp_0(j);
@@ -388,9 +388,9 @@ matrix<T> matrix<T>::invertMatrix(void)
     }
 
     // subtraction
-    for(i=k+1;i<dim0;i++) {
+    for(uint i=k+1; i<dim0; i++) {
       first=input(i,k);
-      for(j=0;j<dim0;j++) {
+      for(uint j=0; j<dim0; j++) {
         if(j>=k) {
           input(i,j)=input(i,j)-((first/input(k,k))*input(k,j));
         }
@@ -399,18 +399,18 @@ matrix<T> matrix<T>::invertMatrix(void)
     }
 
     //exact zero
-    for(j=0;j<k+1;j++) {
-      for(i=j+1;i<dim0;i++) {
+    for(uint j=0; j<k+1; j++) {
+      for(uint i=j+1; i<dim0; i++) {
         input(i,j)=0.0;
       }
     }
   }
 
   // back substitute
-  for(i=dim0-1;i>=0;i=i-1) {
-    for(j=0;j<dim0;j++) {
+  for(uint i=dim0-1; i>=0; i=i-1) {
+    for(uint j=0; j<dim0; j++) {
       dtemp_0=0.0;
-      for(k=i+1;k<dim0;k++) {
+      for(uint k=i+1; k<dim0; k++) {
         dtemp_0=dtemp_0+(input(i,k)*inverse(k,j));
       }
       inverse(i,j)=(identity(i,j)-dtemp_0)/input(i,i);
@@ -418,8 +418,8 @@ matrix<T> matrix<T>::invertMatrix(void)
   }
 
   // swap solution rows
-  for(i=0;i<dim0;i++) {
-    for(j=0;j<dim0;j++) {
+  for(uint i=0; i<dim0; i++) {
+    for(uint j=0; j<dim0; j++) {
       inverse_out(swap_1(i),j)=inverse(i,j);
     }
   }

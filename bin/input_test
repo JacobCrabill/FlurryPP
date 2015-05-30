@@ -1,7 +1,7 @@
 equation      1    # 0: Advection-Diffusion;  1: Euler/Navier-Stokes
 order         3    # Polynomial order to use
 dt            .000002  # Time step size
-dtType        1    # 0: User-supplied constant dt, 1: CFL-based dt
+dtType        0    # 0: User-supplied constant dt, 1: CFL-based dt
 CFL           .5   # CFL number for calculating stable dt
 timeType      4    # Time integration scheme.  0: Fwd Euler, 4: RK44
 
@@ -22,15 +22,15 @@ restart       0
 restartIter   10
 
 # Plotting/Output Parameters
-plot_freq         2000  # Frequency to write plot files
+plot_freq         500  # Frequency to write plot files
 plot_type         1    # 0: csv, 1: ParaView
 dataFileName      testRun  # Filename prefix for output files
-monitor_res_freq  200  # Frequency to print residual to terminal
+monitor_res_freq  100  # Frequency to print residual to terminal
 resType           2    # 1: 1-norm, 2: 2-norm, 3: Inf-norm
 
 # mesh_type - 0: Read mesh, 1: Create mesh
 mesh_type     0
-mesh_file_name  ACL_Gmsh2.msh
+mesh_file_name  ACL_Gmsh_2.msh
 #mesh_file_name  QuadBox_10x10.msh
 
 # The following parameters are only needed when creating a mesh:
@@ -52,9 +52,10 @@ create_bcRight   sup_out
 # Boundary Conditions for Gmsh File
 # (first column is physical name in Gmsh file; 2nd column is the Flurry boundary condition)
 mesh_bound    fluid   fluid
-mesh_bound    A     slip_wall
-mesh_bound    C     slip_wall
-mesh_bound    L     slip_wall
+#mesh_bound    A     slip_wall
+#mesh_bound    C     slip_wall
+#mesh_bound    L     slip_wall
+mesh_bound    letters  slip_wall
 mesh_bound    farfield  char
 # mesh_bound    top     sup_in
 # mesh_bound    bottom  slip_wall
@@ -62,11 +63,6 @@ mesh_bound    farfield  char
 # mesh_bound    right   sup_out
 
 # Boundary & Initial Conditions
-vxIC    20
-vyIC    0.
-rhoIC   1.168
-pIC     100000
-
 rhoBound 1.168
 uBound   20.
 vBound   0.
@@ -79,7 +75,9 @@ pBound   100000
 # Slip-Wall Boundary Condition Parameters
 # Trying out 'penalty' method to reduce initial 'shock'
 slipPenalty   1    # 0 (false-default)  or 1 (true)
-beta          500   # 'Penalty' factor
+Kp   50
+Kd   .01
+Ki   .01
 
 # Other FR-method parameters
 spts_type_tri   Legendre

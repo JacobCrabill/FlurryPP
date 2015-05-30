@@ -14,8 +14,8 @@ MPILD         = mpicxx
 LIBS          = $(SUBLIBS)
 
 # Location of libmetis.a, metis.h
-METIS_LIB_DIR = /usr/lib/
-METIS_INC_DIR = /usr/include/
+METIS_LIB_DIR = /usr/local/lib/
+METIS_INC_DIR = /usr/local/include/
 
 # Location of mpi.h 
 MPI_INC_DIR   = /usr/lib/openmpi/include
