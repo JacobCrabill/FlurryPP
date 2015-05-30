@@ -126,6 +126,11 @@ void multigrid::setupNextFineLevel(int Lvl0)
 
   Geos.push_back(Geo);
   Solvers.push_back(Solver);
+
+  setupRestriction(Lvl0,nGrids);
+  setupProlongation(Lvl0,nGrids);
+
+  nGrids++;
 }
 
 void multigrid::restrictResidual(int coarse, int fine)
@@ -136,4 +141,20 @@ void multigrid::restrictResidual(int coarse, int fine)
 void multigrid::prolongResidual(int coarse, int fine)
 {
 
+}
+
+void multigrid::setupRestriction(int coarse, int fine)
+{
+  for (int i=0; i<Solvers[coarsse]->eles.size(); i++) {
+
+  }
+}
+
+void multigrid::setupProlongation(int coarse, int fine)
+{
+  for (int i=0; i<Solvers[fine]->eles.size(); i++) {
+    vector<point> pts = Solvers[fine]->eles[i].getPosSpts();
+    // get inverse mapping within Solvers[coarse]->eles[ic_F2C[i]]
+    // Setup interpolation operator for this eles within coarse ele
+  }
 }

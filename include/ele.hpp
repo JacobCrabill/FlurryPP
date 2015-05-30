@@ -61,6 +61,7 @@ public:
 
   void updateTransforms(void);
 
+  //! Calculate the position of the solution points in the physical domain
   void calcPosSpts(void);
 
   void calcPosFpts(void);

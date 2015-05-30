@@ -33,7 +33,6 @@ public:
   vector<int> mg_nEles;
   vector<int> mg_nVerts;
 
-
   input* params;
 
   int nGrids;
@@ -64,4 +63,9 @@ public:
   //! Restrict the solution update from one grid to another
   void prolongResidual(int coarse, int fine);
 
+  //! Setup the prolongation operator between the two grids
+  void setupProlongation(int coarse, int fine);
+
+  //! Setup the restriction operator between the two grids
+  void setupRestriction(int coarse, int fine);
 };
