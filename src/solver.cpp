@@ -473,11 +473,16 @@ void solver::readRestartFile(void) {
   // Get the file name & open the file
   char fileNameC[50];
   string fileName = params->dataFileName;
+#ifndef _NO_MPI
+  /* --- All processors write their solution to their own .vtu file --- */
+  sprintf(fileNameC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],params->restartIter,&fileName[0],params->restartIter,params->rank);
+#else
   sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],params->restartIter);
-
-  dataFile.open(fileNameC);
+#endif
 
   if (params->rank==0) cout << "Solver: Restarting from " << fileNameC << endl;
+
+  dataFile.open(fileNameC);
 
   if (!dataFile.is_open())
     FatalError("Cannont open restart file.");
@@ -515,6 +520,12 @@ void solver::readRestartFile(void) {
 #pragma omp parallel for
   for (uint i=0; i<faces.size(); i++) {
     faces[i]->setupFace();
+  }
+
+  // Finish setting up MPI faces
+#pragma omp parallel for
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->setupFace();
   }
 }
 

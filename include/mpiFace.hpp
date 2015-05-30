@@ -73,8 +73,5 @@ private:
   MPI_Request nFpts_in;
 
   MPI_Status status;
-
-  int* fptsBuffOut;
-  int* fptsBuffIn;
 #endif
 };
