@@ -103,6 +103,7 @@ void face::getLeftState()
 
 void face::calcInviscidFlux(void)
 {
+  maxDU = 0;
   if (!isMPI)
     getLeftState();  // Idea: instead of using ptrs to ele data, do copy?
   this->getRightState(); // <-- makes this more general for all face types, and allows face memory to be contiguous

@@ -58,7 +58,8 @@ public:
 
   input *params; //! Input parameters for simulation
 
-protected:
+  double maxDU;
+//protected:
   int nFptsL, nFptsR;
   int nDims, nFields;
   int locF_L;

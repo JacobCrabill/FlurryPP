@@ -105,6 +105,15 @@ double solver::runSim(const vector<double> &X, int field)
 
       if ((params->iter)%params->monitor_res_freq == 0 || params->iter==1) writeResidual(this,params);
       if ((params->iter)%params->plot_freq == 0) writeData(this,params);
+
+      if (params->iter%50==0) {
+        double maxDU = 0;
+#pragma omp parallel for reduction(max:maxDU)
+        for (uint i=0; i<faces.size(); i++) {
+          maxDU = std::max(maxDU,faces[i]->maxDU);
+        }
+        cout << "MaxDU = " << maxDU << endl;
+      }
     }
     params->evals++;
 

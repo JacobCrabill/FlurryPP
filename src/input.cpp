@@ -260,6 +260,11 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("TWall",TWall,300.);
     opts.getScalarValue("beta",beta,2.);
     opts.getScalarValue("slipPenalty",slipPenalty,false);
+    if (slipPenalty) {
+      opts.getScalarValue("Kp",Kp);
+      opts.getScalarValue("Kd",Kd);
+      opts.getScalarValue("Ki",Ki);
+    }
     if (ic_type == 0) {
       opts.getScalarValue("rhoIC",rhoIC,rhoBound);
       opts.getScalarValue("vxIC",vxIC,uBound);

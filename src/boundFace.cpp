@@ -291,6 +291,9 @@ void boundFace::applyBCs(const double* uL, double* uR, const double *norm, int f
         uR[0]=0.0;
       }*/
   }
+
+  maxDU = std::max(maxDU,std::abs(deltaU(fpt,0))+std::abs(deltaU(fpt,1)));
+
 }
 
 

@@ -33,7 +33,7 @@ public:
 
   void setRightState(void);
 
-private:
+//private:
   int bcType;  //! Boundary condition to apply to this face
 
   matrix<double> deltaU;
