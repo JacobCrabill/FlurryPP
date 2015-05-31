@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
   /* Setup the solver, all elements and faces, and all FR operators for computation */
   Solver.setup(&params,&Geo);
 
-  //Solver.readReferenceSolution(string("cylRef"),100000);
+  Solver.readReferenceSolution(string("cylRef"),100000);
 
   /* Stat timer for simulation (ignoring pre-processing) */
   simTimer runTime;
@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
   params.hist.precision(6);
   params.hist.setf(ios::scientific, ios::floatfield);
   params.hist << "Kp," << "Kd," << "Ki," << "err" << endl;
+  params.CpFile.open("Cp_hist.out");
 
   // Initialize the simplex from points [Kp, Kd, Ki]
   //X(0,0) =  9999;  X(0,1) = 9999999;  X(0,2) = 9999999;
@@ -103,8 +104,10 @@ int main(int argc, char *argv[]) {
   cout << "AA222: Initializing Simplex with Starting Points" << endl;
   cout << endl;
 
-  double tmp = Solver.runSim(vector<double>{params.Kp,params.Kd,params.Ki},3);
-  exit(0);
+  if (params.runOne) {
+    double tmp = Solver.runSim(vector<double>{params.Kp,params.Kd,params.Ki},3);
+    exit(0);
+  }
 
   // Evaluate the 'function' at the initial 'points'
   for (int i=0; i<nPts; i++) {

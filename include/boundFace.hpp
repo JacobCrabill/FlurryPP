@@ -36,6 +36,7 @@ public:
 //private:
   int bcType;  //! Boundary condition to apply to this face
 
+  matrix<double> URef;
   matrix<double> deltaU;
   matrix<double> deltaUdot;
   matrix<double> deltaUint;

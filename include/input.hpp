@@ -89,6 +89,8 @@ public:
   int nFields;
   int nDims;
   double dt;
+  double CFL;
+  int dtType;
   int timeType;
   double rkTime;
   double time;
@@ -161,8 +163,10 @@ public:
   double Kd;
   double Ki;
   int evals;
+  bool runOne;
+  double normPDiff;
   string outputPrefix;
-  ofstream hist;
+  ofstream hist, CpFile;
 
 private:
   fileReader opts;

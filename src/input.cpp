@@ -259,6 +259,7 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("TBound",TBound,300.);
     opts.getScalarValue("TWall",TWall,300.);
     opts.getScalarValue("beta",beta,2.);
+    opts.getScalarValue("runOne",runOne,false);
     opts.getScalarValue("slipPenalty",slipPenalty,false);
     if (slipPenalty) {
       opts.getScalarValue("Kp",Kp);
@@ -274,15 +275,19 @@ void input::readInputFile(char *filename)
     nFields = 4;
   }
 
-  opts.getScalarValue("dt",dt);
+  opts.getScalarValue("timeType",timeType,0);
+  opts.getScalarValue("dtType",dtType,0);
+  if (dtType == 1)
+    opts.getScalarValue("CFL",CFL);
+  else
+    opts.getScalarValue("dt",dt);
+
   opts.getScalarValue("viscous",viscous,0);
   opts.getScalarValue("motion",motion,0);
   opts.getScalarValue("order",order,3);
   opts.getScalarValue("riemann_type",riemann_type,0);
   opts.getScalarValue("test_case",test_case,0);
   opts.getScalarValue("iterMax",iterMax);
-
-  opts.getScalarValue("timeType",timeType,0);
 
   opts.getScalarValue("restart",restart,0);
   if (restart) {

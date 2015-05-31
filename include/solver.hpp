@@ -192,6 +192,13 @@ public:
 
   void resetBoundFaces(void);
 
+  // For measuring difference in pressure dist from test to ref
+  double normPDiff;
+
+  //! AA222 - extrapolate reference solution to flux points
+  void extrapolateURefFpts();
+
+  void calcDt();
 private:
   //! Pointer to the parameters object for the current solution
   input *params;

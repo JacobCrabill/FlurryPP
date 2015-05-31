@@ -17,11 +17,14 @@
 
 #include <array>
 
+#include "../include/ele.hpp"
+
 void boundFace::setupRightState(void)
 {
   // This is kinda messy, but avoids separate initialize function
   bcType = rightParam;
 
+  URef.setup(nFptsL,nFields);
   deltaU.setup(nFptsL,nDims);
   deltaUdot.setup(nFptsL,nDims);
   deltaUint.setup(nFptsL,nDims);
@@ -29,10 +32,21 @@ void boundFace::setupRightState(void)
   deltaUdot.initializeToZero();
   deltaUint.initializeToZero();
   UR.initializeToZero();
+  URef.initializeToZero();
 }
 
 void boundFace::getRightState(void)
 {
+  // Actually the left side, but only needed for bndFace's.
+  // Get the reference solution at the flux points
+  int fpt = 0;
+  for (int i=fptStartL; i<fptEndL; i++) {
+    for (int j=0; j<nFields; j++) {
+      URef(fpt,j) = (eL->URef_fpts(i,j));
+    }
+    fpt++;
+  }
+
   // Set the boundary condition [store in UR]
   for (int i=0; i<nFptsL; i++) {
     applyBCs(UL[i],UR[i],normL[i],i);
@@ -71,9 +85,15 @@ void boundFace::applyBCs(const double* uL, double* uR, const double *norm, int f
     }
     vR[0] = uR[1]/uR[0];
     vR[1] = uR[2]/uR[0];
+
+    double rhoVSqRef = (URef(fpt,1)*URef(fpt,1) + URef(fpt,2)*URef(fpt,2)) / URef(fpt,0);
+    double pRef = (gamma-1)*(URef(fpt,3) - 0.5*rhoVSqRef);
     // --------- AA222 -----------
 
     double pL = (gamma-1.0)*(eL - 0.5*rhoL*vSq);
+
+    // Vector L2 norm of pressure diff w.r.t. ref. solution
+    params->normPDiff += std::abs( (pL-pRef)*(pL-pRef) );    /// AA222
 
     // Subsonic inflow simple (free pressure) //CONSIDER DELETING
     if(bcType == SUB_IN) {
@@ -301,3 +321,4 @@ void boundFace::setRightState(void)
 {
   // No right state; do nothing
 }
+

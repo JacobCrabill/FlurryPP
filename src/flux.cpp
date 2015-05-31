@@ -101,7 +101,7 @@ void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *
 }
 
 //void rusanovFlux(vector<double> &UL, vector<double> &UR, vector<vector<double*>> &FL, vector<vector<double*>> &FR, vector<double> &norm, vector<double> &Fn, input *params)
-void rusanovFlux(double* UL, double* UR, matrix<double> &FL, matrix<double> &FR, double* norm, double* Fn, input *params)
+void rusanovFlux(double* UL, double* UR, matrix<double> &FL, matrix<double> &FR, double* norm, double* Fn, double &waveSp, input *params)
 {
   double wL, pL, vnL=0.;
   double wR, pR, vnR=0.;
@@ -144,6 +144,7 @@ void rusanovFlux(double* UL, double* UR, matrix<double> &FL, matrix<double> &FR,
   double eigL = fabs(vnL) + sqrt(csqL);
   double eigR = fabs(vnR) + sqrt(csqR);
   double eig = max(eigL,eigR);
+  waveSp = max(eigL,eigR);
 
   // Calculate Rusanov flux
   for (int i=0; i<params->nFields; i++) {

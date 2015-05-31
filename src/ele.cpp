@@ -185,10 +185,12 @@ void ele::setupArrays(void)
 
   //QWts_spts.resize(nSpts);
   URef_spts.setup(nSpts,nFields);
+  URef_fpts.setup(nFpts,nFields);
 
   norm_fpts.setup(nFpts,nDims);
   tNorm_fpts.setup(nFpts,nDims);
   dA_fpts.resize(nFpts);
+  waveSp_fpts.resize(nFpts);
 
   gridVel_nodes.setup(nNodes,nDims);
   gridVel_spts.setup(nSpts,nDims);
@@ -635,6 +637,21 @@ void ele::setInitialCondition()
   }
 }
 
+void ele::calcWaveSpFpts(void)
+{
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    double rho = U_fpts(fpt,0);
+    double u = U_fpts(fpt,1)/rho;
+    double v = U_fpts(fpt,2)/rho;
+    double rhoVSq = rho*(u*u+v*v);
+    double p = (params->gamma-1)*(U_fpts(fpt,3) - 0.5*rhoVSq);
+
+    double vN = u*norm_fpts(fpt,0) + v*norm_fpts(fpt,1);
+    double csq = std::max(params->gamma*p/rho,0.0);
+    waveSp_fpts[fpt] = (std::abs(vN) + std::sqrt(csq)) / dA_fpts[fpt];
+  }
+}
+
 void ele::getShape(point loc, vector<double> &shape)
 {
   if (eType == TRI) {
@@ -773,6 +790,16 @@ void ele::timeStepB(int step, double rkVal)
   }
 }
 
+double ele::calcDt(void)
+{
+  double waveSp = 0;
+  for (int fpt=0; fpt<nFpts; fpt++)
+    if (dA_fpts[fpt] > 0) // ignore collapsed edges
+      waveSp = max(waveSp,waveSp_fpts[fpt]);
+
+  double dt = (params->CFL) * getCFLLimit(order) * (2.0 / (waveSp+1.e-10));
+  return dt;
+}
 
 void ele::copyUspts_U0(void)
 {

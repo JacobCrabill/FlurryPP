@@ -150,6 +150,8 @@ public:
   //! For AA222: Read in a solution from a .vtu file and store in URef
   void readReferenceSolution(ifstream &file, input *_params, geo *_Geo);
 
+  double calcDt();
+  void calcWaveSpFpts();
 private:
 
   /* --- Simulation/Mesh Parameters --- */
@@ -174,6 +176,7 @@ private:
   matrix<double> disFn_fpts;       //! Discontinuous normal flux at flux points
   matrix<double> Fn_fpts;          //! Interface flux at flux points
   matrix<double> dFn_fpts;         //! Interface minus discontinuous flux at flux points
+  vector<double> waveSp_fpts;      //! Maximum wave speed at each flux point
 
   // Gradients
   vector<matrix<double> > dU_spts;  //! Gradient of solution at solution points
@@ -213,6 +216,7 @@ private:
 
   // Error Calculation
   matrix<double> URef_spts;  //! Reference solution to calculate error against
+  matrix<double> URef_fpts;  //! Reference solution to calculate error against
   vector<double> QWts_spts;  //! Guass quadrature weights at the solution points [only for Gauss-Legendre points]
 
   /* --- Temporary Variables --- */

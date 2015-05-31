@@ -29,7 +29,7 @@ void viscousFlux(double *U, matrix<double> &gradU, matrix<double> &Fvis, input *
 void roeFlux(double* uL, double* uR, double *norm, double *Fn, input *params);
 
 /*! Calculate the common inviscid flux at a point using the Rusanov scalar-diffusion method */
-void rusanovFlux(double* UL, double* UR, matrix<double> &FL, matrix<double> &FR, double *norm, double *Fn, input *params);
+void rusanovFlux(double* UL, double* UR, matrix<double> &FL, matrix<double> &FR, double *norm, double *Fn, double& waveSp, input *params);
 //void rusanovFlux(vector<double> &UL, vector<double> &UR, vector<vector<double*>> &FL, vector<vector<double*>> &FR, vector<double> &norm, vector<double> &Fn, input *params);
 
 /*! Simple central-difference flux (For advection problems) */

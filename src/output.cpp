@@ -177,7 +177,7 @@ void writeParaview(solver *Solver, input *params)
   Solver->extrapolateUMpts();
 
   if (params->equation == NAVIER_STOKES) {
-    Solver->calcEntropyErr_spts();
+//    Solver->calcEntropyErr_spts();
     Solver->extrapolateSFpts();
     Solver->extrapolateSMpts();
   }
@@ -196,8 +196,8 @@ void writeParaview(solver *Solver, input *params)
     e.getGridVelPlot(gridVelPpts);
     ppts = e.getPpts();
 
-    if (params->equation == NAVIER_STOKES)
-      e.getEntropyErrPlot(errPpts);
+//    if (params->equation == NAVIER_STOKES)
+//      e.getEntropyErrPlot(errPpts);
 
     int nSubCells = (e.order+2)*(e.order+2);
     int nPpts = (e.order+3)*(e.order+3);
@@ -264,15 +264,15 @@ void writeParaview(solver *Solver, input *params)
       }
     }
 
-    if (params->equation == NAVIER_STOKES) {
-      /* --- Entropy Error Estimate --- */
-      dataFile << "				<DataArray type=\"Float32\" Name=\"EntropyErr\" format=\"ascii\">" << endl;
-      for(int k=0; k<nPpts; k++) {
-        dataFile << errPpts(k) << " ";
-      }
-      dataFile << endl;
-      dataFile << "				</DataArray>" << endl;
-    }
+//    if (params->equation == NAVIER_STOKES) {
+//      /* --- Entropy Error Estimate --- */
+//      dataFile << "				<DataArray type=\"Float32\" Name=\"EntropyErr\" format=\"ascii\">" << endl;
+//      for(int k=0; k<nPpts; k++) {
+//        dataFile << errPpts(k) << " ";
+//      }
+//      dataFile << endl;
+//      dataFile << "				</DataArray>" << endl;
+//    }
 
     /* --- End of Cell's Solution Data --- */
 
@@ -409,6 +409,8 @@ vector<double> writeResidual(solver *Solver, input *params)
         cout << setw(colW) << left << "rhoU";
         cout << setw(colW) << left << "rhoV";
         cout << setw(colW) << left << "rhoE";
+        if (params->dtType == 1)
+          cout << setw(colW) << left << "deltaT";
       }
       cout << endl;
     }
@@ -417,6 +419,8 @@ vector<double> writeResidual(solver *Solver, input *params)
     for (int i=0; i<params->nFields; i++) {
       cout << setw(colW) << left << res[i];
     }
+    if (params->dtType == 1)
+      cout << setw(colW) << left << params->dt;
     cout << endl;
   }
 

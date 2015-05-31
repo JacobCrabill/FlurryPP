@@ -117,3 +117,29 @@ vector<int> getOrder(vector<double> &data)
 
   return ind;
 }
+
+double getCFLLimit(int order)
+{
+  switch(order) {
+    case 0:
+      return 1.393;
+
+    case 1:
+      return 0.464;
+
+    case 2:
+      return 0.235;
+
+    case 3:
+      return 0.139;
+
+    case 4:
+      return 0.100;
+
+    case 5:
+      return 0.068;
+
+    default:
+      FatalError("CFL limit no available for this order!");
+  }
+}

@@ -131,6 +131,8 @@ bool checkNaN(vector<double> &vec);
 
 bool checkNaN(double* vec, int size);
 
+double getCFLLimit(int order);
+
 //double randRange(double xMin, double xMax);
 
 /*! Find indices of all values in vec equal to val */

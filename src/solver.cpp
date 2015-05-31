@@ -88,6 +88,7 @@ double solver::runSim(const vector<double> &X, int field)
   cout << endl;
 
   params->hist << params->Kp << "," << params->Kd << "," << params->Ki << ",";
+  params->CpFile << params->Kp << "," << params->Kd << "," << params->Ki << endl;
 
   simTimer runTime;
   runTime.startTimer();
@@ -101,23 +102,28 @@ double solver::runSim(const vector<double> &X, int field)
 
   try {
     for (params->iter = params->initIter+1; params->iter < params->iterMax; params->iter++) {
+      params->normPDiff = 0;
       update();
+      params->normPDiff = std::sqrt(params->normPDiff);
+      params->CpFile << params->iter << ", " << params->normPDiff << endl;
 
       if ((params->iter)%params->monitor_res_freq == 0 || params->iter==1) writeResidual(this,params);
       if ((params->iter)%params->plot_freq == 0) writeData(this,params);
 
       if (params->iter%50==0) {
-        double maxDU = 0;
-#pragma omp parallel for reduction(max:maxDU)
-        for (uint i=0; i<faces.size(); i++) {
-          maxDU = std::max(maxDU,faces[i]->maxDU);
-        }
-        cout << "MaxDU = " << maxDU << endl;
+        cout << params->iter << ": NormPDiff = " << params->normPDiff << endl;
+//        double maxDU = 0;
+//#pragma omp parallel for reduction(max:maxDU)
+//        for (uint i=0; i<faces.size(); i++) {
+//          maxDU = std::max(maxDU,faces[i]->maxDU);
+//        }
+//        cout << "MaxDU = " << maxDU << endl;
       }
     }
     params->evals++;
 
-    err = calcNormError(field);
+    err = params->normPDiff;
+    //calcNormError(field);
     writeData(this,params);
   }
   catch (std::exception e) {
@@ -166,16 +172,23 @@ void solver::update(void)
 
     calcResidual(step);
 
+    /* If in first stage, compute CFL-based timestep */
+    if (step == 0 && params->dtType == 1) calcDt();
+
     timeStepA(step);
 
   }
 
   /* Final Runge-Kutta time advancement step */
 
-  if (nRKSteps == 1)
+  if (nRKSteps == 1) {
     params->rkTime = params->time;
-  else
+    /* Calculate CFL-based timestep */
+    if (params->dtType == 1) calcDt();
+  }
+  else {
     params->rkTime = params->time + params->dt;
+  }
 
   moveMesh(nRKSteps-1);
 
@@ -196,6 +209,9 @@ void solver::update(void)
 void solver::calcResidual(int step)
 {
   extrapolateU();
+
+  // --- AA222 ---
+  extrapolateURefFpts();
 
 #ifndef _NO_MPI
   doCommunication();
@@ -236,6 +252,23 @@ void solver::calcResidual(int step)
   correctDivFlux(step);
 }
 
+void solver::calcDt(void)
+{
+  double dt = INFINITY;
+
+#pragma omp parallel for reduction(min:dt)
+  for (uint i=0; i<eles.size(); i++) {
+    dt = min(dt, eles[i].calcDt());
+  }
+//  cout << "Dt = " << dt << endl;
+
+#ifndef _NO_MPI
+  double dtTmp = dt;
+  MPI_Allreduce(&dtTmp, &dt, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+#endif
+
+  params->dt = dt;
+}
 
 void solver::timeStepA(int step)
 {
@@ -299,6 +332,14 @@ void solver::extrapolateSFpts(void)
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     opers[eles[i].eType][eles[i].order].applySptsFpts(eles[i].S_spts,eles[i].S_fpts);
+  }
+}
+
+void solver::extrapolateURefFpts(void)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    opers[eles[i].eType][eles[i].order].applySptsFpts(eles[i].URef_spts,eles[i].URef_fpts);
   }
 }
 
@@ -617,6 +658,20 @@ void solver::initializeSolution()
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].setInitialCondition();
+  }
+
+  /* If running a moving-mesh case and using CFL-based time-stepping,
+   * calc initial dt for grid velocity calculation */
+  if ( (params->motion!=0 || params->slipPenalty==1) && params->dtType == 1 ) {
+    extrapolateU();
+    double dt = INFINITY;
+#pragma omp parallel for
+    for (uint i=0; i<eles.size(); i++) {
+      eles[i].calcWaveSpFpts();
+      dt = std::min(dt, eles[i].calcDt());
+    }
+    params->dt = dt;
+    cout << "Initial dt = " << dt << endl;
   }
 }
 

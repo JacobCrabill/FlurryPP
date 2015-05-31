@@ -58,6 +58,7 @@ void face::setupFace(void)
   normL.setup(nFptsL,nDims);
   dAL.resize(nFptsL);
   detJacL.resize(nFptsL);
+  waveSp.resize(nFptsL);
 
   if (params->viscous) {
     // just a placeholder.  Need to properly size/reorder dimensions later.
@@ -73,6 +74,7 @@ void face::setupFace(void)
   int fpt = 0;
   for (int i=fptStartL; i<fptEndL; i++) {
     FnL[fpt] = (eL->Fn_fpts[i]);
+    waveSp[fpt] = &(eL->waveSp_fpts[i]);
     fpt++;
   }
 
@@ -115,7 +117,7 @@ void face::calcInviscidFlux(void)
     }
     else if (params->equation == NAVIER_STOKES) {
       if (params->riemann_type==0) {
-        rusanovFlux(UL[i], UR[i], tempFL, tempFR, normL[i], Fn[i], params);
+        rusanovFlux(UL[i], UR[i], tempFL, tempFR, normL[i], Fn[i], *waveSp[i], params);
       }
       else if (params->riemann_type==1) {
         roeFlux(UL[i], UR[i], normL[i], Fn[i], params);
@@ -124,9 +126,12 @@ void face::calcInviscidFlux(void)
   }
 
   // Transform normal flux using edge Jacobian and put into ele's memory
-  for (int i=0; i<nFptsL; i++)
-    for (int j=0; j<nFields; j++)
+  for (int i=0; i<nFptsL; i++) {
+    for (int j=0; j<nFields; j++) {
       FnL[i][j] =  Fn(i,j)*dAL[i];
+    }
+    *waveSp[i] /= dAL[i];
+  }
 
   this->setRightState();
 }
