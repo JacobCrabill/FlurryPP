@@ -407,7 +407,7 @@ matrix<T> matrix<T>::invertMatrix(void)
   }
 
   // back substitute
-  for(uint i=dim0-1; i>=0; i=i-1) {
+  for(int i=(int)dim0-1; i>=0; i--) {
     for(uint j=0; j<dim0; j++) {
       dtemp_0=0.0;
       for(uint k=i+1; k<dim0; k++) {
