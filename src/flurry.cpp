@@ -67,7 +67,8 @@ int main(int argc, char *argv[]) {
   /* Setup the solver, all elements and faces, and all FR operators for computation */
   Solver.setup(&params,&Geo);
 
-  Solver.readReferenceSolution(string("cylRef"),100000);
+  if (!params.runOne)
+    Solver.readReferenceSolution(string("cylRef"),100000);
 
   /* Stat timer for simulation (ignoring pre-processing) */
   simTimer runTime;
@@ -84,17 +85,19 @@ int main(int argc, char *argv[]) {
   int nVars = 3;                 // For simplex search: vars = Kp, Kd, Ki
   int nPts = nVars + 1;          // For simplex search: n_dims + 1 [# of points in nVars-dimensional simplex]
   vector<double> F(nPts);        // Objective Function Values. Using L2 norm of density after
-  matrix<double> X(nPts,nVars); // Point locations [each row is: Kp, Kd, Ki]
+  matrix<double> X(nPts,nVars);  // Point locations [each row is: Kp, Kd, Ki]
 
   params.outputPrefix = "aa222";
   params.hist.open("aa222_hist.out");
   params.hist.precision(6);
   params.hist.setf(ios::scientific, ios::floatfield);
-  params.hist << "Kp," << "Kd," << "Ki," << "err" << endl;
+  params.hist << "Kp, Kd, Ki, err, time" << endl;
   params.CpFile.open("Cp_hist.out");
+  params.CpFile.precision(6);
+  params.CpFile.setf(ios::scientific, ios::floatfield);
+  params.CpFile << "Iter, Time, normPDiff" << endl;
 
   // Initialize the simplex from points [Kp, Kd, Ki]
-  //X(0,0) =  9999;  X(0,1) = 9999999;  X(0,2) = 9999999;
   X(0,0) =  .5;  X(0,1) = 0;  X(0,2) = 0;
   X(1,0) = 1.5;  X(1,1) = 0.1;  X(1,2) = 0;
   X(2,0) =  .6;  X(2,1) = 1;  X(2,2) = 0;
@@ -105,7 +108,11 @@ int main(int argc, char *argv[]) {
   cout << endl;
 
   if (params.runOne) {
-    double tmp = Solver.runSim(vector<double>{params.Kp,params.Kd,params.Ki},3);
+    params.outputPrefix = params.dataFileName;
+    // For testing purposes, run once using input params and exit
+    Solver.runSim(vector<double>{params.Kp,params.Kd,params.Ki},3);
+    runTime.stopTimer();
+    runTime.showTime();
     exit(0);
   }
 
@@ -114,11 +121,6 @@ int main(int argc, char *argv[]) {
     vector<double> xTmp = {X(i,0),X(i,1),X(i,2)};
     F[i] = Solver.runSim(xTmp,3);
   }
-
-//  F[0] = 1.25054314e-01;
-//  F[1] = 1.24365654e-01;
-//  F[2] = 1.24294161e-01;
-//  F[3] = 1.24443137e-01;
 
   cout << endl;
   cout << "AA222: Running Optimization using Nelder-Meade Simplex Search" << endl;
@@ -209,6 +211,7 @@ int main(int argc, char *argv[]) {
   }
 
   params.hist.close();
+  params.CpFile.close();
 
   runTime.stopTimer();
   runTime.showTime();

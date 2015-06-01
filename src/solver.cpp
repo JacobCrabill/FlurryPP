@@ -97,33 +97,37 @@ double solver::runSim(const vector<double> &X, int field)
   resetBoundFaces();
   initializeSolution();
 
-  params->dataFileName = params->outputPrefix + "_" + to_string(params->evals);
-  double err;
+  if (params->runOne)
+    params->dataFileName = params->dataFileName;
+  else
+    params->dataFileName = params->outputPrefix + "_" + to_string(params->evals);
+  double ObjVal;
+  params->time = 0;
+
+  if (params->runOne) writeData(this,params);
 
   try {
+    bool converged = false;
     for (params->iter = params->initIter+1; params->iter < params->iterMax; params->iter++) {
       params->normPDiff = 0;
       update();
       params->normPDiff = std::sqrt(params->normPDiff);
-      params->CpFile << params->iter << ", " << params->normPDiff << endl;
+      params->CpFile << params->iter << ", " << params->time << ", " << params->normPDiff << endl;
+
+      // Check for convergence of the pressure error [hand-chosen value]
+      if (params->normPDiff < 3e-3 && !params->runOne) {
+        converged = true;
+        break;
+      }
 
       if ((params->iter)%params->monitor_res_freq == 0 || params->iter==1) writeResidual(this,params);
       if ((params->iter)%params->plot_freq == 0) writeData(this,params);
-
-      if (params->iter%50==0) {
-        cout << params->iter << ": NormPDiff = " << params->normPDiff << endl;
-//        double maxDU = 0;
-//#pragma omp parallel for reduction(max:maxDU)
-//        for (uint i=0; i<faces.size(); i++) {
-//          maxDU = std::max(maxDU,faces[i]->maxDU);
-//        }
-//        cout << "MaxDU = " << maxDU << endl;
-      }
     }
-    params->evals++;
 
-    err = params->normPDiff;
-    //calcNormError(field);
+    if (converged)
+      ObjVal = params->time;
+    else
+      ObjVal = (double)INFINITY;
     writeData(this,params);
   }
   catch (std::exception e) {
@@ -132,18 +136,19 @@ double solver::runSim(const vector<double> &X, int field)
     runTime.stopTimer();
     runTime.showTime();
 
-    params->evals++;
 
-    err = (double)INFINITY;
+    ObjVal = (double)INFINITY;
   }
 
   cout << endl;
-  cout << "Final L2 Error: " << setprecision(8) << err << endl;
+  cout << "Final Pressure Error: " << setprecision(8) << params->normPDiff << ", Flow Time = " << params->time << endl;
   cout << endl;
 
-  params->hist << err << endl;
+  params->hist << params->normPDiff << ObjVal << endl;
 
-  return err;
+  params->evals++;
+
+  return params->time;
 }
 
 void solver::resetBoundFaces(void)
@@ -662,7 +667,8 @@ void solver::initializeSolution()
 
   /* If running a moving-mesh case and using CFL-based time-stepping,
    * calc initial dt for grid velocity calculation */
-  if ( (params->motion!=0 || params->slipPenalty==1) && params->dtType == 1 ) {
+  //if ( (params->motion!=0 || params->slipPenalty==1) && params->dtType == 1 ) {
+  if (params->dtType == 1) {
     extrapolateU();
     double dt = INFINITY;
 #pragma omp parallel for
@@ -671,7 +677,6 @@ void solver::initializeSolution()
       dt = std::min(dt, eles[i].calcDt());
     }
     params->dt = dt;
-    cout << "Initial dt = " << dt << endl;
   }
 }
 
