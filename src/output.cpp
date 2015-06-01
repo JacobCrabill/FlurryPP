@@ -179,7 +179,8 @@ void writeParaview(solver *Solver, input *params)
   Solver->extrapolateUMpts();
 
   if (params->equation == NAVIER_STOKES) {
-    Solver->calcEntropyErr_spts();
+    if (params->calcEntropySensor)
+      Solver->calcEntropyErr_spts();
     Solver->extrapolateSFpts();
     Solver->extrapolateSMpts();
   }
@@ -201,7 +202,7 @@ void writeParaview(solver *Solver, input *params)
     // Shock Capturing stuff
     double sensor;
     if(params->scFlag == 1) {
-        sensor = e.getSensor();
+      sensor = e.getSensor();
     }
 
     if (params->equation == NAVIER_STOKES && params->calcEntropySensor)
@@ -286,7 +287,7 @@ void writeParaview(solver *Solver, input *params)
       /* --- Entropy Error Estimate --- */
       dataFile << "				<DataArray type=\"Float32\" Name=\"EntropyErr\" format=\"ascii\">" << endl;
       for(int k=0; k<nPpts; k++) {
-        dataFile << errPpts(k) << " ";
+        dataFile << std::abs(errPpts(k)) << " ";
       }
       dataFile << endl;
       dataFile << "				</DataArray>" << endl;
