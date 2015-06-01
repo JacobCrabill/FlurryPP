@@ -94,6 +94,9 @@ public:
   /*! Calculate the maximum stable time step based upon CFL */
   double calcDt(void);
 
+  /*! Calculate the wave speed for use with calculating allowable DT */
+  void calcWaveSpFpts();
+
   /*! Advance intermediate stages of Runge-Kutta time integration */
   void timeStepA(int step, double rkVal);
 
@@ -146,6 +149,7 @@ public:
   void setupArrays();
   void setupAllGeometry();
   void restart(ifstream &file, input *_params, geo *_Geo);
+
 private:
 
   /* --- Simulation/Mesh Parameters --- */

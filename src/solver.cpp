@@ -540,7 +540,25 @@ void solver::initializeSolution()
 
   /* If running a moving-mesh case and using CFL-based time-stepping,
    * calc initial dt for grid velocity calculation */
-  if (params->motion != 0 && params->dtType == 1) calcDt();
+  /* If running a moving-mesh case and using CFL-based time-stepping,
+   * calc initial dt for grid velocity calculation */
+  //if ( (params->motion!=0 || params->slipPenalty==1) && params->dtType == 1 ) {
+  if (params->dtType == 1) {
+    extrapolateU();
+    double dt = INFINITY;
+#pragma omp parallel for reduction(min:dt)
+    for (uint i=0; i<eles.size(); i++) {
+      eles[i].calcWaveSpFpts();
+      dt = std::min(dt, eles[i].calcDt());
+    }
+
+#ifndef _NO_MPI
+  double dtTmp = dt;
+  MPI_Allreduce(&dtTmp, &dt, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+#endif
+
+    params->dt = dt;
+  }
 }
 
 // Method for shock capturing
