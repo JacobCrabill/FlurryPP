@@ -80,7 +80,7 @@ void solver::update(void)
 
   for (int step=0; step<nRKSteps-1; step++) {
 
-    if (step == 1)
+    if (step == 0)
       params->rkTime = params->time;
     else
       params->rkTime = params->time + RKa[step-1]*params->dt;
@@ -90,7 +90,7 @@ void solver::update(void)
     calcResidual(step);
 
     /* If in first stage, compute CFL-based timestep */
-    if (step == 0 && params->dtType == 1) calcDt();
+    if (step == 0 && params->dtType == 1) calcDt();  // -- NOT CONSISTENT WITH MOVING MESH SEQUENCE --
 
     timeStepA(step);
 

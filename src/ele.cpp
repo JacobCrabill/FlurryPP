@@ -222,7 +222,7 @@ void ele::setupAllGeometry(void) {
 
 void ele::move(int step)
 {
-  if (params->motion == 1) {
+  if (params->motion == 1 || params->motion == 2) {
     perturb();
   }
 
@@ -232,10 +232,19 @@ void ele::move(int step)
 
 void ele::perturb(void)
 {
-  for (int iv=0; iv<nNodes; iv++) {
-    /// Taken from Kui, AIAA-2010-5031-661
-    nodesRK[0][iv].x = nodes[iv].x + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
-    nodesRK[0][iv].y = nodes[iv].y + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+  if (params->motion == 1) {
+    for (int iv=0; iv<nNodes; iv++) {
+      /// Taken from Kui, AIAA-2010-5031-661
+      nodesRK[0][iv].x = nodes[iv].x + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+      nodesRK[0][iv].y = nodes[iv].y + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+    }
+  }
+  else if (params->motion == 2) {
+    double t0 = 10.*sqrt(5.);
+    for (int iv=0; iv<nNodes; iv++) {
+      nodesRK[0][iv].x = nodes[iv].x + sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*sin(4*pi*params->rkTime/t0);
+      nodesRK[0][iv].y = nodes[iv].y + sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*sin(8*pi*params->rkTime/t0);
+    }
   }
 }
 
@@ -246,6 +255,16 @@ void ele::calcGridVelocity(void)
       gridVel_nodes(iv,0) = 4.*pi/10.*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*cos(2*pi*params->rkTime/10.); // from Kui
       gridVel_nodes(iv,1) = 4.*pi/10.*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*cos(2*pi*params->rkTime/10.);
     }
+  }
+  else if (params->motion == 2) {
+    double t0 = 10.*sqrt(5.);
+    for (int iv=0; iv<nNodes; iv++) {
+      gridVel_nodes(iv,0) = 4.*pi/t0*sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*cos(4*pi*params->rkTime/t0); // from Liang-Miyaji
+      gridVel_nodes(iv,1) = 8.*pi/t0*sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*cos(8*pi*params->rkTime/t0);
+    }
+  }
+
+  if (params->motion != 0) {
 
     gridVel_spts.initializeToZero();
     for (int spt=0; spt<nSpts; spt++) {
@@ -604,6 +623,35 @@ void ele::setInitialCondition()
         vx = 1. - eps*y / (2.*pi) * exp(f/2.);
         vy = 1. + eps*x / (2.*pi) * exp(f/2.);
         p = pow(rho,gamma);
+
+        U_spts(spt,0) = rho;
+        U_spts(spt,1) = rho * vx;
+        U_spts(spt,2) = rho * vy;
+        U_spts(spt,3) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+      }
+    }
+    else if (params->ic_type == 2) {
+      /* --- Isentropic Vortex of strength eps centered at (0,0) (Liang version) --- */
+      double eps = 1.0;  // See paper by Liang and Miyaji, CPR Deforming Domains
+      double rc  = 1.0;
+      double Minf = .3;
+      double Uinf = 1;
+      double rhoInf = 1;
+      double theta = atan(0.5);
+      double Pinf = pow(Minf,-2)/gamma;
+
+      double eM = (eps*Minf)*(eps*Minf);
+      double f, x, y;
+      for (int spt=0; spt<nSpts; spt++) {
+        x = pos_spts[spt][0];
+        y = pos_spts[spt][1];
+
+        f = -(x*x + y*y) / (rc*rc);
+
+        vx = Uinf*(cos(theta) - y*eps/rc * exp(f/2.));
+        vy = Uinf*(sin(theta) + x*eps/rc * exp(f/2.));
+        rho = rhoInf*pow(1. - (gamma-1.)/2. * eM * exp(f), gamma/(gamma-1.0));
+        p   = Pinf  *pow(1. - (gamma-1.)/2. * eM * exp(f), gamma/(gamma-1.0));
 
         U_spts(spt,0) = rho;
         U_spts(spt,1) = rho * vx;
