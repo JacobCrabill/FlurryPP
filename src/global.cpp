@@ -85,7 +85,7 @@ double getCFLLimit(int order)
       return 0.068;
 
     default:
-      FatalError("CFL limit no available for this order!");
+      FatalError("CFL limit not available for this order!");
   }
 }
 

@@ -244,19 +244,19 @@ void oper::setupVandermonde(vector<point> &loc_spts)
     vector<double> loc(nDims);
 
     // Create 1D Vandermonde matrix
-    for (uint i=0;i<order+1;i++)
-      for (uint j=0;j<order+1;j++)
+    for (uint i=0; i<order+1; i++)
+      for (uint j=0; j<order+1; j++)
         vandermonde1D(i,j) = Legendre(loc_spts_1D[i],j);
 
     // Store its inverse
     inv_vandermonde1D = vandermonde1D.invertMatrix();
 
     // Create 2D Vandermonde matrix
-    for (uint i=0;i<nSpts;i++){
+    for (uint i=0; i<nSpts; i++) {
       loc[0] = loc_spts[i].x;
       loc[1] = loc_spts[i].y;
 
-      for (uint j=0;j<nSpts;j++)
+      for (uint j=0; j<nSpts; j++)
         vandermonde2D(i,j) = Legendre2D_hierarchical(j,loc,order);
     }
 
@@ -281,8 +281,8 @@ void oper::setupSensingMatrix(void)
     vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
 
     // create the vandermonde matrix
-    for(uint i=0;i<order+1;i++)
-      for (uint j=0;j<order+1;j++)
+    for(uint i=0; i<order+1; i++)
+      for (uint j=0; j<order+1; j++)
         grad_vandermonde(i,j) = dLegendre(loc_spts_1D[i],j);
 
     // create concentration factor array
@@ -301,8 +301,8 @@ void oper::setupSensingMatrix(void)
     }
 
     // Prepare concentration matrix as in paper
-    for(uint i=0;i<order+1;i++)
-      for(uint j=0;j<order+1;j++)
+    for(uint i=0; i<order+1; i++)
+      for(uint j=0; j<order+1; j++)
         concentrationMatrix(i,j) = (3.1415/(order+1))*concentration_factor(j)*sqrt(1 - loc_spts_1D[i]*loc_spts_1D[i])*grad_vandermonde(i,j);
 
     concentrationMatrix.timesMatrix(inv_vandermonde1D,sensingMatrix);
@@ -321,7 +321,7 @@ void oper::setupFilterMatrix(void)
     double exponent = 1;     // Governs filter strength - Take as input?
 
     // create the filter weights matrix as a diagonal matrix
-    for (uint i=0;i<nSpts;i++)
+    for (uint i=0; i<nSpts; i++)
       filterWeights(i,i) = exponential_filter(i,order,exponent);
 
     filterWeights.print();
@@ -460,8 +460,8 @@ double oper::shockCaptureInEle(matrix<double> &U_spts, double threshold)
       rho_y = Rho.getCol(i);
       sensingMatrix.timesVector(rho_x,uEx);
       sensingMatrix.timesVector(rho_x,uEy);
-      maxuEx = max_element(uEx.begin(), uEx.end(),abs_compare);
-      maxuEy = max_element(uEx.begin(), uEx.end(),abs_compare);
+      maxuEx = max_element(uEx.begin(), uEx.end(), abs_compare);
+      maxuEy = max_element(uEx.begin(), uEx.end(), abs_compare);
       newmax = max(abs(*maxuEx),abs(*maxuEy));
       currmax = max(currmax,newmax);
     }
