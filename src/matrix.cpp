@@ -431,9 +431,10 @@ matrix<T> matrix<T>::invertMatrix(void)
 template<typename T>
 void matrix<T>::vecToMatrixResize(vector<T> &A)
 {
-  if(A.size() != dim0*dim1)
+  if(A.size() != dim0*dim1) {
     FatalError("Cannot fill vector into matrix - must have vector size == dim0*dim1.");
-  else{
+  }
+  else {
     for(uint i=0; i<A.size(); i++)
       data[i] = A[i];
   }

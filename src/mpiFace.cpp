@@ -83,8 +83,12 @@ void mpiFace::getRightState(void)
 {
 #ifndef _NO_MPI
   // Make sure the communication is complete & transfer from buffer
+  MPI_Wait(&UL_out,&status);
   MPI_Wait(&UR_in,&status);
-  if (params->viscous) MPI_Wait(&gradUR_in,&status);
+  if (params->viscous) {
+    MPI_Wait(&gradUL_out,&status);
+    MPI_Wait(&gradUR_in,&status);
+  }
 
   // Copy UR from the buffer to the proper matrix [note that the order of the
   // fpts is reversed between the two faces]
