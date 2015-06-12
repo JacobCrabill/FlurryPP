@@ -38,6 +38,7 @@ void intFace::setupRightState(void)
 
   //FR.resize(nFptsR);
   FnR.resize(nFptsR);
+  UcR.resize(nFptsR);
   normR.setup(nFptsR,nDims);
   dAR.resize(nFptsR);
   detJacR.resize(nFptsL);
@@ -46,6 +47,10 @@ void intFace::setupRightState(void)
   int fpt = 0;
   for (int i=fptStartR-1; i>=fptEndR; i--) {
     FnR[fpt] = (eR->Fn_fpts[i]);
+
+    if (params->viscous)
+      UcR[fpt] = (eR->Uc_fpts[i]);
+
     fpt++;
   }
 }
@@ -68,6 +73,14 @@ void intFace::getRightState(void)
       detJacR[fpt] = (eR->detJac_fpts[i]);
     }
 
+    if (params->viscous) {
+      for (int j=0; j<nFields; j++) {
+        for (int dim=0; dim<nDims; dim++) {
+          gradUR[fpt](dim,j) = (eR->dU_fpts[dim](i,j));
+        }
+      }
+    }
+
     fpt++;
   }
 }
@@ -77,6 +90,9 @@ void intFace::setRightState(void)
   for (int i=0; i<nFptsR; i++) {
     for (int j=0; j<nFields; j++) {
       FnR[i][j] = -Fn(i,j)*dAR[i]; // opposite normal direction
+
+      if (params->viscous)
+        UcR[i][j] = UC(i,j);
     }
   }
 }

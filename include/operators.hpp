@@ -45,6 +45,9 @@ public:
    *  based upon the normal flux correction at the flux points */
   void setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts);
 
+
+  void setupCorrectGradU(void);
+
   void applyGradSpts(matrix<double> &U_spts, vector<matrix<double> > &dU_spts);
 
   void applyGradFSpts(vector<matrix<double>> &F_spts, vector<vector<matrix<double>>> &dF_spts);
@@ -63,7 +66,11 @@ public:
    *  to the flux points and dott with the physical outward unit normal */
   void applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts, vector<double> &dA_fpts);
 
+
   void applyCorrectDivF(matrix<double> &dFn_fpts, matrix<double> &divF_spts);
+
+
+  void applyCorrectGradU(matrix<double>& dUc_fpts, vector<matrix<double> >& dU_spts);
 
   /*! Shock Capturing in the element */
   double shockCaptureInEle(matrix<double> &U_spts, double threshold);
@@ -84,6 +91,7 @@ private:
   vector<matrix<double>> opp_grad_spts;
   matrix<double> opp_div_spts;
   matrix<double> opp_correction;
+  vector<matrix<double>> opp_correctU;
 
   /*! Evaluate the divergence of the (VCJH) correction function at a solution point from a flux point */
   double divVCJH_quad(int in_fpt, vector<double> &loc, vector<double> &loc_1d_spts, uint vcjh, uint order);

@@ -20,7 +20,7 @@
 //! Binary helper operation [for use with STL algorithms]
 static bool abs_compare(int a, int b)
 {
-    return (std::abs(a) < std::abs(b));
+  return (std::abs(a) < std::abs(b));
 }
  
 void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
@@ -206,7 +206,7 @@ void oper::setupGradSpts(vector<point> &loc_spts)
 
 void oper::setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
 {
-  uint nSpts, nFpts, spt, fpt, dim;
+  uint nSpts, nFpts;
   vector<double> loc(nDims);
   nSpts = loc_spts.size();
   nFpts = loc_fpts.size();
@@ -219,14 +219,61 @@ void oper::setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
   }
   else if (eType == QUAD) {
     vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
-    for(spt=0; spt<nSpts; spt++) {
-      for(dim=0; dim<nDims; dim++){
+    for(uint spt=0; spt<nSpts; spt++) {
+      for(uint dim=0; dim<nDims; dim++) {
         loc[dim] = loc_spts[spt][dim];
       }
 
-      for(fpt=0; fpt<nFpts; fpt++) {
+      for(uint fpt=0; fpt<nFpts; fpt++) {
         opp_correction[spt][fpt] = divVCJH_quad(fpt,loc,loc_spts_1D,params->vcjhSchemeQuad,order);
       }
+    }
+  }
+}
+
+void oper::setupCorrectGradU(void)
+{
+  opp_correctU.resize(nDims);
+  for (auto& op:opp_correctU) {
+    op.setup(nSpts,nFpts);
+    op.initializeToZero();
+  }
+
+  if (eType == TRI) {
+    // Not yet implemented
+  }
+  else if (eType == QUAD) {
+
+    vector<double> tNorm(nDims);
+
+    for(uint fpt=0; fpt<nFpts; fpt++) {
+
+      uint iFace = floor(fpt / (order+1));
+      switch(iFace) {
+      case(0):
+        tNorm[0] = 0;
+        tNorm[1] = -1;
+        break;
+      case(1):
+        tNorm[0] = 1;
+        tNorm[1] = 0;
+        break;
+      case(2):
+        tNorm[0] = 0;
+        tNorm[1] = 1;
+        break;
+      case(3):
+        tNorm[0] = -1;
+        tNorm[1] = 0;
+        break;
+      }
+
+      for(uint spt=0; spt<nSpts; spt++) {
+        for(uint dim=0; dim<nDims; dim++) {
+          opp_correctU[dim](spt,fpt) = opp_correction(spt,fpt) * tNorm[dim];
+        }
+      }
+
     }
   }
 }
@@ -399,6 +446,12 @@ void oper::applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &no
 void oper::applyCorrectDivF(matrix<double> &dFn_fpts, matrix<double> &divF_spts)
 {
   opp_correction.timesMatrixPlus(dFn_fpts,divF_spts);
+}
+
+void oper::applyCorrectGradU(matrix<double> &dUc_fpts, vector<matrix<double>> &dU_spts)
+{
+  for (int dim=0; dim<nDims; dim++)
+    opp_correctU[dim].timesMatrixPlus(dUc_fpts,dU_spts[dim]);
 }
 
 

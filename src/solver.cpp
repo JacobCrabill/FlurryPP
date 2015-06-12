@@ -142,8 +142,6 @@ void solver::calcResidual(int step)
 
   calcInviscidFlux_spts();
 
-  extrapolateNormalFlux();
-
   calcInviscidFlux_faces();
 
 #ifndef _NO_MPI
@@ -152,9 +150,11 @@ void solver::calcResidual(int step)
 
   if (params->viscous) {
 
-    correctU();
+    correctGradU();
 
     extrapolateGradU();
+
+    calcViscousFlux_spts();
 
     calcViscousFlux_faces();
 
@@ -163,6 +163,8 @@ void solver::calcResidual(int step)
 #endif
 
   }
+
+  extrapolateNormalFlux();
 
   calcFluxDivergence(step);
 
@@ -288,7 +290,7 @@ void solver::calcViscousFlux_spts(void)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    eles[i].calcInviscidFlux_spts();
+    eles[i].calcViscousFlux_spts();
   }
 }
 
@@ -378,7 +380,6 @@ void solver::correctDivFlux(int step)
     eles[i].calcDeltaFn();
     opers[eles[i].eType][eles[i].order].applyCorrectDivF(eles[i].dFn_fpts,eles[i].divF_spts[step]);
   }
-
 }
 
 void solver::calcGradU_spts(void)
@@ -389,14 +390,23 @@ void solver::calcGradU_spts(void)
   }
 }
 
-void solver::correctU()
+void solver::correctGradU(void)
 {
-
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].calcDeltaUc();
+    opers[eles[i].eType][eles[i].order].applyCorrectGradU(eles[i].dUc_fpts,eles[i].dU_spts);
+  }
 }
 
 void solver::extrapolateGradU()
 {
-
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    for (int dim=0; dim<params->nDims; dim++) {
+      opers[eles[i].eType][eles[i].order].applySptsFpts(eles[i].dU_spts[dim],eles[i].dU_fpts[dim]);
+    }
+  }
 }
 
 void solver::calcEntropyErr_spts(void)

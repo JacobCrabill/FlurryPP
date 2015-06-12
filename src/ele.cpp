@@ -45,52 +45,7 @@ ele::ele(int in_eType, int in_order, int in_ID, vector<point> &in_nodes, geo *in
 
 void ele::initialize(void)
 {
-  int fpt, face;
 
-  switch(eType) {
-  case(TRI):
-    for (fpt=0; fpt<nFpts; fpt++) {
-      face = fpt%(nFpts/3);
-      switch(face) {
-      case(0):
-        tNorm_fpts[fpt][0] = 0;
-        tNorm_fpts[fpt][1] = -1;
-        break;
-      case(1):
-        tNorm_fpts[fpt][0] = 1.0/sqrt(2);
-        tNorm_fpts[fpt][1] = 1.0/sqrt(2);
-        break;
-      case(2):
-        tNorm_fpts[fpt][0] = -1;
-        tNorm_fpts[fpt][1] = 0;
-        break;
-      }
-    }
-    break;
-  case(QUAD):
-    for (fpt=0; fpt<nFpts; fpt++) {
-      face = fpt%(nFpts/3);
-      switch(face) {
-      case(0):
-        tNorm_fpts[fpt][0] = 0;
-        tNorm_fpts[fpt][1] = -1;
-        break;
-      case(1):
-        tNorm_fpts[fpt][0] = 1;
-        tNorm_fpts[fpt][1] = 0;
-        break;
-      case(2):
-        tNorm_fpts[fpt][0] = 0;
-        tNorm_fpts[fpt][1] = 1;
-        break;
-      case(3):
-        tNorm_fpts[fpt][0] = -1;
-        tNorm_fpts[fpt][1] = 0;
-        break;
-      }
-    }
-    break;
-  }
 }
 
 void ele::setup(input *inParams, geo *inGeo)
@@ -149,12 +104,15 @@ void ele::setupArrays(void)
   divF_spts.resize(nRKSteps);
   for (auto& dF:divF_spts) dF.setup(nSpts,nFields);
 
-
-  dU_spts.resize(nDims);
-  dU_fpts.resize(nDims);
-  for (int dim=0; dim<nDims; dim++) {
-    dU_spts[dim].setup(nSpts,nFields);
-    dU_fpts[dim].setup(nFpts,nFields);
+  if (params->motion || params->viscous) {
+    dU_spts.resize(nDims);
+    dU_fpts.resize(nDims);
+    for (int dim=0; dim<nDims; dim++) {
+      dU_spts[dim].setup(nSpts,nFields);
+      dU_fpts[dim].setup(nFpts,nFields);
+      dU_spts[dim].initializeToZero();
+      dU_fpts[dim].initializeToZero();
+    }
   }
 
   F_spts.resize(nDims);
@@ -197,6 +155,13 @@ void ele::setupArrays(void)
     for (auto &vec:nodesRK) {
       vec = nodes;
     }
+  }
+
+  if (params->viscous) {
+    Uc_fpts.setup(nFpts,nFields);
+    dUc_fpts.setup(nFpts,nFields);
+    Uc_fpts.initializeToZero();
+    dUc_fpts.initializeToZero();
   }
 
   S_spts.setup(nSpts,1);
@@ -731,16 +696,28 @@ void ele::calcViscousFlux_spts()
         tempDU(dim,k) = dU_spts[dim](spt,k);
       }
     }
+
     viscousFlux(U_spts[spt], tempDU, tempF, params);
 
-    /* --- Transform back to reference domain --- */
-    for (int k=0; k<nFields; k++) {
+    if (params->motion) {
+      /* --- Don't transform yet; that will be handled later --- */
       for (int i=0; i<nDims; i++) {
-        for (int j=0; j<nDims; j++) {
-          F_spts[i][spt][k] += JGinv_spts[spt][i][j]*tempF[j][k];
+        for (int k=0; k<nFields; k++) {
+          F_spts[i][spt][k] += tempF[i][k];
         }
       }
     }
+    else {
+      /* --- Transform back to reference domain --- */
+      for (int k=0; k<nFields; k++) {
+        for (int i=0; i<nDims; i++) {
+          for (int j=0; j<nDims; j++) {
+            F_spts[i][spt][k] += JGinv_spts[spt][i][j]*tempF[j][k];
+          }
+        }
+      }
+    }
+
   }
 }
 
@@ -764,6 +741,16 @@ void ele::calcDeltaFn(void)
   for (int fpt=0; fpt<nFpts; fpt++) {
     for (int k=0; k<nFields; k++) {
       dFn_fpts(fpt,k) = Fn_fpts(fpt,k) - disFn_fpts(fpt,k);
+    }
+  }
+}
+
+
+void ele::calcDeltaUc(void)
+{
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    for (int k=0; k<nFields; k++) {
+      dUc_fpts(fpt,k) = Uc_fpts(fpt,k) - U_fpts(fpt,k);
     }
   }
 }

@@ -55,7 +55,9 @@ void face::setupFace(void)
 
   UL.setup(nFptsL,nFields);
   UR.setup(nFptsL,nFields);
+  UC.setup(nFptsL,nFields);
   FnL.resize(nFptsL);
+  UcL.resize(nFptsL);
   Fn.setup(nFptsL,nFields);
   normL.setup(nFptsL,nDims);
   dAL.resize(nFptsL);
@@ -64,18 +66,17 @@ void face::setupFace(void)
 
   if (params->viscous) {
     // just a placeholder.  Need to properly size/reorder dimensions later.
-    gradUL.resize(nDims);
-    gradUR.resize(nDims);
-    for (int i=0; i<nDims; i++) {
-      gradUL[i].setup(nFptsL,nFields);
-      gradUR[i].setup(nFptsR,nFields);
-    }
+    gradUL.resize(nFptsL);
+    gradUR.resize(nFptsR);
+    for (auto &dU:gradUL) dU.setup(nDims,nFields);
+    for (auto &dU:gradUR) dU.setup(nDims,nFields);
   }
 
   // Get access to data at left element
   int fpt = 0;
   for (int i=fptStartL; i<fptEndL; i++) {
     FnL[fpt] = (eL->Fn_fpts[i]);
+    UcL[fpt] = (eL->Uc_fpts[i]);
     waveSp[fpt] = &(eL->waveSp_fpts[i]);
     fpt++;
   }
@@ -99,6 +100,14 @@ void face::getLeftState()
       }
       dAL[fpt] = (eL->dA_fpts[i]);
       detJacL[fpt] = (eL->detJac_fpts[i]);
+    }
+
+    if (params->viscous) {
+      for (int j=0; j<nFields; j++) {
+        for (int dim=0; dim<nDims; dim++) {
+          gradUL[fpt](dim,j) = (eL->dU_fpts[dim](i,j));
+        }
+      }
     }
 
     fpt++;
@@ -130,6 +139,15 @@ void face::calcInviscidFlux(void)
       FnL[i][j] =  Fn(i,j)*dAL[i];
 
     *waveSp[i] /= dAL[i];
+  }
+
+  if (params->viscous) {
+    // Still assuming nFptsL = nFptsR
+    for (int i=0; i<nFptsL; i++) {
+      for (int j=0; j<nFields; j++) {
+        UC(i,j) = 0.5*( UL(i,j) + UR(i,j) );
+      }
+    }
   }
 
   this->setRightState();

@@ -91,6 +91,8 @@ public:
 
   void calcDeltaFn(void);
 
+  void calcDeltaUc(void);
+
   /*! Calculate the maximum stable time step based upon CFL */
   double calcDt(void);
 
@@ -174,6 +176,8 @@ private:
   matrix<double> disFn_fpts;       //! Discontinuous normal flux at flux points
   matrix<double> Fn_fpts;          //! Interface flux at flux points
   matrix<double> dFn_fpts;         //! Interface minus discontinuous flux at flux points
+  matrix<double> Uc_fpts;          //! Common solution at flux points
+  matrix<double> dUc_fpts;         //! Common minus discontinuous solution at flux points
   vector<double> waveSp_fpts;      //! Maximum wave speed at each flux point
 
   // Gradients

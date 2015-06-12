@@ -125,7 +125,7 @@ public:
   void calcGradU_spts(void);
 
   //! For viscous calculations, apply the correction procedure to the solution
-  void correctU(void);
+  void correctGradU(void);
 
   /*! For viscous calculations, extrapolate the corrected gradient of the solution
    *  from the solution points to the flux points */

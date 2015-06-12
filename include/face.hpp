@@ -80,10 +80,12 @@ protected:
   /* --- Storage for all solution/geometry data at flux points [left state] --- */
   matrix<double> UL;      //! Discontinuous solution at left, right eles [nFpts, nFields]
   matrix<double> UR;      //! Discontinuous solution at left, right eles [nFpts, nFields]
+  matrix<double> UC;      //! Common solution at interface [nFpts, nFields]
   vector<matrix<double>> gradUL; //! Solution gradient at left side
   vector<matrix<double>> gradUR; //! Solution gradient at right side
   vector<matrix<double>> FL; //! Flux matrix at each flux point [nFpts, nDims, nFields]
-  vector<double*> FnL;    //! Common normal flux for left ele (in ele's memory)  [nDims, nFpts, nFields]
+  vector<double*> FnL;    //! Common normal flux for left ele (in ele's memory)  [nFpts, nFields]
+  vector<double*> UcL;    //! Common solution for left ele (in ele's memory)  [nFpts, nFields]
   matrix<double> Fn;      //! Common numerical flux at interface  [nFpts, nFields]
   matrix<double> normL;   //! Unit outward normal at flux points
   vector<double> dAL;     //! Local face-area equivalent (aka edge Jacobian) at flux points
