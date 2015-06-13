@@ -90,8 +90,8 @@ void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *
 
   /* --- Calculate Viscous Flux --- */
   Fvis(0,0) =  0.0;
-  Fvis(0.1) = -tauxx;
-  Fvis(0.2) = -tauxy;
+  Fvis(0,1) = -tauxx;
+  Fvis(0,2) = -tauxy;
   Fvis(0,3) = -(u*tauxx+v*tauxy+(mu/params->prandtl)*(params->gamma)*de_dx);
 
   Fvis(1,0) =  0.0;

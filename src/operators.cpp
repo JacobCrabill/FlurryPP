@@ -50,6 +50,10 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
 
   setupCorrection(loc_spts,loc_fpts);
 
+  if (params->viscous) {
+    setupCorrectGradU();
+  }
+
   // Operators needed for Shock capturing
   if (params->scFlag) {
     setupVandermonde(loc_spts);
@@ -439,7 +443,7 @@ void oper::applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &no
     opp_spts_to_fpts.timesMatrix(F_spts[dim],tempFn);
     for (uint fpt=0; fpt<nFpts; fpt++)
       for (uint i=0; i<nFields; i++)
-        Fn_fpts[fpt][i] += tempFn[fpt][i]*norm_fpts[fpt][dim]*dA_fpts[fpt];
+        Fn_fpts[fpt][i] += tempFn(fpt,i)*norm_fpts(fpt,dim)*dA_fpts[fpt];
   }
 }
 

@@ -288,6 +288,24 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("test_case",test_case,0);
   opts.getScalarValue("iterMax",iterMax);
 
+  if (viscous) {
+    opts.getScalarValue("Re",Re);
+    opts.getScalarValue("Lref",Lref,1.0);
+    opts.getScalarValue("muGas",muGas,1.827e-5);
+    opts.getScalarValue("prandtl",prandtl,.72);
+    opts.getScalarValue("SGas",SGas,120.);
+    opts.getScalarValue("TGas",TGas,291.15);
+
+    opts.getScalarValue("MachBound",MachBound,1.);
+    opts.getScalarValue("nxBound",nxBound,1.);
+    opts.getScalarValue("nyBound",nyBound,0.);
+    opts.getScalarValue("nzBound",nzBound,0.);
+
+    /* --- LDG Flux Parameters --- */
+    opts.getScalarValue("LDG_penFact",penFact,0.5);
+    opts.getScalarValue("LDG_tau",tau,1.0);
+  }
+
   opts.getScalarValue("restart",restart,0);
   if (restart) {
     opts.getScalarValue("restartIter",restartIter);
@@ -352,4 +370,52 @@ void input::readInputFile(char *filename)
   }
 
   iter = initIter;
+
+  if (viscous) nonDimensionalize();
+}
+
+
+void input::nonDimensionalize(void)
+{
+  /* --- Calculate Reference / Freestream Non-Dimensionalized Values --- */
+
+  double Tref = TBound;
+
+  // Calculate total velocity & individual components
+  double UBound = MachBound * sqrt(gamma*RGas*TBound);
+  uBound = UBound * nxBound;
+  vBound = UBound * nyBound;
+  wBound = UBound * nzBound;
+
+  muBound = muGas * pow(TBound/TGas, 1.5) * ((TGas+SGas) / (TBound+SGas));
+
+  rhoBound = muBound*Re/(UBound*Lref);
+  pBound = rhoBound * RGas * TBound;
+
+  double rhoRef = rhoBound;
+  double pRef = rhoRef*UBound*UBound;
+  double muRef = rhoRef*UBound*Lref;
+  //double timeRef = Lref / UBound;
+  //double RRef = (RGas*Tref) / (UBound*UBound);
+
+  c_sth = SGas / TGas; // Sutherland's Law parameter
+  mu_inf = muGas / muRef;
+  rt_inf = TGas * RGas / (UBound*UBound);
+
+  // Set up the dimensionless conditions at free-stream boundaries
+
+  rhoBound = 1.;
+  uBound = uBound / UBound;
+  vBound = vBound / UBound;
+  wBound = wBound / UBound;
+  pBound = pBound / pRef;
+  TtBound = (TBound/Tref) * (1. + 0.5*(gamma-1.)*MachBound*MachBound);
+  PtBound = pBound * pow(1. + 0.5*(gamma-1.)*MachBound*MachBound, gamma/(gamma-1.));
+
+  rhoIC = rhoBound;
+  vxIC = uBound;
+  vyIC = vBound;
+  pIC = pBound;
+  muIC = muBound;
+  TIC = TBound;
 }

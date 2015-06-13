@@ -42,7 +42,10 @@ public:
   void getRightState(void);
 
   //! Do nothing [handled sparately via comminicate()]
-  void setRightState(void);
+  void setRightStateFlux(void);
+
+  //! Do nothing [handled sparately via comminicate()]
+  void setRightStateSolution(void);
 
   //! Send the right-state data across the processor boundary using MPI
   void communicate(void);
@@ -63,6 +66,7 @@ private:
 
   matrix<double> bufUR;      //! Incoming buffer for receving UR
   matrix<double> bufGradUR;  //! Incoming buffer for receving gradUR
+  matrix<double> bufGradUL;      //! !! TEMP HACK !! Outgoing buffer for sending UL
 
 #ifndef _NO_MPI
   MPI_Request UL_out;

@@ -159,9 +159,11 @@ void ele::setupArrays(void)
 
   if (params->viscous) {
     Uc_fpts.setup(nFpts,nFields);
-    dUc_fpts.setup(nFpts,nFields);
     Uc_fpts.initializeToZero();
+    dUc_fpts.setup(nFpts,nFields);
     dUc_fpts.initializeToZero();
+    dU_fpts.resize(nDims);
+    for (auto &du:dU_fpts) du.setup(nFpts,nFields);
   }
 
   S_spts.setup(nSpts,1);
@@ -703,7 +705,7 @@ void ele::calcViscousFlux_spts()
       /* --- Don't transform yet; that will be handled later --- */
       for (int i=0; i<nDims; i++) {
         for (int k=0; k<nFields; k++) {
-          F_spts[i][spt][k] += tempF[i][k];
+          F_spts[i](spt,k) += tempF(i,k);
         }
       }
     }
@@ -712,7 +714,7 @@ void ele::calcViscousFlux_spts()
       for (int k=0; k<nFields; k++) {
         for (int i=0; i<nDims; i++) {
           for (int j=0; j<nDims; j++) {
-            F_spts[i][spt][k] += JGinv_spts[spt][i][j]*tempF[j][k];
+            F_spts[i](spt,k) += JGinv_spts[spt][i][j]*tempF(j,k);
           }
         }
       }

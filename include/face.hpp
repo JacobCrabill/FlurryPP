@@ -46,7 +46,11 @@ public:
 
   /*! For all internal faces, put the normal flux into the right ele
    *  Either put directly into ele's memory, or send across MPI boundary */
-  virtual void setRightState(void) =0;
+  virtual void setRightStateFlux(void) =0;
+
+  /*! Viscous cases: For all internal faces, put the common solution into the right ele
+   *  Either put directly into ele's memory, or send across MPI boundary */
+  virtual void setRightStateSolution(void) =0;
 
   /*! Calculate the common inviscid flux on the face */
   void calcInviscidFlux(void);
@@ -62,6 +66,9 @@ public:
 
   /*! Calculate the common flux using the Lax-Friedrichs method [scalar advection] */
   void laxFriedrichsFlux(void);
+
+  /*! Calculate a biased-average solution for LDG viscous flux */
+  void ldgSolution(void);
 
   int ID; //! Global ID of face
 

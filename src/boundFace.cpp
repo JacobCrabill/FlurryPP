@@ -293,7 +293,12 @@ void boundFace::applyBCs(void)
 }
 
 
-void boundFace::setRightState(void)
+void boundFace::setRightStateFlux(void)
+{
+  // No right state; do nothing
+}
+
+void boundFace::setRightStateSolution(void)
 {
   // No right state; do nothing
 }

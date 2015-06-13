@@ -30,7 +30,10 @@ public:
   void getRightState(void);
 
   //! Put the calculated interface flux into the right element's memory
-  void setRightState(void);
+  void setRightStateFlux(void);
+
+  //! Put the common solution into the right element's memory (viscous cases)
+  void setRightStateSolution(void);
 
 private:
   int locF_R;              //! Right element's local face ID

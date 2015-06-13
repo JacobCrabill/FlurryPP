@@ -34,7 +34,10 @@ public:
   void getRightState(void);
 
   /*! No right element at a boundary - do nothing. */
-  void setRightState(void);
+  void setRightStateFlux(void);
+
+  /*! No right element at a boundary - do nothing. */
+  void setRightStateSolution(void);
 
 private:
   int bcType;  //! Boundary condition to apply to this face
