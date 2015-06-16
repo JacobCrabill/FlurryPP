@@ -40,6 +40,11 @@ void solver::setup(input *params, geo *Geo)
   /* Setup the FR elements & faces which will be computed on */
   Geo->setupElesFaces(eles,faces,mpiFaces);
 
+  nEles = Geo->nEles;
+  nIntFaces = Geo->nFaces;
+  nBndFaces = faces.size();
+  nMpiFaces = mpiFaces.size();
+
   if (params->restart)
     readRestartFile();
   else
@@ -63,6 +68,11 @@ void solver::setup(input *params, geo *Geo)
       break;
     default:
       FatalError("Time-Stepping type not supported.");
+  }
+
+  // Mesh adaption
+  if (params->scFlag && params->rAdapt) {
+    sensor.resize(nEles);
   }
 
 #ifndef _NO_MPI
@@ -405,6 +415,28 @@ void solver::calcEntropyErr_spts(void)
   for (uint i=0; i<eles.size(); i++) {
     eles[i].calcEntropyErr_spts();
   }
+}
+
+void solver::doRAdaption()
+{
+  // Get the concentration-sensor value at each element
+  // *** Should have an alternate option to use entropy sensor ***
+#pragma omp parallel for
+  for (int i=0; i<nEles; i++) {
+    sensor[i] = eles[i].sensor;
+  }
+
+  // Get the list of cells to adapt to: The top nAdapt cells
+  vector<int> ind = getOrder(sensor);
+  int nAdapt = std::min((int)(params->rAdaptRatio * nEles), (int)ind.size());
+
+  icAdapt.resize(0);
+  for (int i=0; i<nAdapt; i++) {
+    icAdapt.push_back(ind.back());
+    ind.pop_back();
+  }
+
+  Geo->doRAdaption(icAdapt);
 }
 
 void solver::moveMesh(int step)

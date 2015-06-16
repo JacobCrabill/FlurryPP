@@ -160,15 +160,19 @@ public:
   int vcjhSchemeQuad;
 
   /* --- Shock Capturing Parameters --- */
-  int scFlag;       // Shock Capturing Flag
-  double threshold; // Threshold for considering as shock -Set to 1.0 by default
+  int scFlag;       //! Shock Capturing Flag
+  double threshold; //! Threshold for considering as shock -Set to 1.0 by default
+
+  /* --- Mesh Adaption --- */
+  int rAdapt;         //! R-Adaption flag
+  double rAdaptRatio; //! Maximum ratio of cells to 'snap' to [max # Cells / global # cells]
 
   /* --- PID Boundary Conditions --- */
   double Kp;
   double Kd;
   double Ki;
 
-  /* --- Other --- */
+  /* --- MPI --- */
   int rank;
   int nproc;
 

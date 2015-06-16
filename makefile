@@ -88,6 +88,7 @@ clean:
 
 .PHONY: debug
 debug: CXXFLAGS=$(CXXFLAGS_DEBUG)
+debug: LFLAGS+=-pg
 debug: $(TARGET)
 
 .PHONY: release

@@ -337,6 +337,11 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("vcjhSchemeQuad",vcjhSchemeQuad,0);
 
   /* --- Shock Capturing --- */
+  opts.getScalarValue("rAdapt",rAdapt,0);
+  if (rAdapt == 1) {
+    opts.getScalarValue("maxRAdaptRation",rAdaptRatio,.05);
+    //opts.getScalarValue("",)
+  }
   opts.getScalarValue("shockCapture",scFlag,0);
   if(scFlag == 1)
     opts.getScalarValue("threshold",threshold,1.0);

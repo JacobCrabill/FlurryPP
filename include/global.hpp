@@ -233,6 +233,9 @@ vector<T> operator*(const vector<T>& lhs, double rhs)
   return out;
 }
 
+//! Returns the indices of the input vector, in ascending order of data
+vector<int> getOrder(vector<double> &data);
+
 //----------Performance boost mod----------------------
 /*template<typename T>
 void std::vector<T>::operator*()*/

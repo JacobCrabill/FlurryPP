@@ -64,6 +64,11 @@ public:
   //! Get the Gauss quadrature weights for the Gauss points of the given order [1D]
   vector<double> getQptWeights1D(int order);
 
+  /* ==== Moving-Mesh / Mesh-Adaption Routines ==== */
+
+  //! Adapt the mesh to the chosen cells using 'R' (redistribution) adaption
+  void doRAdaption(vector<int> icAdapt);
+
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces, nBndFaces, nMpiFaces;
   int nBounds;  //! Number of boundaries

@@ -1047,4 +1047,41 @@ void geo::partitionMesh(void)
 #endif
 }
 
+
+void geo::doRAdaption(vector<int> icAdapt)
+{
+  /* which method to use?  My advancing-front method would probably
+   * be the quickest/simplest to implement; do that to start with
+   */
+
+  // The Advanding-Front Method
+  vector<int> active, dead, near, far;
+  active = icAdapt; // or actually, c2v.getRows(active)
+  // far = [all nodes != active]
+  // near = [v2v[active]]
+  while (far.size() > 0) {
+    // Move active cells/nodes
+    // Assign active nodes -> dead, clear active nodes list
+    // Set near nodes -> active, clear near nodes list
+    // Get new near nodes from new active nodes
+    // Remove near nodes from far list
+    // MPI: Communicate active, (near?) nodes & necessary distances
+    // Repeat
+  }
+
+  vector<point> xyc; //(icAdapt.size());
+
+  for (auto &ic:icAdapt) {
+    point pt;
+    for (int i=0; i<c2nv[ic]; i++) {
+      pt.x += xv[c2v(ic,i)].x;
+      pt.y += xv[c2v(ic,i)].y;
+    }
+    pt.x /= c2nv[ic];
+    pt.y /= c2nv[ic];
+    xyc.push_back(pt);
+  }
+}
+
+
 #include "../include/geo.inl"

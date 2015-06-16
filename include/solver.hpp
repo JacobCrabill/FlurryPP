@@ -53,6 +53,16 @@ public:
   //! Vector of all MPI faces handled by this solver
   vector<shared_ptr<mpiFace>> mpiFaces;
 
+  /* --- Basic Info --- */
+  int nEles;
+  int nIntFaces;
+  int nBndFaces;
+  int nMpiFaces;
+
+  /* --- Variables for mesh adaption --- */
+  vector<double> sensor;  //! Concentration sensor value in each element
+  vector<int> icAdapt;    //! Indices of eles to adapt to [r-adaption]
+
   /* === Setup Functions === */
 
   solver();
@@ -174,7 +184,9 @@ public:
 
   // **All of the following functions are just food for thought at the moment**
 
-  void get_r_adapt_cells();
+  /*! Use the shock-capturing or entropy-err sensors to adapt the mesh
+   *  with the 'r-adaption' (redistribution) method */
+  void doRAdaption(void);
 
   void get_p_adapt_cells();
 
