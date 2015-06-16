@@ -699,7 +699,10 @@ void ele::calcViscousFlux_spts()
       }
     }
 
-    viscousFlux(U_spts[spt], tempDU, tempF, params);
+    if (params->equation == NAVIER_STOKES)
+      viscousFlux(U_spts[spt], tempDU, tempF, params);
+    else if (params->equation == ADVECTION_DIFFUSION)
+      viscousFluxAD(tempDU, tempF, params);
 
     if (params->motion) {
       /* --- Don't transform yet; that will be handled later --- */

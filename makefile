@@ -84,7 +84,7 @@ $(TARGET):  $(OBJECTS)
 	$(LINK) $(LFLAGS) -o $(DESTDIR)/$(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS) $(DBG)
 
 clean:
-	cd obj && rm *.o && cd .. && rm bin/Flurry
+	cd obj && rm -f *.o && cd .. && rm -f bin/Flurry
 
 .PHONY: debug
 debug: CXXFLAGS=$(CXXFLAGS_DEBUG)

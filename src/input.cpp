@@ -289,7 +289,7 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("test_case",test_case,0);
   opts.getScalarValue("iterMax",iterMax);
 
-  if (viscous) {
+  if (viscous && equation == NAVIER_STOKES) {
     opts.getScalarValue("Re",Re);
     opts.getScalarValue("Lref",Lref,1.0);
     opts.getScalarValue("muGas",muGas,1.827e-5);

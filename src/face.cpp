@@ -191,12 +191,6 @@ void face::calcViscousFlux(void)
         Fn(fpt,k) += Fc(0,k)*normL(fpt,0) + Fc(1,k)*normL(fpt,1);
 
     }
-
-    // Transform normal flux using edge Jacobian and put into ele's memory
-    for (int i=0; i<nFptsL; i++) {
-      for (int j=0; j<nFields; j++)
-        FnL[i][j] =  Fn(i,j)*dAL[i];
-    }
   }
   else if (params->equation == ADVECTION_DIFFUSION) {
     for (int fpt=0; fpt<nFptsL; fpt++) {
@@ -208,6 +202,12 @@ void face::calcViscousFlux(void)
 
       Fn(fpt,0) += tempFn[0];
     }
+  }
+
+  // Transform normal flux using edge Jacobian and put into ele's memory
+  for (int i=0; i<nFptsL; i++) {
+    for (int j=0; j<nFields; j++)
+      FnL[i][j] =  Fn(i,j)*dAL[i];
   }
 
   this->setRightStateFlux();

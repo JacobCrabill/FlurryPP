@@ -62,7 +62,7 @@ void mpiFace::finishRightSetup(void)
 
   UR.setup(nFptsR,nFields);
   bufUR.setup(nFptsR,nFields);
-  bufGradUR.setup(nFptsR,nDims*nFields); // !! TEMP HACK !!
+  bufGradUR.setup(nFptsR,nDims*nFields); // !! TEMP HACK !!  need 3D matrix/array
   bufGradUL.setup(nFptsR,nDims*nFields); // !! TEMP HACK !!
 #endif
 }

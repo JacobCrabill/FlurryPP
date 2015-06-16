@@ -102,8 +102,8 @@ void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *
 
 void viscousFluxAD(matrix<double> &gradU, matrix<double> &Fvis, input *params)
 {
-  Fvis(0,0) = params->diffD * gradU(0,0);
-  Fvis(1,0) = params->diffD * gradU(1,0);
+  Fvis(0,0) = -params->diffD * gradU(0,0);
+  Fvis(1,0) = -params->diffD * gradU(1,0);
 }
 
 void centralFlux(double* uL, double* uR, double* norm, double* Fn, input *params)
