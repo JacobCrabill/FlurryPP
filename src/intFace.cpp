@@ -42,10 +42,18 @@ void intFace::setupRightState(void)
   dAR.resize(nFptsR);
   detJacR.resize(nFptsL);
 
+  if (params->viscous) {
+    UcR.resize(nFptsR);
+  }
+
   // Get access to normal flux storage at right element [order reversed to match left ele]
   int fpt = 0;
   for (int i=fptStartR-1; i>=fptEndR; i--) {
     FnR[fpt] = (eR->Fn_fpts[i]);
+
+    if (params->viscous)
+      UcR[fpt] = (eR->Uc_fpts[i]);
+
     fpt++;
   }
 }
@@ -68,15 +76,26 @@ void intFace::getRightState(void)
       detJacR[fpt] = (eR->detJac_fpts[i]);
     }
 
+    if (params->viscous) {
+      for (int dim=0; dim<nDims; dim++)
+        for (int j=0; j<nFields; j++)
+          gradUR[fpt](dim,j) = (eR->dU_fpts[dim](i,j));
+    }
+
     fpt++;
   }
 }
 
-void intFace::setRightState(void)
+void intFace::setRightStateFlux(void)
 {
-  for (int i=0; i<nFptsR; i++) {
-    for (int j=0; j<nFields; j++) {
+  for (int i=0; i<nFptsR; i++)
+    for (int j=0; j<nFields; j++)
       FnR[i][j] = -Fn(i,j)*dAR[i]; // opposite normal direction
-    }
-  }
+}
+
+void intFace::setRightStateSolution(void)
+{
+  for (int i=0; i<nFptsR; i++)
+    for (int j=0; j<nFields; j++)
+      UcR[i][j] = UC(i,j);
 }

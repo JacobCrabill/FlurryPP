@@ -80,7 +80,7 @@ void solver::update(void)
 
   for (int step=0; step<nRKSteps-1; step++) {
 
-    if (step == 1)
+    if (step == 0)
       params->rkTime = params->time;
     else
       params->rkTime = params->time + RKa[step-1]*params->dt;
@@ -90,7 +90,7 @@ void solver::update(void)
     calcResidual(step);
 
     /* If in first stage, compute CFL-based timestep */
-    if (step == 0 && params->dtType == 1) calcDt();
+    if (step == 0 && params->dtType == 1) calcDt();  // -- NOT CONSISTENT WITH MOVING MESH SEQUENCE --
 
     timeStepA(step);
 
@@ -142,8 +142,6 @@ void solver::calcResidual(int step)
 
   calcInviscidFlux_spts();
 
-  extrapolateNormalFlux();
-
   calcInviscidFlux_faces();
 
 #ifndef _NO_MPI
@@ -152,9 +150,11 @@ void solver::calcResidual(int step)
 
   if (params->viscous) {
 
-    correctU();
+    correctGradU();
 
     extrapolateGradU();
+
+    calcViscousFlux_spts();
 
     calcViscousFlux_faces();
 
@@ -163,6 +163,8 @@ void solver::calcResidual(int step)
 #endif
 
   }
+
+  extrapolateNormalFlux();
 
   calcFluxDivergence(step);
 
@@ -288,7 +290,7 @@ void solver::calcViscousFlux_spts(void)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    eles[i].calcInviscidFlux_spts();
+    eles[i].calcViscousFlux_spts();
   }
 }
 
@@ -378,7 +380,6 @@ void solver::correctDivFlux(int step)
     eles[i].calcDeltaFn();
     opers[eles[i].eType][eles[i].order].applyCorrectDivF(eles[i].dFn_fpts,eles[i].divF_spts[step]);
   }
-
 }
 
 void solver::calcGradU_spts(void)
@@ -389,14 +390,23 @@ void solver::calcGradU_spts(void)
   }
 }
 
-void solver::correctU()
+void solver::correctGradU(void)
 {
-
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].calcDeltaUc();
+    opers[eles[i].eType][eles[i].order].applyCorrectGradU(eles[i].dUc_fpts,eles[i].dU_spts);
+  }
 }
 
 void solver::extrapolateGradU()
 {
-
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    for (int dim=0; dim<params->nDims; dim++) {
+      opers[eles[i].eType][eles[i].order].applySptsFpts(eles[i].dU_spts[dim],eles[i].dU_fpts[dim]);
+    }
+  }
 }
 
 void solver::calcEntropyErr_spts(void)
@@ -473,11 +483,16 @@ void solver::readRestartFile(void) {
   // Get the file name & open the file
   char fileNameC[50];
   string fileName = params->dataFileName;
+#ifndef _NO_MPI
+  /* --- All processors write their solution to their own .vtu file --- */
+  sprintf(fileNameC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],params->restartIter,&fileName[0],params->restartIter,params->rank);
+#else
   sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],params->restartIter);
-
-  dataFile.open(fileNameC);
+#endif
 
   if (params->rank==0) cout << "Solver: Restarting from " << fileNameC << endl;
+
+  dataFile.open(fileNameC);
 
   if (!dataFile.is_open())
     FatalError("Cannont open restart file.");
@@ -516,6 +531,12 @@ void solver::readRestartFile(void) {
   for (uint i=0; i<faces.size(); i++) {
     faces[i]->setupFace();
   }
+
+  // Finish setting up MPI faces
+#pragma omp parallel for
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->setupFace();
+  }
 }
 
 void solver::initializeSolution()
@@ -529,7 +550,25 @@ void solver::initializeSolution()
 
   /* If running a moving-mesh case and using CFL-based time-stepping,
    * calc initial dt for grid velocity calculation */
-  if (params->motion != 0 && params->dtType == 1) calcDt();
+  /* If running a moving-mesh case and using CFL-based time-stepping,
+   * calc initial dt for grid velocity calculation */
+  //if ( (params->motion!=0 || params->slipPenalty==1) && params->dtType == 1 ) {
+  if (params->dtType == 1) {
+    extrapolateU();
+    double dt = INFINITY;
+#pragma omp parallel for reduction(min:dt)
+    for (uint i=0; i<eles.size(); i++) {
+      eles[i].calcWaveSpFpts();
+      dt = std::min(dt, eles[i].calcDt());
+    }
+
+#ifndef _NO_MPI
+  double dtTmp = dt;
+  MPI_Allreduce(&dtTmp, &dt, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+#endif
+
+    params->dt = dt;
+  }
 }
 
 // Method for shock capturing

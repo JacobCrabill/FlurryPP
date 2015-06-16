@@ -46,7 +46,11 @@ public:
 
   /*! For all internal faces, put the normal flux into the right ele
    *  Either put directly into ele's memory, or send across MPI boundary */
-  virtual void setRightState(void) =0;
+  virtual void setRightStateFlux(void) =0;
+
+  /*! Viscous cases: For all internal faces, put the common solution into the right ele
+   *  Either put directly into ele's memory, or send across MPI boundary */
+  virtual void setRightStateSolution(void) =0;
 
   /*! Calculate the common inviscid flux on the face */
   void calcInviscidFlux(void);
@@ -62,6 +66,9 @@ public:
 
   /*! Calculate the common flux using the Lax-Friedrichs method [scalar advection] */
   void laxFriedrichsFlux(void);
+
+  /*! Calculate a biased-average solution for LDG viscous flux */
+  void ldgSolution(void);
 
   int ID; //! Global ID of face
 
@@ -80,10 +87,12 @@ protected:
   /* --- Storage for all solution/geometry data at flux points [left state] --- */
   matrix<double> UL;      //! Discontinuous solution at left, right eles [nFpts, nFields]
   matrix<double> UR;      //! Discontinuous solution at left, right eles [nFpts, nFields]
+  matrix<double> UC;      //! Common solution at interface [nFpts, nFields]
   vector<matrix<double>> gradUL; //! Solution gradient at left side
   vector<matrix<double>> gradUR; //! Solution gradient at right side
   vector<matrix<double>> FL; //! Flux matrix at each flux point [nFpts, nDims, nFields]
-  vector<double*> FnL;    //! Common normal flux for left ele (in ele's memory)  [nDims, nFpts, nFields]
+  vector<double*> FnL;    //! Common normal flux for left ele (in ele's memory)  [nFpts, nFields]
+  vector<double*> UcL;    //! Common solution for left ele (in ele's memory)  [nFpts, nFields]
   matrix<double> Fn;      //! Common numerical flux at interface  [nFpts, nFields]
   matrix<double> normL;   //! Unit outward normal at flux points
   vector<double> dAL;     //! Local face-area equivalent (aka edge Jacobian) at flux points

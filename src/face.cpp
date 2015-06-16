@@ -63,13 +63,13 @@ void face::setupFace(void)
   waveSp.resize(nFptsL);
 
   if (params->viscous) {
+    UC.setup(nFptsL,nFields);
+    UcL.resize(nFptsL);
     // just a placeholder.  Need to properly size/reorder dimensions later.
-    gradUL.resize(nDims);
-    gradUR.resize(nDims);
-    for (int i=0; i<nDims; i++) {
-      gradUL[i].setup(nFptsL,nFields);
-      gradUR[i].setup(nFptsR,nFields);
-    }
+    gradUL.resize(nFptsL);
+    gradUR.resize(nFptsL);
+    for (auto &dU:gradUL) dU.setup(nDims,nFields);
+    for (auto &dU:gradUR) dU.setup(nDims,nFields);
   }
 
   // Get access to data at left element
@@ -77,6 +77,11 @@ void face::setupFace(void)
   for (int i=fptStartL; i<fptEndL; i++) {
     FnL[fpt] = (eL->Fn_fpts[i]);
     waveSp[fpt] = &(eL->waveSp_fpts[i]);
+
+    if (params->viscous) {
+      UcL[fpt] = (eL->Uc_fpts[i]);
+    }
+
     fpt++;
   }
 
@@ -99,6 +104,12 @@ void face::getLeftState()
       }
       dAL[fpt] = (eL->dA_fpts[i]);
       detJacL[fpt] = (eL->detJac_fpts[i]);
+    }
+
+    if (params->viscous) {
+      for (int j=0; j<nFields; j++)
+        for (int dim=0; dim<nDims; dim++)
+          gradUL[fpt](dim,j) = (eL->dU_fpts[dim](i,j));
     }
 
     fpt++;
@@ -132,27 +143,74 @@ void face::calcInviscidFlux(void)
     *waveSp[i] /= dAL[i];
   }
 
-  this->setRightState();
+  if (params->viscous) {
+
+    ldgSolution();
+
+    // Still assuming nFptsL = nFptsR
+    for (int i=0; i<nFptsL; i++) {
+      for (int j=0; j<nFields; j++) {
+        UC(i,j) = 0.5*( UL(i,j) + UR(i,j) );
+        UcL[i][j] = UC(i,j);
+      }
+    }
+  }
+
+  this->setRightStateFlux();
+
+  if (params->viscous)
+    this->setRightStateSolution();
 }
 
 void face::calcViscousFlux(void)
 {
   if (params->equation == NAVIER_STOKES) {
-    for (int i=0; i<nFptsL; i++) {
+    for (int fpt=0; fpt<nFptsL; fpt++) {
       // Calculate discontinuous viscous flux at flux points
-      viscousFlux(UL[i], gradUL[i], tempFL, params);
-      viscousFlux(UR[i], gradUR[i], tempFR, params);
+      viscousFlux(UL[fpt], gradUL[fpt], tempFL, params);
+      viscousFlux(UR[fpt], gradUR[fpt], tempFR, params);
 
       // Calculte common viscous flux at flux points
-      ldgFlux(UL[i], UR[i], gradUL[i], gradUR[i], Fn[i], params);
+      //ldgFlux(UL[i], UR[i], tempFL, tempFL, Fn[i], params);
+
+      double penFact = params->penFact;
+      if ( normL(fpt,0)+normL(fpt,1) < 0 )
+        penFact = -params->penFact;
+
+      double normX = normL(fpt,0);
+      double normY = normL(fpt,1);
+
+      matrix<double> Fc(nDims,nFields);
+      for(int k=0; k<nFields; k++) {
+        Fc(0,k) = 0.5*(tempFL(0,k) + tempFR(0,k)) + penFact*normX*( normX*(tempFL(0,k) - tempFR(0,k)) + normY*(tempFL(1,k) - tempFR(1,k)) ) + params->tau*normX*(UL(fpt,k) - UR(fpt,k));
+        Fc(1,k) = 0.5*(tempFL(1,k) + tempFR(1,k)) + penFact*normY*( normX*(tempFL(0,k) - tempFR(0,k)) + normY*(tempFL(1,k) - tempFR(1,k)) ) + params->tau*normY*(UL(fpt,k) - UR(fpt,k));
+      }
+
+      // calculate normal flux from discontinuous solution at flux points
+      for(int k=0; k<nFields; k++)
+        Fn(fpt,k) += Fc(0,k)*normL(fpt,0) + Fc(1,k)*normL(fpt,1);
+
+    }
+
+    // Transform normal flux using edge Jacobian and put into ele's memory
+    for (int i=0; i<nFptsL; i++) {
+      for (int j=0; j<nFields; j++)
+        FnL[i][j] =  Fn(i,j)*dAL[i];
     }
   }
   else if (params->equation == ADVECTION_DIFFUSION) {
-    for (int i=0; i<nFptsL; i++) {
-      viscousFluxAD(gradUL[i], tempFL, params);
-      viscousFluxAD(gradUR[i], tempFR, params);
+    for (int fpt=0; fpt<nFptsL; fpt++) {
+      viscousFluxAD(gradUL[fpt], tempFL, params);
+      viscousFluxAD(gradUR[fpt], tempFR, params);
+
+      double tempFn[1];
+      centralFlux(tempFL, tempFR, normL[fpt], tempFn, params);
+
+      Fn(fpt,0) += tempFn[0];
     }
   }
+
+  this->setRightStateFlux();
 }
 
 
@@ -333,7 +391,23 @@ void face::laxFriedrichsFlux(void)
       Fn(fpt,0) = vNorm*uAvg + 0.5*params->lambda*abs(vNorm)*uDiff;
     }
     else if (params->equation == NAVIER_STOKES) {
-      FatalError("laxFlux not supported for Navier-Stokes simulations.");
+      FatalError("Lax-Friedrichs not supported for Navier-Stokes simulations.");
     }
+  }
+}
+
+//! First step of the LDG flux - take a biased average of the solution
+void face::ldgSolution()
+{
+  // Choosing a unique direction for the switch
+  for (int fpt=0; fpt<nFptsL; fpt++) {
+
+    double penFact = params->penFact;
+    if ( normL(fpt,0)+normL(fpt,1) < 0 )
+      penFact = -params->penFact;
+
+    for(int k=0;k<nFields;k++)
+      UC(fpt,k) = 0.5*(UL(fpt,k) + UR(fpt,k)) - penFact*(UL(fpt,k) - UR(fpt,k));
+
   }
 }

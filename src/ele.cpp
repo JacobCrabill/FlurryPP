@@ -45,52 +45,7 @@ ele::ele(int in_eType, int in_order, int in_ID, vector<point> &in_nodes, geo *in
 
 void ele::initialize(void)
 {
-  int fpt, face;
 
-  switch(eType) {
-  case(TRI):
-    for (fpt=0; fpt<nFpts; fpt++) {
-      face = fpt%(nFpts/3);
-      switch(face) {
-      case(0):
-        tNorm_fpts[fpt][0] = 0;
-        tNorm_fpts[fpt][1] = -1;
-        break;
-      case(1):
-        tNorm_fpts[fpt][0] = 1.0/sqrt(2);
-        tNorm_fpts[fpt][1] = 1.0/sqrt(2);
-        break;
-      case(2):
-        tNorm_fpts[fpt][0] = -1;
-        tNorm_fpts[fpt][1] = 0;
-        break;
-      }
-    }
-    break;
-  case(QUAD):
-    for (fpt=0; fpt<nFpts; fpt++) {
-      face = fpt%(nFpts/3);
-      switch(face) {
-      case(0):
-        tNorm_fpts[fpt][0] = 0;
-        tNorm_fpts[fpt][1] = -1;
-        break;
-      case(1):
-        tNorm_fpts[fpt][0] = 1;
-        tNorm_fpts[fpt][1] = 0;
-        break;
-      case(2):
-        tNorm_fpts[fpt][0] = 0;
-        tNorm_fpts[fpt][1] = 1;
-        break;
-      case(3):
-        tNorm_fpts[fpt][0] = -1;
-        tNorm_fpts[fpt][1] = 0;
-        break;
-      }
-    }
-    break;
-  }
 }
 
 void ele::setup(input *inParams, geo *inGeo)
@@ -149,12 +104,15 @@ void ele::setupArrays(void)
   divF_spts.resize(nRKSteps);
   for (auto& dF:divF_spts) dF.setup(nSpts,nFields);
 
-
-  dU_spts.resize(nDims);
-  dU_fpts.resize(nDims);
-  for (int dim=0; dim<nDims; dim++) {
-    dU_spts[dim].setup(nSpts,nFields);
-    dU_fpts[dim].setup(nFpts,nFields);
+  if (params->motion || params->viscous) {
+    dU_spts.resize(nDims);
+    dU_fpts.resize(nDims);
+    for (int dim=0; dim<nDims; dim++) {
+      dU_spts[dim].setup(nSpts,nFields);
+      dU_fpts[dim].setup(nFpts,nFields);
+      dU_spts[dim].initializeToZero();
+      dU_fpts[dim].initializeToZero();
+    }
   }
 
   F_spts.resize(nDims);
@@ -199,6 +157,15 @@ void ele::setupArrays(void)
     }
   }
 
+  if (params->viscous) {
+    Uc_fpts.setup(nFpts,nFields);
+    Uc_fpts.initializeToZero();
+    dUc_fpts.setup(nFpts,nFields);
+    dUc_fpts.initializeToZero();
+    dU_fpts.resize(nDims);
+    for (auto &du:dU_fpts) du.setup(nFpts,nFields);
+  }
+
   S_spts.setup(nSpts,1);
   S_fpts.setup(nFpts,1);
   S_mpts.setup(nNodes,1);
@@ -222,7 +189,7 @@ void ele::setupAllGeometry(void) {
 
 void ele::move(int step)
 {
-  if (params->motion == 1) {
+  if (params->motion == 1 || params->motion == 2) {
     perturb();
   }
 
@@ -232,10 +199,19 @@ void ele::move(int step)
 
 void ele::perturb(void)
 {
-  for (int iv=0; iv<nNodes; iv++) {
-    /// Taken from Kui, AIAA-2010-5031-661
-    nodesRK[0][iv].x = nodes[iv].x + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
-    nodesRK[0][iv].y = nodes[iv].y + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+  if (params->motion == 1) {
+    for (int iv=0; iv<nNodes; iv++) {
+      /// Taken from Kui, AIAA-2010-5031-661
+      nodesRK[0][iv].x = nodes[iv].x + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+      nodesRK[0][iv].y = nodes[iv].y + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+    }
+  }
+  else if (params->motion == 2) {
+    double t0 = 10.*sqrt(5.);
+    for (int iv=0; iv<nNodes; iv++) {
+      nodesRK[0][iv].x = nodes[iv].x + sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*sin(4*pi*params->rkTime/t0);
+      nodesRK[0][iv].y = nodes[iv].y + sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*sin(8*pi*params->rkTime/t0);
+    }
   }
 }
 
@@ -246,6 +222,16 @@ void ele::calcGridVelocity(void)
       gridVel_nodes(iv,0) = 4.*pi/10.*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*cos(2*pi*params->rkTime/10.); // from Kui
       gridVel_nodes(iv,1) = 4.*pi/10.*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*cos(2*pi*params->rkTime/10.);
     }
+  }
+  else if (params->motion == 2) {
+    double t0 = 10.*sqrt(5.);
+    for (int iv=0; iv<nNodes; iv++) {
+      gridVel_nodes(iv,0) = 4.*pi/t0*sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*cos(4*pi*params->rkTime/t0); // from Liang-Miyaji
+      gridVel_nodes(iv,1) = 8.*pi/t0*sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*cos(8*pi*params->rkTime/t0);
+    }
+  }
+
+  if (params->motion != 0) {
 
     gridVel_spts.initializeToZero();
     for (int spt=0; spt<nSpts; spt++) {
@@ -611,6 +597,35 @@ void ele::setInitialCondition()
         U_spts(spt,3) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
       }
     }
+    else if (params->ic_type == 2) {
+      /* --- Isentropic Vortex of strength eps centered at (0,0) (Liang version) --- */
+      double eps = 1.0;  // See paper by Liang and Miyaji, CPR Deforming Domains
+      double rc  = 1.0;
+      double Minf = .3;
+      double Uinf = 1;
+      double rhoInf = 1;
+      double theta = atan(0.5);
+      double Pinf = pow(Minf,-2)/gamma;
+
+      double eM = (eps*Minf)*(eps*Minf);
+      double f, x, y;
+      for (int spt=0; spt<nSpts; spt++) {
+        x = pos_spts[spt][0];
+        y = pos_spts[spt][1];
+
+        f = -(x*x + y*y) / (rc*rc);
+
+        vx = Uinf*(cos(theta) - y*eps/rc * exp(f/2.));
+        vy = Uinf*(sin(theta) + x*eps/rc * exp(f/2.));
+        rho = rhoInf*pow(1. - (gamma-1.)/2. * eM * exp(f), gamma/(gamma-1.0));
+        p   = Pinf  *pow(1. - (gamma-1.)/2. * eM * exp(f), gamma/(gamma-1.0));
+
+        U_spts(spt,0) = rho;
+        U_spts(spt,1) = rho * vx;
+        U_spts(spt,2) = rho * vy;
+        U_spts(spt,3) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+      }
+    }
   }
   else if (params->equation == ADVECTION_DIFFUSION) {
     if (params->ic_type == 0) {
@@ -683,16 +698,28 @@ void ele::calcViscousFlux_spts()
         tempDU(dim,k) = dU_spts[dim](spt,k);
       }
     }
+
     viscousFlux(U_spts[spt], tempDU, tempF, params);
 
-    /* --- Transform back to reference domain --- */
-    for (int k=0; k<nFields; k++) {
+    if (params->motion) {
+      /* --- Don't transform yet; that will be handled later --- */
       for (int i=0; i<nDims; i++) {
-        for (int j=0; j<nDims; j++) {
-          F_spts[i][spt][k] += JGinv_spts[spt][i][j]*tempF[j][k];
+        for (int k=0; k<nFields; k++) {
+          F_spts[i](spt,k) += tempF(i,k);
         }
       }
     }
+    else {
+      /* --- Transform back to reference domain --- */
+      for (int k=0; k<nFields; k++) {
+        for (int i=0; i<nDims; i++) {
+          for (int j=0; j<nDims; j++) {
+            F_spts[i](spt,k) += JGinv_spts[spt][i][j]*tempF(j,k);
+          }
+        }
+      }
+    }
+
   }
 }
 
@@ -716,6 +743,16 @@ void ele::calcDeltaFn(void)
   for (int fpt=0; fpt<nFpts; fpt++) {
     for (int k=0; k<nFields; k++) {
       dFn_fpts(fpt,k) = Fn_fpts(fpt,k) - disFn_fpts(fpt,k);
+    }
+  }
+}
+
+
+void ele::calcDeltaUc(void)
+{
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    for (int k=0; k<nFields; k++) {
+      dUc_fpts(fpt,k) = Uc_fpts(fpt,k) - U_fpts(fpt,k);
     }
   }
 }
@@ -750,6 +787,21 @@ vector<double> ele::getEntropyVars(int spt)
   return v;
 }
 
+void ele::calcWaveSpFpts(void)
+{
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    double rho = U_fpts(fpt,0);
+    double u = U_fpts(fpt,1)/rho;
+    double v = U_fpts(fpt,2)/rho;
+    double rhoVSq = rho*(u*u+v*v);
+    double p = (params->gamma-1)*(U_fpts(fpt,3) - 0.5*rhoVSq);
+
+    double vN = u*norm_fpts(fpt,0) + v*norm_fpts(fpt,1);
+    double csq = std::max(params->gamma*p/rho,0.0);
+    waveSp_fpts[fpt] = (std::abs(vN) + std::sqrt(csq)) / dA_fpts[fpt];
+  }
+}
+
 void ele::timeStepA(int step, double rkVal)
 {
   for (int spt=0; spt<nSpts; spt++) {
@@ -770,13 +822,13 @@ void ele::timeStepB(int step, double rkVal)
 
 double ele::calcDt(void)
 {
-  double waveSp = 0.;
-
+  double waveSp = 0;
   for (int fpt=0; fpt<nFpts; fpt++)
     if (dA_fpts[fpt] > 0) // ignore collapsed edges
       waveSp = max(waveSp,waveSp_fpts[fpt]);
 
-  return (params->CFL) * getCFLLimit(order) * (2.0 / (waveSp+1.e-10));
+  double dt = (params->CFL) * getCFLLimit(order) * (2.0 / (waveSp+1.e-10));
+  return dt;
 }
 
 

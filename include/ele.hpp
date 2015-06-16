@@ -91,8 +91,13 @@ public:
 
   void calcDeltaFn(void);
 
+  void calcDeltaUc(void);
+
   /*! Calculate the maximum stable time step based upon CFL */
   double calcDt(void);
+
+  /*! Calculate the wave speed for use with calculating allowable DT */
+  void calcWaveSpFpts();
 
   /*! Advance intermediate stages of Runge-Kutta time integration */
   void timeStepA(int step, double rkVal);
@@ -146,6 +151,7 @@ public:
   void setupArrays();
   void setupAllGeometry();
   void restart(ifstream &file, input *_params, geo *_Geo);
+
 private:
 
   /* --- Simulation/Mesh Parameters --- */
@@ -170,6 +176,8 @@ private:
   matrix<double> disFn_fpts;       //! Discontinuous normal flux at flux points
   matrix<double> Fn_fpts;          //! Interface flux at flux points
   matrix<double> dFn_fpts;         //! Interface minus discontinuous flux at flux points
+  matrix<double> Uc_fpts;          //! Common solution at flux points
+  matrix<double> dUc_fpts;         //! Common minus discontinuous solution at flux points
   vector<double> waveSp_fpts;      //! Maximum wave speed at each flux point
 
   // Gradients

@@ -30,7 +30,10 @@ public:
   void getRightState(void);
 
   //! Put the calculated interface flux into the right element's memory
-  void setRightState(void);
+  void setRightStateFlux(void);
+
+  //! Put the common solution into the right element's memory (viscous cases)
+  void setRightStateSolution(void);
 
 private:
   int locF_R;              //! Right element's local face ID
@@ -39,6 +42,7 @@ private:
   /* --- Storage for all solution/geometry data at flux points [right state] --- */
   vector<matrix<double>> FR;   //! Flux array [nFpts, nDims, nFields]
   vector<double*> FnR;    //! Common normal flux for right ele [in ele's memory]
+  vector<double*> UcR;    //! Common solution for left ele (in ele's memory)  [nFpts, nFields]
   matrix<double> normR;   //! Unit outward normal at flux points  [nFpts, nDims]
   vector<double> dAR;     //! Local face-area equivalent at flux points
   vector<double> detJacR; //! Determinant of transformation Jacobian

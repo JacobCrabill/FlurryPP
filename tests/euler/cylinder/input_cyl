@@ -1,6 +1,9 @@
 equation      1    # 0: Advection-Diffusion;  1: Euler/Navier-Stokes
 order         2    # Polynomial order to use
-dt            .00001  # Time step size
+dtType        1    # 0: Constant dt,  1: Global CFL-based dt
+CFL           .5   # CFL number for calculating dt
+dt            .01  # Time step size
+timeType      4    # 0: Forward Euler, 4: RK44
 
 viscous       0
 motion        0
@@ -52,24 +55,23 @@ mesh_bound    right   char
 mesh_bound    circle  slip_wall
 mesh_bound    fluid   fluid
 
-# Boundary & Initial Conditions
-rhoBound 1.168
-uBound   300.
+# Boundary & Initial Conditions (ICs = BCs by default)
+# Note: p, rho values chosen below set speed of sound = 1
+pBound   .7142857143
+rhoBound 1
+uBound   .2
 vBound   0.
-pBound   100000
 
 # Slip-Wall Boundary Condition Parameters
 # Trying out 'penalty' method to reduce initial 'shock'
-slipPenalty   1    # 0 (false-default)  or 1 (true)
-beta          50   # 'Penalty' factor
-
-# In order to set a = 1:
-#rhoBound 1
-#pBound .7142857143
+slipPenalty   0    # 0 (false-default)  or 1 (true)
+Kp   1
+Kd   -.1
+Ki   .1
 
 # Other FR-method parameters
 spts_type_quad  Legendre
 
 # Shock Capturing Parameters
-shockCapture 1
-threshold 1
+shockCapture 0
+threshold .1

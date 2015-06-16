@@ -76,14 +76,32 @@ public:
 
   void readInputFile(char *filename);
 
+  void nonDimensionalize(void);
+
   /* --- Basic Problem Variables --- */
   int equation;  //! {0 | Advection/diffusion} {1 | Euler/Navier-Stokes}
   int viscous;   //! {0 | No diffusion/Viscosity} {1 | Diffusion/Viscosity}
   int order;
-  int riemann_type;
   int ic_type;
-  int test_case;
   int motion;
+  int test_case;
+  int riemann_type;
+
+
+  /* --- Viscous Solver Parameters --- */
+  double penFact;    //! Penalty factor for the LDG viscous flux
+  double tau;        //! Bias parameter for the LDG viscous flux
+  double Re;         //! Reynolds number
+  double Lref;       //! Reference length for Reynlds number
+
+  // For Sutherland's Law
+  double muGas;
+  double TGas;
+  double SGas;
+  double rt_inf;   //! For Sutherland's Law
+  double mu_inf;   //! For Sutherland's Law
+  double fix_vis;  //! Use Sutherland's Law or fixed (constant) viscosity?
+  double c_sth;    //! For Sutherland's Law
 
   /* --- Simulation Run Parameters --- */
   int nFields;
@@ -123,8 +141,20 @@ public:
   double vyIC;
   double pIC;
 
-  double rhoBound, uBound, vBound, wBound, pBound, TBound;
+  double rhoBound, uBound, vBound, wBound, pBound;
+
   double TWall;
+
+  // Viscous Boundary Conditions / Initial Conditions
+  double nxBound, nyBound, nzBound;
+  double MachBound;
+  double TBound;
+  double TtBound;
+  double PtBound;
+  double muBound;
+
+  double TIC;
+  double muIC;
 
   bool slipPenalty;  //! Use "penalty method" on slip-wall boundary
 
@@ -133,11 +163,6 @@ public:
   double prandtl;
   double mu;
   double RGas;
-
-  double rt_inf;   //! For Sutherland's Law
-  double mu_inf;   //! For Sutherland's Law
-  double fix_vis;  //! Use Sutherland's Law or fixed (constant) viscosity?
-  double c_sth;    //! For Sutherland's Law
 
   double advectVx; //! Advection speed, x-direction
   double advectVy; //! Advection speed, y-direction
