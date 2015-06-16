@@ -66,6 +66,32 @@ void matrix<T>::addMatrix(matrix<T> &A, double a)
       data[i*dim1+j] += a*A[i][j];
 }
 
+template<>
+matrix<double>& matrix<double>::operator+=(matrix<double> &A)
+{
+  if (A.dim0 != dim0 || A.dim1 != dim1)
+    FatalError("Incompatible matrix sizes for addMatrix.");
+
+  for (uint i=0; i<dim0; i++)
+    for (uint j=0; j<dim1; j++)
+      data[i*dim1+j] += A(i,j);
+
+  return *this;
+}
+
+template<>
+matrix<double>& matrix<double>::operator-=(matrix<double> &A)
+{
+  if (A.dim0 != dim0 || A.dim1 != dim1)
+    FatalError("Incompatible matrix sizes for addMatrix.");
+
+  for (uint i=0; i<dim0; i++)
+    for (uint j=0; j<dim1; j++)
+      data[i*dim1+j] -= A(i,j);
+
+  return *this;
+}
+
 template<typename T>
 T* matrix<T>::operator[](int inRow)
 {

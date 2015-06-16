@@ -25,6 +25,9 @@ void inviscidFlux(double* U, matrix<double> &F, input *params);
 /*! Calculate the viscous portion of the Navier-Stokes flux vector at a point */
 void viscousFlux(double *U, matrix<double> &gradU, matrix<double> &Fvis, input *params);
 
+/*! Calculate the viscous flux for Advection-Diffusion */
+void viscousFluxAD(matrix<double> &gradU, matrix<double> &Fvis, input *params);
+
 /*! Calculate the common inviscid flux at a point using Roe's method */
 void roeFlux(double* uL, double* uR, double *norm, double *Fn, input *params);
 

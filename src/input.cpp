@@ -246,6 +246,7 @@ void input::readInputFile(char *filename)
   if (equation==ADVECTION_DIFFUSION) {
     opts.getScalarValue("advectVx",advectVx,1.);
     opts.getScalarValue("advectVy",advectVy,1.);
+    opts.getScalarValue("diffD",diffD,1.);
     opts.getScalarValue("lambda",lambda,1.);
     nFields = 1;
   } else if (equation==NAVIER_STOKES) {

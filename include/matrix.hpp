@@ -70,6 +70,18 @@ public:
   //! Adds the matrix a*A to current matrix (M += a*A)
   void addMatrix(matrix<T> &A, double a=1);
 
+  //! Add another matrix to the current matrix
+  matrix<double>& operator+=(matrix<double> &A);
+
+  //! Subtract another matrix to the current matrix
+  matrix<double>& operator-=(matrix<double> &A);
+
+  //! Add two matrices
+  friend matrix<T> operator+(matrix<T> A, const matrix<T> &B) { return A += B; }
+
+  //! Subtract two matrices
+  friend matrix<T> operator-(matrix<T> A, const matrix<T> &B) { return A -= B; }
+
   //! Multiplies the matrix by the matrix A and stores the result in B (B = M*A)
   void timesMatrix(matrix<T> &A, matrix<T> &B);
 
@@ -88,6 +100,7 @@ public:
 
   vector<T> getRow(uint row);
 
+  //! Return a sub-matrix view of the matrix using the rows in ind
   matrix<T> getRows(vector<int> ind);
 
   vector<T> getCol(int col);

@@ -137,13 +137,21 @@ void face::calcInviscidFlux(void)
 
 void face::calcViscousFlux(void)
 {
-  for (int i=0; i<nFptsL; i++) {
-    // Calculate discontinuous viscous flux at flux points
-    viscousFlux(UL[i], gradUL[i], tempFL, params);
-    viscousFlux(UR[i], gradUR[i], tempFR, params);
+  if (params->equation == NAVIER_STOKES) {
+    for (int i=0; i<nFptsL; i++) {
+      // Calculate discontinuous viscous flux at flux points
+      viscousFlux(UL[i], gradUL[i], tempFL, params);
+      viscousFlux(UR[i], gradUR[i], tempFR, params);
 
-    // Calculte common viscous flux at flux points
-    ldgFlux(UL[i], UR[i], gradUL[i], gradUR[i], Fn[i], params);
+      // Calculte common viscous flux at flux points
+      ldgFlux(UL[i], UR[i], gradUL[i], gradUR[i], Fn[i], params);
+    }
+  }
+  else if (params->equation == ADVECTION_DIFFUSION) {
+    for (int i=0; i<nFptsL; i++) {
+      viscousFluxAD(gradUL[i], tempFL, params);
+      viscousFluxAD(gradUR[i], tempFR, params);
+    }
   }
 }
 

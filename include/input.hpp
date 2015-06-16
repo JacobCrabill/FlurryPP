@@ -134,14 +134,15 @@ public:
   double mu;
   double RGas;
 
-  double rt_inf;  // ?
-  double mu_inf;
-  double fix_vis;
-  double c_sth;
+  double rt_inf;   //! For Sutherland's Law
+  double mu_inf;   //! For Sutherland's Law
+  double fix_vis;  //! Use Sutherland's Law or fixed (constant) viscosity?
+  double c_sth;    //! For Sutherland's Law
 
-  double advectVx;
-  double advectVy;
-  double lambda;  //! Lax-Friedrichs upwind coefficient (0: Central, 1: Upwind)
+  double advectVx; //! Advection speed, x-direction
+  double advectVy; //! Advection speed, y-direction
+  double diffD;    //! Diffusion constant
+  double lambda;   //! Lax-Friedrichs upwind coefficient (0: Central, 1: Upwind)
 
   /* --- Mesh Parameters --- */
   string meshFileName;
