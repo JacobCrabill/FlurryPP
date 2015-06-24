@@ -283,8 +283,17 @@ void face::roeFlux(void)
       vR[i] = UR(fpt,i+1)/UR(fpt,0);
     }
 
-    double pL = (gamma-1.0)*(UL(fpt,3) - (0.5*UL(fpt,0)*(vL[0]*vL[0]+vL[1]*vL[1])));
-    double pR = (gamma-1.0)*(UR(fpt,3) - (0.5*UR(fpt,0)*(vR[0]*vR[0]+vR[1]*vR[1])));
+
+    double pL, pR;
+    if (nDims == 2) {
+      pL = (gamma-1.0)*(UL(fpt,3) - (0.5*UL(fpt,0)*(vL[0]*vL[0]+vL[1]*vL[1])));
+      pR = (gamma-1.0)*(UR(fpt,3) - (0.5*UR(fpt,0)*(vR[0]*vR[0]+vR[1]*vR[1])));
+    }
+    else {
+      pL = (gamma-1.0)*(UL(fpt,4) - (0.5*UL(fpt,0)*(vL[0]*vL[0]+vL[1]*vL[1]+vL[2]*vL[2])));
+      pR = (gamma-1.0)*(UR(fpt,4) - (0.5*UR(fpt,0)*(vR[0]*vR[0]+vR[1]*vR[1]+vR[2]*vR[2])));
+    }
+
 
     double hL = (UL(fpt,nDims+1)+pL)/UL(fpt,0);
     double hR = (UR(fpt,nDims+1)+pR)/UR(fpt,0);
@@ -292,24 +301,22 @@ void face::roeFlux(void)
     double sq_rho = sqrt(UR(fpt,0)/UL(fpt,0));
     double rrho = 1./(sq_rho+1.);
 
-    for (int i=0; i<nDims; i++)
-      um[i] = rrho*(vL[i]+sq_rho*vR[i]);
-
-    double hm = rrho*(hL + sq_rho*hR);
-
-
-    double usq=0.;
-    for (int i=0; i<nDims; i++)
-      usq += 0.5*um[i]*um[i];
-
-    double am_sq = (gamma-1.)*(hm-usq);
-    double am = sqrt(am_sq);
-
+    // Roe-averaged velocity
+    double usq = 0.;
     double unm = 0.;
     double vgn = 0.;
-    for (int i=0;i<nDims;i++) {
+    for (int i=0; i<nDims; i++) {
+      um[i] = rrho*(vL[i]+sq_rho*vR[i]);
+      usq += 0.5*um[i]*um[i];
       unm += um[i]*normL(fpt,i);
     }
+
+    // Roe-averaged enthalpy
+    double hm = rrho*(hL + sq_rho*hR);
+
+    // Roe-avereged speed of sound
+    double am_sq = (gamma-1.)*(hm-usq);
+    double am = sqrt(am_sq);
 
     // Compute Euler flux (first part)
     double rhoUnL = 0.;
@@ -324,10 +331,12 @@ void face::roeFlux(void)
     Fn(fpt,2) = rhoUnL*vL[1] + rhoUnR*vR[1] + (pL+pR)*normL(fpt,1);
     Fn(fpt,3) = rhoUnL*hL   +rhoUnR*hR;
 
+    // Compute solution difference across face
     for (int i=0;i<params->nFields;i++) {
       du[i] = UR(fpt,i)-UL(fpt,i);
     }
 
+    // Eigenvalues
     double lambda0 = abs(unm-vgn);
     double lambdaP = abs(unm-vgn+am);
     double lambdaM = abs(unm-vgn-am);
@@ -387,6 +396,8 @@ void face::laxFriedrichsFlux(void)
       double uAvg = 0.5*(UL(fpt,0) + UR(fpt,0));
       double uDiff = UL(fpt,0) - UR(fpt,0);
       double vNorm = params->advectVx*normL(fpt,0) + params->advectVy*normL(fpt,1);
+      if (nDims==3)
+        vNorm += params->advectVz*normL(fpt,2);
 
       Fn(fpt,0) = vNorm*uAvg + 0.5*params->lambda*abs(vNorm)*uDiff;
     }

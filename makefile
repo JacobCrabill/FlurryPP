@@ -25,11 +25,11 @@ CXX_STD     = -g -02
 CXX_DEBUG   = -g -pg -O0
 CXX_RELEASE = -O3
 
-CXXFLAGS_RELEASE = $(CXX_BASE) $(CXX_RELEASE) -D_NO_MPI $(DEFINES)
-CXXFLAGS_DEBUG   = $(CXX_BASE) $(CXX_DEBUG) -D_NO_MPI $(DEFINES)
+CXXFLAGS_RELEASE = $(CXX_BASE) $(CXX_RELEASE) -Wno-unknown-pragmas -D_NO_MPI $(DEFINES)
+CXXFLAGS_DEBUG   = $(CXX_BASE) $(CXX_DEBUG) -Wno-unknown-pragmas -D_NO_MPI $(DEFINES)
 CXXFLAGS_OPENMP  = $(CXX_BASE) $(CXX_RELEASE) -fopenmp -D_NO_MPI $(DEFINES)
-CXXFLAGS_MPI     = $(CXX_BASE) $(DEFINES)
-CXXFLAGS_MPI    += -I$(METIS_INC_DIR) -I$(MPI_INC_DIR) 
+CXXFLAGS_MPI     = $(CXX_BASE) $(DEFINES) -Wno-unknown-pragmas
+CXXFLAGS_MPI    += -I$(METIS_INC_DIR) -I$(MPI_INC_DIR)
 CXXFLAGS_MPI    += -L$(METIS_LIB_DIR)
 
 ####### Output directory - these do nothing currently
@@ -87,6 +87,7 @@ clean:
 	cd obj && rm -f *.o && cd .. && rm -f bin/Flurry
 
 .PHONY: debug
+debug: DBG=-pg
 debug: CXXFLAGS=$(CXXFLAGS_DEBUG)
 debug: $(TARGET)
 

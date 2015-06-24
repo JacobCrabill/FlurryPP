@@ -63,7 +63,7 @@ void matrix<T>::addMatrix(matrix<T> &A, double a)
 
   for (uint i=0; i<dim0; i++)
     for (uint j=0; j<dim1; j++)
-      data[i*dim1+j] += a*A[i][j];
+      data[i*dim1+j] += a*A(i,j);
 }
 
 template<>
@@ -150,6 +150,34 @@ void matrix<T>::timesMatrix(matrix<T> &A, matrix<T> &B)
   }
 }
 
+/*matrix<int> operator*(matrix<int> &A, matrix<int> &B)
+{
+  FatalError("Not expecting to use operator* for integer matrices.");
+}
+
+matrix<double*> operator*(matrix<double*> &A, matrix<double*> &B)
+{
+  FatalError("operator* not supported for non-arithmatic data types.");
+}
+
+matrix<double> operator*(matrix<double> &A, matrix<double> &B)
+{
+  uint p = A.dim1;
+
+  if (A.dim1 != B.dim0) FatalError("Incompatible matrix sizes in matrix multiplication!");
+
+  matrix<double> out(A.dim0,B.dim1);
+  out.initializeToZero();
+
+  for (uint i=0; i<A.dim0; i++) {
+    for (uint j=0; j<B.dim1; j++) {
+      for (uint k=0; k<p; k++) {
+        out(i,j) += A(i,k)*B(k,j);
+      }
+    }
+  }
+}*/
+
 
 template <typename T>
 void matrix<T>::timesMatrixPlus(matrix<T> &A, matrix<T> &B)
@@ -216,7 +244,7 @@ matrix<double*> matrix<double*>::invertMatrix(void) {
 }
 
 template<typename T>
-void matrix<T>::insertRow(vector<T> &vec, int rowNum)
+void matrix<T>::insertRow(const vector<T> &vec, int rowNum)
 {
   if (dim1!= 0 && vec.size()!=dim1) FatalError("Attempting to assign row of wrong size to matrix.");
 
@@ -229,6 +257,17 @@ void matrix<T>::insertRow(vector<T> &vec, int rowNum)
   }
 
   if (dim1==0) dim1=vec.size(); // This may not be needed (i.e. may never have dim1==0). need to verify how I set up dim0, dim1...
+  dim0++;
+}
+
+template<typename T>
+void matrix<T>::insertRowUnsized(const vector<T> &vec)
+{
+  // Add row to end, and resize matrix (add columns) if needed
+  if (vec.size() > dim1) addCols(dim1-vec.size());
+
+    data.insert(data.end(),vec.begin(),vec.end());
+
   dim0++;
 }
 
@@ -255,9 +294,34 @@ void matrix<T>::addCol(void)
   typename vector<T>::iterator it;
   for (uint row=0; row<dim0; row++) {
     it = data.begin() + (row+1)*(dim1+1) - 1;
-    data.insert(it,it-1,it);
+    data.insert(it,1,(T)0);
   }
   dim1++;
+}
+
+template<typename T>
+void matrix<T>::addCols(int nCols)
+{
+  typename vector<T>::iterator it;
+  for (uint row=0; row<dim0; row++) {
+    it = data.begin() + (row+1)*(dim1+nCols) - nCols;
+    data.insert(it,nCols,(T)0);
+  }
+  dim1++;
+}
+
+
+template<typename T>
+void matrix<T>::removeCols(int nCols = 1)
+{
+  if (nCols == 0) return;
+
+  typename vector<T>::iterator it;
+  for (uint row=dim0; row>0; row--) {
+    it = data.begin() + row*dim1;
+    data.erase(it-nCols,it);
+  }
+  dim1 -= nCols;
 }
 
 template<typename T>
@@ -317,7 +381,7 @@ void matrix<T>::unique(matrix<T> &out, vector<int> &iRow)
       }
     }
 
-    // If no duplicate found, put in 'out' matrix
+    // If no prior occurance found, put in 'out' matrix
     if (iRow[i]==-1) {
       out.insertRow(&data[i*dim1],-1,dim1);
       iRow[i] = out.getDim0() - 1;

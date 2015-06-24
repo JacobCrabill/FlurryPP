@@ -85,6 +85,9 @@ public:
   //! Multiplies the matrix by the matrix A and stores the result in B (B = M*A)
   void timesMatrix(matrix<T> &A, matrix<T> &B);
 
+  //! Multiply two matrices
+  //friend matrix<T> operator*(matrix<T> &A, matrix<T> &B);
+
   //! Multiplies the matrix by the matrix A and adds the result to B (B += M*A)
   void timesMatrixPlus(matrix<T> &A, matrix<T> &B);
 
@@ -92,11 +95,20 @@ public:
   void timesVector(vector<T> &A, vector<T> &B);
 
   /*! Insert a row into the matrix at location rowNum [zero-indexed], with the default being at the end */
-  void insertRow(vector<T> &vec, int rowNum = -1);
+  void insertRow(const vector<T> &vec, int rowNum = -1);
+
+  void insertRowUnsized(const vector<T> &vec);
 
   void insertRow(T* vec, int rowNum, int length);
 
+  //! Insert a column at the end of the matrix
   void addCol(void);
+
+  //! Insert a column at the end of the matrix
+  void addCols(int nCols);
+
+  //! Remove columns from the end of the matrix
+  void removeCols(int nCols);
 
   vector<T> getRow(uint row);
 
