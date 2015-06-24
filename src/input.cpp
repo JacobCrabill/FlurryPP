@@ -126,7 +126,7 @@ void fileReader::getScalarValue(string optName, T &opt)
 
   // Option was not found; throw error & exit
   string errMsg = "Required option not found: " + optName;
-  FatalError(errMsg.c_str())
+  FatalError(errMsg.c_str());
 }
 
 template<typename T, typename U>
@@ -170,7 +170,7 @@ void fileReader::getMap(string optName, map<T,U> &opt) {
   if (!found) {
     // Option was not found; throw error & exit
     string errMsg = "Required option not found: " + optName;
-    FatalError(errMsg.c_str())
+    FatalError(errMsg.c_str());
   }
 
   closeFile();
@@ -223,7 +223,7 @@ void fileReader::getVectorValue(string optName, vector<T> &opt)
 
   // Option was not found; throw error & exit
   string errMsg = "Required option not found: " + optName;
-  FatalError(errMsg.c_str())
+  FatalError(errMsg.c_str());
 }
 
 input::input()
@@ -246,6 +246,7 @@ void input::readInputFile(char *filename)
   if (equation==ADVECTION_DIFFUSION) {
     opts.getScalarValue("advectVx",advectVx,1.);
     opts.getScalarValue("advectVy",advectVy,1.);
+    opts.getScalarValue("advectVz",advectVz,0.);
     opts.getScalarValue("diffD",diffD,1.);
     opts.getScalarValue("lambda",lambda,1.);
     nFields = 1;
@@ -270,6 +271,7 @@ void input::readInputFile(char *filename)
       opts.getScalarValue("rhoIC",rhoIC,rhoBound);
       opts.getScalarValue("vxIC",vxIC,uBound);
       opts.getScalarValue("vyIC",vyIC,vBound);
+      opts.getScalarValue("vzIC",vzIC,wBound);
       opts.getScalarValue("pIC",pIC,pBound);
     }
     nFields = 4;
@@ -318,14 +320,19 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("nDims",nDims,2);
     opts.getScalarValue("nx",nx,10);
     opts.getScalarValue("ny",ny,10);
+    opts.getScalarValue("ny",nz,10);
     opts.getScalarValue("xmin",xmin,-10.);
     opts.getScalarValue("xmax",xmax,10.);
     opts.getScalarValue("ymin",ymin,-10.);
     opts.getScalarValue("ymax",ymax,10.);
+    opts.getScalarValue("zmin",zmin,-10.);
+    opts.getScalarValue("zmax",zmax,10.);
     opts.getScalarValue("create_bcTop",create_bcTop,string("periodic"));
     opts.getScalarValue("create_bcBottom",create_bcBottom,string("periodic"));
     opts.getScalarValue("create_bcLeft",create_bcLeft,string("periodic"));
     opts.getScalarValue("create_bcRight",create_bcRight,string("periodic"));
+    opts.getScalarValue("create_bcFront",create_bcFront,string("periodic"));
+    opts.getScalarValue("create_bcBack",create_bcBack,string("periodic"));
   }else if (mesh_type == READ_MESH) {
     opts.getScalarValue("mesh_file_name",meshFileName);
     // Get mesh boundaries, boundary conditions & convert to lowercase
@@ -341,6 +348,7 @@ void input::readInputFile(char *filename)
   }
   opts.getScalarValue("periodicDX",periodicDX,(double)INFINITY);
   opts.getScalarValue("periodicDY",periodicDY,(double)INFINITY);
+  opts.getScalarValue("periodicDZ",periodicDZ,(double)INFINITY);
   opts.getScalarValue("periodicTol",periodicTol,1e-6);
 
   opts.getScalarValue("monitor_res_freq",monitor_res_freq,10);
@@ -380,6 +388,12 @@ void input::nonDimensionalize(void)
 {
   /* --- Calculate Reference / Freestream Non-Dimensionalized Values --- */
 
+  // Normalize the boundary flow direction
+  double nMag = sqrt(nxBound*nxBound+nyBound*nyBound+nzBound*nzBound);
+  nxBound /= nMag;
+  nyBound /= nMag;
+  nzBound /= nMag;
+
   double Tref = TBound;
 
   // Calculate total velocity & individual components
@@ -416,6 +430,7 @@ void input::nonDimensionalize(void)
   rhoIC = rhoBound;
   vxIC = uBound;
   vyIC = vBound;
+  vzIC = wBound;
   pIC = pBound;
   muIC = muBound;
   TIC = TBound;

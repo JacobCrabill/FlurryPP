@@ -391,7 +391,7 @@ void face::laxFriedrichsFlux(void)
       Fn(fpt,0) = vNorm*uAvg + 0.5*params->lambda*abs(vNorm)*uDiff;
     }
     else if (params->equation == NAVIER_STOKES) {
-      FatalError("Lax-Friedrichs not supported for Navier-Stokes simulations.");
+      FatalError("Lax-Friedrichs not supported for Navier-Stokes simulations - use Rusanov or Roe.");
     }
   }
 }

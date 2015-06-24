@@ -137,11 +137,12 @@ public:
   double Pinf;
 
   double rhoIC;
-  double vxIC;
-  double vyIC;
+  double vxIC, vyIC, vzIC;
   double pIC;
 
-  double rhoBound, uBound, vBound, wBound, pBound;
+  double rhoBound;
+  double uBound, vBound, wBound;
+  double pBound;
 
   double TWall;
 
@@ -166,16 +167,18 @@ public:
 
   double advectVx; //! Advection speed, x-direction
   double advectVy; //! Advection speed, y-direction
+  double advectVz; //! Advection speed, z-direction
   double diffD;    //! Diffusion constant
   double lambda;   //! Lax-Friedrichs upwind coefficient (0: Central, 1: Upwind)
 
   /* --- Mesh Parameters --- */
   string meshFileName;
   int mesh_type;
-  int nx, ny;
-  double xmin, xmax, ymin, ymax;
-  double periodicTol, periodicDX, periodicDY;
-  string create_bcTop, create_bcBottom, create_bcLeft, create_bcRight; //! BC's to apply to Flurry-created mesh
+  int nx, ny, nz;
+  double xmin, xmax, ymin, ymax, zmin, zmax;
+  double periodicTol, periodicDX, periodicDY, periodicDZ;
+  string create_bcTop, create_bcBottom, create_bcLeft;
+  string create_bcRight, create_bcFront, create_bcBack; //! BC's to apply to Flurry-created mesh
   //map<string,int> bcNum;
   map<string,string> meshBounds;
 

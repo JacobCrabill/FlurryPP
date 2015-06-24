@@ -74,7 +74,7 @@ void geo::processConnectivity()
   vector<int> edge(2);
 
   for (int e=0; e<nEles; e++) {
-    for (int ie=0; ie<c2ne[e]; ie++) {  // NOTE: nv may be > ne
+    for (int ie=0; ie<c2ne[e]; ie++) {  // NOTE: nv may be != ne for 3D
       int iep1 = (ie+1)%c2ne[e];
       if (c2v(e,ie) == c2v(e,iep1)) {
         // Collapsed edge - ignore
@@ -644,7 +644,7 @@ void geo::readGmsh(string fileName)
 
       for (int i=0; i<nPtsEdge; i++) {
         meshFile >> iv;  iv--;
-        boundPoints[bcid].insert(iv);  // bcid != bnd index - FIX ME!!!
+        boundPoints[bcid].insert(iv);
       }
       getline(meshFile,str);
     }
@@ -675,54 +675,119 @@ void geo::createMesh()
 {
   int nx = params->nx;
   int ny = params->ny;
-  nDims = params->nDims; // Since I may implement createMesh for 3D later
+  int nz = params->nz;
+  nDims = params->nDims;
+
+  if (nDims == 2)
+    nz = 1;
 
   if (params->rank==0)
-    cout << "Geo: Creating " << nx << "x" << ny << " cartesian mesh" << endl;
+    cout << "Geo: Creating " << nx << "x" << ny << " x " << nz << " cartesian mesh" << endl;
 
   double xmin = params->xmin;
   double xmax = params->xmax;
   double ymin = params->ymin;
   double ymax = params->ymax;
+  double zmin = params->zmin;
+  double zmax = params->zmax;
 
   double dx = (xmax-xmin)/nx;
   double dy = (ymax-ymin)/ny;
+  double dz = (zmax-zmin)/nz;
 
   params->periodicDX = xmax-xmin;
   params->periodicDY = ymax-ymin;
+  params->periodicDZ = zmax-zmin;
 
-  nEles = nx*ny;
-  nVerts = (nx+1)*(ny+1);
+  nEles = nx*ny*nz;
+  vector<int> c2v_tmp;
 
-  c2nv.assign(nEles,4);
-  c2ne.assign(nEles,4);
-  ctype.assign(nEles,QUAD); // Add hex later
+  if (nDims==2) {
+    nVerts = (nx+1)*(ny+1);
+    xv.resize(nVerts);
 
-  xv.resize(nVerts);
-  vector<int> c2v_tmp(4,0);
+    c2nv.assign(nEles,4);
+    c2ne.assign(nEles,4);
+    ctype.assign(nEles,QUAD); // Add hex later
 
-  /* --- Setup Vertices --- */
-  int nv = 0;
-  point pt;
-  for (int i=0; i<ny+1; i++) {
-    for (int j=0; j<nx+1; j++) {
-      pt.x = xmin + j*dx;
-      pt.y = ymin + i*dy;
-      xv[nv] = pt;
-      nv++;
+    /* --- Setup Vertices --- */
+
+    c2v_tmp.assign(4,0);
+
+    int nv = 0;
+    point pt;
+
+    for (int i=0; i<ny+1; i++) {
+      for (int j=0; j<nx+1; j++) {
+        pt.x = xmin + j*dx;
+        pt.y = ymin + i*dy;
+        xv[nv] = pt;
+        nv++;
+      }
+    }
+
+    /* --- Setup Elements --- */
+
+    for (int i=0; i<nx; i++) {
+      for (int j=0; j<ny; j++) {
+        c2v_tmp[0] = j*(nx+1) + i;
+        c2v_tmp[1] = j*(nx+1) + i + 1;
+        c2v_tmp[2] = (j+1)*(nx+1) + i + 1;
+        c2v_tmp[3] = (j+1)*(nx+1) + i;
+        c2v.insertRow(c2v_tmp);
+      }
+    }
+  }
+  else {
+    nVerts = (nx+1)*(ny+1)*(nz+1);
+    xv.resize(nVerts);
+
+    c2nv.assign(nEles,8);
+    c2ne.assign(nEles,8);
+    ctype.assign(nEles,HEX); // Add hex later
+
+    c2v_tmp.assign(8,0);
+
+    /* --- Setup Vertices --- */
+
+    c2v_tmp.assign(4,0);
+
+    int nv = 0;
+    point pt;
+
+    for (int k=0; k<nz+1; k++) {
+      for (int i=0; i<ny+1; i++) {
+        for (int j=0; j<nx+1; j++) {
+          pt.x = xmin + j*dx;
+          pt.y = ymin + i*dy;
+          pt.z = zmin + k*dz;
+          xv[nv] = pt;
+          nv++;
+        }
+      }
+    }
+
+    /* --- Setup Elements --- */
+
+    for (int k=0; k<nz; k++) {
+      for (int i=0; i<nx; i++) {
+        for (int j=0; j<ny; j++) {
+          c2v_tmp[0] = k*(nx+1)*(ny+1) + j*(nx+1) + i;
+          c2v_tmp[1] = k*(nx+1)*(ny+1) + j*(nx+1) + i + 1;
+          c2v_tmp[2] = k*(nx+1)*(ny+1) + (j+1)*(nx+1) + i + 1;
+          c2v_tmp[3] = k*(nx+1)*(ny+1) + (j+1)*(nx+1) + i;
+
+          c2v_tmp[4] = (k+1)*(nx+1)*(ny+1) + j*(nx+1) + i;
+          c2v_tmp[5] = (k+1)*(nx+1)*(ny+1) + j*(nx+1) + i + 1;
+          c2v_tmp[6] = (k+1)*(nx+1)*(ny+1) + (j+1)*(nx+1) + i + 1;
+          c2v_tmp[7] = (k+1)*(nx+1)*(ny+1) + (j+1)*(nx+1) + i;
+          c2v.insertRow(c2v_tmp);
+        }
+      }
     }
   }
 
-  /* --- Setup Elements --- */
-  for (int i=0; i<nx; i++) {
-    for (int j=0; j<ny; j++) {
-      c2v_tmp[0] = j*(nx+1) + i;
-      c2v_tmp[1] = j*(nx+1) + i + 1;
-      c2v_tmp[2] = (j+1)*(nx+1) + i + 1;
-      c2v_tmp[3] = (j+1)*(nx+1) + i;
-      c2v.insertRow(c2v_tmp);
-    }
-  }
+
 
   /* --- Setup Boundaries --- */
   // List of all boundary conditions being used (bcNum maps string->int)
@@ -730,6 +795,11 @@ void geo::createMesh()
   bcList.push_back(bcStr2Num[params->create_bcRight]);
   bcList.push_back(bcStr2Num[params->create_bcTop]);
   bcList.push_back(bcStr2Num[params->create_bcLeft]);
+
+  if (nDims == 3) {
+    bcList.push_back(bcStr2Num[params->create_bcFront]);
+    bcList.push_back(bcStr2Num[params->create_bcBack]);
+  }
 
   // Sort the list & remove any duplicates
   std::sort(bcList.begin(), bcList.end());
@@ -748,45 +818,135 @@ void geo::createMesh()
     bc2bcList[bcList[i]] = i;
   }
 
-  // Bottom Edge Faces
-  int ib = bc2bcList[bcStr2Num[params->create_bcBottom]];
-  int ne = nFacesPerBnd[ib];
-  for (int ix=0; ix<nx; ix++) {
-    bndPts[ib][2*ne]   = ix;
-    bndPts[ib][2*ne+1] = ix+1;
-    ne++;
-  }
-  nFacesPerBnd[ib] = ne;
+  /* --- Setup Boundary Faces --- */
 
-  // Top Edge Faces
-  ib = bc2bcList[bcStr2Num[params->create_bcTop]];
-  ne = nFacesPerBnd[ib];
-  for (int ix=0; ix<nx; ix++) {
-    bndPts[ib][2*ne]   = (nx+1)*ny + ix+1;
-    bndPts[ib][2*ne+1] = (nx+1)*ny + ix;
-    ne++;
-  }
-  nFacesPerBnd[ib] = ne;
+  if (nDims == 2) {
+    // Bottom Edge Faces
+    int ib = bc2bcList[bcStr2Num[params->create_bcBottom]];
+    int ne = nFacesPerBnd[ib];
+    for (int ix=0; ix<nx; ix++) {
+      bndPts[ib][2*ne]   = ix;
+      bndPts[ib][2*ne+1] = ix+1;
+      ne++;
+    }
+    nFacesPerBnd[ib] = ne;
 
-  // Left Edge Faces
-  ib = bc2bcList[bcStr2Num[params->create_bcLeft]];
-  ne = nFacesPerBnd[ib];
-  for (int iy=0; iy<ny; iy++) {
-    bndPts[ib][2*ne]   = (iy+1)*(nx+1);
-    bndPts[ib][2*ne+1] = iy*(nx+1);
-    ne++;
-  }
-  nFacesPerBnd[ib] = ne;
+    // Top Edge Faces
+    ib = bc2bcList[bcStr2Num[params->create_bcTop]];
+    ne = nFacesPerBnd[ib];
+    for (int ix=0; ix<nx; ix++) {
+      bndPts[ib][2*ne]   = (nx+1)*ny + ix+1;
+      bndPts[ib][2*ne+1] = (nx+1)*ny + ix;
+      ne++;
+    }
+    nFacesPerBnd[ib] = ne;
 
-  // Right Edge Faces
-  ib = bc2bcList[bcStr2Num[params->create_bcRight]];
-  ne = nFacesPerBnd[ib];
-  for (int iy=0; iy<ny; iy++) {
-    bndPts[ib][2*ne]   = iy*(nx+1) + nx;
-    bndPts[ib][2*ne+1] = (iy+1)*(nx+1) + nx;
-    ne++;
+    // Left Edge Faces
+    ib = bc2bcList[bcStr2Num[params->create_bcLeft]];
+    ne = nFacesPerBnd[ib];
+    for (int iy=0; iy<ny; iy++) {
+      bndPts[ib][2*ne]   = (iy+1)*(nx+1);
+      bndPts[ib][2*ne+1] = iy*(nx+1);
+      ne++;
+    }
+    nFacesPerBnd[ib] = ne;
+
+    // Right Edge Faces
+    ib = bc2bcList[bcStr2Num[params->create_bcRight]];
+    ne = nFacesPerBnd[ib];
+    for (int iy=0; iy<ny; iy++) {
+      bndPts[ib][2*ne]   = iy*(nx+1) + nx;
+      bndPts[ib][2*ne+1] = (iy+1)*(nx+1) + nx;
+      ne++;
+    }
+    nFacesPerBnd[ib] = ne;
   }
-  nFacesPerBnd[ib] = ne;
+  else if (nDims == 3) {
+    // Bottom Side Faces
+    int ib = bc2bcList[bcStr2Num[params->create_bcBottom]];
+    int nf = nFacesPerBnd[ib];
+    for (int ix=0; ix<nx; ix++) {
+      for (int iy=0; iy<ny; iy++) {
+        bndPts[ib][4*nf]   = iy*(nx+1) + ix;
+        bndPts[ib][4*nf+1] = iy*(nx+1) + ix + 1;
+        bndPts[ib][4*nf+2] = (iy+1)*(nx+1) + ix + 1;
+        bndPts[ib][4*nf+3] = (iy+1)*(nx+1) + ix;
+        nf++;
+      }
+    }
+    nFacesPerBnd[ib] = nf;
+
+    // Top Side Faces
+    ib = bc2bcList[bcStr2Num[params->create_bcTop]];
+    nf = nFacesPerBnd[ib];
+    for (int ix=0; ix<nx; ix++) {
+      for (int iy=0; iy<ny; iy++) {
+        bndPts[ib][4*nf]   = (nx+1)*(ny+1)*nz + iy*(nx+1) + ix;
+        bndPts[ib][4*nf+1] = (nx+1)*(ny+1)*nz + iy*(nx+1) + ix+1;
+        bndPts[ib][4*nf+2] = (nx+1)*(ny+1)*nz + (iy+1)*(nx+1) + ix+1;
+        bndPts[ib][4*nf+3] = (nx+1)*(ny+1)*nz + (iy+1)*(nx+1) + ix;
+        nf++;
+      }
+    }
+    nFacesPerBnd[ib] = nf;
+
+    // Left Side Faces (x = xmin)
+    ib = bc2bcList[bcStr2Num[params->create_bcLeft]];
+    nf = nFacesPerBnd[ib];
+    for (int iz=0; iz<nz; iz++) {
+      for (int iy=0; iy<ny; iy++) {
+        bndPts[ib][4*nf]   = iz*(nx+1)*(ny+1) + iy*(nx+1);
+        bndPts[ib][4*nf+1] = (iz+1)*(nx+1)*(ny+1) + iy*(nx+1);
+        bndPts[ib][4*nf+2] = (iz+1)*(nx+1)*(ny+1) + (iy+1)*(nx+1);
+        bndPts[ib][4*nf+3] = iz*(nx+1)*(ny+1) + (iy+1)*(nx+1);
+        nf++;
+      }
+    }
+    nFacesPerBnd[ib] = nf;
+
+    // Right Side Faces (x = xmax)
+    ib = bc2bcList[bcStr2Num[params->create_bcRight]];
+    nf = nFacesPerBnd[ib];
+    for (in iz=0; iz<nz; iz++) {
+      for (int iy=0; iy<ny; iy++) {
+        bndPts[ib][4*nf]   = iz*(nx+1)*(ny+1) + iy*(nx+1) + nx;
+        bndPts[ib][4*nf+1] = (iz+1)*(nx+1)*(ny+1) + iy*(nx+1) + nx;
+        bndPts[ib][4*nf+2] = (iz+1)*(nx+1)*(ny+1) + (iy+1)*(nx+1) + nx;
+        bndPts[ib][4*nf+3] = iz*(nx+1)*(ny+1) + (iy+1)*(nx+1) + nx;
+        nf++;
+      }
+    }
+    nFacesPerBnd[ib] = nf;
+
+
+    // Back Side Faces (y = ymin)
+    ib = bc2bcList[bcStr2Num[params->create_bcLeft]];
+    nf = nFacesPerBnd[ib];
+    for (int iz=0; iz<nz; iz++) {
+      for (int ix=0; ix<nx; ix++) {
+        bndPts[ib][4*nf]   = iz*(nx+1)*(ny+1) + ix;
+        bndPts[ib][4*nf+1] = (iz+1)*(nx+1)*(ny+1) + ix + 1;
+        bndPts[ib][4*nf+2] = (iz+1)*(nx+1)*(ny+1) + ix + 1;
+        bndPts[ib][4*nf+3] = iz*(nx+1)*(ny+1) + ix;
+        nf++;
+      }
+    }
+    nFacesPerBnd[ib] = nf;
+
+    // Front Side Faces (y = ymax)
+    ib = bc2bcList[bcStr2Num[params->create_bcLeft]];
+    nf = nFacesPerBnd[ib];
+    for (int iz=0; iz<nz; iz++) {
+      for (int ix=0; ix<nx; ix++) {
+        bndPts[ib][4*nf]   = iz*(nx+1)*(ny+1) + ny + ix;
+        bndPts[ib][4*nf+1] = (iz+1)*(nx+1)*(ny+1) + ny + ix + 1;
+        bndPts[ib][4*nf+2] = (iz+1)*(nx+1)*(ny+1) + ny + ix + 1;
+        bndPts[ib][4*nf+3] = iz*(nx+1)*(ny+1) + ny + ix;
+        nf++;
+      }
+    }
+    nFacesPerBnd[ib] = nf;
+  }
 
   // Remove duplicates in bndPts
   for (int i=0; i<nBounds; i++) {
