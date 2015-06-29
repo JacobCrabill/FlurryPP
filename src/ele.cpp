@@ -187,13 +187,13 @@ void ele::setupAllGeometry(void) {
   setPpts();
 }
 
-void ele::move(int step)
+void ele::move(int step=0)
 {
   if (params->motion == 1 || params->motion == 2) {
     perturb();
   }
 
-  updateTransforms();
+  calcTransforms(step+1);
   calcGridVelocity();
 }
 
@@ -261,9 +261,13 @@ void ele::setShape_spts(void)
   for (int spt=0; spt<nSpts; spt++) {
     switch(eType) {
       case TRI:
+        shape_tri(loc_spts[spt],shape_spts[spt]);
         break;
       case QUAD:
         shape_quad(loc_spts[spt],shape_spts[spt],nNodes);
+        break;
+      case HEX:
+        shape_hex(loc_spts[spt],shape_spts[spt],nNodes);
         break;
     }
   }
@@ -276,9 +280,13 @@ void ele::setShape_fpts(void)
   for (int fpt=0; fpt<nFpts; fpt++) {
     switch(eType) {
       case TRI:
+        shape_tri(loc_fpts[fpt],shape_fpts[fpt]);
         break;
       case QUAD:
         shape_quad(loc_fpts[fpt],shape_fpts[fpt],nNodes);
+        break;
+      case HEX:
+        shape_hex(loc_fpts[fpt],shape_fpts[fpt],nNodes);
         break;
     }
   }
@@ -296,6 +304,9 @@ void ele::setDShape_spts(void)
         break;
       case QUAD:
         dshape_quad(loc_spts[spt], dShape_spts[spt],nNodes);
+        break;
+      case HEX:
+        dshape_hex(loc_spts[spt], dShape_spts[spt],nNodes);
         break;
       default:
         FatalError("Element type not yet implemented.")
@@ -316,6 +327,9 @@ void ele::setDShape_fpts(void)
       case QUAD:
         dshape_quad(loc_fpts[fpt], dShape_fpts[fpt],nNodes);
         break;
+      case HEX:
+        dshape_hex(loc_fpts[fpt], dShape_fpts[fpt],nNodes);
+        break;
       default:
         FatalError("Element type not yet implemented.")
     }
@@ -332,65 +346,125 @@ void ele::setTransformedNormals_fpts(void)
       case TRI:
         switch(iFace) {
           case 0:
-            tNorm_fpts[fpt][0] = 0;
-            tNorm_fpts[fpt][1] = -1;
+            tNorm_fpts(fpt,0) = 0;
+            tNorm_fpts(fpt,1) = -1;
             break;
           case 1:
-            tNorm_fpts[fpt][0] = sqrt(2);
-            tNorm_fpts[fpt][1] = sqrt(2);
+            tNorm_fpts(fpt,0) = sqrt(2);
+            tNorm_fpts(fpt,1) = sqrt(2);
             break;
           case 2:
-            tNorm_fpts[fpt][0] = -1;
-            tNorm_fpts[fpt][1] = 0;
+            tNorm_fpts(fpt,0) = -1;
+            tNorm_fpts(fpt,1) = 0;
             break;
         }
         break;
+
       case QUAD:
         // Face ordering for quads: Bottom, Right, Top, Left
         switch(iFace) {
           case 0:
-            tNorm_fpts[fpt][0] = 0;
-            tNorm_fpts[fpt][1] = -1;
+            tNorm_fpts(fpt,0) = 0;
+            tNorm_fpts(fpt,1) = -1;
             break;
           case 1:
-            tNorm_fpts[fpt][0] = 1;
-            tNorm_fpts[fpt][1] = 0;
+            tNorm_fpts(fpt,0) = 1;
+            tNorm_fpts(fpt,1) = 0;
             break;
           case 2:
-            tNorm_fpts[fpt][0] = 0;
-            tNorm_fpts[fpt][1] = 1;
+            tNorm_fpts(fpt,0) = 0;
+            tNorm_fpts(fpt,1) = 1;
             break;
           case 3:
-            tNorm_fpts[fpt][0] = -1;
-            tNorm_fpts[fpt][1] = 0;
+            tNorm_fpts(fpt,0) = -1;
+            tNorm_fpts(fpt,1) = 0;
             break;
         }
         break;
+
+      case HEX:
+        switch(iFace) {
+          case 0:
+            tNorm_fpts(fpt,0) = 0;
+            tNorm_fpts(fpt,1) = 0;
+            tNorm_fpts(fpt,2) = -1;
+            break;
+          case 1:
+            tNorm_fpts(fpt,0) = 0;
+            tNorm_fpts(fpt,1) = 0;
+            tNorm_fpts(fpt,2) = 1;
+            break;
+          case 2:
+            tNorm_fpts(fpt,0) = -1;
+            tNorm_fpts(fpt,1) = 0;
+            tNorm_fpts(fpt,2) = 0;
+            break;
+          case 3:
+            tNorm_fpts(fpt,0) = 1;
+            tNorm_fpts(fpt,1) = 0;
+            tNorm_fpts(fpt,2) = 0;
+            break;
+          case 4:
+            tNorm_fpts(fpt,0) = 0;
+            tNorm_fpts(fpt,1) = -1;
+            tNorm_fpts(fpt,2) = 0;
+            break;
+          case 5:
+            tNorm_fpts(fpt,0) = 0;
+            tNorm_fpts(fpt,1) = 1;
+            tNorm_fpts(fpt,2) = 0;
+            break;
+        }
+        break;
+
       default:
         FatalError("Element type not yet implemented.")
     }
   }
 }
 
-void ele::calcTransforms(void)
+void ele::calcTransforms(int initial)
 {
   /* --- Calculate Transformation at Solution Points --- */
   for (int spt=0; spt<nSpts; spt++) {
     Jac_spts[spt].initializeToZero();
-    for (int i=0; i<nNodes; i++) {
-      for (int dim1=0; dim1<nDims; dim1++) {
-        for (int dim2=0; dim2<nDims; dim2++) {
-          Jac_spts[spt][dim1][dim2] += dShape_spts[spt][i][dim2]*nodes[i][dim1];
-        }
-      }
+
+    if (initial) {
+      for (int i=0; i<nNodes; i++)
+        for (int dim1=0; dim1<nDims; dim1++)
+          for (int dim2=0; dim2<nDims; dim2++)
+            Jac_spts[spt][dim1][dim2] += dShape_spts[spt][i][dim2]*nodes[i][dim1];
+    }
+    else {
+      for (int i=0; i<nNodes; i++)
+        for (int dim1=0; dim1<nDims; dim1++)
+          for (int dim2=0; dim2<nDims; dim2++)
+            Jac_spts[spt][dim1][dim2] += dShape_spts[spt][i][dim2]*nodesRK[0][i][dim1];
     }
 
-    if (nDims==2) {
+
+    if (nDims == 2) {
       // Determinant of transformation matrix
       detJac_spts[spt] = Jac_spts[spt][0][0]*Jac_spts[spt][1][1]-Jac_spts[spt][1][0]*Jac_spts[spt][0][1];
       // Inverse of transformation matrix (times its determinant)
       JGinv_spts[spt][0][0] = Jac_spts[spt][1][1];  JGinv_spts[spt][0][1] =-Jac_spts[spt][0][1];
       JGinv_spts[spt][1][0] =-Jac_spts[spt][1][0];  JGinv_spts[spt][1][1] = Jac_spts[spt][0][0];
+    }
+    else if (nDims == 3) {
+      double xr = Jac_spts[spt](0,0);   double xs = Jac_spts[spt](0,1);   double xt = Jac_spts[spt](0,2);
+      double yr = Jac_spts[spt](1,0);   double ys = Jac_spts[spt](1,1);   double yt = Jac_spts[spt](1,2);
+      double zr = Jac_spts[spt](2,0);   double zs = Jac_spts[spt](2,1);   double zt = Jac_spts[spt](2,2);
+      detJac_spts[spt] = xr*(ys*zt - yt*zs) - xs*(yr*zt - yt*zr) + xt*(yr*zs - ys*zr);
+
+      JGinv_spts[spt](0,0) = ys*zt - yt*zs;
+      JGinv_spts[spt](0,1) = xt*zs - xs*zt;
+      JGinv_spts[spt](0,2) = xs*yt - xt*ys;
+      JGinv_spts[spt](1,0) = yt*zr - yr*zt;
+      JGinv_spts[spt](1,1) = xr*zt - xt*zr;
+      JGinv_spts[spt](1,2) = xt*yr - xr*yt;
+      JGinv_spts[spt](2,0) = yr*zs - ys*zr;
+      JGinv_spts[spt](2,1) = xs*zr - xr*zs;
+      JGinv_spts[spt](2,2) = xr*ys - xs*yr;
     }
     if (detJac_spts[spt]<0) FatalError("Negative Jacobian at solution points.");
   }
@@ -399,25 +473,43 @@ void ele::calcTransforms(void)
   for (int fpt=0; fpt<nFpts; fpt++) {
     // Calculate transformation Jacobian matrix - [dx/dr, dx/ds; dy/dr, dy/ds]
     Jac_fpts[fpt].initializeToZero();
-    for (int i=0; i<nNodes; i++) {
-      for (int dim1=0; dim1<nDims; dim1++) {
-        for (int dim2=0; dim2<nDims; dim2++) {
-          Jac_fpts[fpt][dim1][dim2] += dShape_fpts[fpt][i][dim2]*nodes[i][dim1];
-        }
-      }
+    if (initial) {
+      for (int i=0; i<nNodes; i++)
+        for (int dim1=0; dim1<nDims; dim1++)
+          for (int dim2=0; dim2<nDims; dim2++)
+            Jac_fpts[fpt][dim1][dim2] += dShape_fpts[fpt][i][dim2]*nodes[i][dim1];
+    }
+    else {
+      for (int i=0; i<nNodes; i++)
+        for (int dim1=0; dim1<nDims; dim1++)
+          for (int dim2=0; dim2<nDims; dim2++)
+            Jac_fpts[fpt][dim1][dim2] += dShape_fpts[fpt][i][dim2]*nodesRK[0][i][dim1];
     }
 
-    if (nDims==2) {
+
+    if (nDims == 2) {
       detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
+    }
+    else if (nDims == 3) {
+      double xr = Jac_fpts[fpt](0,0);   double xs = Jac_fpts[fpt](0,1);   double xt = Jac_fpts[fpt](0,2);
+      double yr = Jac_fpts[fpt](1,0);   double ys = Jac_fpts[fpt](1,1);   double yt = Jac_fpts[fpt](1,2);
+      double zr = Jac_fpts[fpt](2,0);   double zs = Jac_fpts[fpt](2,1);   double zt = Jac_fpts[fpt](2,2);
+      detJac_fpts[fpt] = xr*(ys*zt - yt*zs) - xs*(yr*zt - yt*zr) + xt*(yr*zs - ys*zr);
     }
 
     /* --- Calculate outward unit normal vector at flux point --- */
-    // Transform face normal from reference to physical space [JGinv dot tNorm]
-    norm_fpts[fpt][0] =  Jac_fpts[fpt][1][1]*tNorm_fpts[fpt][0] - Jac_fpts[fpt][1][0]*tNorm_fpts[fpt][1];
-    norm_fpts[fpt][1] = -Jac_fpts[fpt][0][1]*tNorm_fpts[fpt][0] + Jac_fpts[fpt][0][0]*tNorm_fpts[fpt][1];
+    // Transform face normal from reference to physical space [JGinv .dot. tNorm]
+    for (int dim1=0; dim1<nDims; dim1++) {
+      norm_fpts(fpt,dim1) = 0.;
+      for (int dim2=0; dim2<nDims; dim2++) {
+        norm_fpts(fpt,dim1) += JGinv_fpts[fpt](dim2,dim1) * tNorm_fpts(fpt,dim2);
+      }
+    }
 
     // Store magnitude of face normal (equivalent to face area in finite-volume land)
-    dA_fpts[fpt] = sqrt(norm_fpts[fpt][0]*norm_fpts[fpt][0] + norm_fpts[fpt][1]*norm_fpts[fpt][1]);
+    for (int dim=0; dim<nDims; dim++)
+      dA_fpts[fpt] += norm_fpts(fpt,dim)*norm_fpts(fpt,dim);
+    dA_fpts[fpt] = sqrt(dA_fpts[fpt]);
 
     // Normalize
     // If we have a collapsed edge, the dA will be 0, so just set the normal to 0
@@ -434,78 +526,13 @@ void ele::calcTransforms(void)
   }
 }
 
-void ele::updateTransforms(void)
-{
-  /* --- Calculate Transformation at Solution Points --- */
-
-  for (int spt=0; spt<nSpts; spt++) {
-    Jac_spts[spt].initializeToZero();
-    for (int i=0; i<nNodes; i++) {
-      for (int dim1=0; dim1<nDims; dim1++) {
-        for (int dim2=0; dim2<nDims; dim2++) {
-          Jac_spts[spt][dim1][dim2] += dShape_spts[spt][i][dim2]*nodesRK[0][i][dim1];
-        }
-      }
-    }
-
-    if (nDims==2) {
-      // Determinant of transformation matrix
-      detJac_spts[spt] = Jac_spts[spt][0][0]*Jac_spts[spt][1][1]-Jac_spts[spt][1][0]*Jac_spts[spt][0][1];
-      // Inverse of transformation matrix (times its determinant)
-      JGinv_spts[spt][0][0] = Jac_spts[spt][1][1];  JGinv_spts[spt][0][1] =-Jac_spts[spt][0][1];
-      JGinv_spts[spt][1][0] =-Jac_spts[spt][1][0];  JGinv_spts[spt][1][1] = Jac_spts[spt][0][0];
-    }
-    if (detJac_spts[spt]<0) FatalError("Negative Jacobian at solution points.");
-  }
-
-  /* --- Calculate Transformation at Flux Points --- */
-  for (int fpt=0; fpt<nFpts; fpt++) {
-    // Calculate transformation Jacobian matrix - [dx/dr, dx/ds; dy/dr, dy/ds]
-    Jac_fpts[fpt].initializeToZero();
-    for (int i=0; i<nNodes; i++) {
-      for (int dim1=0; dim1<nDims; dim1++) {
-        for (int dim2=0; dim2<nDims; dim2++) {
-          Jac_fpts[fpt][dim1][dim2] += dShape_fpts[fpt][i][dim2]*nodesRK[0][i][dim1];
-        }
-      }
-    }
-
-    if (nDims==2) {
-      detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
-    }
-
-    /* --- Calculate outward unit normal vector at flux point --- */
-    // Transform face normal from reference to physical space [JGinv dot tNorm]
-    norm_fpts[fpt][0] =  Jac_fpts[fpt][1][1]*tNorm_fpts[fpt][0] - Jac_fpts[fpt][1][0]*tNorm_fpts[fpt][1];
-    norm_fpts[fpt][1] = -Jac_fpts[fpt][0][1]*tNorm_fpts[fpt][0] + Jac_fpts[fpt][0][0]*tNorm_fpts[fpt][1];
-
-    // Store magnitude of face normal (equivalent to face area in finite-volume land)
-    dA_fpts[fpt] = sqrt(norm_fpts[fpt][0]*norm_fpts[fpt][0] + norm_fpts[fpt][1]*norm_fpts[fpt][1]);
-
-    // Normalize
-    // If we have a collapsed edge, the dA will be 0, so just set the normal to 0
-    // (A normal vector at a point doesn't make sense anyways)
-    if (std::fabs(dA_fpts[fpt]) < 1e-10) {
-      for (int dim=0; dim<nDims; dim++)
-        norm_fpts(fpt,dim) = 0;
-    }
-    else {
-      for (int dim=0; dim<nDims; dim++)
-        norm_fpts(fpt,dim) /= dA_fpts[fpt];
-    }
-  }
-}
-
 void ele::calcPosSpts(void)
 {
-  vector<double> shape;
-
   for (int spt=0; spt<nSpts; spt++) {
-    getShape(loc_spts[spt], shape);
     pos_spts[spt].zero();
     for (int iv=0; iv<nNodes; iv++) {
       for (int dim=0; dim<nDims; dim++) {
-        pos_spts[spt][dim] += shape[iv]*nodes[iv][dim];
+        pos_spts[spt][dim] += shape_spts[iv]*nodes[iv][dim];
       }
     }
   }
@@ -513,14 +540,11 @@ void ele::calcPosSpts(void)
 
 void ele::calcPosFpts(void)
 {
-  vector<double> shape;
-
   for (int fpt=0; fpt<nFpts; fpt++) {
-    getShape(loc_fpts[fpt], shape);
     pos_fpts[fpt].zero();
     for (int iv=0; iv<nNodes; iv++) {
       for (int dim=0; dim<nDims; dim++) {
-        pos_fpts[fpt][dim] += shape[iv]*nodes[iv][dim];
+        pos_fpts[fpt][dim] += shape_fpts[iv]*nodes[iv][dim];
       }
     }
   }
@@ -528,14 +552,11 @@ void ele::calcPosFpts(void)
 
 void ele::updatePosSpts(void)
 {
-  vector<double> shape;
-
   for (int spt=0; spt<nSpts; spt++) {
-    getShape(loc_spts[spt], shape);
     pos_spts[spt].zero();
     for (int iv=0; iv<nNodes; iv++) {
       for (int dim=0; dim<nDims; dim++) {
-        pos_spts[spt][dim] += shape[iv]*nodesRK[0][iv][dim];
+        pos_spts[spt][dim] += shape_spts[iv]*nodesRK[0][iv][dim];
       }
     }
   }
@@ -543,14 +564,11 @@ void ele::updatePosSpts(void)
 
 void ele::updatePosFpts(void)
 {
-  vector<double> shape;
-
   for (int fpt=0; fpt<nFpts; fpt++) {
-    getShape(loc_fpts[fpt], shape);
     pos_fpts[fpt].zero();
     for (int iv=0; iv<nNodes; iv++) {
       for (int dim=0; dim<nDims; dim++) {
-        pos_fpts[fpt][dim] += shape[iv]*nodesRK[0][iv][dim];
+        pos_fpts[fpt][dim] += shape_fpts[iv]*nodesRK[0][iv][dim];
       }
     }
   }

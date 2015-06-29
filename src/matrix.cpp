@@ -312,7 +312,7 @@ void matrix<T>::addCols(int nCols)
 
 
 template<typename T>
-void matrix<T>::removeCols(int nCols = 1)
+void matrix<T>::removeCols(int nCols)
 {
   if (nCols == 0) return;
 

@@ -108,7 +108,7 @@ public:
   void addCols(int nCols);
 
   //! Remove columns from the end of the matrix
-  void removeCols(int nCols);
+  void removeCols(int nCols = 1);
 
   vector<T> getRow(uint row);
 

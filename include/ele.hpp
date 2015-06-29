@@ -57,9 +57,7 @@ public:
 
   void calcGridVelocity(void);
 
-  void calcTransforms(void);
-
-  void updateTransforms(void);
+  void calcTransforms(int initial = 0);
 
   void calcPosSpts(void);
 
