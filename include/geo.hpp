@@ -65,7 +65,7 @@ public:
   vector<double> getQptWeights1D(int order);
 
   int nDims, nFields;
-  int nEles, nVerts, nEdges, nIntFaces, nBndFaces, nMpiFaces;
+  int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces;
   int nBounds;  //! Number of boundaries
 
 private:
@@ -112,6 +112,10 @@ private:
 
   //! Check if two given periodic edges match up
   bool checkPeriodicFaces(int *edge1, int *edge2);
+  bool checkPeriodicFaces3D(vector<int> &face1, vector<int> &face2);
+
+  //! Compare the orientation (rotation in ref. space) betwen the local faces of 2 elements
+  int compareOrientation(int ic1, int ic2, int f1, int f2);
 
   //! For MPI runs, partition the mesh across all processors
   void partitionMesh(void);

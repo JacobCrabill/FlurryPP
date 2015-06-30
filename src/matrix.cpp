@@ -264,9 +264,9 @@ template<typename T>
 void matrix<T>::insertRowUnsized(const vector<T> &vec)
 {
   // Add row to end, and resize matrix (add columns) if needed
-  if (vec.size() > dim1) addCols(dim1-vec.size());
+  if (vec.size() > dim1) addCols(vec.size()-dim1);
 
-    data.insert(data.end(),vec.begin(),vec.end());
+  data.insert(data.end(),vec.begin(),vec.end());
 
   dim0++;
 }
@@ -307,7 +307,7 @@ void matrix<T>::addCols(int nCols)
     it = data.begin() + (row+1)*(dim1+nCols) - nCols;
     data.insert(it,nCols,(T)0);
   }
-  dim1++;
+  dim1 += nCols;
 }
 
 

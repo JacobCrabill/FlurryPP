@@ -358,10 +358,10 @@ void geo::processConn3D(void)
   // the number of cells that face touches
   vector<int> iF;
   f2v1.unique(f2v,iF);
-  int nFaces = f2v.getDim0();
+  nFaces = f2v.getDim0();
 
   f2nv.resize(nFaces);
-  for (int i=0; i<f2nv1.size(); i++)
+  for (uint i=0; i<f2nv1.size(); i++)
     f2nv[iF[i]] = f2nv1[i];
 
 
@@ -369,7 +369,7 @@ void geo::processConn3D(void)
 
   // Flag for whether global face ID corresponds to interior or boundary face
   // (note that, at this stage, MPI faces will be considered boundary faces)
-  isBnd.assign(nEdges,0);
+  isBnd.assign(nFaces,0);
 
   nIntFaces = 0;
   nBndFaces = 0;
@@ -417,7 +417,7 @@ void geo::processConn3D(void)
       if (isOnBound) {
         // The edge lies on this boundary
         bcType[i] = bcList[bnd];
-        bcFaces[bnd].insertRow(e2v[bndFaces[i]],INSERT_AT_END,e2v.dim1);
+        bcFaces[bnd].insertRow(f2v[bndFaces[i]],INSERT_AT_END,f2v.dim1);
         break;
       }
     }
@@ -435,8 +435,8 @@ void geo::processConn3D(void)
   c2f.setup(nEles,getMax(c2nf));
   c2b.setup(nEles,getMax(c2nf));
   c2b.initializeToZero();
-  e2c.setup(nEdges,2);
-  e2c.initializeToValue(-1);
+  f2c.setup(nFaces,2);
+  f2c.initializeToValue(-1);
 
   for (int ic=0; ic<nEles; ic++) {
     for (int j=0; j<c2nf[ic]; j++) {
@@ -513,7 +513,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     e.bndFace.resize(c2nf[ic]);
     for (int k=0; k<c2nf[ic]; k++) {
       e.bndFace[k] = c2b(ic,k);
-      e.faceID[k] = c2e(ic,k);
+      e.faceID[k] = c2f(ic,k);
     }
 
     ic++;
@@ -521,7 +521,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
   /* --- Setup the faces --- */
 
-  vector<int> tmpEdges;
+  vector<int> cellFaces;
 
   if (params->rank==0) cout << "Geo: Setting up internal faces" << endl;
 
@@ -529,18 +529,20 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
   for (int i=0; i<nIntFaces; i++) {
     faces[i] = make_shared<intFace>();
     // Find global face ID of current interior face
-    int ie = intFaces[i];
-    ic = e2c(ie,0);
+    int ff = intFaces[i];
+    int ic1 = f2c(ff,0);
     // Find local face ID of global face within first element [on left]
-    tmpEdges.assign(c2e[ic],c2e[ic]+c2nf[ic]);
-    int fid1 = findFirst(tmpEdges,ie);
-    if (e2c(ie,1) == -1) {
+    cellFaces.assign(c2f[ic1],c2f[ic1]+c2nf[ic1]);
+    int fid1 = findFirst(cellFaces,ff);
+    if (f2c(ff,1) == -1) {
       FatalError("Interior face does not have a right element assigned.");
-    }else{
-      ic = e2c(ie,1);
-      tmpEdges.assign(c2e[ic], c2e[ic]+c2nf[ic]);  // List of cell's faces
-      int fid2 = findFirst(tmpEdges,ie);           // Which one is this face
-      faces[i]->initialize(&eles[e2c(ie,0)],&eles[e2c(ie,1)],fid1,fid2,ie,params);
+    }
+    else{
+      int ic2 = f2c(ff,1);
+      cellFaces.assign(c2f[ic2], c2f[ic2]+c2nf[ic2]);  // List of cell's faces
+      int fid2 = findFirst(cellFaces,ff);           // Which one is this face
+      compareOrientation(ic1,fid1,ic2,fid2);
+      faces[i]->initialize(&eles[f2c(ff,0)],&eles[f2c(ff,1)],fid1,fid2,ff,params);
     }
   }
 
@@ -550,15 +552,15 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
   for (int i=0; i<nBndFaces; i++) {
     faces[nIntFaces+i] = make_shared<boundFace>();
     // Find global face ID of current boundary face
-    int ie = bndFaces[i];
-    ic = e2c(ie,0);
+    int ff = bndFaces[i];
+    ic = f2c(ff,0);
     // Find local face ID of global face within element
-    tmpEdges.assign(c2e[ic],c2e[ic]+c2nf[ic]);
-    int fid1 = findFirst(tmpEdges,ie);
-    if (e2c(ie,1) != -1) {
+    cellFaces.assign(c2f[ic],c2f[ic]+c2nf[ic]);
+    int fid1 = findFirst(cellFaces,ff);
+    if (f2c(ff,1) != -1) {
       FatalError("Boundary face has a right element assigned.");
     }else{
-      faces[nIntFaces+i]->initialize(&eles[e2c(ie,0)],NULL,fid1,bcType[i],ie,params);
+      faces[nIntFaces+i]->initialize(&eles[f2c(ff,0)],NULL,fid1,bcType[i],ff,params);
     }
   }
 
@@ -575,8 +577,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       int ie = mpiFaces[i];
       ic = e2c(ie,0);
       // Find local face ID of global face within element
-      tmpEdges.assign(c2e[ic],c2e[ic]+c2nf[ic]);
-      int fid1 = findFirst(tmpEdges,ie);
+      cellFaces.assign(c2e[ic],c2e[ic]+c2nf[ic]);
+      int fid1 = findFirst(cellFaces,ie);
       if (e2c(ie,1) != -1) {
         FatalError("MPI face has a right element assigned.");
       }else{
@@ -863,7 +865,7 @@ void geo::createMesh()
     nz = 1;
 
   if (params->rank==0)
-    cout << "Geo: Creating " << nx << "x" << ny << " x " << nz << " cartesian mesh" << endl;
+    cout << "Geo: Creating " << nx << "x" << ny << "x" << nz << " cartesian mesh" << endl;
 
   double xmin = params->xmin;
   double xmax = params->xmax;
@@ -1170,7 +1172,7 @@ void geo::processPeriodicBoundaries(void)
     if (bndFaces[i]==-1) continue;
     for (auto& j:iPeriodic) {
       if (i==j || bndFaces[i]==-1 || bndFaces[j]==-1) continue;
-      if (checkPeriodicFaces(e2v[bndFaces[i]],e2v[bndFaces[j]])) {
+      if (checkPeriodicFaces(f2v[bndFaces[i]],f2v[bndFaces[j]])) {  // was e2v not f2v
 
         /* --- Match found - now take care of transfer from boundary -> internal --- */
 
@@ -1187,16 +1189,16 @@ void geo::processPeriodicBoundaries(void)
         isBnd[bj] = false;
 
         // Fix e2c - add right cell to combined edge, make left cell = -1 in 'deleted' edge
-        e2c(bi,1) = e2c[bj][0];
-        e2c(bj,0) = -1;
+        f2c(bi,1) = f2c[bj][0];
+        f2c(bj,0) = -1;
 
         // Fix c2e - replace 'deleted' edge from right cell with combined edge
-        ic = e2c[bi][1];
-        int fID = findFirst(c2e[ic],(int)bj,c2nf[ic]);
-        c2e(e2c(bi,1),fID) = bi;
+        ic = f2c[bi][1];
+        int fID = findFirst(c2f[ic],(int)bj,c2nf[ic]);
+        c2f(f2c(bi,1),fID) = bi;
 
         // Fix c2b - set element-local face to be internal face
-        c2b(e2c(bi,1),fID) = false;
+        c2b(f2c(bi,1),fID) = false;
 
         // Flag edges as gone in boundary edges list
         bndFaces[i] = -1;
@@ -1257,9 +1259,57 @@ bool geo::checkPeriodicFaces(int* edge1, int* edge2)
     // Faces match up across y-direction, with [0]->[1] and [1]->[0] in each edge
     return true;
   }
-  else {
+
+  // None of the above
+  return false;
+}
+
+bool geo::checkPeriodicFaces3D(vector<int> &face1, vector<int> &face2)
+{
+  if (face1.size() != face2.size())
     return false;
+
+  double tol = params->periodicTol;
+  double dx = params->periodicDX;
+  double dy = params->periodicDY;
+  double dz = params->periodicDZ;
+
+  // Check for same orientation
+  bool match = true;
+  for (int i=0; i<face1.size(); i++) {
+    match = (match && abs(abs(xv[face2[i]].x - xv[face1[i]].x)-dx)<tol && abs(xv[face2[i]].y - xv[face1[i]].y)<tol && abs(xv[face2[i]].z - xv[face1[i]].z)<tol );
   }
+  if (match) return true;
+
+  // Check for +90deg orientation
+  for (int i=0; i<face1.size(); i++) {
+
+  }
+
+  // None of the above
+  return false;
+}
+
+int geo::compareOrientation(int ic1, int f1, int ic2, int f2)
+{
+  int nv = f2nv[c2f(ic1,f1)];
+
+  vector<int> tmpFace1(nv), tmpFace2(nv);
+
+  for (int i=0; i<nv; i++) {
+    int iv1, iv2;
+    switch (ctype[ic1]) {
+      case HEX:
+        break;
+      default:
+        FatalError("Element type not supported.");
+        break;
+    }
+
+    tmpFace1[i] = c2v(ic1,iv1);
+  }
+
+  return 0;
 }
 
 

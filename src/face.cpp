@@ -29,7 +29,7 @@ void face::initialize(ele *eL, ele *eR, int locF_L, int rightParam, int gID, inp
   this->eR = eR;
   this->params = params;
 
-  // Note: this is locF_R for internal faces, bcType for boundary faces
+  // Note: this is locF_R for internal faces, bcType for boundary faces, and right ID for mpi faces
   this->rightParam = rightParam;
 
   nDims = params->nDims;
