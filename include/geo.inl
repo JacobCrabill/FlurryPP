@@ -435,29 +435,32 @@ vector<point> geo::getLocFpts(int eType, int order)
     int P12 = (order+1)*(order+1);
     outPts.resize(6*(order+1));
     pts1D = getPts1D(params->sptsTypeQuad,order);
+    // Flux points are ordered such that, as seen from inside the
+    // element, the id's increase btm-left->top-right fashion on
+    // each face, starting with lowest dimension first ('x' or 'y')
     for (int i=0; i<order+1; i++) {
       for (int j=0; j<order+1; j++) {
-        // Face 0
+        // Face 0 - bottom
         outPts[i].x = pts1D[i];
         outPts[i].y = pts1D[j];
         outPts[i].z = -1.;
-        // Face 1
-        outPts[i+P12].x = pts1D[i];
+        // Face 1 - top
+        outPts[i+P12].x = pts1D[order-i];
         outPts[i+P12].y = pts1D[j];
         outPts[i+P12].z = 1.;
-        // Face 2
+        // Face 2 - left
         outPts[i+2*P12].x = -1;
         outPts[i+2*P12].y = pts1D[i];
         outPts[i+2*P12].z = pts1D[j];
-        // Face 3
+        // Face 3 - right
         outPts[i+2*P12].x = 1;
-        outPts[i+2*P12].y = pts1D[i];
+        outPts[i+2*P12].y = pts1D[order-i];
         outPts[i+2*P12].z = pts1D[j];
-        // Face 4
-        outPts[i+2*P12].x = pts1D[i];
+        // Face 4 - front
+        outPts[i+2*P12].x = pts1D[order-i];
         outPts[i+2*P12].y = -1;
         outPts[i+2*P12].z = pts1D[j];
-        // Face 5
+        // Face 5 - back
         outPts[i+2*P12].x = pts1D[i];
         outPts[i+2*P12].y = 1;
         outPts[i+2*P12].z = pts1D[j];

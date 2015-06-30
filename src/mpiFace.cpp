@@ -31,7 +31,9 @@ void mpiFace::setupRightState(void)
 #endif
 
 #ifndef _NO_MPI
-  IDR = rightParam;
+  IDR = rightParams[0];
+  procL = rightParams[1];
+  procR = rightParams[2];
 
   /* Send/Get # of flux points to/from right element */
   MPI_Irecv(&nFptsR,1,MPI_INT,procR,ID,MPI_COMM_WORLD,&nFpts_in);
@@ -46,7 +48,7 @@ void mpiFace::finishRightSetup(void)
 {
 #ifndef _NO_MPI
   MPI_Wait(&nFpts_in,MPI_STATUSES_IGNORE);
-  MPI_Wait(&nFpts_out,MPI_STATUSES_IGNORE);  
+  MPI_Wait(&nFpts_out,MPI_STATUSES_IGNORE);
 
   /* --- Will have to introduce 'mortar' elements in the future [for p-adaptation],
    * but for now just force all faces to have same # of flux points [order] --- */
@@ -54,11 +56,43 @@ void mpiFace::finishRightSetup(void)
   if (nFptsL != nFptsR)
     FatalError("Mortar elements not yet implemented - must have nFptsL==nFptsR");
 
-  /* --- For 1D faces [line segments] only - find first/last ID of fpts; reverse
-   * the order on the 'right' face so they match up ---
+  /* --- Setup the L/R flux-point matching ---
    * NOTE THAT THIS IS DIFFERENT THAN IN intFaces */
-  fptStartR = nFptsR;
-  fptEndR = 0;
+  fptR.resize(nFptsL);
+  if (nDims == 2) {
+    // For 1D faces [line segments] only - find first/last ID of fpts;
+    // right faces's points are simply reversed
+    fptStartR = nFptsR;
+    fptEndR = 0;
+
+    int fpt = 0;
+    for (int i=fptStartR-1; i>=fptEndR; i--) {
+      fptR[fpt] = i;
+      fpt++;
+    }
+  }
+  else if (nDims == 3) {
+    // Only for quad tensor-product faces: Rotate the face to the correct relative orientation
+    int order = sqrt(nFptsL)-1;
+    for (int i=0; i<nFptsL; i++) {
+      int ifpt = i%(order+1);
+      int jfpt = floor(i/(order+1));
+      switch (relRot) {
+        case 0:
+          fptR[i] = ifpt*(order+1) + jfpt;
+          break;
+        case 1:
+          fptR[i] = order-ifpt + jfpt*(order+1);
+          break;
+        case 2:
+          fptR[i] = nFptsL-1 - (ifpt*(order+1) + jfpt);
+          break;
+        case 3:
+          fptR[i] = nFptsL - (order+1)*(jfpt+1) + ifpt;
+          break;
+      }
+    }
+  }
 
   UR.setup(nFptsR,nFields);
   bufUR.setup(nFptsR,nFields);
@@ -106,14 +140,14 @@ void mpiFace::getRightState(void)
   // Copy UR from the buffer to the proper matrix [note that the order of the
   // fpts is reversed between the two faces]
   int fpt = 0;
-  for (int i=fptStartR-1; i>=fptEndR; i--) {
+  for (int i=0; i<nFptsL; i++) {
     for (int j=0; j<nFields; j++)
-      UR(fpt,j) = bufUR(i,j);
+      UR(fpt,j) = bufUR(fptR[i],j);
 
     if (params->viscous) {
       for (int dim=0; dim<nDims; dim++)
         for (int j=0; j<nFields; j++)
-          gradUR[fpt](dim,j) = bufUR(i,dim+j*nDims);
+          gradUR[fpt](dim,j) = bufUR(fptR[i],dim+j*nDims);
     }
 
     fpt++;

@@ -16,6 +16,7 @@
 #include "../include/geo.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdlib>
 #include <map>
 #include <memory>
@@ -537,12 +538,12 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     if (f2c(ff,1) == -1) {
       FatalError("Interior face does not have a right element assigned.");
     }
-    else{
+    else {
       int ic2 = f2c(ff,1);
       cellFaces.assign(c2f[ic2], c2f[ic2]+c2nf[ic2]);  // List of cell's faces
       int fid2 = findFirst(cellFaces,ff);           // Which one is this face
-      compareOrientation(ic1,fid1,ic2,fid2);
-      faces[i]->initialize(&eles[f2c(ff,0)],&eles[f2c(ff,1)],fid1,fid2,ff,params);
+      int relRot = compareOrientation(ic1,fid1,ic2,fid2);
+      faces[i]->initialize(&eles[f2c(ff,0)],&eles[f2c(ff,1)],fid1,{fid2,relRot},ff,params);
     }
   }
 
@@ -560,7 +561,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     if (f2c(ff,1) != -1) {
       FatalError("Boundary face has a right element assigned.");
     }else{
-      faces[nIntFaces+i]->initialize(&eles[f2c(ff,0)],NULL,fid1,bcType[i],ff,params);
+      faces[nIntFaces+i]->initialize(&eles[f2c(ff,0)],NULL,fid1,{bcType[i]},ff,params);
     }
   }
 
@@ -582,9 +583,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       if (e2c(ie,1) != -1) {
         FatalError("MPI face has a right element assigned.");
       }else{
-        mpiFacesVec[i]->procL = params->rank;
-        mpiFacesVec[i]->procR = procR[i];
-        mpiFacesVec[i]->initialize(&eles[e2c(ie,0)],NULL,fid1,locF_R[i],i,params);
+        mpiFacesVec[i]->initialize(&eles[e2c(ie,0)],NULL,fid1,{locF_R[i],params->rank,procR[i]},i,params);
       }
     }
   }
@@ -1274,42 +1273,171 @@ bool geo::checkPeriodicFaces3D(vector<int> &face1, vector<int> &face2)
   double dy = params->periodicDY;
   double dz = params->periodicDZ;
 
-  // Check for same orientation
-  bool match = true;
-  for (int i=0; i<face1.size(); i++) {
-    match = (match && abs(abs(xv[face2[i]].x - xv[face1[i]].x)-dx)<tol && abs(xv[face2[i]].y - xv[face1[i]].y)<tol && abs(xv[face2[i]].z - xv[face1[i]].z)<tol );
+  /* --- Compare faces using normal vectors: normals should be aligned
+   * and offset by norm .dot. {dx,dy,dz} --- */
+
+  Vec3 vec1, vec2;
+
+  // Calculate face normal & centriod for face 1
+  Vec3 norm1;
+  point c1;
+  vec1 = xv[face1[1]] - xv[face1[0]];
+  vec1 = xv[face1[2]] - xv[face1[0]];
+  for (int j=0; j<face1.size(); j++)
+    c1 += xv[face1[j]];
+  c1 /= face1.size();
+
+  norm1[0] = vec1[1]*vec2[2] - vec1[2]*vec2[1];
+  norm1[1] = vec1[2]*vec2[0] - vec1[0]*vec2[2];
+  norm1[2] = vec1[0]*vec2[1] - vec1[1]*vec2[0];
+  // Normalize
+  double magNorm1 = sqrt(norm1[0]*norm1[0]+norm1[1]*norm1[1]+norm1[2]*norm1[2]);
+  norm1 /= magNorm1;
+
+  // Calculate face normal & centroid for face 2
+  Vec3 norm2;
+  point c2;
+  vec1 = xv[face2[1]] - xv[face2[0]];
+  vec2 = xv[face2[2]] - xv[face2[0]];
+  for (int j=0; j<face2.size(); j++)
+    c2 += xv[face2[j]];
+  c2 /= face2.size();
+  norm2[0] = vec1[1]*vec2[2] - vec1[2]*vec2[1];
+  norm2[1] = vec1[2]*vec2[0] - vec1[0]*vec2[2];
+  norm2[2] = vec1[0]*vec2[1] - vec1[1]*vec2[0];
+  // Normalize
+  double magNorm2 = sqrt(norm2[0]*norm2[0]+norm2[1]*norm2[1]+norm2[2]*norm2[2]);
+  norm2 /= magNorm2;
+
+  // Check for same orientation - norm1 .dot. norm2 should be +/- 1
+  double dot = norm1*norm2;
+  if (abs(1-abs(dot))>tol) return false;
+
+  // Check offset distance - norm .times. {dx,dy,dz} should equal centroid2 - centriod1
+  Vec3 nDXYZ;
+  nDXYZ.x = norm1[0]*dx;
+  nDXYZ.y = norm1[1]*dy;
+  nDXYZ.z = norm1[2]*dz;
+  nDXYZ.abs();
+
+  Vec3 Offset = c2 - c1;
+  Offset.abs();
+
+  Vec3 Diff = Offset - nDXYZ;
+  Diff.abs();
+
+  for (int i=0; i<3; i++) {
+    if (Diff[i]>tol) return false;
   }
-  if (match) return true;
 
-  // Check for +90deg orientation
-  for (int i=0; i<face1.size(); i++) {
-
-  }
-
-  // None of the above
-  return false;
+  // The faces are aligned across a periodic direction
+  return true;
 }
 
 int geo::compareOrientation(int ic1, int f1, int ic2, int f2)
 {
   int nv = f2nv[c2f(ic1,f1)];
 
-  vector<int> tmpFace1(nv), tmpFace2(nv);
+  vector<int> tmpFace1(nv);
+  int baseNode2;
 
-  for (int i=0; i<nv; i++) {
-    int iv1, iv2;
-    switch (ctype[ic1]) {
-      case HEX:
-        break;
-      default:
-        FatalError("Element type not supported.");
-        break;
-    }
+  switch (ctype[ic1]) {
+    case HEX:
+      // Flux points arranged in 2D grid on each face oriented with each
+      // dimension increasing in its +'ve direction ['btm-left' to 'top-right']
+      // Node ordering reflects this: CCW from 'bottom-left' node on each face
+      switch (f1) {
+        case 0:
+          // Bottom face  (z = -1)
+          tmpFace1[0] = c2v(ic1,0);
+          tmpFace1[1] = c2v(ic1,1);
+          tmpFace1[2] = c2v(ic1,2);
+          tmpFace1[3] = c2v(ic1,3);
+          break;
+        case 1:
+          // Top face  (z = +1)
+          tmpFace1[0] = c2v(ic1,5);
+          tmpFace1[1] = c2v(ic1,4);
+          tmpFace1[2] = c2v(ic1,7);
+          tmpFace1[3] = c2v(ic1,6);
+          break;
+        case 2:
+          // Left face  (x = -1)
+          tmpFace1[0] = c2v(ic1,0);
+          tmpFace1[1] = c2v(ic1,3);
+          tmpFace1[2] = c2v(ic1,7);
+          tmpFace1[3] = c2v(ic1,4);
+          break;
+        case 3:
+          // Right face  (x = +1)
+          tmpFace1[0] = c2v(ic1,2);
+          tmpFace1[1] = c2v(ic1,1);
+          tmpFace1[2] = c2v(ic1,5);
+          tmpFace1[3] = c2v(ic1,6);
+          break;
+        case 4:
+          // Front face  (y = -1)
+          tmpFace1[0] = c2v(ic1,1);
+          tmpFace1[1] = c2v(ic1,0);
+          tmpFace1[2] = c2v(ic1,4);
+          tmpFace1[3] = c2v(ic1,5);
+          break;
+        case 5:
+          // Back face  (y = +1)
+          tmpFace1[0] = c2v(ic1,3);
+          tmpFace1[1] = c2v(ic1,2);
+          tmpFace1[2] = c2v(ic1,6);
+          tmpFace1[3] = c2v(ic1,7);
+          break;
+      }
+      break;
 
-    tmpFace1[i] = c2v(ic1,iv1);
+    default:
+      FatalError("Element type not supported.");
+      break;
   }
 
-  return 0;
+  switch (ctype[ic2]) {
+    case HEX:
+      switch (f2) {
+        case 0:
+          // Bottom face  (z = -1)
+          baseNode2 = c2v(ic2,0);
+          break;
+        case 1:
+          // Top face  (z = +1)
+          baseNode2 = c2v(ic2,5);
+          break;
+        case 2:
+          // Left face  (x = -1)
+          baseNode2 = c2v(ic2,0);
+          break;
+        case 3:
+          // Right face  (x = +1)
+          baseNode2 = c2v(ic2,2);
+          break;
+        case 4:
+          // Front face  (y = -1)
+          baseNode2 = c2v(ic2,1);
+          break;
+        case 5:
+          // Back face  (y = +1)
+          baseNode2 = c2v(ic2,3);
+          break;
+      }
+      break;
+
+    default:
+      FatalError("Element type not supported.");
+      break;
+  }
+
+  // Now, compare the two faces to see the relative orientation [rotation]
+  if      (tmpFace1[0] == baseNode2) return 0;
+  else if (tmpFace1[1] == baseNode2) return 1;
+  else if (tmpFace1[2] == baseNode2) return 2;
+  else if (tmpFace1[3] == baseNode2) return 3;
+  else     FatalError("Internal faces improperly matched.");
 }
 
 

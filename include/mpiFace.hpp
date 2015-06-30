@@ -57,6 +57,7 @@ public:
 private:
   int locF_R;              //! Right element's element-local face ID
   int fptStartR, fptEndR;
+  vector<int> fptR;        //! Indices of flux points on right face
 
   /* --- Storage for all solution/geometry data at flux points [right state] --- */
   //vector<matrix<double>> FR;   //! Flux array [nFpts, nDims, nFields]

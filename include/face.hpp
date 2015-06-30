@@ -30,7 +30,7 @@ class face
 public:
 
   /*! Assign basic parameters to boundary */
-  void initialize(ele *eL, ele *eR, int locF_L, int rightParam, int gID, input* params);
+  void initialize(ele *eL, ele *eR, int locF_L, const vector<int> &rightParams, int gID, input* params);
 
   /*! Setup access to the left elements' data */
   void setupFace(void);
@@ -79,7 +79,7 @@ protected:
   int nDims, nFields;
   int locF_L;
   int fptStartL, fptEndL;
-  int rightParam;
+  vector<int> rightParams;
 
   ele* eL;
   ele* eR;

@@ -20,7 +20,7 @@
 void boundFace::setupRightState(void)
 {
   // This is kinda messy, but avoids separate initialize function
-  bcType = rightParam;
+  bcType = rightParams[0];
 
   if (params->slipPenalty) {
     // For PID-controlled BC

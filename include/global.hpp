@@ -121,7 +121,58 @@ struct point
         FatalError("Invalid index for point struct.");
     }
   }
+
+  point operator-(point b) {
+    struct point c;
+    c.x = x - b.x;
+    c.y = y - b.y;
+    c.z = z - b.z;
+    return c;
+  }
+
+  point operator+(point b) {
+    struct point c;
+    c.x = x + b.x;
+    c.y = y + b.y;
+    c.z = z + b.z;
+    return c;
+  }
+
+  point& operator+=(point b) {
+    x += b.x;
+    y += b.y;
+    z += b.z;
+    return *this;
+  }
+
+    point& operator-=(point b) {
+    x -= b.x;
+    y -= b.y;
+    z -= b.z;
+    return *this;
+  }
+
+  point& operator/=(double a) {
+    x /= a;
+    y /= a;
+    z /= a;
+    return *this;
+  }
+
+  double operator*(point b) {
+    return x*b.x + y*b.y + z*b.z;
+  }
+
+  void abs(void) {
+    x = std::abs(x);
+    y = std::abs(y);
+    z = std::abs(z);
+  }
+
 };
+
+//! For clearer notation when a vector is implied, rather than a point
+typedef struct point Vec3;
 
 int factorial(int n);
 

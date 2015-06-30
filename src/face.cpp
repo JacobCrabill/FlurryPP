@@ -20,7 +20,7 @@
 #include "../include/flux.hpp"
 #include "../include/ele.hpp"
 
-void face::initialize(ele *eL, ele *eR, int locF_L, int rightParam, int gID, input *params)
+void face::initialize(ele *eL, ele *eR, int locF_L, const vector<int> &rightParams, int gID, input *params)
 {
   ID = gID;
 
@@ -30,7 +30,7 @@ void face::initialize(ele *eL, ele *eR, int locF_L, int rightParam, int gID, inp
   this->params = params;
 
   // Note: this is locF_R for internal faces, bcType for boundary faces, and right ID for mpi faces
-  this->rightParam = rightParam;
+  this->rightParams = rightParams;
 
   nDims = params->nDims;
   nFields = params->nFields;
