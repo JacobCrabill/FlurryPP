@@ -191,6 +191,7 @@ private:
   vector<matrix<double> > Jac_spts;  //! Transformation Jacobian [matrix] at each solution point
   vector<matrix<double> > Jac_fpts;  //! Transformation Jacobian [matrix] at each flux point
   vector<matrix<double> > JGinv_spts;  //! Inverse of transformation Jacobian [matrix] at each solution point
+  vector<matrix<double> > JGinv_fpts;  //! Inverse of transformation Jacobian [matrix] at each flux point
   
   matrix<double> shape_spts;
   matrix<double> shape_fpts;

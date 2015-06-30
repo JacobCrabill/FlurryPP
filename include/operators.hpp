@@ -96,6 +96,8 @@ private:
   /*! Evaluate the divergence of the (VCJH) correction function at a solution point from a flux point */
   double divVCJH_quad(int in_fpt, vector<double> &loc, vector<double> &loc_1d_spts, uint vcjh, uint order);
 
+  double divVCJH_hex(int in_fpt, point& loc, vector<double> &loc_1d_spts, uint vcjh, uint order);
+
   /* Stuff required for Shock Capturing */
   matrix<double> vandermonde1D;
   matrix<double> inv_vandermonde1D;

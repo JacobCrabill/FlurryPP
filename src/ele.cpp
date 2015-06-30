@@ -134,9 +134,11 @@ void ele::setupArrays(void)
   Jac_spts.resize(nSpts);
   Jac_fpts.resize(nFpts);
   JGinv_spts.resize(nSpts);
+  JGinv_fpts.resize(nFpts);
   for (auto& spt:Jac_spts) spt.setup(nDims,nDims);
   for (auto& fpt:Jac_fpts) fpt.setup(nDims,nDims);
   for (auto& spt:JGinv_spts) spt.setup(nDims,nDims);
+  for (auto& fpt:JGinv_fpts) fpt.setup(nDims,nDims);
 
   norm_fpts.setup(nFpts,nDims);
   tNorm_fpts.setup(nFpts,nDims);
@@ -429,7 +431,7 @@ void ele::calcTransforms(int initial)
   for (int spt=0; spt<nSpts; spt++) {
     Jac_spts[spt].initializeToZero();
 
-    if (initial) {
+    if (initial == 0) {
       for (int i=0; i<nNodes; i++)
         for (int dim1=0; dim1<nDims; dim1++)
           for (int dim2=0; dim2<nDims; dim2++)
@@ -456,15 +458,9 @@ void ele::calcTransforms(int initial)
       double zr = Jac_spts[spt](2,0);   double zs = Jac_spts[spt](2,1);   double zt = Jac_spts[spt](2,2);
       detJac_spts[spt] = xr*(ys*zt - yt*zs) - xs*(yr*zt - yt*zr) + xt*(yr*zs - ys*zr);
 
-      JGinv_spts[spt](0,0) = ys*zt - yt*zs;
-      JGinv_spts[spt](0,1) = xt*zs - xs*zt;
-      JGinv_spts[spt](0,2) = xs*yt - xt*ys;
-      JGinv_spts[spt](1,0) = yt*zr - yr*zt;
-      JGinv_spts[spt](1,1) = xr*zt - xt*zr;
-      JGinv_spts[spt](1,2) = xt*yr - xr*yt;
-      JGinv_spts[spt](2,0) = yr*zs - ys*zr;
-      JGinv_spts[spt](2,1) = xs*zr - xr*zs;
-      JGinv_spts[spt](2,2) = xr*ys - xs*yr;
+      JGinv_spts[spt](0,0) = ys*zt - yt*zs;  JGinv_spts[spt](0,1) = xt*zs - xs*zt;  JGinv_spts[spt](0,2) = xs*yt - xt*ys;
+      JGinv_spts[spt](1,0) = yt*zr - yr*zt;  JGinv_spts[spt](1,1) = xr*zt - xt*zr;  JGinv_spts[spt](1,2) = xt*yr - xr*yt;
+      JGinv_spts[spt](2,0) = yr*zs - ys*zr;  JGinv_spts[spt](2,1) = xs*zr - xr*zs;  JGinv_spts[spt](2,2) = xr*ys - xs*yr;
     }
     if (detJac_spts[spt]<0) FatalError("Negative Jacobian at solution points.");
   }
@@ -473,7 +469,7 @@ void ele::calcTransforms(int initial)
   for (int fpt=0; fpt<nFpts; fpt++) {
     // Calculate transformation Jacobian matrix - [dx/dr, dx/ds; dy/dr, dy/ds]
     Jac_fpts[fpt].initializeToZero();
-    if (initial) {
+    if (initial == 0) {
       for (int i=0; i<nNodes; i++)
         for (int dim1=0; dim1<nDims; dim1++)
           for (int dim2=0; dim2<nDims; dim2++)
@@ -489,12 +485,19 @@ void ele::calcTransforms(int initial)
 
     if (nDims == 2) {
       detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
+      // Inverse of transformation matrix (times its determinant)
+      JGinv_fpts[fpt][0][0] = Jac_fpts[fpt][1][1];  JGinv_fpts[fpt][0][1] =-Jac_fpts[fpt][0][1];
+      JGinv_fpts[fpt][1][0] =-Jac_fpts[fpt][1][0];  JGinv_fpts[fpt][1][1] = Jac_fpts[fpt][0][0];
     }
     else if (nDims == 3) {
       double xr = Jac_fpts[fpt](0,0);   double xs = Jac_fpts[fpt](0,1);   double xt = Jac_fpts[fpt](0,2);
       double yr = Jac_fpts[fpt](1,0);   double ys = Jac_fpts[fpt](1,1);   double yt = Jac_fpts[fpt](1,2);
       double zr = Jac_fpts[fpt](2,0);   double zs = Jac_fpts[fpt](2,1);   double zt = Jac_fpts[fpt](2,2);
       detJac_fpts[fpt] = xr*(ys*zt - yt*zs) - xs*(yr*zt - yt*zr) + xt*(yr*zs - ys*zr);
+      // Inverse of transformation matrix (times its determinant)
+      JGinv_fpts[fpt](0,0) = ys*zt - yt*zs;  JGinv_fpts[fpt](0,1) = xt*zs - xs*zt;  JGinv_fpts[fpt](0,2) = xs*yt - xt*ys;
+      JGinv_fpts[fpt](1,0) = yt*zr - yr*zt;  JGinv_fpts[fpt](1,1) = xr*zt - xt*zr;  JGinv_fpts[fpt](1,2) = xt*yr - xr*yt;
+      JGinv_fpts[fpt](2,0) = yr*zs - ys*zr;  JGinv_fpts[fpt](2,1) = xs*zr - xr*zs;  JGinv_fpts[fpt](2,2) = xr*ys - xs*yr;
     }
 
     /* --- Calculate outward unit normal vector at flux point --- */
@@ -532,7 +535,7 @@ void ele::calcPosSpts(void)
     pos_spts[spt].zero();
     for (int iv=0; iv<nNodes; iv++) {
       for (int dim=0; dim<nDims; dim++) {
-        pos_spts[spt][dim] += shape_spts[iv]*nodes[iv][dim];
+        pos_spts[spt][dim] += shape_spts(spt,iv)*nodes[iv][dim];
       }
     }
   }
@@ -544,7 +547,7 @@ void ele::calcPosFpts(void)
     pos_fpts[fpt].zero();
     for (int iv=0; iv<nNodes; iv++) {
       for (int dim=0; dim<nDims; dim++) {
-        pos_fpts[fpt][dim] += shape_fpts[iv]*nodes[iv][dim];
+        pos_fpts[fpt][dim] += shape_fpts(fpt,iv)*nodes[iv][dim];
       }
     }
   }
@@ -556,7 +559,7 @@ void ele::updatePosSpts(void)
     pos_spts[spt].zero();
     for (int iv=0; iv<nNodes; iv++) {
       for (int dim=0; dim<nDims; dim++) {
-        pos_spts[spt][dim] += shape_spts[iv]*nodesRK[0][iv][dim];
+        pos_spts[spt][dim] += shape_spts(spt,iv)*nodesRK[0][iv][dim];
       }
     }
   }
@@ -568,7 +571,7 @@ void ele::updatePosFpts(void)
     pos_fpts[fpt].zero();
     for (int iv=0; iv<nNodes; iv++) {
       for (int dim=0; dim<nDims; dim++) {
-        pos_fpts[fpt][dim] += shape_fpts[iv]*nodesRK[0][iv][dim];
+        pos_fpts[fpt][dim] += shape_fpts(fpt,iv)*nodesRK[0][iv][dim];
       }
     }
   }
@@ -810,16 +813,26 @@ vector<double> ele::getEntropyVars(int spt)
 
 void ele::calcWaveSpFpts(void)
 {
-  for (int fpt=0; fpt<nFpts; fpt++) {
-    double rho = U_fpts(fpt,0);
-    double u = U_fpts(fpt,1)/rho;
-    double v = U_fpts(fpt,2)/rho;
-    double rhoVSq = rho*(u*u+v*v);
-    double p = (params->gamma-1)*(U_fpts(fpt,3) - 0.5*rhoVSq);
+  if (params->equation == ADVECTION_DIFFUSION) {
+    for (int fpt=0; fpt<nFpts; fpt++) {
+      double csq = params->advectVx*params->advectVx + params->advectVy*params->advectVy;
+      if (nDims == 3)
+        csq += params->advectVz*params->advectVz;
+      waveSp_fpts[fpt] = sqrt(csq) / dA_fpts[fpt];
+    }
+  }
+  else if (params->equation == NAVIER_STOKES) {
+    for (int fpt=0; fpt<nFpts; fpt++) {
+      double rho = U_fpts(fpt,0);
+      double u = U_fpts(fpt,1)/rho;
+      double v = U_fpts(fpt,2)/rho;
+      double rhoVSq = rho*(u*u+v*v);
+      double p = (params->gamma-1)*(U_fpts(fpt,3) - 0.5*rhoVSq);
 
-    double vN = u*norm_fpts(fpt,0) + v*norm_fpts(fpt,1);
-    double csq = std::max(params->gamma*p/rho,0.0);
-    waveSp_fpts[fpt] = (std::abs(vN) + std::sqrt(csq)) / dA_fpts[fpt];
+      double vN = u*norm_fpts(fpt,0) + v*norm_fpts(fpt,1);
+      double csq = std::max(params->gamma*p/rho,0.0);
+      waveSp_fpts[fpt] = (std::abs(vN) + std::sqrt(csq)) / dA_fpts[fpt];
+    }
   }
 }
 

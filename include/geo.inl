@@ -375,6 +375,20 @@ vector<point> geo::getLocSpts(int eType, int order)
       }
     }
   }
+  else if (eType == HEX) {
+    // Tensor-product element
+    vector<double> spts1D = getPts1D(params->sptsTypeQuad,order);
+    outPts.resize((order+1)*(order+1)*(order+1));
+    for (int i=0; i<order+1; i++) {
+      for (int j=0; j<order+1; j++) {
+        for (int k=0; k<order+1; k++) {
+          outPts[k+(order+1)*(j+(order+1)*i)].x = spts1D[k];
+          outPts[k+(order+1)*(j+(order+1)*i)].y = spts1D[j];
+          outPts[k+(order+1)*(j+(order+1)*i)].z = spts1D[i];
+        }
+      }
+    }
+  }
 
   return outPts;
 }
@@ -415,6 +429,39 @@ vector<point> geo::getLocFpts(int eType, int order)
       // Face 3
       outPts[i+3*(order+1)].x = -1.;
       outPts[i+3*(order+1)].y = pts1D[order-i];
+    }
+  }
+  else if (eType == HEX) {
+    int P12 = (order+1)*(order+1);
+    outPts.resize(6*(order+1));
+    pts1D = getPts1D(params->sptsTypeQuad,order);
+    for (int i=0; i<order+1; i++) {
+      for (int j=0; j<order+1; j++) {
+        // Face 0
+        outPts[i].x = pts1D[i];
+        outPts[i].y = pts1D[j];
+        outPts[i].z = -1.;
+        // Face 1
+        outPts[i+P12].x = pts1D[i];
+        outPts[i+P12].y = pts1D[j];
+        outPts[i+P12].z = 1.;
+        // Face 2
+        outPts[i+2*P12].x = -1;
+        outPts[i+2*P12].y = pts1D[i];
+        outPts[i+2*P12].z = pts1D[j];
+        // Face 3
+        outPts[i+2*P12].x = 1;
+        outPts[i+2*P12].y = pts1D[i];
+        outPts[i+2*P12].z = pts1D[j];
+        // Face 4
+        outPts[i+2*P12].x = pts1D[i];
+        outPts[i+2*P12].y = -1;
+        outPts[i+2*P12].z = pts1D[j];
+        // Face 5
+        outPts[i+2*P12].x = pts1D[i];
+        outPts[i+2*P12].y = 1;
+        outPts[i+2*P12].z = pts1D[j];
+      }
     }
   }
 
@@ -621,13 +668,25 @@ vector<double> geo::getPts1D(string ptsType, int order)
 
 vector<double> geo::getQptWeights(int order)
 {
-  // Tensor-product element
+  // Tensor-product elements
   vector<double> qwts1D = getQptWeights1D(order);
   vector<double> outWts;
-  outWts.resize((order+1)*(order+1));
-  for (int i=0; i<order+1; i++) {
-    for (int j=0; j<order+1; j++) {
-      outWts[j+i*(order+1)] = qwts1D[i]*qwts1D[j];
+  if (nDims == 2) {
+    outWts.resize((order+1)*(order+1));
+    for (int i=0; i<order+1; i++) {
+      for (int j=0; j<order+1; j++) {
+        outWts[j+i*(order+1)] = qwts1D[i]*qwts1D[j];
+      }
+    }
+  }
+  else if (nDims == 3) {
+    outWts.resize((order+1)*(order+1)*(order+1));
+    for (int i=0; i<order+1; i++) {
+      for (int j=0; j<order+1; j++) {
+        for (int k=0; k<order+1; k++) {
+          outWts[k+(order+1)*(j+i*(order+1))] = qwts1D[i]*qwts1D[j]*qwts1D[k];
+        }
+      }
     }
   }
 
@@ -637,9 +696,9 @@ vector<double> geo::getQptWeights(int order)
 
 vector<double> geo::getQptWeights1D(int order)
 {
-  // Order refers to the order of a polynomial fit through the
-  // Gauss points, not the order of accuracy of integration using
-  // the same number of points
+  // Order here refers to the order of a polynomial fit through
+  // the Gauss points, not the order of accuracy of integration
+  // using the same number of points
 
   vector<double> outWts(order+1);
 

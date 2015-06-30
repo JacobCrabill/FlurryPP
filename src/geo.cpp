@@ -441,17 +441,18 @@ void geo::processConn3D(void)
   for (int ic=0; ic<nEles; ic++) {
     for (int j=0; j<c2nf[ic]; j++) {
       // Get local vertex list for face
-      auto iface = ct2fv[ctype[e]].getRow(f);
+      auto iface = ct2fv[ctype[ic]].getRow(j);
 
       // Get global vertex list for face
-      int fnv = ct2fnv[ctype[e]][f];
+      int fnv = ct2fnv[ctype[ic]][j];
       vector<int> facev(fnv);
       for (int i=0; i<fnv; i++)
-        facev[i] = c2v(e,iface[i]);
+        facev[i] = c2v(ic,iface[i]);
 
       // Sort the vertices for easier comparison
       std::sort(facev.begin(),facev.end());
 
+      bool found = false;
       for (int f=0; f<nFaces; f++) {
         if (std::equal(f2v[f],f2v[f]+fnv,facev.begin())) {
           found = true;
@@ -991,12 +992,12 @@ void geo::createMesh()
   // Setup boundary connectivity storage
   nFacesPerBnd.assign(nBounds,0);
   if (nDims == 2) {
-    bndPts.setup(nBounds,4*(std::max(nx,ny)+1)); //(nx+1)*(ny+1));
+    bndPts.setup(nBounds,2*4*(std::max(nx,ny)+1));
   }
   else if (nDims == 3) {
     int maxN_BFace = std::max(nx*ny,nx*nz);
     maxN_BFace = std::max(maxN_BFace,ny*nz);
-    bndPts.setup(nBounds,6*maxN_BFace);
+    bndPts.setup(nBounds,4*6*maxN_BFace);
   }
   nBndPts.resize(nBounds);
   for (int i=0; i<nBounds; i++) {
