@@ -649,15 +649,14 @@ void geo::readGmsh(string fileName)
       FatalError(errS.c_str());
     }
 
-    bcList.push_back(bcStr2Num[bcStr]);
-
-    bcIdMap[bcid] = i; // Map Gmsh bcid to Flurry bound index
-
     if (bcStr.compare("fluid")==0) {
       nDims = bcdim;
       params->nDims = bcdim;
+      bcIdMap[bcid] = -1;
     }
     else {
+      bcIdMap[bcid] = nBounds; // Map Gmsh bcid to Flurry bound index
+      bcList.push_back(bcStr2Num[bcStr]);
       nBounds++;
     }
   }
@@ -723,7 +722,7 @@ void geo::readGmsh(string fileName)
     for (int tag=0; tag<nTags-1; tag++)
       meshFile >> tmp;
 
-    if (bcList[bcid] == NONE) {
+    if (bcid == NONE) {
       // NOTE: Currently, only quads are supported
       switch(eType) {
       case 2:
