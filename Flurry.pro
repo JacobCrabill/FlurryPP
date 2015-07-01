@@ -42,6 +42,7 @@ HEADERS += include/global.hpp \
 
 DISTFILES += \
     README.md \
+    bin/input_3d
 
 OTHER_FILES += \
     bin/input_supwall \

@@ -208,9 +208,17 @@ void writeParaview(solver *Solver, input *params)
     if (params->equation == NAVIER_STOKES && params->calcEntropySensor)
       e.getEntropyErrPlot(errPpts);
 
-    int nSubCells = (e.order+2)*(e.order+2);
-    int nPpts = (e.order+3)*(e.order+3);
+    int nSubCells, nPpts;
     int nPpts1D = e.order+3;
+    if (params->nDims == 2) {
+      nSubCells = (e.order+2)*(e.order+2);
+      nPpts = (e.order+3)*(e.order+3);
+    }
+    else if (params->nDims == 3) {
+      nSubCells = (e.order+2)*(e.order+2)*(e.order+2);
+      nPpts = (e.order+3)*(e.order+3)*(e.order+3);
+    }
+
 
     // Write cell header
     dataFile << "		<Piece NumberOfPoints=\"" << nPpts << "\" NumberOfCells=\"" << nSubCells << "\">" << endl;
@@ -258,7 +266,7 @@ void writeParaview(solver *Solver, input *params)
       /* --- Pressure --- */
       dataFile << "				<DataArray type=\"Float32\" Name=\"Pressure\" format=\"ascii\">" << endl;
       for(int k=0; k<nPpts; k++) {
-        dataFile << vPpts(k,3) << " ";
+        dataFile << vPpts(k,params->nDims+1) << " ";
       }
       dataFile << endl;
       dataFile << "				</DataArray>" << endl;
@@ -325,30 +333,57 @@ void writeParaview(solver *Solver, input *params)
     /* --- Write connectivity array --- */
     dataFile << "				<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">" << endl;
 
-    for (int i=0; i<nPpts1D-1; i++) {
+    if (params->nDims == 2) {
       for (int j=0; j<nPpts1D-1; j++) {
-        dataFile << i*nPpts1D     + j   << " ";
-        dataFile << i*nPpts1D     + j+1 << " ";
-        dataFile << (i+1)*nPpts1D + j+1 << " ";
-        dataFile << (i+1)*nPpts1D + j   << " ";
-        dataFile << endl;
+        for (int i=0; i<nPpts1D-1; i++) {
+          dataFile << j*nPpts1D     + i   << " ";
+          dataFile << j*nPpts1D     + i+1 << " ";
+          dataFile << (j+1)*nPpts1D + i+1 << " ";
+          dataFile << (j+1)*nPpts1D + i   << " ";
+          dataFile << endl;
+        }
+      }
+    }
+    else if (params->nDims == 3) {
+      for (int k=0; k<nPpts1D-1; k++) {
+        for (int j=0; j<nPpts1D-1; j++) {
+          for (int i=0; i<nPpts1D-1; i++) {
+            dataFile << i   + nPpts1D*(j   + nPpts1D*k) << " ";
+            dataFile << i+1 + nPpts1D*(j   + nPpts1D*k) << " ";
+            dataFile << i+1 + nPpts1D*(j+1 + nPpts1D*k) << " ";
+            dataFile << i   + nPpts1D*(j+1 + nPpts1D*k) << " ";
+
+            dataFile << i   + nPpts1D*(j   + nPpts1D*(k+1)) << " ";
+            dataFile << i+1 + nPpts1D*(j   + nPpts1D*(k+1)) << " ";
+            dataFile << i+1 + nPpts1D*(j+1 + nPpts1D*(k+1)) << " ";
+            dataFile << i   + nPpts1D*(j+1 + nPpts1D*(k+1)) << " ";
+
+            dataFile << endl;
+          }
+        }
       }
     }
     dataFile << "				</DataArray>" << endl;
 
     // Write cell-node offsets
+    int nvPerCell;
+    if (params->nDims == 2)      nvPerCell = 4;
+    else if (params->nDims == 3) nvPerCell = 8;
     dataFile << "				<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">" << endl;
     for(int k=0; k<nSubCells; k++){
-      dataFile << (k+1)*4 << " ";
+      dataFile << (k+1)*nvPerCell << " ";
     }
     dataFile << endl;
     dataFile << "				</DataArray>" << endl;
 
     // Write VTK element type
     // 5 = tri, 9 = quad, 10 = tet, 12 = hex
+    int eType;
+    if (params->nDims == 2)      eType = 9;
+    else if (params->nDims == 3) eType = 12;
     dataFile << "				<DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">" << endl;
     for(int k=0; k<nSubCells; k++) {
-      dataFile << 9 << " ";
+      dataFile << eType << " ";
     }
     dataFile << endl;
     dataFile << "				</DataArray>" << endl;

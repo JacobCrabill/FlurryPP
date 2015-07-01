@@ -379,12 +379,12 @@ vector<point> geo::getLocSpts(int eType, int order)
     // Tensor-product element
     vector<double> spts1D = getPts1D(params->sptsTypeQuad,order);
     outPts.resize((order+1)*(order+1)*(order+1));
-    for (int i=0; i<order+1; i++) {
+    for (int k=0; k<order+1; k++) {
       for (int j=0; j<order+1; j++) {
-        for (int k=0; k<order+1; k++) {
-          outPts[k+(order+1)*(j+(order+1)*i)].x = spts1D[k];
-          outPts[k+(order+1)*(j+(order+1)*i)].y = spts1D[j];
-          outPts[k+(order+1)*(j+(order+1)*i)].z = spts1D[i];
+        for (int i=0; i<order+1; i++) {
+          outPts[i+(order+1)*(j+(order+1)*k)].x = spts1D[i];
+          outPts[i+(order+1)*(j+(order+1)*k)].y = spts1D[j];
+          outPts[i+(order+1)*(j+(order+1)*k)].z = spts1D[k];
         }
       }
     }
@@ -433,37 +433,38 @@ vector<point> geo::getLocFpts(int eType, int order)
   }
   else if (eType == HEX) {
     int P12 = (order+1)*(order+1);
-    outPts.resize(6*(order+1));
+    outPts.resize(6*P12);
     pts1D = getPts1D(params->sptsTypeQuad,order);
     // Flux points are ordered such that, as seen from inside the
     // element, the id's increase btm-left->top-right fashion on
     // each face, starting with lowest dimension first ('x' or 'y')
     for (int i=0; i<order+1; i++) {
       for (int j=0; j<order+1; j++) {
+        int ind = i+j*(order+1);
         // Face 0 - bottom
-        outPts[i].x = pts1D[i];
-        outPts[i].y = pts1D[j];
-        outPts[i].z = -1.;
+        outPts[ind].x = pts1D[i];
+        outPts[ind].y = pts1D[j];
+        outPts[ind].z = -1.;
         // Face 1 - top
-        outPts[i+P12].x = pts1D[order-i];
-        outPts[i+P12].y = pts1D[j];
-        outPts[i+P12].z = 1.;
+        outPts[ind+P12].x = pts1D[order-i];
+        outPts[ind+P12].y = pts1D[j];
+        outPts[ind+P12].z = 1.;
         // Face 2 - left
-        outPts[i+2*P12].x = -1;
-        outPts[i+2*P12].y = pts1D[i];
-        outPts[i+2*P12].z = pts1D[j];
+        outPts[ind+2*P12].x = -1;
+        outPts[ind+2*P12].y = pts1D[i];
+        outPts[ind+2*P12].z = pts1D[j];
         // Face 3 - right
-        outPts[i+2*P12].x = 1;
-        outPts[i+2*P12].y = pts1D[order-i];
-        outPts[i+2*P12].z = pts1D[j];
+        outPts[ind+3*P12].x = 1;
+        outPts[ind+3*P12].y = pts1D[order-i];
+        outPts[ind+3*P12].z = pts1D[j];
         // Face 4 - front
-        outPts[i+2*P12].x = pts1D[order-i];
-        outPts[i+2*P12].y = -1;
-        outPts[i+2*P12].z = pts1D[j];
+        outPts[ind+4*P12].x = pts1D[order-i];
+        outPts[ind+4*P12].y = -1;
+        outPts[ind+4*P12].z = pts1D[j];
         // Face 5 - back
-        outPts[i+2*P12].x = pts1D[i];
-        outPts[i+2*P12].y = 1;
-        outPts[i+2*P12].z = pts1D[j];
+        outPts[ind+5*P12].x = pts1D[i];
+        outPts[ind+5*P12].y = 1;
+        outPts[ind+5*P12].z = pts1D[j];
       }
     }
   }

@@ -59,6 +59,8 @@ public:
 
   void calcTransforms(int initial = 0);
 
+  point calcPos(const point &loc);
+
   void calcPosSpts(void);
 
   void calcPosFpts(void);

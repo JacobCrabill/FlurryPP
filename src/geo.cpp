@@ -408,8 +408,8 @@ void geo::processConn3D(void)
   for (int i=0; i<nBndFaces; i++) {
     for (int bnd=0; bnd<nBounds; bnd++) {
       bool isOnBound = true;
-      for (int j=0; j<f2nv[i]; j++) {
-        if (findFirst(bndPts[bnd],f2v(i,j),bndPts.dim1) == -1) {
+      for (int j=0; j<f2nv[bndFaces[i]]; j++) {
+        if (findFirst(bndPts[bnd],f2v(bndFaces[i],j),bndPts.dim1) == -1) {
           isOnBound = false;
           break;
         }
@@ -936,10 +936,10 @@ void geo::createMesh()
     point pt;
 
     for (int k=0; k<nz+1; k++) {
-      for (int i=0; i<ny+1; i++) {
-        for (int j=0; j<nx+1; j++) {
-          pt.x = xmin + j*dx;
-          pt.y = ymin + i*dy;
+      for (int j=0; j<ny+1; j++) {
+        for (int i=0; i<nx+1; i++) {
+          pt.x = xmin + i*dx;
+          pt.y = ymin + j*dy;
           pt.z = zmin + k*dz;
           xv[nv] = pt;
           nv++;
@@ -952,24 +952,23 @@ void geo::createMesh()
     for (int k=0; k<nz; k++) {
       for (int i=0; i<nx; i++) {
         for (int j=0; j<ny; j++) {
-          c2v_tmp[0] = k*(nx+1)*(ny+1) + j*(nx+1) + i;
-          c2v_tmp[1] = k*(nx+1)*(ny+1) + j*(nx+1) + i + 1;
-          c2v_tmp[2] = k*(nx+1)*(ny+1) + (j+1)*(nx+1) + i + 1;
-          c2v_tmp[3] = k*(nx+1)*(ny+1) + (j+1)*(nx+1) + i;
+          c2v_tmp[0] = i + (nx+1)*(j   + (ny+1)*k);
+          c2v_tmp[1] = i + (nx+1)*(j   + (ny+1)*k) + 1;
+          c2v_tmp[2] = i + (nx+1)*(j+1 + (ny+1)*k) + 1;
+          c2v_tmp[3] = i + (nx+1)*(j+1 + (ny+1)*k);
 
-          c2v_tmp[4] = (k+1)*(nx+1)*(ny+1) + j*(nx+1) + i;
-          c2v_tmp[5] = (k+1)*(nx+1)*(ny+1) + j*(nx+1) + i + 1;
-          c2v_tmp[6] = (k+1)*(nx+1)*(ny+1) + (j+1)*(nx+1) + i + 1;
-          c2v_tmp[7] = (k+1)*(nx+1)*(ny+1) + (j+1)*(nx+1) + i;
+          c2v_tmp[4] = i + (nx+1)*(j   + (ny+1)*(k+1));
+          c2v_tmp[5] = i + (nx+1)*(j   + (ny+1)*(k+1)) + 1;
+          c2v_tmp[6] = i + (nx+1)*(j+1 + (ny+1)*(k+1)) + 1;
+          c2v_tmp[7] = i + (nx+1)*(j+1 + (ny+1)*(k+1));
           c2v.insertRow(c2v_tmp);
         }
       }
     }
   }
 
-
-
   /* --- Setup Boundaries --- */
+
   // List of all boundary conditions being used (bcNum maps string->int)
   bcList.push_back(bcStr2Num[params->create_bcBottom]);
   bcList.push_back(bcStr2Num[params->create_bcRight]);
