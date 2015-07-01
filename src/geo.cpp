@@ -1112,9 +1112,9 @@ void geo::createMesh()
     for (int iz=0; iz<nz; iz++) {
       for (int ix=0; ix<nx; ix++) {
         bndPts[ib][4*nf]   = iz*(nx+1)*(ny+1) + ix;
-        bndPts[ib][4*nf+1] = (iz+1)*(nx+1)*(ny+1) + ix + 1;
+        bndPts[ib][4*nf+1] = (iz+1)*(nx+1)*(ny+1) + ix;
         bndPts[ib][4*nf+2] = (iz+1)*(nx+1)*(ny+1) + ix + 1;
-        bndPts[ib][4*nf+3] = iz*(nx+1)*(ny+1) + ix;
+        bndPts[ib][4*nf+3] = iz*(nx+1)*(ny+1) + ix + 1;
         nf++;
       }
     }
@@ -1125,10 +1125,10 @@ void geo::createMesh()
     nf = nFacesPerBnd[ib];
     for (int iz=0; iz<nz; iz++) {
       for (int ix=0; ix<nx; ix++) {
-        bndPts[ib][4*nf]   = iz*(nx+1)*(ny+1) + ny + ix;
-        bndPts[ib][4*nf+1] = (iz+1)*(nx+1)*(ny+1) + ny + ix + 1;
-        bndPts[ib][4*nf+2] = (iz+1)*(nx+1)*(ny+1) + ny + ix + 1;
-        bndPts[ib][4*nf+3] = iz*(nx+1)*(ny+1) + ny + ix;
+        bndPts[ib][4*nf]   = iz*(nx+1)*(ny+1) + ny*(nx+1) + ix;
+        bndPts[ib][4*nf+1] = (iz+1)*(nx+1)*(ny+1) + ny*(nx+1) + ix;
+        bndPts[ib][4*nf+2] = (iz+1)*(nx+1)*(ny+1) + ny*(nx+1) + ix + 1;
+        bndPts[ib][4*nf+3] = iz*(nx+1)*(ny+1) + ny*(nx+1) + ix + 1;
         nf++;
       }
     }
@@ -1171,7 +1171,16 @@ void geo::processPeriodicBoundaries(void)
     if (bndFaces[i]==-1) continue;
     for (auto& j:iPeriodic) {
       if (i==j || bndFaces[i]==-1 || bndFaces[j]==-1) continue;
-      if (checkPeriodicFaces(f2v[bndFaces[i]],f2v[bndFaces[j]])) {  // was e2v not f2v
+      bool match;
+      if (nDims == 2) {
+        match = checkPeriodicFaces(e2v[bndFaces[i]],e2v[bndFaces[j]]);
+      }
+      else if (nDims == 3) {
+        auto face1 = f2v.getRow(bndFaces[i]);
+        auto face2 = f2v.getRow(bndFaces[j]);
+        match = checkPeriodicFaces3D(face1, face2);
+      }
+      if (match) {
 
         /* --- Match found - now take care of transfer from boundary -> internal --- */
 
@@ -1282,7 +1291,7 @@ bool geo::checkPeriodicFaces3D(vector<int> &face1, vector<int> &face2)
   Vec3 norm1;
   point c1;
   vec1 = xv[face1[1]] - xv[face1[0]];
-  vec1 = xv[face1[2]] - xv[face1[0]];
+  vec2 = xv[face1[2]] - xv[face1[0]];
   for (int j=0; j<face1.size(); j++)
     c1 += xv[face1[j]];
   c1 /= face1.size();
@@ -1338,8 +1347,7 @@ int geo::compareOrientation(int ic1, int f1, int ic2, int f2)
 {
   int nv = f2nv[c2f(ic1,f1)];
 
-  vector<int> tmpFace1(nv);
-  int baseNode2;
+  vector<int> tmpFace1(nv), tmpFace2(nv);
 
   switch (ctype[ic1]) {
     case HEX:
@@ -1402,27 +1410,45 @@ int geo::compareOrientation(int ic1, int f1, int ic2, int f2)
       switch (f2) {
         case 0:
           // Bottom face  (z = -1)
-          baseNode2 = c2v(ic2,0);
+          tmpFace2[0] = c2v(ic2,0);
+          tmpFace2[1] = c2v(ic2,1);
+          tmpFace2[2] = c2v(ic2,2);
+          tmpFace2[3] = c2v(ic2,3);
           break;
         case 1:
           // Top face  (z = +1)
-          baseNode2 = c2v(ic2,5);
+          tmpFace2[0] = c2v(ic2,5);
+          tmpFace2[1] = c2v(ic2,4);
+          tmpFace2[2] = c2v(ic2,7);
+          tmpFace2[3] = c2v(ic2,6);
           break;
         case 2:
           // Left face  (x = -1)
-          baseNode2 = c2v(ic2,0);
+          tmpFace2[0] = c2v(ic2,0);
+          tmpFace2[1] = c2v(ic2,3);
+          tmpFace2[2] = c2v(ic2,7);
+          tmpFace2[3] = c2v(ic2,4);
           break;
         case 3:
           // Right face  (x = +1)
-          baseNode2 = c2v(ic2,2);
+          tmpFace2[0] = c2v(ic2,2);
+          tmpFace2[1] = c2v(ic2,1);
+          tmpFace2[2] = c2v(ic2,5);
+          tmpFace2[3] = c2v(ic2,6);
           break;
         case 4:
           // Front face  (y = -1)
-          baseNode2 = c2v(ic2,1);
+          tmpFace2[0] = c2v(ic2,1);
+          tmpFace2[1] = c2v(ic2,0);
+          tmpFace2[2] = c2v(ic2,4);
+          tmpFace2[3] = c2v(ic2,5);
           break;
         case 5:
           // Back face  (y = +1)
-          baseNode2 = c2v(ic2,3);
+          tmpFace2[0] = c2v(ic2,3);
+          tmpFace2[1] = c2v(ic2,2);
+          tmpFace2[2] = c2v(ic2,6);
+          tmpFace2[3] = c2v(ic2,7);
           break;
       }
       break;
@@ -1433,11 +1459,35 @@ int geo::compareOrientation(int ic1, int f1, int ic2, int f2)
   }
 
   // Now, compare the two faces to see the relative orientation [rotation]
-  if      (tmpFace1[0] == baseNode2) return 0;
-  else if (tmpFace1[1] == baseNode2) return 1;
-  else if (tmpFace1[2] == baseNode2) return 2;
-  else if (tmpFace1[3] == baseNode2) return 3;
-  else     FatalError("Internal faces improperly matched.");
+  if      (tmpFace1[0] == tmpFace2[0]) return 0;
+  else if (tmpFace1[1] == tmpFace2[0]) return 1;
+  else if (tmpFace1[2] == tmpFace2[0]) return 2;
+  else if (tmpFace1[3] == tmpFace2[0]) return 3;
+  else if (checkPeriodicFaces3D(tmpFace1,tmpFace2)) {
+    point c1, c2;
+    for (auto iv:tmpFace1) c1 += xv[iv];
+    for (auto iv:tmpFace2) c2 += xv[iv];
+    c1 /= tmpFace1.size();
+    c2 /= tmpFace2.size();
+    Vec3 fDist = c2 - c1;
+    fDist /= sqrt(fDist*fDist); // Normalize
+
+    point pt1;
+    point pt2 = xv[tmpFace2[0]];
+
+    for (int i=0; i<4; i++) {
+      pt1 = xv[tmpFace1[i]];
+      Vec3 ptDist = pt2 - pt1;        // Vector between points
+      ptDist /= sqrt(ptDist*ptDist); // Normalize
+
+      double dot = fDist*ptDist;
+      if (abs(1-abs(dot))<params->periodicTol) return i; // These points align
+    }
+    // Matching points not found
+    FatalError("Unable to orient periodic faces using simple algorithm.");
+  }
+  else FatalError("Internal faces improperly matched.");
+
 }
 
 
