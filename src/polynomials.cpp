@@ -296,10 +296,10 @@ void dshape_hex(point &in_rst, matrix<double> &out_dshape, int nNodes)
   double xi  = in_rst.x;
   double eta = in_rst.y;
   double mu = in_rst.z;
-  out_dshape.setup(nNodes,2);
+  out_dshape.setup(nNodes,3);
 
   switch(nNodes) {
-  case 4:
+  case 8:
     out_dshape(0,0) = -0.125*(1-eta)*(1-mu);
     out_dshape(1,0) =  0.125*(1-eta)*(1-mu);
     out_dshape(2,0) =  0.125*(1+eta)*(1-mu);

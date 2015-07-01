@@ -24,7 +24,10 @@ void intFace::setupRightState(void)
   locF_R = rightParams[0];
   relRot = rightParams[1];
 
-  nFptsR = eR->order+1;
+  if (nDims == 2)
+    nFptsR = eR->order+1;
+  else
+    nFptsR = (eR->order+1)*(eR->order+1);
 
   /* --- Will have to introduce 'mortar' elements in the future [for p-adaptation],
    * but for now just force all faces to have same # of flux points [order] --- */

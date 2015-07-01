@@ -342,10 +342,11 @@ void ele::setTransformedNormals_fpts(void)
 {
   // Setting unit normal vector in the parent domain
   for (int fpt=0; fpt<nFpts; fpt++) {
-    uint iFace = floor(fpt / (order+1));
+    uint iFace;
     // Calculate shape derivatives [in the future, should pre-calculate & store]
     switch(eType) {
       case TRI:
+        iFace = floor(fpt / (order+1));
         switch(iFace) {
           case 0:
             tNorm_fpts(fpt,0) = 0;
@@ -363,6 +364,7 @@ void ele::setTransformedNormals_fpts(void)
         break;
 
       case QUAD:
+        iFace = floor(fpt / (order+1));
         // Face ordering for quads: Bottom, Right, Top, Left
         switch(iFace) {
           case 0:
@@ -385,6 +387,7 @@ void ele::setTransformedNormals_fpts(void)
         break;
 
       case HEX:
+        iFace = floor(fpt / ((order+1)*(order+1)));
         switch(iFace) {
           case 0:
             tNorm_fpts(fpt,0) = 0;
@@ -435,13 +438,13 @@ void ele::calcTransforms(int initial)
       for (int i=0; i<nNodes; i++)
         for (int dim1=0; dim1<nDims; dim1++)
           for (int dim2=0; dim2<nDims; dim2++)
-            Jac_spts[spt][dim1][dim2] += dShape_spts[spt][i][dim2]*nodes[i][dim1];
+            Jac_spts[spt](dim1,dim2) += dShape_spts[spt](i,dim2)*nodes[i][dim1];
     }
     else {
       for (int i=0; i<nNodes; i++)
         for (int dim1=0; dim1<nDims; dim1++)
           for (int dim2=0; dim2<nDims; dim2++)
-            Jac_spts[spt][dim1][dim2] += dShape_spts[spt][i][dim2]*nodesRK[0][i][dim1];
+            Jac_spts[spt](dim1,dim2) += dShape_spts[spt](i,dim2)*nodesRK[0][i][dim1];
     }
 
 

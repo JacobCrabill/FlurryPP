@@ -46,10 +46,12 @@ void face::initialize(ele *eL, ele *eR, int locF_L, const vector<int> &rightPara
 
 void face::setupFace(void)
 {
-  nFptsL = eL->order+1;
+  if (nDims == 2)
+    nFptsL = eL->order+1;
+  else
+    nFptsL = (eL->order+1)*(eL->order+1);
 
-  /* --- For 1D faces [line segments] only - find first/last ID of fpts; reverse
-   * the order on the 'right' face so they match up --- */
+  // Find first/last ID of fpts on given face
   fptStartL = (locF_L*(nFptsL));
   fptEndL = (locF_L*(nFptsL)) + nFptsL;
 
@@ -238,17 +240,17 @@ void face::rusanovFlux(void)
     }
     else {
       wL = UL(fpt,3)/rhoL;   wR = UR(fpt,3)/rhoR;
-      pL = (params->gamma-1.0)*(UL(fpt,3)-rhoL*(uL*uL+vL*vL+wL*wL));
-      pR = (params->gamma-1.0)*(UR(fpt,3)-rhoR*(uR*uR+vR*vR+wR*wR));
+      pL = (params->gamma-1.0)*(UL(fpt,4)-rhoL*(uL*uL+vL*vL+wL*wL));
+      pR = (params->gamma-1.0)*(UR(fpt,4)-rhoR*(uR*uR+vR*vR+wR*wR));
     }
 
     // Get normal fluxes, normal velocities
-    for (int j=0; j<params->nDims; j++) {
-      vnL += normL(fpt,j)*UL(fpt,j+1)/rhoL;
-      vnR += normL(fpt,j)*UR(fpt,j+1)/rhoR;
+    for (int dim=0; dim<params->nDims; dim++) {
+      vnL += normL(fpt,dim)*UL(fpt,dim+1)/rhoL;
+      vnR += normL(fpt,dim)*UR(fpt,dim+1)/rhoR;
       for (int i=0; i<params->nFields; i++) {
-        tempFnL[i] += normL(fpt,j)*tempFL(j,i);
-        tempFnR[i] += normL(fpt,j)*tempFR(j,i);
+        tempFnL[i] += normL(fpt,dim)*tempFL(dim,i);
+        tempFnR[i] += normL(fpt,dim)*tempFR(dim,i);
       }
     }
 
