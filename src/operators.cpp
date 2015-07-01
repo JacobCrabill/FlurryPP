@@ -86,9 +86,9 @@ void oper::setupExtrapolateSptsFpts(vector<point> &loc_fpts)
         case HEX: {
           vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
           // First, get the i an j ID of the spt
-          ispt = spt%(nSpts/(order+1));
-          jspt = floor(spt/(order+1));
-          kspt = floor(spt/((order+1)*(order+1)));
+          kspt = spt/((order+1)*(order+1)); // spt%(nSpts/(order+1));
+          jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+          ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt; ;//floor(spt/((order+1)*(order+1)));
           opp_spts_to_fpts[fpt][spt] = Lagrange(locSpts1D,loc_fpts[fpt].x,ispt) * Lagrange(locSpts1D,loc_fpts[fpt].y,jspt) * Lagrange(locSpts1D,loc_fpts[fpt].z,kspt);
           break;
         }
@@ -141,9 +141,12 @@ void oper::setupExtrapolateSptsMpts(vector<point> &loc_spts)
       vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
         // First, get the i an j ID of the spt
-        ispt = spt%(nSpts/(order+1));
-        jspt = floor(spt/(order+1));
-        kspt = floor(spt/((order+1)*(order+1)));
+        kspt = spt/((order+1)*(order+1));
+        jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+        ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+//        ispt = spt%(nSpts/(order+1));
+//        jspt = floor(spt/(order+1));
+//        kspt = floor(spt/((order+1)*(order+1)));
         // Next, get evaluate Lagrange solution basis at corners
         opp_spts_to_mpts[0][spt] = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D,-1,jspt) * Lagrange(locSpts1D,-1,kspt);
         opp_spts_to_mpts[1][spt] = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D,-1,jspt) * Lagrange(locSpts1D,-1,kspt);

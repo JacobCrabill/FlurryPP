@@ -64,6 +64,11 @@ void writeCSV(solver *Solver, input *params)
     dataFile << "rho,u,v,p" << endl;
   }
 
+  bool plotFpts = true;
+
+  if (plotFpts)
+    Solver->extrapolateU();
+
   // Solution data
   for (auto& e:Solver->eles) {
     if (params->motion != 0) {
@@ -84,6 +89,23 @@ void writeCSV(solver *Solver, input *params)
         dataFile << V[i] << ",";
       }
       dataFile << V[e.getNFields()-1] << endl;
+    }
+
+    if (plotFpts) {
+      for (uint fpt=0; fpt<e.getNFpts(); fpt++) {
+        V = e.getPrimitivesFpt(fpt);
+        pt = e.getPosFpt(fpt);
+
+        for (uint dim=0; dim<e.getNDims(); dim++) {
+          dataFile << pt[dim] << ",";
+        }
+        if (e.getNDims() == 2) dataFile << "0.0,"; // output a 0 for z [2D]
+
+        for (uint i=0; i<e.getNFields()-1; i++) {
+          dataFile << V[i] << ",";
+        }
+        dataFile << V[e.getNFields()-1] << endl;
+      }
     }
   }
 

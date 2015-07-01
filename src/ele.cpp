@@ -916,6 +916,24 @@ vector<double> ele::getPrimitives(uint spt)
   return V;
 }
 
+vector<double> ele::getPrimitivesFpt(uint fpt)
+{
+  vector<double> V(nFields);
+
+  if (params->equation == ADVECTION_DIFFUSION) {
+    V[0] = U_fpts[fpt][0];
+  }
+  else if (params->equation == NAVIER_STOKES) {
+    V[0] = U_fpts(fpt,0);
+    V[1] = U_fpts(fpt,1)/V[0];
+    V[2] = U_fpts(fpt,2)/V[0];
+    double vMagSq = V[1]*V[1]+V[2]*V[2];
+    V[3] = (params->gamma-1)*(U_fpts(fpt,3) - 0.5*V[0]*vMagSq);
+  }
+
+  return V;
+}
+
 void ele::getPrimitivesPlot(matrix<double> &V)
 {
   if (eType == QUAD) {
