@@ -663,10 +663,6 @@ void geo::readGmsh(string fileName)
     }
   }
 
-  if (nDims != 2) {
-    FatalError("Only 2D meshes are currently supported - check that your mesh is setup properly.");
-  }
-
   /* --- Read Mesh Vertex Locations --- */
 
   // Move cursor to $Nodes
@@ -702,9 +698,10 @@ void geo::readGmsh(string fileName)
   vector<int> c2v_tmp(9,0);  // Maximum number of nodes/element possible
   vector<set<int>> boundPoints(nBounds);
   map<int,int> eType2nv;
-  eType2nv[3] = 4;
-  eType2nv[16] = 4;
-  eType2nv[10] = 4;
+  eType2nv[3] = 4;  // Linear quad
+  eType2nv[16] = 4; // Quadratic serendipity quad
+  eType2nv[10] = 4; // Quadratic Lagrange quad
+  eType2nv[8] = 8;  // Linear hex
 
   // Setup bndPts matrix - Just an initial estimate; will be adjusted on the fly
   //bndPts.setup(nBounds,std::round(nNodes/nBounds));
@@ -770,6 +767,14 @@ void geo::readGmsh(string fileName)
         meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7] >> c2v_tmp[8];
         break;
 
+      case 8:
+        // Linear hexahedron
+        c2nv.push_back(8);
+        c2nf.push_back(6);
+        ctype.push_back(HEX);
+        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7] >> c2v_tmp[8];
+        break;
+
       default:
         cout << "Gmsh Element Type = " << eType << endl;
         FatalError("element type not recognized");
@@ -798,33 +803,37 @@ void geo::readGmsh(string fileName)
     }
     else {
       // Boundary cell; put vertices into bndPts
-      int nPtsEdge = 0;
+      int nPtsFace = 0;
       switch(eType) {
       case 1: // Linear edge
-        nPtsEdge = 2;
+        nPtsFace = 2;
+        break;
+
+      case 3: // Linear quad
+        nPtsFace = 4;
         break;
 
       case 8: // Quadratic edge
-        nPtsEdge = 3;
+        nPtsFace = 3;
         break;
 
       case 26: // Cubic Edge
-        nPtsEdge = 4;
+        nPtsFace = 4;
         break;
 
       case 27: // Quartic Edge
-        nPtsEdge = 5;
+        nPtsFace = 5;
         break;
 
       case 28: // Quintic Edge
-        nPtsEdge = 6;
+        nPtsFace = 6;
         break;
 
       default:
           FatalError("Boundary Element (Face) Type Not Recognized!");
       }
 
-      for (int i=0; i<nPtsEdge; i++) {
+      for (int i=0; i<nPtsFace; i++) {
         meshFile >> iv;  iv--;
         boundPoints[bcid].insert(iv);
       }
