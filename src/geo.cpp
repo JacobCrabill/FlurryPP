@@ -109,13 +109,13 @@ void geo::processConn2D(void)
   // the number of cells that edge touches
   vector<int> iE;
   e2v1.unique(f2v,iE);
-  nEdges = f2v.getDim0();
+  nFaces = f2v.getDim0();
 
   /* --- Generaate Internal and Boundary Face Lists --- */
 
   /* Flag for whether global face ID corresponds to interior or boundary face
      (note that, at this stage, MPI faces will be considered boundary faces) */
-  isBnd.assign(nEdges,0);
+  isBnd.assign(nFaces,0);
 
   nIntFaces = 0;
   nBndFaces = 0;
@@ -266,7 +266,7 @@ void geo::processConn2D(void)
   c2f.setup(nEles,getMax(c2nf));
   c2b.setup(nEles,getMax(c2nf));
   c2b.initializeToZero();
-  f2c.setup(nEdges,2);
+  f2c.setup(nFaces,2);
   f2c.initializeToValue(-1);
 
   for (int ic=0; ic<nEles; ic++) {
@@ -642,6 +642,7 @@ void geo::readGmsh(string fileName)
       FatalError(errS.c_str());
     }
 
+    // Map the Gmsh PhysicalName to the input-file-specified Flurry boundary condition
     bcStr = params->meshBounds[bcStr];
 
     // Next, check that the requested boundary condition exists
@@ -650,15 +651,14 @@ void geo::readGmsh(string fileName)
       FatalError(errS.c_str());
     }
 
-    bcList.push_back(bcStr2Num[bcStr]);
-
-    bcIdMap[bcid] = i; // Map Gmsh bcid to Flurry bound index
-
     if (bcStr.compare("fluid")==0) {
       nDims = bcdim;
       params->nDims = bcdim;
+      bcIdMap[bcid] = -1;
     }
     else {
+      bcList.push_back(bcStr2Num[bcStr]);
+      bcIdMap[bcid] = nBounds; // Map Gmsh bcid to Flurry bound index
       nBounds++;
     }
   }
@@ -721,7 +721,7 @@ void geo::readGmsh(string fileName)
     for (int tag=0; tag<nTags-1; tag++)
       meshFile >> tmp;
 
-    if (bcList[bcid] == NONE) {
+    if (bcid == -1) {
       // NOTE: Currently, only quads are supported
       switch(eType) {
       case 2:

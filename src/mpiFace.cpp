@@ -148,7 +148,7 @@ void mpiFace::getRightState(void)
     if (params->viscous) {
       for (int dim=0; dim<nDims; dim++)
         for (int j=0; j<nFields; j++)
-          gradUR[fpt](dim,j) = bufUR(fptR[i],dim+j*nDims);
+          gradUR[fpt](dim,j) = bufGradUR(fptR[i],dim+j*nDims);
     }
 
     fpt++;

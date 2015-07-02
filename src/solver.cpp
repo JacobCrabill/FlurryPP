@@ -548,7 +548,7 @@ void solver::readRestartFile(void) {
 
 void solver::initializeSolution()
 {
-  if (params->rank==0) cout << "Solver: Initializing Solution" << endl;
+  if (params->rank==0) cout << "Solver: Initializing Solution... " << flush;
 
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
@@ -576,6 +576,8 @@ void solver::initializeSolution()
 
     params->dt = dt;
   }
+
+  if (params->rank == 0) cout << "done." << endl;
 }
 
 // Method for shock capturing

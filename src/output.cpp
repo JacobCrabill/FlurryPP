@@ -40,7 +40,7 @@ void writeCSV(solver *Solver, input *params)
   ofstream dataFile;
   int iter = params->iter;
 
-  char fileNameC[50];
+  char fileNameC[100];
   string fileName = params->dataFileName;
   sprintf(fileNameC,"%s.csv.%.09d",&fileName[0],iter);
 
@@ -117,17 +117,25 @@ void writeParaview(solver *Solver, input *params)
   ofstream dataFile;
   int iter = params->iter;
 
-  char fileNameC[50];
+  char fileNameC[100];
   string fileName = params->dataFileName;
 
 #ifndef _NO_MPI
   /* --- All processors write their solution to their own .vtu file --- */
   sprintf(fileNameC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,params->rank);
+#else
+  /* --- Filename to write to --- */
+  sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],iter);
+#endif
 
+  if (params->rank == 0)
+    cout << "Writing ParaView file " << string(fileNameC) << "...  " << flush;
+
+#ifndef _NO_MPI
   /* --- Write 'master' .pvtu file --- */
   if (params->rank == 0) {
     ofstream pVTU;
-    char pvtuC[50];
+    char pvtuC[100];
     sprintf(pvtuC,"%s_%.09d.pvtu",&fileName[0],iter);
 
     pVTU.open(pvtuC);
@@ -153,7 +161,7 @@ void writeParaview(solver *Solver, input *params)
     pVTU << "      <PDataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\" />" << endl;
     pVTU << "    </PPoints>" << endl;
 
-    char filnameTmpC[50];
+    char filnameTmpC[100];
     for (int p=0; p<params->nproc; p++) {
       sprintf(filnameTmpC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,p);
       pVTU << "    <Piece Source=\"" << string(filnameTmpC) << "\" />" << endl;
@@ -163,7 +171,7 @@ void writeParaview(solver *Solver, input *params)
 
     pVTU.close();
 
-    char datadirC[50];
+    char datadirC[100];
     char *datadir = &datadirC[0];
     sprintf(datadirC,"%s_%.09d",&fileName[0],iter);
 
@@ -179,16 +187,10 @@ void writeParaview(solver *Solver, input *params)
   /* --- Wait for all processes to get here, otherwise there won't be a
    *     directory to put .vtus into --- */
   MPI_Barrier(MPI_COMM_WORLD);
-#else
-  /* --- Filename to write to --- */
-  sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],iter);
 #endif
 
   dataFile.open(fileNameC);
   dataFile.precision(16);
-
-  if (params->rank == 0)
-    cout << "Writing ParaView file " << string(fileNameC) << "...  " << flush;
 
   // File header
   dataFile << "<?xml version=\"1.0\" ?>" << endl;
@@ -241,7 +243,6 @@ void writeParaview(solver *Solver, input *params)
       nSubCells = (e.order+2)*(e.order+2)*(e.order+2);
       nPpts = (e.order+3)*(e.order+3)*(e.order+3);
     }
-
 
     // Write cell header
     dataFile << "		<Piece NumberOfPoints=\"" << nPpts << "\" NumberOfCells=\"" << nSubCells << "\">" << endl;

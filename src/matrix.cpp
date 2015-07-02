@@ -111,6 +111,7 @@ T& matrix<T>::operator()(int i, int j)
   }
   else {
     FatalError("Attempted out-of-bounds access in matrix.");
+    return data[i*dim1+j];
   }
 }
 
