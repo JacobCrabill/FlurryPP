@@ -73,23 +73,23 @@ void oper::setupExtrapolateSptsFpts(vector<point> &loc_fpts)
     for (spt=0; spt<nSpts; spt++) {
       switch(eType) {
         case TRI:
-          opp_spts_to_fpts[fpt][spt] = eval_dubiner_basis_2d(loc_fpts[fpt],spt,order);
+          opp_spts_to_fpts(fpt,spt) = eval_dubiner_basis_2d(loc_fpts[fpt],spt,order);
           break;
         case QUAD: {
           vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
           // First, get the i an j ID of the spt
           ispt = spt%(nSpts/(order+1));
           jspt = floor(spt/(order+1));
-          opp_spts_to_fpts[fpt][spt] = Lagrange(locSpts1D,loc_fpts[fpt].x,ispt) * Lagrange(locSpts1D,loc_fpts[fpt].y,jspt);
+          opp_spts_to_fpts(fpt,spt) = Lagrange(locSpts1D,loc_fpts[fpt].x,ispt) * Lagrange(locSpts1D,loc_fpts[fpt].y,jspt);
           break;
         }
         case HEX: {
           vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
           // First, get the i an j ID of the spt
-          kspt = spt/((order+1)*(order+1)); // spt%(nSpts/(order+1));
+          kspt = spt/((order+1)*(order+1));
           jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
-          ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt; ;//floor(spt/((order+1)*(order+1)));
-          opp_spts_to_fpts[fpt][spt] = Lagrange(locSpts1D,loc_fpts[fpt].x,ispt) * Lagrange(locSpts1D,loc_fpts[fpt].y,jspt) * Lagrange(locSpts1D,loc_fpts[fpt].z,kspt);
+          ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+          opp_spts_to_fpts(fpt,spt) = Lagrange(locSpts1D,loc_fpts[fpt].x,ispt) * Lagrange(locSpts1D,loc_fpts[fpt].y,jspt) * Lagrange(locSpts1D,loc_fpts[fpt].z,kspt);
           break;
         }
         default:
@@ -111,9 +111,9 @@ void oper::setupExtrapolateSptsMpts(vector<point> &loc_spts)
       vert2.x =  1;  vert2.y = -1;
       vert3.x = -1;  vert3.y =  1;
       for (uint spt=0; spt<nSpts; spt++) {
-        opp_spts_to_mpts[0][spt] = eval_dubiner_basis_2d(vert1,spt,order);
-        opp_spts_to_mpts[1][spt] = eval_dubiner_basis_2d(vert2,spt,order);
-        opp_spts_to_mpts[2][spt] = eval_dubiner_basis_2d(vert3,spt,order);
+        opp_spts_to_mpts(0,spt) = eval_dubiner_basis_2d(vert1,spt,order);
+        opp_spts_to_mpts(1,spt) = eval_dubiner_basis_2d(vert2,spt,order);
+        opp_spts_to_mpts(2,spt) = eval_dubiner_basis_2d(vert3,spt,order);
       }
       break;
     }
@@ -126,10 +126,10 @@ void oper::setupExtrapolateSptsMpts(vector<point> &loc_spts)
         ispt = spt%(nSpts/(order+1));
         jspt = floor(spt/(order+1));
         // Next, get evaluate Lagrange solution basis at corners
-        opp_spts_to_mpts[0][spt] = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D,-1,jspt);
-        opp_spts_to_mpts[1][spt] = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D,-1,jspt);
-        opp_spts_to_mpts[2][spt] = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D, 1,jspt);
-        opp_spts_to_mpts[3][spt] = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D, 1,jspt);
+        opp_spts_to_mpts(0,spt) = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D,-1,jspt);
+        opp_spts_to_mpts(1,spt) = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D,-1,jspt);
+        opp_spts_to_mpts(2,spt) = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D, 1,jspt);
+        opp_spts_to_mpts(3,spt) = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D, 1,jspt);
       }
       break;
     }
@@ -144,23 +144,20 @@ void oper::setupExtrapolateSptsMpts(vector<point> &loc_spts)
         kspt = spt/((order+1)*(order+1));
         jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
         ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
-//        ispt = spt%(nSpts/(order+1));
-//        jspt = floor(spt/(order+1));
-//        kspt = floor(spt/((order+1)*(order+1)));
         // Next, get evaluate Lagrange solution basis at corners
-        opp_spts_to_mpts[0][spt] = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D,-1,jspt) * Lagrange(locSpts1D,-1,kspt);
-        opp_spts_to_mpts[1][spt] = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D,-1,jspt) * Lagrange(locSpts1D,-1,kspt);
-        opp_spts_to_mpts[2][spt] = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D, 1,jspt) * Lagrange(locSpts1D,-1,kspt);
-        opp_spts_to_mpts[3][spt] = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D, 1,jspt) * Lagrange(locSpts1D,-1,kspt);
+        opp_spts_to_mpts(0,spt) = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D,-1,jspt) * Lagrange(locSpts1D,-1,kspt);
+        opp_spts_to_mpts(1,spt) = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D,-1,jspt) * Lagrange(locSpts1D,-1,kspt);
+        opp_spts_to_mpts(2,spt) = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D, 1,jspt) * Lagrange(locSpts1D,-1,kspt);
+        opp_spts_to_mpts(3,spt) = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D, 1,jspt) * Lagrange(locSpts1D,-1,kspt);
 
-        opp_spts_to_mpts[4][spt] = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D,-1,jspt) * Lagrange(locSpts1D, 1,kspt);
-        opp_spts_to_mpts[5][spt] = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D,-1,jspt) * Lagrange(locSpts1D, 1,kspt);
-        opp_spts_to_mpts[6][spt] = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D, 1,jspt) * Lagrange(locSpts1D, 1,kspt);
-        opp_spts_to_mpts[7][spt] = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D, 1,jspt) * Lagrange(locSpts1D, 1,kspt);
+        opp_spts_to_mpts(4,spt) = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D,-1,jspt) * Lagrange(locSpts1D, 1,kspt);
+        opp_spts_to_mpts(5,spt) = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D,-1,jspt) * Lagrange(locSpts1D, 1,kspt);
+        opp_spts_to_mpts(6,spt) = Lagrange(locSpts1D, 1,ispt) * Lagrange(locSpts1D, 1,jspt) * Lagrange(locSpts1D, 1,kspt);
+        opp_spts_to_mpts(7,spt) = Lagrange(locSpts1D,-1,ispt) * Lagrange(locSpts1D, 1,jspt) * Lagrange(locSpts1D, 1,kspt);
 
         // Last, evaluate at edge mid-nodes (to connect central flux points to edges)
         // First the bottom-face edges, then the top-face edges, then the vertical/connecting edges
-        for (int i=0; i<order+1; i++) {
+        for (uint i=0; i<order+1; i++) {
           double x1 = locSpts1D[i];
           double x2 = locSpts1D[order-i];
           //                 edge                 x-location                    y-location                    z-location
@@ -235,7 +232,7 @@ void oper::setupInterpolate(vector<point> &pts_from, vector<point> &pts_to, matr
 void oper::setupGradSpts(vector<point> &loc_spts)
 {
   uint nSpts, spt1, spt2, dim;
-  uint xid1, yid1, zid1, xid2, yid2, zid2;
+  uint ispt1, jspt1, kspt1, ispt2, jspt2, kspt2;
   nSpts = loc_spts.size();
 
   opp_grad_spts.resize(nDims);
@@ -244,8 +241,8 @@ void oper::setupGradSpts(vector<point> &loc_spts)
   if (eType == TRI) {
     for (spt1=0; spt1<nSpts; spt1++) {
       for (spt2=0; spt2<nSpts; spt2++) {
-        opp_grad_spts[0][spt1][spt2] = eval_dr_dubiner_basis_2d(loc_spts[spt1],spt2,order); // double-check the spt vs. spt2 in this
-        opp_grad_spts[1][spt1][spt2] = eval_ds_dubiner_basis_2d(loc_spts[spt1],spt2,order);
+        opp_grad_spts[0](spt1,spt2) = eval_dr_dubiner_basis_2d(loc_spts[spt1],spt2,order); // double-check the spt vs. spt2 in this
+        opp_grad_spts[1](spt1,spt2) = eval_ds_dubiner_basis_2d(loc_spts[spt1],spt2,order);
       }
     }
   }
@@ -253,15 +250,15 @@ void oper::setupGradSpts(vector<point> &loc_spts)
     vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
     for (dim=0; dim<nDims; dim++) {
       for (spt1=0; spt1<nSpts; spt1++) {
-        xid1 = spt1%(nSpts/(order+1));      // col index - also = to (spt1 - (order+1)*row)
-        yid1 = floor(spt1/(order+1));       // row index
+        ispt1 = spt1%(nSpts/(order+1));      // col index - also = to (spt1 - (order+1)*row)
+        jspt1 = floor(spt1/(order+1));       // row index
         for (spt2=0; spt2<nSpts; spt2++) {
-          xid2 = spt2%(nSpts/(order+1));
-          yid2 = floor(spt2/(order+1));
+          ispt2 = spt2%(nSpts/(order+1));
+          jspt2 = floor(spt2/(order+1));
           if (dim==0) {
-            opp_grad_spts[dim][spt1][spt2] = dLagrange(loc_spts_1D,loc_spts_1D[xid1],xid2) * Lagrange(loc_spts_1D,loc_spts_1D[yid1],yid2);
+            opp_grad_spts[dim](spt1,spt2) = dLagrange(loc_spts_1D,loc_spts_1D[ispt1],ispt2) * Lagrange(loc_spts_1D,loc_spts_1D[jspt1],jspt2);
           } else {
-            opp_grad_spts[dim][spt1][spt2] = dLagrange(loc_spts_1D,loc_spts_1D[yid1],yid2) * Lagrange(loc_spts_1D,loc_spts_1D[xid1],xid2);
+            opp_grad_spts[dim](spt1,spt2) = dLagrange(loc_spts_1D,loc_spts_1D[jspt1],jspt2) * Lagrange(loc_spts_1D,loc_spts_1D[ispt1],ispt2);
           }
         }
       }
@@ -271,21 +268,21 @@ void oper::setupGradSpts(vector<point> &loc_spts)
     vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
     for (dim=0; dim<nDims; dim++) {
       for (spt1=0; spt1<nSpts; spt1++) {
-        xid1 = spt1%(nSpts/(order+1));             // col index - also = to (spt1 - (order+1)*row)
-        yid1 = floor(spt1/(order+1));              // row index
-        zid1 = floor(spt1/((order+1)*(order+1)));  // page index
+        kspt1 = spt1/((order+1)*(order+1));                         // col index - also = to (spt1 - (order+1)*row)
+        jspt1 = (spt1-(order+1)*(order+1)*kspt1)/(order+1);         // row index
+        ispt1 = spt1 - (order+1)*jspt1 - (order+1)*(order+1)*kspt1; // page index
         for (spt2=0; spt2<nSpts; spt2++) {
-          xid2 = spt2%(nSpts/(order+1));
-          yid2 = floor(spt2/(order+1));
-          zid2 = floor(spt2/((order+1)*(order+1)));
+          kspt2 = spt2/((order+1)*(order+1));                         // col index - also = to (spt1 - (order+1)*row)
+          jspt2 = (spt2-(order+1)*(order+1)*kspt2)/(order+1);         // row index
+          ispt2 = spt2 - (order+1)*jspt2 - (order+1)*(order+1)*kspt2; // page index
           if (dim == 0) {
-            opp_grad_spts[dim][spt1][spt2] = dLagrange(loc_spts_1D,loc_spts_1D[xid1],xid2) * Lagrange(loc_spts_1D,loc_spts_1D[yid1],yid2) * Lagrange(loc_spts_1D,loc_spts_1D[zid1],zid2);
+            opp_grad_spts[dim](spt1,spt2) = dLagrange(loc_spts_1D,loc_spts_1D[ispt1],ispt2) * Lagrange(loc_spts_1D,loc_spts_1D[jspt1],jspt2) * Lagrange(loc_spts_1D,loc_spts_1D[kspt1],kspt2);
           }
           else if (dim == 1) {
-            opp_grad_spts[dim][spt1][spt2] = dLagrange(loc_spts_1D,loc_spts_1D[yid1],yid2) * Lagrange(loc_spts_1D,loc_spts_1D[xid1],xid2) * Lagrange(loc_spts_1D,loc_spts_1D[zid1],zid2);
+            opp_grad_spts[dim](spt1,spt2) = dLagrange(loc_spts_1D,loc_spts_1D[jspt1],jspt2) * Lagrange(loc_spts_1D,loc_spts_1D[ispt1],ispt2) * Lagrange(loc_spts_1D,loc_spts_1D[kspt1],kspt2);
           }
           else if (dim == 2) {
-            opp_grad_spts[dim][spt1][spt2] = dLagrange(loc_spts_1D,loc_spts_1D[zid1],zid2) * Lagrange(loc_spts_1D,loc_spts_1D[xid1],xid2) * Lagrange(loc_spts_1D,loc_spts_1D[yid1],yid2);
+            opp_grad_spts[dim](spt1,spt2) = dLagrange(loc_spts_1D,loc_spts_1D[kspt1],kspt2) * Lagrange(loc_spts_1D,loc_spts_1D[ispt1],ispt2) * Lagrange(loc_spts_1D,loc_spts_1D[jspt1],jspt2);
           }
         }
       }
@@ -313,12 +310,8 @@ void oper::setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
   else if (eType == QUAD) {
     vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
     for(uint spt=0; spt<nSpts; spt++) {
-      for(uint dim=0; dim<nDims; dim++) {
-        loc[dim] = loc_spts[spt][dim];
-      }
-
       for(uint fpt=0; fpt<nFpts; fpt++) {
-        opp_correction[spt][fpt] = divVCJH_quad(fpt,loc,loc_spts_1D,params->vcjhSchemeQuad,order);
+        opp_correction(spt,fpt) = divVCJH_quad(fpt,loc_spts[spt],loc_spts_1D,params->vcjhSchemeQuad,order);
       }
     }
   }
@@ -326,7 +319,7 @@ void oper::setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
     vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
     for(uint spt=0; spt<nSpts; spt++) {
       for(uint fpt=0; fpt<nFpts; fpt++) {
-        opp_correction[spt][fpt] = divVCJH_hex(fpt,loc_spts[spt],loc_spts_1D,params->vcjhSchemeQuad,order);
+        opp_correction(spt,fpt) = divVCJH_hex(fpt,loc_spts[spt],loc_spts_1D,params->vcjhSchemeQuad,order);
       }
     }
   }
@@ -571,7 +564,7 @@ void oper::applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &tn
     opp_spts_to_fpts.timesMatrix(F_spts[dim],tempFn);
     for (uint fpt=0; fpt<nFpts; fpt++)
       for (uint i=0; i<nFields; i++)
-        Fn_fpts[fpt][i] += tempFn[fpt][i]*tnorm_fpts[fpt][dim];
+        Fn_fpts(fpt,i) += tempFn(fpt,i)*tnorm_fpts(fpt,dim);
   }
 }
 
@@ -586,7 +579,7 @@ void oper::applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &no
     opp_spts_to_fpts.timesMatrix(F_spts[dim],tempFn);
     for (uint fpt=0; fpt<nFpts; fpt++)
       for (uint i=0; i<nFields; i++)
-        Fn_fpts[fpt][i] += tempFn(fpt,i)*norm_fpts(fpt,dim)*dA_fpts[fpt];
+        Fn_fpts(fpt,i) += tempFn(fpt,i)*norm_fpts(fpt,dim)*dA_fpts[fpt];
   }
 }
 
@@ -608,7 +601,7 @@ const matrix<double> &oper::get_oper_div_spts()
 }
 
 
-double oper::divVCJH_quad(int in_fpt, vector<double>& loc, vector<double>& loc_1d_spts, uint vcjh, uint order)
+double oper::divVCJH_quad(int in_fpt, point& loc, vector<double>& loc_1d_spts, uint vcjh, uint order)
 {
   uint i,j;
   double eta;
@@ -645,23 +638,24 @@ double oper::divVCJH_hex(int in_fpt, point& loc, vector<double>& loc_1d_spts, ui
   else
     eta = compute_eta(vcjh,order);
 
-  uint i = in_fpt / ((order+1)*(order+1));    // Face upon which the flux point lies [0 to 5]
-  uint j = in_fpt - (order+1)*(order+1)*i;    // Face-local index of flux point [0 to n_fpts_per_face-1]
-  uint k = in_fpt - (order+1)*(order+1)*i;    // Face-local index of flux point [0 to n_fpts_per_face-1]
+  uint P1  = order+1;
+  uint P12 = P1*P1;
+  uint f = floor(in_fpt / P12);     // Face upon which the flux point lies [0 to 5]
+  uint j = (in_fpt - P12*f) / P1;   // Face-local index of flux point [0 to n_fpts_per_face-1]
+  uint i =  in_fpt - P12*f  - P1*j; // Face-local index of flux point [0 to n_fpts_per_face-1]
 
-  if(i==0)       // z-plane, 'L'
-    div_vcjh_basis = Lagrange(loc_1d_spts,loc.x,i) * Lagrange(loc_1d_spts,loc.y,j) * -dVCJH_1d(loc.y,0,order,eta);
-  else if(i==1)  // z-plane, 'R'
-    div_vcjh_basis = Lagrange(loc_1d_spts,loc.x,i) * Lagrange(loc_1d_spts,loc.y,j) *  dVCJH_1d(loc.z,1,order,eta);
-  else if(i==2)  // x-plane, 'L'
-    div_vcjh_basis = Lagrange(loc_1d_spts,loc.y,j) * Lagrange(loc_1d_spts,loc.z,k) * -dVCJH_1d(loc.y,0,order,eta);
-  else if(i==3)  // x-plane, 'R'
-    div_vcjh_basis = Lagrange(loc_1d_spts,loc.y,j) * Lagrange(loc_1d_spts,loc.z,k) *  dVCJH_1d(loc.y,1,order,eta);
-  else if(i==2)  // y-plane, 'L'
-    div_vcjh_basis = Lagrange(loc_1d_spts,loc.x,i) * Lagrange(loc_1d_spts,loc.z,k) * -dVCJH_1d(loc.x,0,order,eta);
-  else if(i==3)  // y-plane, 'R'
-    div_vcjh_basis = Lagrange(loc_1d_spts,loc.x,i) * Lagrange(loc_1d_spts,loc.z,k) *  dVCJH_1d(loc.x,1,order,eta);
-
+  if(f==0)       // z-plane, 'L'
+    div_vcjh_basis = Lagrange(loc_1d_spts,loc.x,i)       * Lagrange(loc_1d_spts,loc.y,j) * -dVCJH_1d(loc.z,0,order,eta);
+  else if(f==1)  // z-plane, 'R'
+    div_vcjh_basis = Lagrange(loc_1d_spts,loc.x,order-i) * Lagrange(loc_1d_spts,loc.y,j) *  dVCJH_1d(loc.z,1,order,eta);
+  else if(f==2)  // x-plane, 'L'
+    div_vcjh_basis = Lagrange(loc_1d_spts,loc.y,i)       * Lagrange(loc_1d_spts,loc.z,j) * -dVCJH_1d(loc.x,0,order,eta);
+  else if(f==3)  // x-plane, 'R'
+    div_vcjh_basis = Lagrange(loc_1d_spts,loc.y,order-i) * Lagrange(loc_1d_spts,loc.z,j) *  dVCJH_1d(loc.x,1,order,eta);
+  else if(f==4)  // y-plane, 'L'
+    div_vcjh_basis = Lagrange(loc_1d_spts,loc.x,order-i) * Lagrange(loc_1d_spts,loc.z,j) * -dVCJH_1d(loc.y,0,order,eta);
+  else if(f==5)  // y-plane, 'R'
+    div_vcjh_basis = Lagrange(loc_1d_spts,loc.x,i)       * Lagrange(loc_1d_spts,loc.z,j) *  dVCJH_1d(loc.y,1,order,eta);
 
   return div_vcjh_basis;
 }

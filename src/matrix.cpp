@@ -353,7 +353,7 @@ void matrix<T>::print()
 {
   for (uint i=0; i<dim0; i++) {
     for (uint j=0; j<dim1; j++) {
-      std::cout << std::setw(15) << std::setprecision(10) << data[i*dim1+j] << " ";
+      std::cout << std::left << std::setw(10) << std::setprecision(8) << data[i*dim1+j] << " ";
     }
     cout << endl;
   }

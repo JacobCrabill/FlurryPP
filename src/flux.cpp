@@ -27,6 +27,8 @@ void inviscidFlux(double* U, matrix<double> &F, input *params)
   if (params->equation == ADVECTION_DIFFUSION) {
     F(0,0) = params->advectVx*U[0];
     F(1,0) = params->advectVy*U[0];
+    if (params->nDims == 3)
+      F(2,0) = params->advectVz*U[0];
   }
   else if (params->equation == NAVIER_STOKES) {
     if (params->nDims == 2) {

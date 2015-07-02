@@ -1291,7 +1291,7 @@ bool geo::checkPeriodicFaces3D(vector<int> &face1, vector<int> &face2)
   point c1;
   vec1 = xv[face1[1]] - xv[face1[0]];
   vec2 = xv[face1[2]] - xv[face1[0]];
-  for (int j=0; j<face1.size(); j++)
+  for (uint j=0; j<face1.size(); j++)
     c1 += xv[face1[j]];
   c1 /= face1.size();
 
@@ -1307,7 +1307,7 @@ bool geo::checkPeriodicFaces3D(vector<int> &face1, vector<int> &face2)
   point c2;
   vec1 = xv[face2[1]] - xv[face2[0]];
   vec2 = xv[face2[2]] - xv[face2[0]];
-  for (int j=0; j<face2.size(); j++)
+  for (uint j=0; j<face2.size(); j++)
     c2 += xv[face2[j]];
   c2 /= face2.size();
   norm2[0] = vec1[1]*vec2[2] - vec1[2]*vec2[1];

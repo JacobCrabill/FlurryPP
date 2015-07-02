@@ -685,6 +685,11 @@ void ele::setInitialCondition()
         U_spts(spt,0) = pos_spts[spt].x + pos_spts[spt].y + pos_spts[spt].z;
       }
     }
+    else if (params->ic_type == 2) {
+      /* --- Test case for debugging - cos(x)*cos(y)*cos(z) over domain --- */
+      for (int spt=0; spt<nSpts; spt++)
+        U_spts(spt,0) = cos(2*pi*pos_spts[spt].x/6.)*cos(2*pi*pos_spts[spt].y/6.)*cos(2*pi*pos_spts[spt].z/6.);
+    }
   }
 }
 
@@ -714,7 +719,7 @@ void ele::calcInviscidFlux_spts()
       /* --- Don't transform yet; that will be handled later --- */
       for (int i=0; i<nDims; i++) {
         for (int k=0; k<nFields; k++) {
-          F_spts[i][spt][k] = tempF[i][k];
+          F_spts[i](spt,k) = tempF(i,k);
         }
       }
     }
@@ -722,9 +727,9 @@ void ele::calcInviscidFlux_spts()
       /* --- Transform back to reference domain --- */
       for (int i=0; i<nDims; i++) {
         for (int k=0; k<nFields; k++) {
-          F_spts[i][spt][k] = 0.;
+          F_spts[i](spt,k) = 0.;
           for (int j=0; j<nDims; j++) {
-            F_spts[i][spt][k] += JGinv_spts[spt][i][j]*tempF[j][k];
+            F_spts[i](spt,k) += JGinv_spts[spt](i,j)*tempF(j,k);
           }
         }
       }
@@ -763,7 +768,7 @@ void ele::calcViscousFlux_spts()
       for (int k=0; k<nFields; k++) {
         for (int i=0; i<nDims; i++) {
           for (int j=0; j<nDims; j++) {
-            F_spts[i](spt,k) += JGinv_spts[spt][i][j]*tempF(j,k);
+            F_spts[i](spt,k) += JGinv_spts[spt](i,j)*tempF(j,k);
           }
         }
       }
