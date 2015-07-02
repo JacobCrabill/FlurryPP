@@ -320,7 +320,7 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("nDims",nDims,2);
     opts.getScalarValue("nx",nx,10);
     opts.getScalarValue("ny",ny,10);
-    opts.getScalarValue("ny",nz,10);
+    opts.getScalarValue("nz",nz,10);
     opts.getScalarValue("xmin",xmin,-10.);
     opts.getScalarValue("xmax",xmax,10.);
     opts.getScalarValue("ymin",ymin,-10.);

@@ -277,6 +277,7 @@ void boundFace::applyBCs(void)
         }
       }
       else {
+        cout << "Boundary Condition: " << bcType << endl;
         FatalError("Boundary condition not recognized.");
       }
 

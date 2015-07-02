@@ -764,19 +764,19 @@ void geo::readGmsh(string fileName)
         c2nv.push_back(8);
         c2nf.push_back(4);
         ctype.push_back(QUAD);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7] >> c2v_tmp[8];
+        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
         break;
 
-      case 8:
+      case 5:
         // Linear hexahedron
         c2nv.push_back(8);
         c2nf.push_back(6);
         ctype.push_back(HEX);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7] >> c2v_tmp[8];
+        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
         break;
 
       default:
-        cout << "Gmsh Element Type = " << eType << endl;
+        cout << "Gmsh element ID " << k << ", Gmsh Element Type = " << eType << endl;
         FatalError("element type not recognized");
         break;
       }
@@ -830,6 +830,7 @@ void geo::readGmsh(string fileName)
         break;
 
       default:
+          cout << "Gmsh element ID " << k << ", Gmsh Element Type = " << eType << endl;
           FatalError("Boundary Element (Face) Type Not Recognized!");
       }
 
