@@ -80,14 +80,13 @@ private:
   matrix<int> c2e, c2b, e2c, e2v, v2e, v2v, v2c;
   matrix<int> c2f, f2v, f2c;
   vector<int> v2nv, v2nc, c2nv, c2nf, f2nv, ctype;
-  vector<int> intFaces, bndFaces;
+  vector<int> intFaces, bndFaces, mpiFaces;
   vector<int> bcList;            //! List of boundary conditions for each boundary
   vector<int> bcType;            //! Boundary condition for each boundary edge
   matrix<int> bndPts;            //! List of node IDs on each boundary
   vector<int> nBndPts;           //! Number of points on each boudary
   vector<matrix<int> > bcFaces;  //! List of nodes on each face (edge) for each boundary condition
   vector<int> nFacesPerBnd;      //! List of # of faces on each boundary
-  matrix<int> mpiFaces;          //! List of nodes on each MPI face on processor
   vector<int> procR;             //! What processor lies to the 'right' of this face
   vector<int> locF_R;            //! The local mpiFace ID of each mpiFace on the opposite processor
   //map<string,int> bcNum;         //! Maps a boundary-condition string to its integer enum

@@ -32,8 +32,9 @@ void mpiFace::setupRightState(void)
 
 #ifndef _NO_MPI
   IDR = rightParams[0];
-  procL = rightParams[1];
-  procR = rightParams[2];
+  relRot = rightParams[1];
+  procL = rightParams[2];
+  procR = rightParams[3];
 
   /* Send/Get # of flux points to/from right element */
   MPI_Irecv(&nFptsR,1,MPI_INT,procR,ID,MPI_COMM_WORLD,&nFpts_in);

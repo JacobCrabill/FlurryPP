@@ -56,6 +56,7 @@ public:
 
 private:
   int locF_R;              //! Right element's element-local face ID
+  int relRot;              //! Relative rotation of right element's face (for 3D)
   int fptStartR, fptEndR;
   vector<int> fptR;        //! Indices of flux points on right face
 

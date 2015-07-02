@@ -583,7 +583,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       if (f2c(ie,1) != -1) {
         FatalError("MPI face has a right element assigned.");
       }else{
-        mpiFacesVec[i]->initialize(&eles[f2c(ie,0)],NULL,fid1,{locF_R[i],params->rank,procR[i]},i,params);
+        mpiFacesVec[i]->initialize(&eles[f2c(ie,0)],NULL,fid1,{locF_R[i],0,params->rank,procR[i]},i,params);
       }
     }
   }
@@ -1510,6 +1510,8 @@ void geo::partitionMesh(void)
   MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 
   if (nproc <= 1) return;
+
+  if (nDims == 3) FatalError("MPI Partitioning not yet supported for 3D cases.");
 
   if (rank == 0) cout << "Geo: Partitioning mesh across " << nproc << " processes" << endl;
   if (rank == 0) cout << "Geo:   Number of elements globally: " << nEles << endl;
