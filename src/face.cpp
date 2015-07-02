@@ -285,7 +285,6 @@ void face::roeFlux(void)
       vR[i] = UR(fpt,i+1)/UR(fpt,0);
     }
 
-
     double pL, pR;
     if (nDims == 2) {
       pL = (gamma-1.0)*(UL(fpt,3) - (0.5*UL(fpt,0)*(vL[0]*vL[0]+vL[1]*vL[1])));

@@ -604,7 +604,7 @@ void ele::updatePosFpts(void)
 void ele::setInitialCondition()
 {
   if (params->equation == NAVIER_STOKES) {
-    double rho, vx, vy, p;
+    double rho, vx, vy, vz, p;
     double gamma = params->gamma;
 
     if (params->ic_type == 0) {
@@ -612,23 +612,28 @@ void ele::setInitialCondition()
       rho = params->rhoIC;
       vx = params->vxIC;
       vy = params->vyIC;
+      if (nDims == 3)
+        vz = params->vzIC;
+      else
+        vz = 0;
+
       p = params->pIC;
       for (int spt=0; spt<nSpts; spt++) {
         U_spts(spt,0) = rho;
         U_spts(spt,1) = rho * vx;
         U_spts(spt,2) = rho * vy;
-        U_spts(spt,3) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+        if (nDims == 3) U_spts(spt,3) = rho * vz;
+        U_spts(spt,nDims+1) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy + vz*vz));
       }
     }
     else if (params->ic_type == 1) {
       /* --- Isentropic Vortex of strength eps centered at (0,0) --- */
-      double eps, f, x, y;
-      for (int spt=0; spt<nSpts; spt++) {
-        eps = 5.0;
-        x = pos_spts[spt][0];
-        y = pos_spts[spt][1];
+      double eps = 5.0;
+      for (int spt=0; spt<nSpts; spt++) {        
+        double x = pos_spts[spt].x;
+        double y = pos_spts[spt].y;
 
-        f = 1.0 - (x*x + y*y);
+        double f = 1.0 - (x*x + y*y);
 
         rho = pow(1. - eps*eps*(gamma-1.)/(8.*gamma*pi*pi)*exp(f), 1.0/(gamma-1.0));
         vx = 1. - eps*y / (2.*pi) * exp(f/2.);
@@ -638,7 +643,8 @@ void ele::setInitialCondition()
         U_spts(spt,0) = rho;
         U_spts(spt,1) = rho * vx;
         U_spts(spt,2) = rho * vy;
-        U_spts(spt,3) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+        if (nDims == 3) U_spts(spt,3) = 0.;
+        U_spts(spt,nDims+1) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
       }
     }
     else if (params->ic_type == 2) {
@@ -652,12 +658,12 @@ void ele::setInitialCondition()
       double Pinf = pow(Minf,-2)/gamma;
 
       double eM = (eps*Minf)*(eps*Minf);
-      double f, x, y;
-      for (int spt=0; spt<nSpts; spt++) {
-        x = pos_spts[spt][0];
-        y = pos_spts[spt][1];
 
-        f = -(x*x + y*y) / (rc*rc);
+      for (int spt=0; spt<nSpts; spt++) {
+        double x = pos_spts[spt].x;
+        double y = pos_spts[spt].y;
+
+        double f = -(x*x + y*y) / (rc*rc);
 
         vx = Uinf*(cos(theta) - y*eps/rc * exp(f/2.));
         vy = Uinf*(sin(theta) + x*eps/rc * exp(f/2.));
@@ -667,7 +673,8 @@ void ele::setInitialCondition()
         U_spts(spt,0) = rho;
         U_spts(spt,1) = rho * vx;
         U_spts(spt,2) = rho * vy;
-        U_spts(spt,3) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+        if (nDims == 3) U_spts(spt,3) = 0.;
+        U_spts(spt,nDims+1) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
       }
     }
   }
@@ -830,13 +837,25 @@ vector<double> ele::getEntropyVars(int spt)
 
   auto phi = getPrimitives(spt);
 
-  double S = log(phi[3]) - gamma*log(phi[0]); // ln(p) - gamma ln(rho)
-  double Vmag2 = phi[1]*phi[1] + phi[2]*phi[2];
+  if (nDims == 2) {
+    double S = log(phi[3]) - gamma*log(phi[0]); // ln(p) - gamma ln(rho)
+    double Vmag2 = phi[1]*phi[1] + phi[2]*phi[2];
 
-  v[0] = (gamma-S)/(gamma-1) - 0.5*phi[0]*Vmag2/phi[3];
-  v[1] = phi[0]*phi[1]/phi[3];
-  v[2] = phi[0]*phi[2]/phi[3];
-  v[3] = -phi[0]/phi[3];
+    v[0] = (gamma-S)/(gamma-1) - 0.5*phi[0]*Vmag2/phi[3];
+    v[1] = phi[0]*phi[1]/phi[3];
+    v[2] = phi[0]*phi[2]/phi[3];
+    v[3] = -phi[0]/phi[3];
+  }
+  else {
+    double S = log(phi[4]) - gamma*log(phi[0]); // ln(p) - gamma ln(rho)
+    double Vmag2 = phi[1]*phi[1] + phi[2]*phi[2] + phi[3]*phi[3];
+
+    v[0] = (gamma-S)/(gamma-1) - 0.5*phi[0]*Vmag2/phi[4];
+    v[1] = phi[0]*phi[1]/phi[4];
+    v[2] = phi[0]*phi[2]/phi[4];
+    v[3] = phi[0]*phi[3]/phi[4];
+    v[4] = -phi[0]/phi[4];
+  }
 
   return v;
 }
@@ -856,10 +875,15 @@ void ele::calcWaveSpFpts(void)
       double rho = U_fpts(fpt,0);
       double u = U_fpts(fpt,1)/rho;
       double v = U_fpts(fpt,2)/rho;
-      double rhoVSq = rho*(u*u+v*v);
-      double p = (params->gamma-1)*(U_fpts(fpt,3) - 0.5*rhoVSq);
+      double w = 0;
+      if (nDims == 3) w = U_fpts(fpt,3)/rho;
+
+      double rhoVSq = rho*(u*u+v*v+w*w);
+      double p = (params->gamma-1)*(U_fpts(fpt,nDims+1) - 0.5*rhoVSq);
 
       double vN = u*norm_fpts(fpt,0) + v*norm_fpts(fpt,1);
+      if (nDims == 3) vN += w*norm_fpts(fpt,2);
+
       double csq = std::max(params->gamma*p/rho,0.0);
       waveSp_fpts[fpt] = (std::abs(vN) + std::sqrt(csq)) / dA_fpts[fpt];
     }
@@ -918,7 +942,11 @@ vector<double> ele::getPrimitives(uint spt)
     V[1] = U_spts(spt,1)/V[0];
     V[2] = U_spts(spt,2)/V[0];
     double vMagSq = V[1]*V[1]+V[2]*V[2];
-    V[3] = (params->gamma-1)*(U_spts(spt,3) - 0.5*V[0]*vMagSq);
+    if (nDims == 3) {
+      V[3] = U_spts(spt,3)/V[0];
+      vMagSq += V[3]*V[3];
+    }
+    V[nDims+1] = (params->gamma-1)*(U_spts(spt,nDims+1) - 0.5*V[0]*vMagSq);
   }
 
   return V;
@@ -936,7 +964,11 @@ vector<double> ele::getPrimitivesFpt(uint fpt)
     V[1] = U_fpts(fpt,1)/V[0];
     V[2] = U_fpts(fpt,2)/V[0];
     double vMagSq = V[1]*V[1]+V[2]*V[2];
-    V[3] = (params->gamma-1)*(U_fpts(fpt,3) - 0.5*V[0]*vMagSq);
+    if (nDims == 3) {
+      V[3] = U_fpts(fpt,3)/V[0];
+      vMagSq += V[3]*V[3];
+    }
+    V[nDims+1] = (params->gamma-1)*(U_fpts(fpt,nDims+1) - 0.5*V[0]*vMagSq);
   }
 
   return V;
@@ -1082,16 +1114,21 @@ void ele::getPrimitivesPlot(matrix<double> &V)
     for (uint i=0; i<V.getDim0(); i++) {
       double u = V(i,1)/V(i,0);
       double v = V(i,2)/V(i,0);
-      double vSq = u*u + v*v;
-      V(i,3) = (params->gamma-1)*(V(i,3) - 0.5*V(i,0)*vSq);
+      double w = 0.;
+      if (nDims == 3) w = V(i,3)/V(i,0);
+      double vSq = u*u + v*v + w*w;
+      V(i,nDims+1) = (params->gamma-1)*(V(i,nDims+1) - 0.5*V(i,0)*vSq);
       V(i,1) = u;
       V(i,2) = v;
+      if (nDims == 3) V(i,3) = w;
     }
   }
 }
 
 void ele::getGridVelPlot(matrix<double> &GV)
 {
+  if (nDims == 3) FatalError("Motion not yet supported for 3D cases.");
+
   GV.setup(nSpts+nFpts+nNodes,nDims);
 
   // Get solution at corner points
@@ -1125,6 +1162,8 @@ void ele::getGridVelPlot(matrix<double> &GV)
 
 void ele::getEntropyErrPlot(matrix<double> &S)
 {
+  if (nDims == 3) FatalError("Entropy-error calculation not yet supported for 3D cases.");
+
   S.setup(nSpts+nFpts+nNodes,1);
 
   // Get solution at corner points
@@ -1432,7 +1471,10 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
         for (int j=0; j<(order+1); j++) {
           ss >> tempV(j+i*(order+1),0);
           ss >> tempV(j+i*(order+1),1);
-          ss >> tmp1;
+          if (nDims == 3)
+            ss >> tempV(j+i*(order+1),2);
+          else
+            ss >> tmp1;
         }
         ss >> tmp1 >> tmp2 >> tmp3;
       }
@@ -1480,7 +1522,11 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
     U_spts(spt,1) = U_spts(spt,0)*tempV(spt,0);
     U_spts(spt,2) = U_spts(spt,0)*tempV(spt,1);
     double vSq = tempV(spt,0)*tempV(spt,0)+tempV(spt,1)*tempV(spt,1);
-    U_spts(spt,3) = tempP[spt]/(params->gamma-1) + 0.5*U_spts(spt,0)*vSq;
+    if (nDims == 3) {
+      U_spts(spt,3) = U_spts(spt,0)*tempV(spt,2);
+      vSq += tempV(spt,2)*tempV(spt,2);
+    }
+    U_spts(spt,nDims+1) = tempP[spt]/(params->gamma-1) + 0.5*U_spts(spt,0)*vSq;
   }
 
   // Move to end of this element's data

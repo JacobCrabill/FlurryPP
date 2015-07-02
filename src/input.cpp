@@ -250,7 +250,8 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("diffD",diffD,1.);
     opts.getScalarValue("lambda",lambda,1.);
     nFields = 1;
-  } else if (equation==NAVIER_STOKES) {
+  }
+  else if (equation==NAVIER_STOKES) {
     opts.getScalarValue("gamma",gamma,1.4);
     opts.getScalarValue("RGas",RGas,286.9);
     opts.getScalarValue("rhoBound",rhoBound,1.);
@@ -274,7 +275,6 @@ void input::readInputFile(char *filename)
       opts.getScalarValue("vzIC",vzIC,wBound);
       opts.getScalarValue("pIC",pIC,pBound);
     }
-    nFields = 4;
   }
 
   opts.getScalarValue("timeType",timeType,0);
@@ -333,7 +333,8 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("create_bcRight",create_bcRight,string("periodic"));
     opts.getScalarValue("create_bcFront",create_bcFront,string("periodic"));
     opts.getScalarValue("create_bcBack",create_bcBack,string("periodic"));
-  }else if (mesh_type == READ_MESH) {
+  }
+  else if (mesh_type == READ_MESH) {
     opts.getScalarValue("mesh_file_name",meshFileName);
     // Get mesh boundaries, boundary conditions & convert to lowercase
     map<string,string> meshBndTmp;

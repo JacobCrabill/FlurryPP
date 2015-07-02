@@ -218,7 +218,8 @@ void writeParaview(solver *Solver, input *params)
     matrix<double> vPpts, gridVelPpts, errPpts;
     vector<point> ppts;
     e.getPrimitivesPlot(vPpts);
-    e.getGridVelPlot(gridVelPpts);
+    if (params->motion)
+      e.getGridVelPlot(gridVelPpts);
     ppts = e.getPpts();
 
     // Shock Capturing stuff
@@ -484,6 +485,8 @@ void writeResidual(solver *Solver, input *params)
         cout << setw(colW) << left << "rho";
         cout << setw(colW) << left << "rhoU";
         cout << setw(colW) << left << "rhoV";
+        if (params->nDims == 3)
+          cout << setw(colW) << left << "rhoW";
         cout << setw(colW) << left << "rhoE";
         if (params->dtType == 1)
           cout << setw(colW) << left << "deltaT";

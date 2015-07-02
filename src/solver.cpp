@@ -37,6 +37,13 @@ void solver::setup(input *params, geo *Geo)
 
   params->time = 0.;
 
+  if (params->equation == NAVIER_STOKES) {
+    if (params->nDims == 2)
+      params->nFields = 4;
+    else if (params->nDims == 3)
+      params->nFields = 5;
+  }
+
   /* Setup the FR elements & faces which will be computed on */
   Geo->setupElesFaces(eles,faces,mpiFaces);
 
