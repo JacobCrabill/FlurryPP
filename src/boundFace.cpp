@@ -118,6 +118,7 @@ void boundFace::applyBCs(void)
         rhoR = params->rhoBound;
         vR[0] = params->uBound;
         vR[1] = params->vBound;
+        vR[2] = params->wBound;
 
         // fix pressure
         pR = params->pBound;

@@ -80,7 +80,7 @@ private:
   matrix<int> c2e, c2b, e2c, e2v, v2e, v2v, v2c;
   matrix<int> c2f, f2v, f2c;
   vector<int> v2nv, v2nc, c2nv, c2nf, f2nv, ctype;
-  vector<int> intFaces, bndFaces, mpiFaces;
+  vector<int> intFaces, bndFaces, mpiFaces, mpiCells;
   vector<int> bcList;            //! List of boundary conditions for each boundary
   vector<int> bcType;            //! Boundary condition for each boundary edge
   matrix<int> bndPts;            //! List of node IDs on each boundary
@@ -89,6 +89,9 @@ private:
   vector<int> nFacesPerBnd;      //! List of # of faces on each boundary
   vector<int> procR;             //! What processor lies to the 'right' of this face
   vector<int> locF_R;            //! The local mpiFace ID of each mpiFace on the opposite processor
+  vector<int> gIC_R;             //! The global cell ID of the right cell on the opposite processor
+  vector<int> mpiLocF;           //! Element-local face ID of MPI Face in left cell
+  vector<int> mpiLocF_R;         //! Element-local face ID of MPI Face in right cell
   //map<string,int> bcNum;         //! Maps a boundary-condition string to its integer enum
   vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
 
@@ -116,8 +119,14 @@ private:
   //! Compare the orientation (rotation in ref. space) betwen the local faces of 2 elements
   int compareOrientation(int ic1, int ic2, int f1, int f2);
 
+  //! Compare the orientation (rotation in ref. space) betwen the local faces of 2 elements across MPI boundary
+  int compareOrientationMPI(int ic1, int ic2, int f1, int f2);
+
   //! For MPI runs, partition the mesh across all processors
   void partitionMesh(void);
+
+  //! For MPI runs, match internal faces across MPI boundaries
+  void matchMPIFaces();
 
   //! Compare two faces [lists of nodes] to see if they match [used for MPI]
   bool compareFaces(vector<int> &face1, vector<int> &face2);

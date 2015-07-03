@@ -111,6 +111,8 @@ void geo::processConn2D(void)
   e2v1.unique(f2v,iE);
   nFaces = f2v.getDim0();
 
+  f2nv.assign(nFaces,2);
+
   /* --- Generaate Internal and Boundary Face Lists --- */
 
   /* Flag for whether global face ID corresponds to interior or boundary face
@@ -167,96 +169,7 @@ void geo::processConn2D(void)
 #ifndef _NO_MPI
   if (params->nproc > 1) {
 
-    if (params->rank == 0) cout << "Geo: Matching MPI faces" << endl;
-
-    // 1) Get a list of all the MPI faces on the processor
-    // These will be all unassigned boundary faces (bcType == -1) - copy over to mpiEdges
-    for (int i=0; i<nBndFaces; i++) {
-      if (bcType[i] < 0) {
-        mpiFaces.push_back(bndFaces[i]);
-        bndFaces[i] = -1;
-      }
-    }
-    nMpiFaces = mpiFaces.size();
-
-    // Clean up the bcType and bndEdges arrays now that it's safe to do so [remove mpiFaces from them]
-    bndFaces.erase(std::remove(bndFaces.begin(), bndFaces.end(), -1), bndFaces.end());
-    bcType.erase(std::remove(bcType.begin(), bcType.end(), -1), bcType.end());
-    nBndFaces = bndFaces.size();
-
-    // For future compatibility with 3D mixed meshes: allow faces with different #'s nodes
-    // mpi_fptr is like csr matrix ptr (or like eptr from METIS, but for faces instead of eles)
-    matrix<int> mpiFaceNodes;
-    vector<int> mpiFptr(nMpiFaces+1);
-    for (int i=0; i<nMpiFaces; i++) {
-      mpiFaceNodes.insertRow(f2v[mpiFaces[i]],INSERT_AT_END,2);
-      mpiFptr[i+1] = mpiFptr[i]+2;
-    }
-    int nMpiNodes = mpiFptr[nMpiFaces];
-
-    // Convert local node ID's to global
-    std::transform(mpiFaceNodes.getData(),mpiFaceNodes.getData()+mpiFaceNodes.getSize(),mpiFaceNodes.getData(), [=](int iv){return iv2ivg[iv];} );
-
-    // Get the number of mpiFaces on each processor (for later communication)
-    vector<int> nMpiFaces_proc(params->nproc);
-    MPI_Allgather(&nMpiFaces,1,MPI_INT,nMpiFaces_proc.data(),1,MPI_INT,MPI_COMM_WORLD);
-
-    // Get the total number of face nodes to be sent on each processor (for later communication)
-    vector<int> nMpiNodes_proc(params->nproc);
-    MPI_Allgather(&nMpiNodes,1,MPI_INT,nMpiNodes_proc.data(),1,MPI_INT,MPI_COMM_WORLD);
-
-    // 2 for 2D, 4 for 3D; recall that we're treating all elements as being linear, as
-    // the extra nodes for quadratic edges or faces are unimportant for determining connectivity
-    int maxNodesPerFace = (nDims==2) ? 2 : 4;
-    int maxNMpiNodes = getMax(nMpiNodes_proc);
-    int maxNMpiFaces = getMax(nMpiFaces_proc);
-    matrix<int> mpiFaceNodes_proc(params->nproc,maxNMpiFaces*maxNodesPerFace);
-    matrix<int> mpiFptr_proc(params->nproc,maxNMpiFaces+1);
-    MPI_Allgather(mpiFaceNodes.getData(),mpiFaceNodes.getSize(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,MPI_COMM_WORLD);
-    MPI_Allgather(mpiFptr.data(),mpiFptr.size(),MPI_INT,mpiFptr_proc.getData(),maxNMpiFaces+1,MPI_INT,MPI_COMM_WORLD);
-
-    // Now that we have each processor's boundary nodes, start matching faces
-    // Again, note that this is written for to be entirely general instead of 2D-specific
-    // Find out what processor each face is adjacent to
-    procR.resize(nMpiFaces);
-    locF_R.resize(nMpiFaces);
-    for (auto &P:procR) P = -1;
-
-    vector<int> tmpFace(maxNodesPerFace);
-    vector<int> myFace(maxNodesPerFace);
-    for (int p=0; p<params->nproc; p++) {
-      if (p == params->rank) continue;
-
-      // Check all of the processor's faces to see if any match our faces
-      for (int i=0; i<nMpiFaces_proc[p]; i++) {
-        tmpFace.resize(maxNodesPerFace);
-        int k = 0;
-        for (int j=mpiFptr_proc(p,i); j<mpiFptr_proc(p,i+1); j++) {
-          tmpFace[k] = mpiFaceNodes_proc(p,j);
-          k++;
-        }
-        tmpFace.resize(k);
-
-        // See if this face matches any on this processor
-        for (int F=0; F<nMpiFaces; F++) {
-          if (procR[F] != -1) continue; // Face already matched
-
-          for (int j=0; j<2; j++) {  // crap.  I'll need to set up an 'e2nv' to use here later.
-            myFace[j] = mpiFaceNodes(F,j);
-          }
-          if (compareFaces(myFace,tmpFace)) {
-            procR[F] = p;
-            locF_R[F] = i;
-            break;
-          }
-        }
-      }
-    }
-
-    for (auto &P:procR)
-      if (P==-1) FatalError("MPI face left unmatched!");
-
-    if (params->rank == 0) cout << "Geo: All MPI faces matched!  nMpiFaces = " << nMpiFaces << endl;
+    matchMPIFaces();
 
   } // nproc > 1
 #endif
@@ -327,9 +240,9 @@ void geo::processConn3D(void)
   // --- FIX ORDERING FOR FUTURE USE ---
   ct2fv[HEX].insertRow(vector<int>{0,1,2,3});  // Bottom
   ct2fv[HEX].insertRow(vector<int>{4,5,6,7});  // Top
-  ct2fv[HEX].insertRow(vector<int>{0,4,7,3});  // Left
-  ct2fv[HEX].insertRow(vector<int>{1,5,6,2});  // Right
-  ct2fv[HEX].insertRow(vector<int>{0,1,5,4});  // Front
+  ct2fv[HEX].insertRow(vector<int>{3,0,4,7});  // Left
+  ct2fv[HEX].insertRow(vector<int>{2,1,5,6});  // Right
+  ct2fv[HEX].insertRow(vector<int>{1,0,4,5});  // Front
   ct2fv[HEX].insertRow(vector<int>{3,2,6,7});  // Back
   ct2fnv[HEX] = {4,4,4,4,4,4};
   //ct2fnv[PRISM] = {3,3,4,4,4};
@@ -353,6 +266,8 @@ void geo::processConn3D(void)
   }
 
   /* --- Get a unique list of faces --- */
+
+  // NOTE: Could setup f2c here, but I already have another algorithm implemented later
 
   // iE is of length [original f2v1] with range [final f2v]
   // The number of times a face appears in iF is equal to
@@ -416,6 +331,7 @@ void geo::processConn3D(void)
       }
 
       if (isOnBound) {
+        //cout << "bndFace matched to bc " << bcList[bnd] << endl;
         // The edge lies on this boundary
         bcType[i] = bcList[bnd];
         bcFaces[bnd].insertRow(f2v[bndFaces[i]],INSERT_AT_END,f2v.dim1);
@@ -423,13 +339,6 @@ void geo::processConn3D(void)
       }
     }
   }
-
-  /* --- Setup MPI Processor Boundary Faces --- */
-#ifndef _NO_MPI
-  if (params->nproc > 1) {
-    FatalError("3D not yet supported with MPI!");
-  }
-#endif
 
   /* --- Setup Cell-To-Edge, Edge-To-Cell --- */
 
@@ -482,6 +391,127 @@ void geo::processConn3D(void)
     }
   }
 
+  /* --- Setup MPI Processor Boundary Faces --- */
+#ifndef _NO_MPI
+    matchMPIFaces();
+#endif
+
+}
+
+void geo::matchMPIFaces(void)
+{
+#ifndef _NO_MPI
+  if (params->nproc <= 1) return;
+
+  if (params->rank == 0) cout << "Geo: Matching MPI faces" << endl;
+
+  // 1) Get a list of all the MPI faces on the processor
+  // These will be all unassigned boundary faces (bcType == -1) - copy over to mpiEdges
+  for (int i=0; i<nBndFaces; i++) {
+    if (bcType[i] < 0) {
+      mpiFaces.push_back(bndFaces[i]);
+      if (nDims == 3) {
+        // Get cell ID & cell-local face ID for face-rotation mapping
+        mpiCells.push_back(ic2icg[f2c(bndFaces[i],0)]);
+        auto cellFaces = c2f.getRow(bndFaces[i]);
+        int fid = findFirst(cellFaces,bndFaces[i]);
+        mpiLocF.push_back(fid);
+      }
+      bndFaces[i] = -1;
+    }
+  }
+  nMpiFaces = mpiFaces.size();
+
+  cout << "nMpiFaces = " << nMpiFaces << endl;
+
+  // Clean up the bcType and bndEdges arrays now that it's safe to do so [remove mpiFaces from them]
+  bndFaces.erase(std::remove(bndFaces.begin(), bndFaces.end(), -1), bndFaces.end());
+  bcType.erase(std::remove(bcType.begin(), bcType.end(), -1), bcType.end());
+  nBndFaces = bndFaces.size();
+
+  // For future compatibility with 3D mixed meshes: allow faces with different #'s nodes
+  // mpi_fptr is like csr matrix ptr (or like eptr from METIS, but for faces instead of eles)
+  matrix<int> mpiFaceNodes;
+  vector<int> mpiFptr(nMpiFaces+1);
+  for (int i=0; i<nMpiFaces; i++) {
+    mpiFaceNodes.insertRow(f2v[mpiFaces[i]],INSERT_AT_END,f2nv[mpiFaces[i]]);
+    mpiFptr[i+1] = mpiFptr[i]+f2nv[mpiFaces[i]];
+  }
+
+  // Convert local node ID's to global
+  std::transform(mpiFaceNodes.getData(),mpiFaceNodes.getData()+mpiFaceNodes.getSize(),mpiFaceNodes.getData(), [=](int iv){return iv2ivg[iv];} );
+
+  // Get the number of mpiFaces on each processor (for later communication)
+  vector<int> nMpiFaces_proc(params->nproc);
+  MPI_Allgather(&nMpiFaces,1,MPI_INT,nMpiFaces_proc.data(),1,MPI_INT,MPI_COMM_WORLD);
+
+  // 2 for 2D, 4 for 3D; recall that we're treating all elements as being linear, as
+  // the extra nodes for quadratic edges or faces are unimportant for determining connectivity
+  int maxNodesPerFace = (nDims==2) ? 2 : 4;
+  int maxNMpiFaces = getMax(nMpiFaces_proc);
+  matrix<int> mpiFaceNodes_proc(params->nproc,maxNMpiFaces*maxNodesPerFace);
+  matrix<int> mpiFptr_proc(params->nproc,maxNMpiFaces+1);
+  MPI_Allgather(mpiFaceNodes.getData(),mpiFaceNodes.getSize(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,MPI_COMM_WORLD);
+  MPI_Allgather(mpiFptr.data(),mpiFptr.size(),MPI_INT,mpiFptr_proc.getData(),maxNMpiFaces+1,MPI_INT,MPI_COMM_WORLD);
+
+  matrix<int> mpiCells_proc, mpiLocF_proc;
+  if (nDims == 3) {
+    // Needed for 3D face-matching (to find relRot)
+    mpiCells_proc.setup(params->nproc,maxNMpiFaces);
+    mpiLocF_proc.setup(params->nproc,maxNMpiFaces);
+    MPI_Allgather(mpiCells.data(),mpiCells.size(),MPI_INT,mpiCells_proc.getData(),maxNMpiFaces,MPI_INT,MPI_COMM_WORLD);
+    MPI_Allgather(mpiLocF.data(),mpiLocF.size(),MPI_INT,mpiLocF_proc.getData(),maxNMpiFaces,MPI_INT,MPI_COMM_WORLD);
+  }
+
+  // Now that we have each processor's boundary nodes, start matching faces
+  // Again, note that this is written for to be entirely general instead of 2D-specific
+  // Find out what processor each face is adjacent to
+  procR.resize(nMpiFaces);
+  locF_R.resize(nMpiFaces);
+  if (nDims == 3)
+    gIC_R.resize(nMpiFaces);
+  for (auto &P:procR) P = -1;
+
+  vector<int> tmpFace(maxNodesPerFace);
+  vector<int> myFace(maxNodesPerFace);
+  for (int p=0; p<params->nproc; p++) {
+    if (p == params->rank) continue;
+
+    // Check all of the processor's faces to see if any match our faces
+    for (int i=0; i<nMpiFaces_proc[p]; i++) {
+      tmpFace.resize(maxNodesPerFace);
+      int k = 0;
+      for (int j=mpiFptr_proc(p,i); j<mpiFptr_proc(p,i+1); j++) {
+        tmpFace[k] = mpiFaceNodes_proc(p,j);
+        k++;
+      }
+      tmpFace.resize(k);
+
+      // See if this face matches any on this processor
+      for (int F=0; F<nMpiFaces; F++) {
+        if (procR[F] != -1) continue; // Face already matched
+
+        for (int j=0; j<f2nv[mpiFaces[F]]; j++) {
+          myFace[j] = mpiFaceNodes(F,j);
+        }
+        if (compareFaces(myFace,tmpFace)) {
+          procR[F] = p;
+          locF_R[F] = i;
+          if (nDims == 3) {
+            gIC_R[F] = mpiCells_proc(p,i);
+            mpiLocF_R[F] = mpiLocF_proc(p,i);
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  for (auto &P:procR)
+    if (P==-1) FatalError("MPI face left unmatched!");
+
+  if (params->rank == 0) cout << "Geo: All MPI faces matched!  nMpiFaces = " << nMpiFaces << endl;
+#endif
 }
 
 void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec)
@@ -575,15 +605,21 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       //mpiFace *F = new mpiFace();
       mpiFacesVec[i] = make_shared<mpiFace>();
       // Find global face ID of current boundary face
-      int ie = mpiFaces[i];
-      ic = f2c(ie,0);
+      int ff = mpiFaces[i];
+      ic = f2c(ff,0);
       // Find local face ID of global face within element
-      cellFaces.assign(c2f[ic],c2f[ic]+c2nf[ic]);
-      int fid1 = findFirst(cellFaces,ie);
-      if (f2c(ie,1) != -1) {
+      int fid1 = mpiLocF[i];
+      if (f2c(ff,1) != -1) {
         FatalError("MPI face has a right element assigned.");
       }else{
-        mpiFacesVec[i]->initialize(&eles[f2c(ie,0)],NULL,fid1,{locF_R[i],0,params->rank,procR[i]},i,params);
+        int relRot = 0;
+        if (nDims == 3) {
+          // Find the relative orientation (rotation) between left & right faces
+          int fid2 = mpiLocF_R[i];
+          relRot = compareOrientationMPI(mpiCells[i],fid1,gIC_R[i],fid2);
+          cout << "relRot = " << relRot << endl;
+        }
+        mpiFacesVec[i]->initialize(&eles[f2c(ff,0)],NULL,fid1,{locF_R[i],relRot,params->rank,procR[i]},i,params);
       }
     }
   }
@@ -1007,7 +1043,7 @@ void geo::createMesh()
   else if (nDims == 3) {
     int maxN_BFace = std::max(nx*ny,nx*nz);
     maxN_BFace = std::max(maxN_BFace,ny*nz);
-    bndPts.setup(nBounds,4*6*maxN_BFace);
+    bndPts.setup(nBounds,6*4*maxN_BFace);
   }
   nBndPts.resize(nBounds);
   for (int i=0; i<nBounds; i++) {
@@ -1063,10 +1099,10 @@ void geo::createMesh()
     int nf = nFacesPerBnd[ib];
     for (int ix=0; ix<nx; ix++) {
       for (int iy=0; iy<ny; iy++) {
-        bndPts[ib][4*nf]   = iy*(nx+1) + ix;
-        bndPts[ib][4*nf+1] = iy*(nx+1) + ix + 1;
-        bndPts[ib][4*nf+2] = (iy+1)*(nx+1) + ix + 1;
-        bndPts[ib][4*nf+3] = (iy+1)*(nx+1) + ix;
+        bndPts(ib,4*nf)   = iy*(nx+1) + ix;
+        bndPts(ib,4*nf+1) = iy*(nx+1) + ix + 1;
+        bndPts(ib,4*nf+2) = (iy+1)*(nx+1) + ix + 1;
+        bndPts(ib,4*nf+3) = (iy+1)*(nx+1) + ix;
         nf++;
       }
     }
@@ -1077,10 +1113,10 @@ void geo::createMesh()
     nf = nFacesPerBnd[ib];
     for (int ix=0; ix<nx; ix++) {
       for (int iy=0; iy<ny; iy++) {
-        bndPts[ib][4*nf]   = (nx+1)*(ny+1)*nz + iy*(nx+1) + ix;
-        bndPts[ib][4*nf+1] = (nx+1)*(ny+1)*nz + iy*(nx+1) + ix+1;
-        bndPts[ib][4*nf+2] = (nx+1)*(ny+1)*nz + (iy+1)*(nx+1) + ix+1;
-        bndPts[ib][4*nf+3] = (nx+1)*(ny+1)*nz + (iy+1)*(nx+1) + ix;
+        bndPts(ib,4*nf)   = (nx+1)*(ny+1)*nz + iy*(nx+1) + ix;
+        bndPts(ib,4*nf+1) = (nx+1)*(ny+1)*nz + iy*(nx+1) + ix+1;
+        bndPts(ib,4*nf+2) = (nx+1)*(ny+1)*nz + (iy+1)*(nx+1) + ix+1;
+        bndPts(ib,4*nf+3) = (nx+1)*(ny+1)*nz + (iy+1)*(nx+1) + ix;
         nf++;
       }
     }
@@ -1091,10 +1127,10 @@ void geo::createMesh()
     nf = nFacesPerBnd[ib];
     for (int iz=0; iz<nz; iz++) {
       for (int iy=0; iy<ny; iy++) {
-        bndPts[ib][4*nf]   = iz*(nx+1)*(ny+1) + iy*(nx+1);
-        bndPts[ib][4*nf+1] = (iz+1)*(nx+1)*(ny+1) + iy*(nx+1);
-        bndPts[ib][4*nf+2] = (iz+1)*(nx+1)*(ny+1) + (iy+1)*(nx+1);
-        bndPts[ib][4*nf+3] = iz*(nx+1)*(ny+1) + (iy+1)*(nx+1);
+        bndPts(ib,4*nf)   = iz*(nx+1)*(ny+1) + iy*(nx+1);
+        bndPts(ib,4*nf+1) = (iz+1)*(nx+1)*(ny+1) + iy*(nx+1);
+        bndPts(ib,4*nf+2) = (iz+1)*(nx+1)*(ny+1) + (iy+1)*(nx+1);
+        bndPts(ib,4*nf+3) = iz*(nx+1)*(ny+1) + (iy+1)*(nx+1);
         nf++;
       }
     }
@@ -1105,10 +1141,10 @@ void geo::createMesh()
     nf = nFacesPerBnd[ib];
     for (int iz=0; iz<nz; iz++) {
       for (int iy=0; iy<ny; iy++) {
-        bndPts[ib][4*nf]   = iz*(nx+1)*(ny+1) + iy*(nx+1) + nx;
-        bndPts[ib][4*nf+1] = (iz+1)*(nx+1)*(ny+1) + iy*(nx+1) + nx;
-        bndPts[ib][4*nf+2] = (iz+1)*(nx+1)*(ny+1) + (iy+1)*(nx+1) + nx;
-        bndPts[ib][4*nf+3] = iz*(nx+1)*(ny+1) + (iy+1)*(nx+1) + nx;
+        bndPts(ib,4*nf)   = iz*(nx+1)*(ny+1) + iy*(nx+1) + nx;
+        bndPts(ib,4*nf+1) = (iz+1)*(nx+1)*(ny+1) + iy*(nx+1) + nx;
+        bndPts(ib,4*nf+2) = (iz+1)*(nx+1)*(ny+1) + (iy+1)*(nx+1) + nx;
+        bndPts(ib,4*nf+3) = iz*(nx+1)*(ny+1) + (iy+1)*(nx+1) + nx;
         nf++;
       }
     }
@@ -1116,28 +1152,28 @@ void geo::createMesh()
 
 
     // Back Side Faces (y = ymin)
-    ib = bc2bcList[bcStr2Num[params->create_bcLeft]];
+    ib = bc2bcList[bcStr2Num[params->create_bcBack]];
     nf = nFacesPerBnd[ib];
     for (int iz=0; iz<nz; iz++) {
       for (int ix=0; ix<nx; ix++) {
-        bndPts[ib][4*nf]   = iz*(nx+1)*(ny+1) + ix;
-        bndPts[ib][4*nf+1] = (iz+1)*(nx+1)*(ny+1) + ix;
-        bndPts[ib][4*nf+2] = (iz+1)*(nx+1)*(ny+1) + ix + 1;
-        bndPts[ib][4*nf+3] = iz*(nx+1)*(ny+1) + ix + 1;
+        bndPts(ib,4*nf)   = iz*(nx+1)*(ny+1) + ix;
+        bndPts(ib,4*nf+1) = (iz+1)*(nx+1)*(ny+1) + ix;
+        bndPts(ib,4*nf+2) = (iz+1)*(nx+1)*(ny+1) + ix + 1;
+        bndPts(ib,4*nf+3) = iz*(nx+1)*(ny+1) + ix + 1;
         nf++;
       }
     }
     nFacesPerBnd[ib] = nf;
 
     // Front Side Faces (y = ymax)
-    ib = bc2bcList[bcStr2Num[params->create_bcLeft]];
+    ib = bc2bcList[bcStr2Num[params->create_bcFront]];
     nf = nFacesPerBnd[ib];
     for (int iz=0; iz<nz; iz++) {
       for (int ix=0; ix<nx; ix++) {
-        bndPts[ib][4*nf]   = iz*(nx+1)*(ny+1) + ny*(nx+1) + ix;
-        bndPts[ib][4*nf+1] = (iz+1)*(nx+1)*(ny+1) + ny*(nx+1) + ix;
-        bndPts[ib][4*nf+2] = (iz+1)*(nx+1)*(ny+1) + ny*(nx+1) + ix + 1;
-        bndPts[ib][4*nf+3] = iz*(nx+1)*(ny+1) + ny*(nx+1) + ix + 1;
+        bndPts(ib,4*nf)   = iz*(nx+1)*(ny+1) + ny*(nx+1) + ix;
+        bndPts(ib,4*nf+1) = (iz+1)*(nx+1)*(ny+1) + ny*(nx+1) + ix;
+        bndPts(ib,4*nf+2) = (iz+1)*(nx+1)*(ny+1) + ny*(nx+1) + ix + 1;
+        bndPts(ib,4*nf+3) = iz*(nx+1)*(ny+1) + ny*(nx+1) + ix + 1;
         nf++;
       }
     }
@@ -1235,14 +1271,12 @@ bool geo::compareFaces(vector<int> &face1, vector<int> &face2)
   uint nv = face1.size();
   if (face2.size() != nv) return false;
 
-  bool found = false;
-  // 2D: Check the two possible permuations
-  if (nv == 2) {
-    if (face1[0] == face2[0] && face1[1] == face2[1]) found = true;
-    if (face1[0] == face2[1] && face1[1] == face2[0]) found = true;
-  }
-  else {
-    FatalError("3D not implemented, and expecting linear faces for MPI face-matching.");
+  std::sort(face1.begin(),face1.end());
+  std::sort(face2.begin(),face2.end());
+
+  bool found = true;
+  for (uint i=0; i<nv; i++) {
+    if (face1[i] != face2[i]) found = false;
   }
 
   return found;
@@ -1501,6 +1535,132 @@ int geo::compareOrientation(int ic1, int f1, int ic2, int f2)
 
 }
 
+int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2)
+{
+  if (nDims == 2) return 1;
+
+  int nv = f2nv[c2f(ic1,f1)];
+
+  vector<int> tmpFace1(nv), tmpFace2(nv);
+
+  switch (ctype_g[ic1]) {
+    case HEX:
+      // Flux points arranged in 2D grid on each face oriented with each
+      // dimension increasing in its +'ve direction ['btm-left' to 'top-right']
+      // Node ordering reflects this: CCW from 'bottom-left' node on each face
+      switch (f1) {
+        case 0:
+          // Bottom face  (z = -1)
+          tmpFace1[0] = c2v_g(ic1,0);
+          tmpFace1[1] = c2v_g(ic1,1);
+          tmpFace1[2] = c2v_g(ic1,2);
+          tmpFace1[3] = c2v_g(ic1,3);
+          break;
+        case 1:
+          // Top face  (z = +1)
+          tmpFace1[0] = c2v_g(ic1,5);
+          tmpFace1[1] = c2v_g(ic1,4);
+          tmpFace1[2] = c2v_g(ic1,7);
+          tmpFace1[3] = c2v_g(ic1,6);
+          break;
+        case 2:
+          // Left face  (x = -1)
+          tmpFace1[0] = c2v_g(ic1,0);
+          tmpFace1[1] = c2v_g(ic1,3);
+          tmpFace1[2] = c2v_g(ic1,7);
+          tmpFace1[3] = c2v_g(ic1,4);
+          break;
+        case 3:
+          // Right face  (x = +1)
+          tmpFace1[0] = c2v_g(ic1,2);
+          tmpFace1[1] = c2v_g(ic1,1);
+          tmpFace1[2] = c2v_g(ic1,5);
+          tmpFace1[3] = c2v_g(ic1,6);
+          break;
+        case 4:
+          // Front face  (y = -1)
+          tmpFace1[0] = c2v_g(ic1,1);
+          tmpFace1[1] = c2v_g(ic1,0);
+          tmpFace1[2] = c2v_g(ic1,4);
+          tmpFace1[3] = c2v_g(ic1,5);
+          break;
+        case 5:
+          // Back face  (y = +1)
+          tmpFace1[0] = c2v_g(ic1,3);
+          tmpFace1[1] = c2v_g(ic1,2);
+          tmpFace1[2] = c2v_g(ic1,6);
+          tmpFace1[3] = c2v_g(ic1,7);
+          break;
+      }
+      break;
+
+    default:
+      FatalError("Element type not supported.");
+      break;
+  }
+
+  switch (ctype_g[ic2]) {
+    case HEX:
+      switch (f2) {
+        case 0:
+          // Bottom face  (z = -1)
+          tmpFace2[0] = c2v_g(ic2,0);
+          tmpFace2[1] = c2v_g(ic2,1);
+          tmpFace2[2] = c2v_g(ic2,2);
+          tmpFace2[3] = c2v_g(ic2,3);
+          break;
+        case 1:
+          // Top face  (z = +1)
+          tmpFace2[0] = c2v_g(ic2,5);
+          tmpFace2[1] = c2v_g(ic2,4);
+          tmpFace2[2] = c2v_g(ic2,7);
+          tmpFace2[3] = c2v_g(ic2,6);
+          break;
+        case 2:
+          // Left face  (x = -1)
+          tmpFace2[0] = c2v_g(ic2,0);
+          tmpFace2[1] = c2v_g(ic2,3);
+          tmpFace2[2] = c2v_g(ic2,7);
+          tmpFace2[3] = c2v_g(ic2,4);
+          break;
+        case 3:
+          // Right face  (x = +1)
+          tmpFace2[0] = c2v_g(ic2,2);
+          tmpFace2[1] = c2v_g(ic2,1);
+          tmpFace2[2] = c2v_g(ic2,5);
+          tmpFace2[3] = c2v_g(ic2,6);
+          break;
+        case 4:
+          // Front face  (y = -1)
+          tmpFace2[0] = c2v_g(ic2,1);
+          tmpFace2[1] = c2v_g(ic2,0);
+          tmpFace2[2] = c2v_g(ic2,4);
+          tmpFace2[3] = c2v_g(ic2,5);
+          break;
+        case 5:
+          // Back face  (y = +1)
+          tmpFace2[0] = c2v_g(ic2,3);
+          tmpFace2[1] = c2v_g(ic2,2);
+          tmpFace2[2] = c2v_g(ic2,6);
+          tmpFace2[3] = c2v_g(ic2,7);
+          break;
+      }
+      break;
+
+    default:
+      FatalError("Element type not supported.");
+      break;
+  }
+
+  // Now, compare the two faces to see the relative orientation [rotation]
+  if      (tmpFace1[0] == tmpFace2[0]) return 0;
+  else if (tmpFace1[1] == tmpFace2[0]) return 1;
+  else if (tmpFace1[2] == tmpFace2[0]) return 2;
+  else if (tmpFace1[3] == tmpFace2[0]) return 3;
+  else FatalError("MPI faces improperly matched.");
+
+}
+
 
 void geo::partitionMesh(void)
 {
@@ -1510,8 +1670,6 @@ void geo::partitionMesh(void)
   MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 
   if (nproc <= 1) return;
-
-  if (nDims == 3) FatalError("MPI Partitioning not yet supported for 3D cases.");
 
   if (rank == 0) cout << "Geo: Partitioning mesh across " << nproc << " processes" << endl;
   if (rank == 0) cout << "Geo:   Number of elements globally: " << nEles << endl;
@@ -1539,7 +1697,10 @@ void geo::partitionMesh(void)
 
   // int errVal = METIS PartMeshDual(idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind, idx_t *vwgt, idx_t *vsize,
   // idx_t *ncommon, idx_t *nparts, real_t *tpwgts, idx_t *options, idx_t *objval,idx_t *epart, idx_t *npart)
-  int ncommon = 2; // 2 for 2D, ~3 for 3D
+
+  int ncommon; // 2 for 2D, ~3 for 3D [#nodes per face: 2 for quad/tri, 3 for tet, 4 for hex]
+  if (nDims == 2) ncommon = 2;
+  else if (nDims == 3) ncommon = 4;
 
   idx_t options[METIS_NOPTIONS];
   METIS_SetDefaultOptions(options);
