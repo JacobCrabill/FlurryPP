@@ -30,3 +30,6 @@ void writeParaview(solver *Solver, input *params);
 
 /*! Compute the residual and print to the screen. */
 void writeResidual(solver *Solver, input *params);
+
+/*! Write a Tecplot mesh file compatible with TIOGA's testTioga FORTRAN interface */
+void writeMeshTecplot(solver* Solver, input* params);

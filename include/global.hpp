@@ -81,7 +81,8 @@ enum BC_TYPE {
   SUB_OUT_CHAR = 7,
   SLIP_WALL = 8,
   ISOTHERMAL_NOSLIP = 9,
-  ADIABATIC_NOSLIP = 10
+  ADIABATIC_NOSLIP = 10,
+  OVERSET = 11
 };
 
 /*! Enumeration for VCJH scheme (correction function) to use */

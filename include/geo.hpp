@@ -68,10 +68,6 @@ public:
   int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces;
   int nBounds;  //! Number of boundaries
 
-private:
-
-  input *params;
-
   // Basic [essential] Connectivity Data
   matrix<int> c2v;
   vector<point> xv;
@@ -94,6 +90,10 @@ private:
   vector<int> mpiLocF_R;         //! Element-local face ID of MPI Face in right cell
   //map<string,int> bcNum;         //! Maps a boundary-condition string to its integer enum
   vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
+
+private:
+
+  input *params;
 
   /* --- MPI-Related Varialbes (global vs. local data) --- */
   matrix<int> c2v_g;   //! Global element connectivity

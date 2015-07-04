@@ -243,6 +243,8 @@ void writeParaview(solver *Solver, input *params)
       nSubCells = (e.order+2)*(e.order+2)*(e.order+2);
       nPpts = (e.order+3)*(e.order+3)*(e.order+3);
     }
+    else
+      FatalError("Invalid dimensionality [nDims].");
 
     // Write cell header
     dataFile << "		<Piece NumberOfPoints=\"" << nPpts << "\" NumberOfCells=\"" << nSubCells << "\">" << endl;
@@ -391,8 +393,8 @@ void writeParaview(solver *Solver, input *params)
 
     // Write cell-node offsets
     int nvPerCell;
-    if (params->nDims == 2)      nvPerCell = 4;
-    else if (params->nDims == 3) nvPerCell = 8;
+    if (params->nDims == 2) nvPerCell = 4;
+    else                    nvPerCell = 8;
     dataFile << "				<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">" << endl;
     for(int k=0; k<nSubCells; k++){
       dataFile << (k+1)*nvPerCell << " ";
@@ -403,8 +405,8 @@ void writeParaview(solver *Solver, input *params)
     // Write VTK element type
     // 5 = tri, 9 = quad, 10 = tet, 12 = hex
     int eType;
-    if (params->nDims == 2)      eType = 9;
-    else if (params->nDims == 3) eType = 12;
+    if (params->nDims == 2) eType = 9;
+    else                    eType = 12;
     dataFile << "				<DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">" << endl;
     for(int k=0; k<nSubCells; k++) {
       dataFile << eType << " ";
@@ -503,4 +505,115 @@ void writeResidual(solver *Solver, input *params)
       cout << setw(colW) << left << params->dt;
     cout << endl;
   }
+}
+
+void writeMeshTecplot(solver* Solver, input* params)
+{
+  if (params->nDims == 2) return;
+
+  ofstream dataFile;
+
+  char fileNameC[100];
+  string fileName = params->dataFileName;
+
+  geo* Geo = Solver->Geo;
+
+#ifndef _NO_MPI
+  /* --- All processors write their solution to their own .vtu file --- */
+  sprintf(fileNameC,"%s_/%s_%d.plt",&fileName[0],&fileName[0],params->rank);
+#else
+  /* --- Filename to write to --- */
+  sprintf(fileNameC,"%s_.plt",&fileName[0],iter);
+#endif
+
+  if (params->rank == 0)
+    cout << "Writing Tecplot mesh file " << string(fileNameC) << "...  " << flush;
+
+#ifndef _NO_MPI
+  /* --- Write folder for output mesh files --- */
+  if (params->rank == 0) {
+
+    char datadirC[100];
+    char *datadir = &datadirC[0];
+    sprintf(datadirC,"%s",&fileName[0]);
+
+    /* --- Master node creates a subdirectory to store .vtu files --- */
+    if (params->rank == 0) {
+      struct stat st = {0};
+      if (stat(datadir, &st) == -1) {
+        mkdir(datadir, 0755);
+      }
+    }
+  }
+
+  /* --- Wait for all processes to get here, otherwise there won't be a
+   *     directory to put .vtus into --- */
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+  dataFile.open(fileNameC);
+  dataFile.precision(16);
+
+  // Count wall-boundary nodes
+  int ib = 0;
+  int nNodesWall=0;
+  for (auto& bc:Geo->bcList) {
+    if (bc == SLIP_WALL || bc == ISOTHERMAL_NOSLIP || bc == ADIABATIC_NOSLIP)
+      nNodesWall += Geo->nBndPts[ib];
+    ib++;
+  }
+
+  // Count overset-boundary nodes
+  ib = 0;
+  int nNodesOver=0;
+  for (auto& bc:Geo->bcList) {
+    if (bc == OVERSET)
+      nNodesOver += Geo->nBndPts[ib];
+    ib++;
+  }
+
+  int gridID = 1;
+
+  int nPrism = 0;
+  int nNodes = Solver->Geo->nVerts;
+  int nCells = Solver->Geo->nEles;
+  int nHex = nCells;
+
+  dataFile << "# " << nPrism << " " << nHex << " " << nNodes << " " << nCells << " " << nNodesWall << " " << nNodesOver << endl;
+  dataFile << "TITLE = \"" << fileName << "\"" << endl;
+  dataFile << "VARIABLES = \"X\", \"Y\", \"Z\", \"bodyTag\"" << endl;
+  dataFile << "ZONE T = \"VOL_MIXED\", N=" << nNodes << ", E=" << nCells << ", ET=BRICK, F=FEPOINT" << endl;
+
+  for (int iv=0; iv<nNodes; iv++) {
+    dataFile << Geo->xv[iv].x << " " << Geo->xv[iv].x << " " << Geo->xv[iv].z << " " << gridID << endl;
+  }
+
+  for (int ic=0; ic<nCells; ic++) {
+    for (int j=0; j<8; j++) {
+      dataFile << Geo->c2v(ic,j) << " ";
+    }
+    dataFile << endl;
+  }
+
+  // output wall-boundary node IDs
+  ib = 0;
+  for (auto& bc:Geo->bcList) {
+    if (bc == SLIP_WALL || bc == ISOTHERMAL_NOSLIP || bc == ADIABATIC_NOSLIP) {
+      for (int iv=0; iv<Geo->nBndPts[ib]; iv++)
+        dataFile << Geo->bndPts(ib,iv) << endl;
+    }
+    ib++;
+  }
+
+  // output overset-boundary node IDs
+  ib = 0;
+  for (auto& bc:Geo->bcList) {
+    if (bc == OVERSET) {
+      for (int iv=0; iv<Geo->nBndPts[ib]; iv++)
+        dataFile << Geo->bndPts(ib,iv) << endl;
+    }
+    ib++;
+  }
+
+  dataFile.close();
 }

@@ -1,0 +1,36 @@
+TIOGA - Topology Independent Overset Grid Assmebler
+
+Functionality:
+--------------
+
+TIOGA can perform overset grid connectivity in 3-D between
+multiple unstructured (or structured) meshes that are in a distributed
+computing environment, i.e. each mesh is partitioned in to multiple
+parts.
+
+Limitations:
+------------
+
+(1) Each process must own only one partition
+(2) Each partition should be homogeneous, i.e it should have parts of
+    only one of the meshes
+
+Authored by Jay Sitaraman 
+jsitaraman@gmail.com
+(301) 741 3216
+
+Notes:
+------
+
+TIOGA has unrestricted access to anyone since it was developed in the personal
+time of the author. It is expected to serve as an academic/research 
+counterpart for PUNDIT (which is the product of the CREATE A/V program
+and is export controlled). TIOGA has a subset of the functionality of 
+PUNDIT and is about 3x slower owing to the use of Alternating Digital Tree (ADT)
+searches as the baseline point-location algorithm in places of the exact-inverse
+map strategy used in PUNDIT.
+
+TIOGA has options to perform fully consistent high-order connectivity using
+call-back functions supplied by the the high-order code that are capable of doing
+inclusion tests and basis-consistent interpolation given [r,s,t] location. 
+See AIAA paper  arc.aiaa.org/doi/pdf/10.2514/6.2015-1739 for details

@@ -44,6 +44,7 @@ void setGlobalVariables(void) {
   bcStr2Num["slip_wall"] = SLIP_WALL;
   bcStr2Num["isothermal_noslip"] = ISOTHERMAL_NOSLIP;
   bcStr2Num["adiabatic_noslip"] = ADIABATIC_NOSLIP;
+  bcStr2Num["overset"] = OVERSET;
 }
 
 
