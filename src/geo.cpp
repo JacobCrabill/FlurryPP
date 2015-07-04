@@ -413,7 +413,7 @@ void geo::matchMPIFaces(void)
       if (nDims == 3) {
         // Get cell ID & cell-local face ID for face-rotation mapping
         mpiCells.push_back(ic2icg[f2c(bndFaces[i],0)]);
-        auto cellFaces = c2f.getRow(bndFaces[i]);
+        auto cellFaces = c2f.getRow(f2c(bndFaces[i],0));
         int fid = findFirst(cellFaces,bndFaces[i]);
         mpiLocF.push_back(fid);
       }
@@ -468,8 +468,10 @@ void geo::matchMPIFaces(void)
   // Find out what processor each face is adjacent to
   procR.resize(nMpiFaces);
   locF_R.resize(nMpiFaces);
-  if (nDims == 3)
+  if (nDims == 3) {
     gIC_R.resize(nMpiFaces);
+    mpiLocF_R.resize(nMpiFaces);
+  }
   for (auto &P:procR) P = -1;
 
   vector<int> tmpFace(maxNodesPerFace);
@@ -616,8 +618,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
         if (nDims == 3) {
           // Find the relative orientation (rotation) between left & right faces
           int fid2 = mpiLocF_R[i];
-          relRot = compareOrientationMPI(mpiCells[i],fid1,gIC_R[i],fid2);
-          cout << "relRot = " << relRot << endl;
+          relRot = compareOrientationMPI(ic,fid1,gIC_R[i],fid2);
         }
         mpiFacesVec[i]->initialize(&eles[f2c(ff,0)],NULL,fid1,{locF_R[i],relRot,params->rank,procR[i]},i,params);
       }
@@ -1543,7 +1544,7 @@ int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2)
 
   vector<int> tmpFace1(nv), tmpFace2(nv);
 
-  switch (ctype_g[ic1]) {
+  switch (ctype[ic1]) {
     case HEX:
       // Flux points arranged in 2D grid on each face oriented with each
       // dimension increasing in its +'ve direction ['btm-left' to 'top-right']
@@ -1551,45 +1552,45 @@ int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2)
       switch (f1) {
         case 0:
           // Bottom face  (z = -1)
-          tmpFace1[0] = c2v_g(ic1,0);
-          tmpFace1[1] = c2v_g(ic1,1);
-          tmpFace1[2] = c2v_g(ic1,2);
-          tmpFace1[3] = c2v_g(ic1,3);
+          tmpFace1[0] = c2v(ic1,0);
+          tmpFace1[1] = c2v(ic1,1);
+          tmpFace1[2] = c2v(ic1,2);
+          tmpFace1[3] = c2v(ic1,3);
           break;
         case 1:
           // Top face  (z = +1)
-          tmpFace1[0] = c2v_g(ic1,5);
-          tmpFace1[1] = c2v_g(ic1,4);
-          tmpFace1[2] = c2v_g(ic1,7);
-          tmpFace1[3] = c2v_g(ic1,6);
+          tmpFace1[0] = c2v(ic1,5);
+          tmpFace1[1] = c2v(ic1,4);
+          tmpFace1[2] = c2v(ic1,7);
+          tmpFace1[3] = c2v(ic1,6);
           break;
         case 2:
           // Left face  (x = -1)
-          tmpFace1[0] = c2v_g(ic1,0);
-          tmpFace1[1] = c2v_g(ic1,3);
-          tmpFace1[2] = c2v_g(ic1,7);
-          tmpFace1[3] = c2v_g(ic1,4);
+          tmpFace1[0] = c2v(ic1,0);
+          tmpFace1[1] = c2v(ic1,3);
+          tmpFace1[2] = c2v(ic1,7);
+          tmpFace1[3] = c2v(ic1,4);
           break;
         case 3:
           // Right face  (x = +1)
-          tmpFace1[0] = c2v_g(ic1,2);
-          tmpFace1[1] = c2v_g(ic1,1);
-          tmpFace1[2] = c2v_g(ic1,5);
-          tmpFace1[3] = c2v_g(ic1,6);
+          tmpFace1[0] = c2v(ic1,2);
+          tmpFace1[1] = c2v(ic1,1);
+          tmpFace1[2] = c2v(ic1,5);
+          tmpFace1[3] = c2v(ic1,6);
           break;
         case 4:
           // Front face  (y = -1)
-          tmpFace1[0] = c2v_g(ic1,1);
-          tmpFace1[1] = c2v_g(ic1,0);
-          tmpFace1[2] = c2v_g(ic1,4);
-          tmpFace1[3] = c2v_g(ic1,5);
+          tmpFace1[0] = c2v(ic1,1);
+          tmpFace1[1] = c2v(ic1,0);
+          tmpFace1[2] = c2v(ic1,4);
+          tmpFace1[3] = c2v(ic1,5);
           break;
         case 5:
           // Back face  (y = +1)
-          tmpFace1[0] = c2v_g(ic1,3);
-          tmpFace1[1] = c2v_g(ic1,2);
-          tmpFace1[2] = c2v_g(ic1,6);
-          tmpFace1[3] = c2v_g(ic1,7);
+          tmpFace1[0] = c2v(ic1,3);
+          tmpFace1[1] = c2v(ic1,2);
+          tmpFace1[2] = c2v(ic1,6);
+          tmpFace1[3] = c2v(ic1,7);
           break;
       }
       break;
@@ -1653,10 +1654,10 @@ int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2)
   }
 
   // Now, compare the two faces to see the relative orientation [rotation]
-  if      (tmpFace1[0] == tmpFace2[0]) return 0;
-  else if (tmpFace1[1] == tmpFace2[0]) return 1;
-  else if (tmpFace1[2] == tmpFace2[0]) return 2;
-  else if (tmpFace1[3] == tmpFace2[0]) return 3;
+  if      (iv2ivg[tmpFace1[0]] == tmpFace2[0]) return 0;
+  else if (iv2ivg[tmpFace1[1]] == tmpFace2[0]) return 1;
+  else if (iv2ivg[tmpFace1[2]] == tmpFace2[0]) return 2;
+  else if (iv2ivg[tmpFace1[3]] == tmpFace2[0]) return 3;
   else FatalError("MPI faces improperly matched.");
 
 }

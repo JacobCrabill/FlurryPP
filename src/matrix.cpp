@@ -110,8 +110,8 @@ T& matrix<T>::operator()(int i, int j)
     return data[i*dim1+j];
   }
   else {
+    cout << "i = " << i << ", dim0 = " << dim0 << ", j = " << j << ", dim1 = " << dim1 << endl;
     FatalError("Attempted out-of-bounds access in matrix.");
-    return data[i*dim1+j];
   }
 }
 

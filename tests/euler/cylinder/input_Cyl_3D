@@ -5,12 +5,14 @@ equation      1    (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
 order         2    (Polynomial order to use)
 timeType      4    (0: Forward Euler, 4: RK44)
 dtType        1    (0: Fixed, 1: CFL-based)
-CFL           .5
+CFL           .7
 dt            .005
+iterMax       10000       
 
 viscous       0   (0: Inviscid, 1: Viscous)
 motion        0   (0: Static, 1: Perturbation test case)
 riemann_type  0   (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
+test_case     0
 
 # =============================================================
 # Physics Parameters
@@ -27,17 +29,15 @@ diffD        .1   (Diffusion Coefficient)
 # =============================================================
 #   Advection: 0-Gaussian,     1-u=x+y+z test case,  2-u=cos(x)*cos(y)*cos(z) test case
 #   N-S:       0-Uniform flow, 1-Uniform+Vortex
-ic_type       1
-test_case     0
-iterMax       2000
+ic_type       0
 
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plot_freq         100       (Frequency to write plot files)
-monitor_res_freq  10       (Frequency to print residual to terminal)
+plot_freq         2000      (Frequency to write plot files)
+monitor_res_freq  200       (Frequency to print residual to terminal)
 resType           2         (1: 1-norm, 2: 2-norm, 3: Inf-norm)
-dataFileName      Test3Da    (Filename prefix for output files)
+dataFileName      Cylinder3D    (Filename prefix for output files)
 entropySensor     0         (Calculate & plot entropy-error sensor)
 
 # =============================================================
@@ -45,44 +45,32 @@ entropySensor     0         (Calculate & plot entropy-error sensor)
 # =============================================================
 # mesh_type - 0: Read mesh, 1: Create mesh
 mesh_type     0
-mesh_file_name   HexBox_10x10x10.msh
-periodicDX    20
-periodicDY    20
-periodicDZ    20
+mesh_file_name   cylinder_extrude_3D.msh
+periodicDX    99
+periodicDY    99
+periodicDZ    99
 
 # The following parameters are only needed when creating a mesh:
-nDims         3
-nx            10
-ny            2
-nz            10
-xmin          -10
-xmax          10
-ymin          -10
-ymax          10
-zmin          0
-zmax          1
+# nDims, nx, ny, nz, xmin, xmax, etc.
 
 # =============================================================
 # Boundary Conditions
 # =============================================================
 # For creating a cartesian mesh, boundary condition to apply to each face
 # (default is periodic)
-create_bcTop     sup_in
-create_bcBottom  slip_wall
-create_bcLeft    sup_in
-create_bcRight   sup_out
-create_bcFront   slip_wall
-create_bcBack    slip_wall
+#create_bcTop     sup_in
+#create_bcBottom  slip_wall  ... etc.
 
 # Gmsh Boundary Conditions
 # List each Gmsh boundary:  'mesh_bound <Gmsh_Physical_Name> <Flurry_BC>'
 # i.e. mesh_bound  airfoil  slip_wall
-mesh_bound   bottom   periodic
-mesh_bound   top      periodic
-mesh_bound   left     periodic
-mesh_bound   right    periodic
-mesh_bound   front    periodic
-mesh_bound   back     periodic
+mesh_bound   bottom   char
+mesh_bound   top      char
+mesh_bound   left     char
+mesh_bound   right    char
+mesh_bound   front    slip_wall
+mesh_bound   back     slip_wall
+mesh_bound   wall     slip_wall
 mesh_bound   fluid    fluid
 
 # =============================================================
@@ -103,3 +91,13 @@ TBound  300
 nxBound   1
 nyBound   0
 nzBound   0
+
+# =============================================================
+# Numerics Options
+# =============================================================
+# Other FR-method parameters
+spts_type_quad  Legendre
+
+# Shock Capturing Parameters
+shockCapture 0
+threshold .1

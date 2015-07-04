@@ -25,6 +25,7 @@ resType       3
 # Plotting/Output Parameters
 plot_freq     100
 monitor_res_freq  100
+dataFileName      Cylinder2D
 
 # mesh_type - 0: Read mesh, 1: Create mesh
 mesh_type     0

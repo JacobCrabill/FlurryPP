@@ -2,8 +2,7 @@
 # Basic Options
 # =============================================================
 equation      1    (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
-order         2    (Polynomial order to use)
-timeType      4    (0: Forward Euler, 4: RK44)
+order         4    (Polynomial order to use)
 dtType        1    (0: Fixed, 1: CFL-based)
 CFL           .5
 dt            .005
@@ -35,31 +34,27 @@ iterMax       2000
 # Plotting/Output Options
 # =============================================================
 plot_freq         100       (Frequency to write plot files)
-monitor_res_freq  10       (Frequency to print residual to terminal)
+monitor_res_freq  10        (Frequency to print residual to terminal)
 resType           2         (1: 1-norm, 2: 2-norm, 3: Inf-norm)
-dataFileName      Test3Da    (Filename prefix for output files)
+dataFileName      Vortex3D  (Filename prefix for output files)
 entropySensor     0         (Calculate & plot entropy-error sensor)
 
 # =============================================================
 # Mesh Options
 # =============================================================
 # mesh_type - 0: Read mesh, 1: Create mesh
-mesh_type     0
-mesh_file_name   HexBox_10x10x10.msh
-periodicDX    20
-periodicDY    20
-periodicDZ    20
+mesh_type     1
 
 # The following parameters are only needed when creating a mesh:
 nDims         3
-nx            10
-ny            2
-nz            10
+nx            15
+ny            15
+nz            2
 xmin          -10
 xmax          10
 ymin          -10
 ymax          10
-zmin          0
+zmin          -1
 zmax          1
 
 # =============================================================
@@ -67,23 +62,12 @@ zmax          1
 # =============================================================
 # For creating a cartesian mesh, boundary condition to apply to each face
 # (default is periodic)
-create_bcTop     sup_in
-create_bcBottom  slip_wall
-create_bcLeft    sup_in
-create_bcRight   sup_out
-create_bcFront   slip_wall
-create_bcBack    slip_wall
-
-# Gmsh Boundary Conditions
-# List each Gmsh boundary:  'mesh_bound <Gmsh_Physical_Name> <Flurry_BC>'
-# i.e. mesh_bound  airfoil  slip_wall
-mesh_bound   bottom   periodic
-mesh_bound   top      periodic
-mesh_bound   left     periodic
-mesh_bound   right    periodic
-mesh_bound   front    periodic
-mesh_bound   back     periodic
-mesh_bound   fluid    fluid
+#create_bcTop     sup_in
+#create_bcBottom  slip_wall
+#create_bcLeft    sup_in
+#create_bcRight   sup_out
+#create_bcFront   periodic
+#create_bcBack    periodic
 
 # =============================================================
 # Freestream Boundary Conditions [for all freestream/inlet-type boundaries]

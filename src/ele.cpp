@@ -1389,13 +1389,19 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
   str2.erase(ind,1);
   ss.str(""); ss.clear();
   ss.str(str2);
-  ss >> nCells;
+  ss >> nCells;  // this nCells is the number of plotting sub-cells within an actual element
 
-  /* !!!! This will take some more thought once I go 3D or add (real) triangles.  !!!! */
-  nDims = 2;
-  order = sqrt(nCells) - 2;
-  nSpts = (order+1)*(order+1);
-  nFpts = 4*(order+1);
+  nDims = params->nDims;
+  if (nDims == 2) {
+    order = sqrt(nCells) - 2;
+    nSpts = (order+1)*(order+1);
+    nFpts = 4*(order+1);
+  }
+  else if (nDims == 3) {
+    order = cbrt(nCells) - 2;
+    nSpts = (order+1)*(order+1)*(order+1);
+    nFpts = 4*(order+1)*(order+1);
+  }
 
   loc_spts = Geo->getLocSpts(eType,order);
   loc_fpts = Geo->getLocFpts(eType,order);
@@ -1496,7 +1502,7 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
         ss >> tmp;
       }
     }
-    else if (str1.compare("EntropyErr")==0) {
+    else if (str1.compare("EntropyErr")==0 && params->calcEntropySensor) {
       double tmp;
       // Skip the data at the mesh nodes and flux points along 'bottom' edge
       for (int i=0; i<2+(order+1); i++) {

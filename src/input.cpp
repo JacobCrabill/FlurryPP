@@ -277,7 +277,7 @@ void input::readInputFile(char *filename)
     }
   }
 
-  opts.getScalarValue("timeType",timeType,0);
+  opts.getScalarValue("timeType",timeType,4);
   opts.getScalarValue("dtType",dtType,0);
   if (dtType == 1)
     opts.getScalarValue("CFL",CFL);

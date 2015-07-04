@@ -28,7 +28,7 @@ CXX_RELEASE = -O3
 CXXFLAGS_RELEASE = $(CXX_BASE) $(CXX_RELEASE) -Wno-unknown-pragmas -D_NO_MPI $(DEFINES)
 CXXFLAGS_DEBUG   = $(CXX_BASE) $(CXX_DEBUG) -Wno-unknown-pragmas -D_NO_MPI $(DEFINES)
 CXXFLAGS_OPENMP  = $(CXX_BASE) $(CXX_RELEASE) -fopenmp -D_NO_MPI $(DEFINES)
-CXXFLAGS_MPI     = $(CXX_BASE) $(DEFINES) -Wno-unknown-pragmas
+CXXFLAGS_MPI     = $(CXX_BASE) $(DEFINES) -Wno-unknown-pragmas -Wno-literal-suffix -Wno-missing-field-initializers
 CXXFLAGS_MPI    += -I$(METIS_INC_DIR) -I$(MPI_INC_DIR)
 CXXFLAGS_MPI    += -L$(METIS_LIB_DIR)
 
