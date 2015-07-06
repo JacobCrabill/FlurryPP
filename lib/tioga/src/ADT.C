@@ -20,89 +20,97 @@ void ADT::buildADT(int d, int nelements,double *elementBbox)
   int adtCount,parent,level,nav;
   int side;    
   double tolerance,delta;
-  FILE *fp,*fp1;
-  //
+
   /* set dimensions and number of elements */
-  //
+
   ndim=d;
   nelem=nelements;
+
   /* set element bbox pointer */
+
   coord=elementBbox;  
+
   /*
    * Allocate work arrays
    */
+
   elementsAvailable=(int *) malloc(sizeof(int)*nelem);
   adtWork=(double *) malloc(sizeof(double)*nelem);
+
   /*
    * Allocate arrays in the class
    */
+
   if (adtExtents) free(adtExtents);
   adtExtents=(double *) malloc(sizeof(double)*ndim);
   if (adtIntegers) free(adtIntegers);
   adtIntegers=(int *) malloc(sizeof(int)*4*nelem);
   if (adtReals) free(adtReals);
   adtReals=(double *) malloc(sizeof(double)*nelem*ndim);
+
   /*
    * Determine extent of elements
    */
+
   for(i=0;i<ndim/2;i++)
+  {
+    i2=2*i;
+    adtExtents[i2]=BIGVALUE;
+    adtExtents[i2+1]=-BIGVALUE;
+  }
+  for(j=0;j<nelem;j++)
+  {
+    j6=6*j;
+    for(i=0;i<ndim/2;i++)
     {
       i2=2*i;
-      adtExtents[i2]=BIGVALUE;
-      adtExtents[i2+1]=-BIGVALUE;
-   }
-  for(j=0;j<nelem;j++)
-   {
-     j6=6*j;	 
-     for(i=0;i<ndim/2;i++)
-       {
-	 i2=2*i;
-	 adtExtents[i2]=min(adtExtents[i2],coord[j6+i]);
-       }
-       for(i=0;i<ndim/2;i++)
-       {
-	 i2=2*i+1;
-	 adtExtents[i2]=max(adtExtents[i2],coord[j6+i+ndim/2]);
-       }
-   }
-  //
+      adtExtents[i2]=min(adtExtents[i2],coord[j6+i]);
+    }
+    for(i=0;i<ndim/2;i++)
+    {
+      i2=2*i+1;
+      adtExtents[i2]=max(adtExtents[i2],coord[j6+i+ndim/2]);
+    }
+  }
+
   // make the extents 1% larger
-  //
+
   tolerance=0.01;
   for(i=0;i<ndim/2;i++)
-    {
-      i2=2*i;
-      delta=tolerance*(adtExtents[i2+1]-adtExtents[i2]);
-      adtExtents[i2]-=delta;
-      adtExtents[i2+1]+=delta;
-    }
-  //
+  {
+    i2=2*i;
+    delta=tolerance*(adtExtents[i2+1]-adtExtents[i2]);
+    adtExtents[i2]-=delta;
+    adtExtents[i2+1]+=delta;
+  }
+
   // Build ADT using a recursive process now
-  //
+
   for(i=0;i<nelem;i++)
     elementsAvailable[i]=i;
-  //
+
   // set initialvalues
-  //
+
   adtCount=-1;
   side=0;
   parent=0;
   level=0;
   nav=nelem;
-  //
+
   buildADTrecursion(coord,adtReals,adtWork,adtIntegers,elementsAvailable,
-		    &adtCount,side,parent,level,ndim,nelem,nav);
+                    &adtCount,side,parent,level,ndim,nelem,nav);
   //tracei(adtCount);
-  //
+
   // create Inverse map
-  //
-  //fp=fopen("adtReals.dat","w");
-  //fp1=fopen("adtInts.dat","w");
+
+  //FILE* fp=fopen("adtReals.dat","w");
+  //FILE* fp1=fopen("adtInts.dat","w");
   for(i=0;i<nelem;i++)
-    {
-      i4=4*adtIntegers[4*i];
-      adtIntegers[i4+3]=i;
-    }
+  {
+    i4=4*adtIntegers[4*i];
+    adtIntegers[i4+3]=i;
+  }
+
   //for(i=0;i<nelem;i++)
   // {
   //   fprintf(fp,"%.8e %.8e %.8e %.8e %.8e %.8e\n",adtReals[6*i],adtReals[6*i+1],adtReals[6*i+2],adtReals[6*i+3],
@@ -111,6 +119,7 @@ void ADT::buildADT(int d, int nelements,double *elementBbox)
   // }
   //fclose(fp);
   //fclose(fp1);
+
   free(elementsAvailable);
   free(adtWork);
 }
