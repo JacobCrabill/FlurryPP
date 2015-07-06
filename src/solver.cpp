@@ -527,19 +527,24 @@ void solver::readRestartFile(void) {
 
   dataFile.close();
 
+  if (params->rank==0) cout << "Solver: Done reading restart file." << endl;
+
   // Setup all transformations and other geometry-related arrays
+  if (params->rank==0) cout << "Ele: Setting up all element geometry data." << endl;
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].setupAllGeometry();
   }
 
   // Finish setting up internal faces
+  if (params->rank==0) cout << "Face: Setting up all face data." << endl;
 #pragma omp parallel for
   for (uint i=0; i<faces.size(); i++) {
     faces[i]->setupFace();
   }
 
   // Finish setting up MPI faces
+  if (params->rank==0 && params->nproc>1) cout << "MPIFace: Setting up MPI face communications." << endl;
 #pragma omp parallel for
   for (uint i=0; i<mpiFaces.size(); i++) {
     mpiFaces[i]->setupFace();

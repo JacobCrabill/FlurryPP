@@ -422,8 +422,6 @@ void geo::matchMPIFaces(void)
   }
   nMpiFaces = mpiFaces.size();
 
-  cout << "nMpiFaces = " << nMpiFaces << endl;
-
   // Clean up the bcType and bndEdges arrays now that it's safe to do so [remove mpiFaces from them]
   bndFaces.erase(std::remove(bndFaces.begin(), bndFaces.end(), -1), bndFaces.end());
   bcType.erase(std::remove(bcType.begin(), bcType.end(), -1), bcType.end());
