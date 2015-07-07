@@ -58,7 +58,7 @@ enum ETYPE {
 };
 
 /*! Enumeration for mesh (either create cartesian mesh or read from file) */
-enum MESH_TYPE {
+enum meshType {
   READ_MESH   = 0,
   CREATE_MESH = 1
 };

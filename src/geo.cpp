@@ -43,7 +43,7 @@ void geo::setup(input* params)
 {
   this->params = params;
 
-  switch(params->mesh_type) {
+  switch(params->meshType) {
     case (READ_MESH):
       readGmsh(params->meshFileName);
       break;

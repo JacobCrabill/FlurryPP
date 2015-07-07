@@ -607,7 +607,7 @@ void ele::setInitialCondition()
     double rho, vx, vy, vz, p;
     double gamma = params->gamma;
 
-    if (params->ic_type == 0) {
+    if (params->icType == 0) {
       /* --- Uniform "Freestream" solution --- */
       rho = params->rhoIC;
       vx = params->vxIC;
@@ -626,7 +626,7 @@ void ele::setInitialCondition()
         U_spts(spt,nDims+1) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy + vz*vz));
       }
     }
-    else if (params->ic_type == 1) {
+    else if (params->icType == 1) {
       /* --- Isentropic Vortex of strength eps centered at (0,0) --- */
       double eps = 5.0;
       for (int spt=0; spt<nSpts; spt++) {        
@@ -647,7 +647,7 @@ void ele::setInitialCondition()
         U_spts(spt,nDims+1) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
       }
     }
-    else if (params->ic_type == 2) {
+    else if (params->icType == 2) {
       /* --- Isentropic Vortex of strength eps centered at (0,0) (Liang version) --- */
       double eps = 1.0;  // See paper by Liang and Miyaji, CPR Deforming Domains
       double rc  = 1.0;
@@ -679,20 +679,20 @@ void ele::setInitialCondition()
     }
   }
   else if (params->equation == ADVECTION_DIFFUSION) {
-    if (params->ic_type == 0) {
+    if (params->icType == 0) {
       /* --- Simple Gaussian bump centered at (0,0) --- */
       for (int spt=0; spt<nSpts; spt++) {
         double r2 = pos_spts[spt]*pos_spts[spt];
         U_spts(spt,0) = exp(-r2);
       }
     }
-    else if (params->ic_type == 1) {
+    else if (params->icType == 1) {
       /* --- Test case for debugging - linear solution x+y+z over domain --- */
       for (int spt=0; spt<nSpts; spt++) {
         U_spts(spt,0) = pos_spts[spt].x + pos_spts[spt].y + pos_spts[spt].z;
       }
     }
-    else if (params->ic_type == 2) {
+    else if (params->icType == 2) {
       /* --- Test case for debugging - cos(x)*cos(y)*cos(z) over domain --- */
       for (int spt=0; spt<nSpts; spt++)
         U_spts(spt,0) = cos(2*pi*pos_spts[spt].x/6.)*cos(2*pi*pos_spts[spt].y/6.)*cos(2*pi*pos_spts[spt].z/6.);
