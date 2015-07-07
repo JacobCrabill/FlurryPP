@@ -173,13 +173,14 @@ public:
 
   /* --- Mesh Parameters --- */
   string meshFileName;
+  vector<string> oversetGrids;
   int mesh_type;
   int nx, ny, nz;
+  int nGrids;
   double xmin, xmax, ymin, ymax, zmin, zmax;
   double periodicTol, periodicDX, periodicDY, periodicDZ;
   string create_bcTop, create_bcBottom, create_bcLeft;
   string create_bcRight, create_bcFront, create_bcBack; //! BC's to apply to Flurry-created mesh
-  //map<string,int> bcNum;
   map<string,string> meshBounds;
 
   /* --- FR Parameters --- */

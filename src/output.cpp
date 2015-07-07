@@ -585,7 +585,7 @@ void writeMeshTecplot(solver* Solver, input* params)
   dataFile << "ZONE T = \"VOL_MIXED\", N=" << nNodes << ", E=" << nCells << ", ET=BRICK, F=FEPOINT" << endl;
 
   for (int iv=0; iv<nNodes; iv++) {
-    dataFile << Geo->xv[iv].x << " " << Geo->xv[iv].x << " " << Geo->xv[iv].z << " " << gridID << endl;
+    dataFile << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " " << Geo->xv(iv,2) << " " << gridID << endl;
   }
 
   for (int ic=0; ic<nCells; ic++) {

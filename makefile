@@ -20,6 +20,9 @@ METIS_INC_DIR = /usr/local/include/
 # Location of mpi.h 
 MPI_INC_DIR   = /usr/lib/openmpi/include
 
+# Location of libtioga.a
+TIOGA_LIB   = ./lib/tioga/src/libtioga.a
+
 CXX_BASE    = -pipe -Wall -W -std=c++11 $(DEFINES)
 CXX_STD     = -g -02
 CXX_DEBUG   = -g -pg -O0
@@ -104,14 +107,14 @@ openmp: $(TARGET)
 mpi: CXX=$(MPICXX)
 mpi: LINK=$(MPILD)
 mpi: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_RELEASE)
-mpi: LIBS+= -lmetis
+mpi: LIBS+= -lmetis $(TIOGA_LIB)
 mpi: $(TARGET)
 
 .PHONY: mpidebug
 mpidebug: CXX=$(MPICXX)
 mpidebug: LINK=$(MPILD)
 mpidebug: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_DEBUG)
-mpidebug: LIBS+= -lmetis
+mpidebug: LIBS+= -lmetis $(TIOGA_LIB)
 mpidebug: $(TARGET)
 
 ####### Compile

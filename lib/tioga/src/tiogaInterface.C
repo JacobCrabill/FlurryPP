@@ -105,7 +105,7 @@ extern "C" {
       tg->dataUpdate_highorder(*nvar,q,interptype);
     }
   }
-  void tioga_writeoutputfiles_(double* q,int* nvar,char* itype)
+  void tioga_writeoutputfiles_old_(double* q,int* nvar,char* itype)
   {
     char itypeC[4] = {itype[0],itype[1],itype[2],'\0'};
     int interptype;
@@ -124,6 +124,19 @@ extern "C" {
     }
     tg->writeData(*nvar,q,interptype);
   }
+
+  void tioga_writeoutputfiles_(double* q,int* nvar,int* itype)
+  {
+    int interptype = *itype;
+
+    if (interptype !=0 && interptype != 1)
+    {
+      printf("#tiogaInterface.C:dataupdate_:unknown data orientation %s\n",itype);
+      return;
+    }
+    tg->writeData(*nvar,q,interptype);
+  }
+
   void tioga_getdonorcount_(int* dcount,int* fcount)
   {
     tg->getDonorCount(dcount,fcount);

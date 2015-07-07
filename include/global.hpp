@@ -60,7 +60,8 @@ enum ETYPE {
 /*! Enumeration for mesh (either create cartesian mesh or read from file) */
 enum MESH_TYPE {
   READ_MESH   = 0,
-  CREATE_MESH = 1
+  CREATE_MESH = 1,
+  OVERSET_MESH = 2
 };
 
 enum EQUATION {
@@ -104,6 +105,12 @@ struct point
     z = 0;
   }
 
+  point(double* pt) {
+    x = pt[0];
+    y = pt[1];
+    z = pt[2];
+  }
+
   void zero() {
     x = 0;
     y = 0;
@@ -121,6 +128,14 @@ struct point
       default:
         FatalError("Invalid index for point struct.");
     }
+  }
+
+  point operator=(double* a) {
+    struct point pt;
+    pt.x = a[0];
+    pt.y = a[1];
+    pt.z = a[2];
+    return pt;
   }
 
   point operator-(point b) {
@@ -152,6 +167,20 @@ struct point
     z -= b.z;
     return *this;
   }
+
+    point& operator+=(double* b) {
+      x += b[0];
+      y += b[1];
+      z += b[2];
+      return *this;
+    }
+
+      point& operator-=(double* b) {
+      x -= b[0];
+      y -= b[1];
+      z -= b[2];
+      return *this;
+    }
 
   point& operator/=(double a) {
     x /= a;

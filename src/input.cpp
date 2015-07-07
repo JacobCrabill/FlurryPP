@@ -209,7 +209,7 @@ void fileReader::getVectorValue(string optName, vector<T> &opt)
 
       opt.resize(nVals);
       for (int i=0; i<nVals; i++) {
-        if (!ss >> opt[i]) {
+        if (!(ss >> opt[i])) {
           cerr << "WARNING: Unable to assign all values to vector option " << optName << endl;
           string errMsg = "Required option not set: " + optName;
           FatalError(errMsg.c_str())
@@ -334,8 +334,16 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("create_bcFront",create_bcFront,string("periodic"));
     opts.getScalarValue("create_bcBack",create_bcBack,string("periodic"));
   }
-  else if (mesh_type == READ_MESH) {
-    opts.getScalarValue("mesh_file_name",meshFileName);
+  else {
+    // Reading in the mesh in one form or another
+    if (mesh_type == READ_MESH) {
+      opts.getScalarValue("mesh_file_name",meshFileName);
+    }
+    else if (mesh_type == OVERSET_MESH) {
+      opts.getVectorValue("oversetGrids",oversetGrids);
+      nGrids = oversetGrids.size();
+    }
+
     // Get mesh boundaries, boundary conditions & convert to lowercase
     map<string,string> meshBndTmp;
     opts.getMap("mesh_bound",meshBndTmp);
@@ -347,6 +355,7 @@ void input::readInputFile(char *filename)
       meshBounds[tmp1] = tmp2;
     }
   }
+
   opts.getScalarValue("periodicDX",periodicDX,(double)INFINITY);
   opts.getScalarValue("periodicDY",periodicDY,(double)INFINITY);
   opts.getScalarValue("periodicDZ",periodicDZ,(double)INFINITY);

@@ -28,6 +28,7 @@
 #include "../include/intFace.hpp"
 #include "../include/boundFace.hpp"
 #include "../include/mpiFace.hpp"
+#include "../lib/tioga/src/tiogaInterface.h"
 
 #ifndef _NO_MPI
 #include "mpi.h"
@@ -43,13 +44,26 @@ void geo::setup(input* params)
 {
   this->params = params;
 
-  switch(params->mesh_type) {
-    case (READ_MESH):
+  meshType = params->mesh_type;
+  gridRank = params->rank;
+  nprocPerGrid = params->nproc;
+
+  switch(meshType) {
+    case READ_MESH:
       readGmsh(params->meshFileName);
       break;
 
-    case (CREATE_MESH):
+    case CREATE_MESH:
       createMesh();
+      break;
+
+    case OVERSET_MESH:
+      int ierr;
+      tioga_init_(&ierr);
+      // Find out which grid this process will be handling
+      nprocPerGrid = params->nproc/params->nGrids;
+      gridID = params->rank / nprocPerGrid;
+      readGmsh(params->oversetGrids[gridID]);
       break;
 
     default:
@@ -63,6 +77,10 @@ void geo::setup(input* params)
   processConnectivity();
 
   processPeriodicBoundaries();
+
+  if (meshType == OVERSET_MESH) {
+    setOversetConnectivity();
+  }
 }
 
 
@@ -398,12 +416,40 @@ void geo::processConn3D(void)
 
 }
 
+void geo::setOversetConnectivity(void)
+{
+  int nwall = iwall.size();
+  int nover = iover.size();
+  int ntypes = 1;           //! Number of element types in grid block
+  int nodesPerCell = 6;     //! Number of nodes per element for first element type
+
+  tioga_registergrid_data_(&gridID,&nVerts,xv.getData(),iblank.data(),&nwall,&nover,iwall.data(),iover.data(),&ntypes,&nodesPerCell,&nEles,c2v.getData());
+
+  tioga_preprocess_grids_();
+
+  tioga_performconnectivity_();
+
+  double* dummyU;
+  int nVars = 0;
+  int itype = 0;
+  tioga_writeoutputfiles_(dummyU,&nVars,&itype);
+}
+
 void geo::matchMPIFaces(void)
 {
 #ifndef _NO_MPI
   if (params->nproc <= 1) return;
 
-  if (params->rank == 0) cout << "Geo: Matching MPI faces" << endl;
+  if (params->rank == 0) {
+    if (meshType == OVERSET_MESH)
+      cout << "Geo: Grid block " << gridID << ": Matching MPI faces" << endl;
+    else
+      cout << "Geo: Matching MPI faces" << endl;
+  }
+
+  /* --- Split MPI Processes Based Upon gridID: Create MPI_Comm for each grid --- */
+  MPI_Comm gridComm;
+  MPI_Comm_split(MPI_COMM_WORLD, gridID, params->rank, &gridComm);
 
   // 1) Get a list of all the MPI faces on the processor
   // These will be all unassigned boundary faces (bcType == -1) - copy over to mpiEdges
@@ -440,25 +486,25 @@ void geo::matchMPIFaces(void)
   std::transform(mpiFaceNodes.getData(),mpiFaceNodes.getData()+mpiFaceNodes.getSize(),mpiFaceNodes.getData(), [=](int iv){return iv2ivg[iv];} );
 
   // Get the number of mpiFaces on each processor (for later communication)
-  vector<int> nMpiFaces_proc(params->nproc);
-  MPI_Allgather(&nMpiFaces,1,MPI_INT,nMpiFaces_proc.data(),1,MPI_INT,MPI_COMM_WORLD);
+  vector<int> nMpiFaces_proc(nprocPerGrid);
+  MPI_Allgather(&nMpiFaces,1,MPI_INT,nMpiFaces_proc.data(),1,MPI_INT,gridComm);
 
   // 2 for 2D, 4 for 3D; recall that we're treating all elements as being linear, as
   // the extra nodes for quadratic edges or faces are unimportant for determining connectivity
   int maxNodesPerFace = (nDims==2) ? 2 : 4;
   int maxNMpiFaces = getMax(nMpiFaces_proc);
-  matrix<int> mpiFaceNodes_proc(params->nproc,maxNMpiFaces*maxNodesPerFace);
-  matrix<int> mpiFptr_proc(params->nproc,maxNMpiFaces+1);
-  MPI_Allgather(mpiFaceNodes.getData(),mpiFaceNodes.getSize(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,MPI_COMM_WORLD);
-  MPI_Allgather(mpiFptr.data(),mpiFptr.size(),MPI_INT,mpiFptr_proc.getData(),maxNMpiFaces+1,MPI_INT,MPI_COMM_WORLD);
+  matrix<int> mpiFaceNodes_proc(nprocPerGrid,maxNMpiFaces*maxNodesPerFace);
+  matrix<int> mpiFptr_proc(nprocPerGrid,maxNMpiFaces+1);
+  MPI_Allgather(mpiFaceNodes.getData(),mpiFaceNodes.getSize(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,gridComm);
+  MPI_Allgather(mpiFptr.data(),mpiFptr.size(),MPI_INT,mpiFptr_proc.getData(),maxNMpiFaces+1,MPI_INT,gridComm);
 
   matrix<int> mpiCells_proc, mpiLocF_proc;
   if (nDims == 3) {
     // Needed for 3D face-matching (to find relRot)
-    mpiCells_proc.setup(params->nproc,maxNMpiFaces);
-    mpiLocF_proc.setup(params->nproc,maxNMpiFaces);
-    MPI_Allgather(mpiCells.data(),mpiCells.size(),MPI_INT,mpiCells_proc.getData(),maxNMpiFaces,MPI_INT,MPI_COMM_WORLD);
-    MPI_Allgather(mpiLocF.data(),mpiLocF.size(),MPI_INT,mpiLocF_proc.getData(),maxNMpiFaces,MPI_INT,MPI_COMM_WORLD);
+    mpiCells_proc.setup(nprocPerGrid,maxNMpiFaces);
+    mpiLocF_proc.setup(nprocPerGrid,maxNMpiFaces);
+    MPI_Allgather(mpiCells.data(),mpiCells.size(),MPI_INT,mpiCells_proc.getData(),maxNMpiFaces,MPI_INT,gridComm);
+    MPI_Allgather(mpiLocF.data(),mpiLocF.size(),MPI_INT,mpiLocF_proc.getData(),maxNMpiFaces,MPI_INT,gridComm);
   }
 
   // Now that we have each processor's boundary nodes, start matching faces
@@ -474,8 +520,8 @@ void geo::matchMPIFaces(void)
 
   vector<int> tmpFace(maxNodesPerFace);
   vector<int> myFace(maxNodesPerFace);
-  for (int p=0; p<params->nproc; p++) {
-    if (p == params->rank) continue;
+  for (int p=0; p<nprocPerGrid; p++) {
+    if (p == gridRank) continue;
 
     // Check all of the processor's faces to see if any match our faces
     for (int i=0; i<nMpiFaces_proc[p]; i++) {
@@ -511,6 +557,8 @@ void geo::matchMPIFaces(void)
     if (P==-1) FatalError("MPI face left unmatched!");
 
   if (params->rank == 0) cout << "Geo: All MPI faces matched!  nMpiFaces = " << nMpiFaces << endl;
+
+  MPI_Comm_free(&gridComm);
 #endif
 }
 
@@ -711,11 +759,11 @@ void geo::readGmsh(string fileName)
 
   uint iv;
   meshFile >> nVerts;
-  xv.resize(nVerts);
+  xv.setup(nVerts,nDims);
   getline(meshFile,str); // Clear end of line, just in case
 
   for (int i=0; i<nVerts; i++) {
-    meshFile >> iv >> xv[i].x >> xv[i].y >> xv[i].z;
+    meshFile >> iv >> xv(i,0) >> xv(i,1) >> xv(i,2);
   }
 
   /* --- Read Element Connectivity --- */
@@ -931,7 +979,7 @@ void geo::createMesh()
 
   if (nDims == 2) {
     nVerts = (nx+1)*(ny+1);
-    xv.resize(nVerts);
+    xv.setup(nVerts,nDims);
 
     c2nv.assign(nEles,4);
     c2nf.assign(nEles,4);
@@ -942,13 +990,11 @@ void geo::createMesh()
     c2v_tmp.assign(4,0);
 
     int nv = 0;
-    point pt;
 
     for (int i=0; i<ny+1; i++) {
       for (int j=0; j<nx+1; j++) {
-        pt.x = xmin + j*dx;
-        pt.y = ymin + i*dy;
-        xv[nv] = pt;
+        xv(nv,0) = xmin + j*dx;
+        xv(nv,1) = ymin + i*dy;
         nv++;
       }
     }
@@ -967,7 +1013,7 @@ void geo::createMesh()
   }
   else if (nDims == 3) {
     nVerts = (nx+1)*(ny+1)*(nz+1);
-    xv.resize(nVerts);
+    xv.setup(nVerts,nDims);
 
     c2nv.assign(nEles,8);
     c2nf.assign(nEles,6);
@@ -978,15 +1024,13 @@ void geo::createMesh()
     c2v_tmp.assign(8,0);
 
     int nv = 0;
-    point pt;
 
     for (int k=0; k<nz+1; k++) {
       for (int j=0; j<ny+1; j++) {
         for (int i=0; i<nx+1; i++) {
-          pt.x = xmin + i*dx;
-          pt.y = ymin + j*dy;
-          pt.z = zmin + k*dz;
-          xv[nv] = pt;
+          xv(nv,0) = xmin + i*dx;
+          xv(nv,1) = ymin + j*dy;
+          xv(nv,2) = zmin + k*dz;
           nv++;
         }
       }
@@ -1332,8 +1376,8 @@ bool geo::checkPeriodicFaces3D(vector<int> &face1, vector<int> &face2)
   // Calculate face normal & centriod for face 1
   Vec3 norm1;
   point c1;
-  vec1 = xv[face1[1]] - xv[face1[0]];
-  vec2 = xv[face1[2]] - xv[face1[0]];
+  vec1 = point(xv[face1[1]]) - point(xv[face1[0]]);
+  vec2 = point(xv[face1[2]]) - point(xv[face1[0]]);
   for (uint j=0; j<face1.size(); j++)
     c1 += xv[face1[j]];
   c1 /= face1.size();
@@ -1348,10 +1392,10 @@ bool geo::checkPeriodicFaces3D(vector<int> &face1, vector<int> &face2)
   // Calculate face normal & centroid for face 2
   Vec3 norm2;
   point c2;
-  vec1 = xv[face2[1]] - xv[face2[0]];
-  vec2 = xv[face2[2]] - xv[face2[0]];
+  vec1 = point(xv[face2[1]]) - point(xv[face2[0]]);
+  vec2 = point(xv[face2[2]]) - point(xv[face2[0]]);
   for (uint j=0; j<face2.size(); j++)
-    c2 += xv[face2[j]];
+    c2 += point(xv[face2[j]]);
   c2 /= face2.size();
   norm2[0] = vec1[1]*vec2[2] - vec1[2]*vec2[1];
   norm2[1] = vec1[2]*vec2[0] - vec1[0]*vec2[2];
@@ -1509,18 +1553,18 @@ int geo::compareOrientation(int ic1, int f1, int ic2, int f2)
   else if (tmpFace1[3] == tmpFace2[0]) return 3;
   else if (checkPeriodicFaces3D(tmpFace1,tmpFace2)) {
     point c1, c2;
-    for (auto iv:tmpFace1) c1 += xv[iv];
-    for (auto iv:tmpFace2) c2 += xv[iv];
+    for (auto iv:tmpFace1) c1 += point(xv[iv]);
+    for (auto iv:tmpFace2) c2 += point(xv[iv]);
     c1 /= tmpFace1.size();
     c2 /= tmpFace2.size();
     Vec3 fDist = c2 - c1;
     fDist /= sqrt(fDist*fDist); // Normalize
 
     point pt1;
-    point pt2 = xv[tmpFace2[0]];
+    point pt2 = point(xv[tmpFace2[0]]);
 
     for (int i=0; i<4; i++) {
-      pt1 = xv[tmpFace1[i]];
+      pt1 = point(xv[tmpFace1[i]]);
       Vec3 ptDist = pt2 - pt1;        // Vector between points
       ptDist /= sqrt(ptDist*ptDist); // Normalize
 
@@ -1670,8 +1714,19 @@ void geo::partitionMesh(void)
 
   if (nproc <= 1) return;
 
-  if (rank == 0) cout << "Geo: Partitioning mesh across " << nproc << " processes" << endl;
-  if (rank == 0) cout << "Geo:   Number of elements globally: " << nEles << endl;
+  if (meshType == OVERSET_MESH) {
+    if (nproc % params->nGrids != 0) FatalError("Expcting # of processes to be evenly divisible by # of grids.");
+    // Partitioning each grid independantly; local 'grid rank' is the important rank
+    gridRank = rank % nprocPerGrid;
+    rank = gridRank;
+    nproc = nprocPerGrid;
+    if (rank == 0) cout << "Geo: Partitioning mesh block " << gridID << " across " << nprocPerGrid << " processes" << endl;
+    if (rank == 0) cout << "Geo:   Number of elements in block " << gridID << " : " << nEles << endl;
+  }
+  else {
+    if (rank == 0) cout << "Geo: Partitioning mesh across " << nproc << " processes" << endl;
+    if (rank == 0) cout << "Geo:   Number of elements globally: " << nEles << endl;
+  }
 
   vector<idx_t> eptr(nEles+1);
   vector<idx_t> eind;
@@ -1715,7 +1770,7 @@ void geo::partitionMesh(void)
   nEles_g   = nEles;
   nVerts_g  = nVerts;
   c2v_g     = c2v;      c2v.setup(0,0);
-  xv_g      = xv;       xv.resize(0);
+  xv_g      = xv;       xv.setup(0,0);
   ctype_g   = ctype;    ctype.resize(0);
   c2nv_g    = c2nv;     c2nv.resize(0);
   c2ne_g    = c2nf;     c2nf.resize(0);
@@ -1752,7 +1807,7 @@ void geo::partitionMesh(void)
   // Transfer over all needed vertices to local array
   int nv = 0;
   for (auto &iv: myNodes) {
-    xv.push_back(xv_g[iv]);
+    xv.insertRow(xv_g.getRow(iv));
     iv2ivg.push_back(iv);
     ivg2iv[iv] = nv;
     nv++;
@@ -1789,7 +1844,10 @@ void geo::partitionMesh(void)
   // Lastly, update c2v and bndPts from global --> local node IDs
   std::transform(c2v.getData(),c2v.getData()+c2v.getSize(),c2v.getData(), [=](int ivg){return ivg2iv[ivg];});
 
-  cout << "Geo:   On rank " << rank << ": nEles = " << nEles << endl;
+  if (meshType == OVERSET_MESH)
+    cout << "Geo:   Grid block " << gridID << " on rank " << rank << ": nEles = " << nEles << endl;
+  else
+    cout << "Geo:   On rank " << rank << ": nEles = " << nEles << endl;
 
   if (rank == 0) cout << "Geo: Done partitioning mesh" << endl;
   MPI_Barrier(MPI_COMM_WORLD);

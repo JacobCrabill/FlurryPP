@@ -3,10 +3,12 @@
 #include<stdlib.h>
 #include<math.h>
 #include "mpi.h"
+
 /*====================================================================*/
 /*  Floating point definition                                         */
 /*====================================================================*/
 # define REAL double
+
 /*====================================================================*/
 /*  Base for indexing (0 or 1)
 /*====================================================================*/
@@ -31,6 +33,7 @@
 #define TOL                1.0e-10
 #define NFRINGE            3
 #define NVAR               6
+
 /*==================================================================*/
 /* inline debugging tools                                             */
 /*==================================================================*/
@@ -42,6 +45,7 @@
 # define stdwrite(x) if (myid==0) printf("#tioga:\t"#x"\n");
 # define dstr(x) printf("#tioga:\t"#x"\n");
 # define ditch(x,y) {dstr(x); tracei(y); MPI_Abort(MPI_COMM_WORLD,ierr);}
+
 /*====================================================================*/
 /*  Numerical Tools                                                   */
 /*====================================================================*/
@@ -56,6 +60,7 @@
 #define Round(aa)\
         (int) ((fabs((aa) - floor(aa)) >= HALF)? ceil(aa): floor(aa))
 #define swap(a,b) { a=a+b;b=a-b;a=a-b;}
+
 /*********************************************************************/
 /* Code specific types
 /*********************************************************************/
@@ -74,7 +79,8 @@ typedef struct OBB
   double xc[3];
   double dxc[3];
   double vec[3][3];
-}OBB;
+} OBB;
+
 typedef struct DONORLIST
 {
   int donorData[3];

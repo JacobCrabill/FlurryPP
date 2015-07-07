@@ -27,7 +27,7 @@ extern "C" {
 
   void tioga_dataupdate_(double* q,int* nvar,char* itype);
 
-  void tioga_writeoutputfiles_(double* q,int* nvar,char* itype);
+  void tioga_writeoutputfiles_(double* q, int* nvar, int* itype);
 
   void tioga_getdonorcount_(int* dcount,int* fcount);
 
