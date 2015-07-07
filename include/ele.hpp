@@ -134,6 +134,13 @@ public:
 
   point getPosFpt(uint spt);
 
+  /*! Find the reference location of a point inside an element given its
+   *  physical position */
+  point getRefLoc(const point &pos);
+
+  /*! Calculate Jacobian & Inverse Jacobian at a reference location in element */
+  void getInverseMapping(const point xi, matrix<double> &J, matrix<double> &Jinv);
+
   uint getNDims() const;
   void setNDims(int value);
 

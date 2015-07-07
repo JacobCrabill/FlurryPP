@@ -523,7 +523,7 @@ void writeMeshTecplot(solver* Solver, input* params)
   sprintf(fileNameC,"%s_/%s_%d.plt",&fileName[0],&fileName[0],params->rank);
 #else
   /* --- Filename to write to --- */
-  sprintf(fileNameC,"%s_.plt",&fileName[0],iter);
+  sprintf(fileNameC,"%s_.plt",&fileName[0]);
 #endif
 
   if (params->rank == 0)
