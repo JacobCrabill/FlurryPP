@@ -63,6 +63,7 @@ void geo::setup(input* params)
       // Find out which grid this process will be handling
       nprocPerGrid = params->nproc/params->nGrids;
       gridID = params->rank / nprocPerGrid;
+      gridRank = params->rank % nprocPerGrid;
       readGmsh(params->oversetGrids[gridID]);
       break;
 
@@ -358,7 +359,7 @@ void geo::processConn3D(void)
     }
   }
 
-  /* --- Setup Cell-To-Edge, Edge-To-Cell --- */
+  /* --- Setup Cell-To-Face, Face-To-Cell --- */
 
   c2f.setup(nEles,getMax(c2nf));
   c2b.setup(nEles,getMax(c2nf));
@@ -411,19 +412,41 @@ void geo::processConn3D(void)
 
   /* --- Setup MPI Processor Boundary Faces --- */
 #ifndef _NO_MPI
-    matchMPIFaces();
+  matchMPIFaces();
 #endif
 
 }
 
 void geo::setOversetConnectivity(void)
 {
+  // Setup iwall, iover (nodes on wall & overset boundaries)
+  iover.resize(0);
+  iwall.resize(0);
+  for (int ib=0; ib<nBounds; ib++) {
+    if (bcList[ib] == OVERSET) {
+      for (int iv=0; iv<nBndPts[ib]; iv++) {
+        iover.push_back(bndPts(ib,iv));
+      }
+    }
+    else if (bcList[ib] == SLIP_WALL || bcList[ib] == ADIABATIC_NOSLIP || bcList[ib] == ISOTHERMAL_NOSLIP) {
+      for (int iv=0; iv<nBndPts[ib]; iv++) {
+        iwall.push_back(bndPts(ib,iv));
+      }
+    }
+  }
+
   int nwall = iwall.size();
   int nover = iover.size();
   int ntypes = 1;           //! Number of element types in grid block
   int nodesPerCell = 6;     //! Number of nodes per element for first element type
+  iblank.resize(nVerts);
+
+  cout << "Grid " << gridID << ", rank " << gridRank << ": nwall = " << nwall << ", nover = " << nover << endl;
 
   tioga_registergrid_data_(&gridID,&nVerts,xv.getData(),iblank.data(),&nwall,&nover,iwall.data(),iover.data(),&ntypes,&nodesPerCell,&nEles,c2v.getData());
+
+  MPI_Finalize();
+  exit(0);
 
   tioga_preprocess_grids_();
 
@@ -678,7 +701,12 @@ void geo::readGmsh(string fileName)
   ifstream meshFile;
   string str;
 
-  if (params->rank==0) cout << "Geo: Reading mesh file " << fileName << endl;
+  if (meshType == OVERSET_MESH) {
+    if (gridRank==0) cout << "Geo: Grid " << gridID << ": Reading mesh file " << fileName << endl;
+  }
+  else {
+    if (gridRank==0) cout << "Geo: Reading mesh file " << fileName << endl;
+  }
 
   meshFile.open(fileName.c_str());
   if (!meshFile.is_open())
@@ -1720,6 +1748,9 @@ void geo::partitionMesh(void)
     gridRank = rank % nprocPerGrid;
     rank = gridRank;
     nproc = nprocPerGrid;
+
+    if (nproc <= 1) return; // No additional partitioning needed
+
     if (rank == 0) cout << "Geo: Partitioning mesh block " << gridID << " across " << nprocPerGrid << " processes" << endl;
     if (rank == 0) cout << "Geo:   Number of elements in block " << gridID << " : " << nEles << endl;
   }
@@ -1801,8 +1832,8 @@ void geo::partitionMesh(void)
   nVerts = myNodes.size();
 
   // Map from global to local to reset c2v array using local data
-  vector<int> ivg2iv(nVerts_g);
-  for (auto &iv:ivg2iv) iv = -1;
+  vector<int> ivg2iv;
+  ivg2iv.assign(nVerts_g,-1);
 
   // Transfer over all needed vertices to local array
   int nv = 0;
@@ -1841,7 +1872,7 @@ void geo::partitionMesh(void)
     }
   }
 
-  // Lastly, update c2v and bndPts from global --> local node IDs
+  // Lastly, update c2v from global --> local node IDs
   std::transform(c2v.getData(),c2v.getData()+c2v.getSize(),c2v.getData(), [=](int ivg){return ivg2iv[ivg];});
 
   if (meshType == OVERSET_MESH)

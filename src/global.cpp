@@ -45,6 +45,9 @@ void setGlobalVariables(void) {
   bcStr2Num["isothermal_noslip"] = ISOTHERMAL_NOSLIP;
   bcStr2Num["adiabatic_noslip"] = ADIABATIC_NOSLIP;
   bcStr2Num["overset"] = OVERSET;
+  bcStr2Num["symmetry"] = SYMMETRY;
+  // NOTE: 'symmetry' is just a psuedonym for 'slip_wall' which will not be
+  // considered a "wall" boundary condition for overset grids, force calc, etc.
 }
 
 

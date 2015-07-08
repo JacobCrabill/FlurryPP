@@ -142,7 +142,7 @@ void boundFace::applyBCs(void)
       }
 
       // Slip wall
-      else if(bcType == SLIP_WALL) {
+      else if(bcType == SLIP_WALL || bcType == SYMMETRY) {
         // extrapolate density
         rhoR = rhoL;
 
