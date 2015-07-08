@@ -193,13 +193,13 @@ double exponential_filter(int in_mode, int inBasisOrder, double exponent)
   return sigma;
 }
 
-void shape_quad(point &in_rs, vector<double> &out_shape, int nNodes)
+void shape_quad(const point &in_rs, vector<double> &out_shape, int nNodes)
 {
   out_shape.resize(nNodes);
   shape_quad(in_rs, out_shape.data(), nNodes);
 }
 
-void shape_quad(point &in_rs, double* out_shape, int nNodes)
+void shape_quad(const point &in_rs, double* out_shape, int nNodes)
 {
   double xi  = in_rs.x;
   double eta = in_rs.y;
@@ -224,13 +224,13 @@ void shape_quad(point &in_rs, double* out_shape, int nNodes)
   }
 }
 
-void shape_hex(point &in_rst, vector<double> &out_shape, int nNodes)
+void shape_hex(const point &in_rst, vector<double> &out_shape, int nNodes)
 {
   out_shape.resize(nNodes);
   shape_hex(in_rst, out_shape.data(), nNodes);
 }
 
-void shape_hex(point &in_rst, double* out_shape, int nNodes)
+void shape_hex(const point &in_rst, double* out_shape, int nNodes)
 {
   double xi  = in_rst.x;
   double eta = in_rst.y;
@@ -250,7 +250,7 @@ void shape_hex(point &in_rst, double* out_shape, int nNodes)
   }
 }
 
-void dshape_quad(point &in_rs, matrix<double> &out_dshape, int nNodes)
+void dshape_quad(const point &in_rs, matrix<double> &out_dshape, int nNodes)
 {
   double xi  = in_rs.x;
   double eta = in_rs.y;
@@ -291,7 +291,7 @@ void dshape_quad(point &in_rs, matrix<double> &out_dshape, int nNodes)
   }
 }
 
-void dshape_hex(point &in_rst, matrix<double> &out_dshape, int nNodes)
+void dshape_hex(const point &in_rst, matrix<double> &out_dshape, int nNodes)
 {
   double xi  = in_rst.x;
   double eta = in_rst.y;
@@ -333,7 +333,7 @@ void dshape_hex(point &in_rst, matrix<double> &out_dshape, int nNodes)
   }
 }
 
-void shape_tri(point &in_rs, vector<double> &out_shape)
+void shape_tri(const point &in_rs, vector<double> &out_shape)
 {
   // For the shape function for a general N-noded triangle, refer
   // to Finite Element Methods by Hughes, p. 166
@@ -344,7 +344,7 @@ void shape_tri(point &in_rs, vector<double> &out_shape)
   out_shape[2] = 1 - in_rs.x - in_rs.y;
 }
 
-void shape_tri(point &in_rs, double* out_shape)
+void shape_tri(const point &in_rs, double* out_shape)
 {
   out_shape[0] = in_rs.x;
   out_shape[1] = in_rs.y;

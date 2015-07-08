@@ -51,7 +51,7 @@ void geo::setup(input* params)
 {
   this->params = params;
 
-  meshType = params->mesh_type;
+  meshType = params->meshType;
   gridID = 0;
   gridRank = params->rank;
   nprocPerGrid = params->nproc;
@@ -278,8 +278,10 @@ void geo::processConn3D(void)
 
       // Get global vertex list for face
       vector<int> facev(ct2fnv[ctype[e]][f]);
-      for (int i=0; i<ct2fnv[ctype[e]][f]; i++)
+      for (int i=0; i<ct2fnv[ctype[e]][f]; i++) {
         facev[i] = c2v(e,iface[i]);
+        if (i>0 && facev[i] == facev[i-1]) facev[i] = -1;
+      }
 
       // Sort the vertices for easier comparison later
       std::sort(facev.begin(),facev.end());
@@ -899,6 +901,14 @@ void geo::readGmsh(string fileName)
         c2nf.push_back(6);
         ctype.push_back(HEX);
         meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+        break;
+
+      case 5:
+        // Linear prism; read as collapsed-face hex
+        c2nv.push_back(8);
+        c2nf.push_back(6);
+        ctype.push_back(HEX);
+        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[2] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[6];
         break;
 
       default:

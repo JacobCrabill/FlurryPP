@@ -38,17 +38,17 @@ int main(int argc, char *argv[]) {
 
   if (rank == 0) {
     cout << endl;
-    cout << "  ======================================================== " << endl;
-    cout << "   _______   _                                     /\\         " << endl;
-    cout << "  |   ____| | |                               __   \\/   __    " << endl;
-    cout << "  |  |___   | |  _   _   _     _     _    _   \\_\\_\\/\\/_/_/ " << endl;
-    cout << "  |   ___|  | | | | | | | |/| | |/| | |  | |    _\\_\\/_/_     " << endl;
-    cout << "  |  |      | | | |_| | |  /  |  /  \\  \\/  /   __/_/\\_\\__  " << endl;
-    cout << "  |__|      |_| \\_____/ |_|   |_|    \\    /   /_/  \\/  \\_\\" << endl;
-    cout << "                                      |  /         /\\         " << endl;
-    cout << "                                      /_/          \\/         " << endl;
-    cout << "  ---------      Flux Reconstruction in C++      --------- " << endl;
-    cout << "  ======================================================== " << endl;
+    cout << R"(  ========================================================  )" << endl;
+    cout << R"(   _______   _                                     /\       )" << endl;
+    cout << R"(  |   ____| | |                               __   \/   __  )" << endl;
+    cout << R"(  |  |___   | |  _   _   _     _     _    _   \_\_\/\/_/_/  )" << endl;
+    cout << R"(  |   ___|  | | | | | | | |/| | |/| | |  | |    _\_\/_/_    )" << endl;
+    cout << R"(  |  |      | | | |_| | |  /  |  /  \  \/  /   __/_/\_\__   )" << endl;
+    cout << R"(  |__|      |_| \_____/ |_|   |_|    \    /   /_/  \/  \_\  )" << endl;
+    cout << R"(                                      |  /         /\       )" << endl;
+    cout << R"(                                      /_/          \/       )" << endl;
+    cout << R"(  ---------      Flux Reconstruction in C++      ---------  )" << endl;
+    cout << R"(  ========================================================  )" << endl;
     cout << endl;
   }
 
@@ -84,8 +84,8 @@ int main(int argc, char *argv[]) {
 
     Solver.update();
 
-    if ((params.iter)%params.monitor_res_freq == 0 || params.iter==1) writeResidual(&Solver,&params);
-    if ((params.iter)%params.plot_freq == 0) writeData(&Solver,&params);
+    if ((params.iter)%params.monitorResFreq == 0 || params.iter==1) writeResidual(&Solver,&params);
+    if ((params.iter)%params.plotFreq == 0) writeData(&Solver,&params);
 
   }
 

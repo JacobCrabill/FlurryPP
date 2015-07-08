@@ -242,7 +242,7 @@ void input::readInputFile(char *filename)
   /* --- Read input file & store all simulation parameters --- */
 
   opts.getScalarValue("equation",equation,1);
-  opts.getScalarValue("ic_type",ic_type,0);
+  opts.getScalarValue("icType",icType,0);
   if (equation==ADVECTION_DIFFUSION) {
     opts.getScalarValue("advectVx",advectVx,1.);
     opts.getScalarValue("advectVy",advectVy,1.);
@@ -268,7 +268,7 @@ void input::readInputFile(char *filename)
      opts.getScalarValue("Kd",Kd);
      opts.getScalarValue("Ki",Ki);
     }
-    if (ic_type == 0) {
+    if (icType == 0) {
       opts.getScalarValue("rhoIC",rhoIC,rhoBound);
       opts.getScalarValue("vxIC",vxIC,uBound);
       opts.getScalarValue("vyIC",vyIC,vBound);
@@ -287,8 +287,8 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("viscous",viscous,0);
   opts.getScalarValue("motion",motion,0);
   opts.getScalarValue("order",order,3);
-  opts.getScalarValue("riemann_type",riemann_type,0);
-  opts.getScalarValue("test_case",test_case,0);
+  opts.getScalarValue("riemannType",riemannType,0);
+  opts.getScalarValue("testCase",test_case,0);
   opts.getScalarValue("iterMax",iterMax);
 
   if (viscous && equation == NAVIER_STOKES) {
@@ -314,9 +314,9 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("restartIter",restartIter);
   }
 
-  opts.getScalarValue("mesh_type",mesh_type,1); // CREATE_MESH by default
+  opts.getScalarValue("meshType",meshType,1); // CREATE_MESH by default
 
-  if (mesh_type == CREATE_MESH) {
+  if (meshType == CREATE_MESH) {
     opts.getScalarValue("nDims",nDims,2);
     opts.getScalarValue("nx",nx,10);
     opts.getScalarValue("ny",ny,10);
@@ -336,10 +336,10 @@ void input::readInputFile(char *filename)
   }
   else {
     // Reading in the mesh in one form or another
-    if (mesh_type == READ_MESH) {
+    if (meshType == READ_MESH) {
       opts.getScalarValue("mesh_file_name",meshFileName);
     }
-    else if (mesh_type == OVERSET_MESH) {
+    else if (meshType == OVERSET_MESH) {
       opts.getVectorValue("oversetGrids",oversetGrids);
       nGrids = oversetGrids.size();
     }
@@ -361,10 +361,10 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("periodicDZ",periodicDZ,(double)INFINITY);
   opts.getScalarValue("periodicTol",periodicTol,1e-6);
 
-  opts.getScalarValue("monitor_res_freq",monitor_res_freq,10);
+  opts.getScalarValue("monitorResFreq",monitorResFreq,10);
   opts.getScalarValue("resType",resType,2);
-  opts.getScalarValue("plot_freq",plot_freq,100);
-  opts.getScalarValue("plot_type",plot_type,1);
+  opts.getScalarValue("plotFreq",plotFreq,100);
+  opts.getScalarValue("plotType",plotType,1);
   opts.getScalarValue("restart_freq",restart_freq,100);
   opts.getScalarValue("dataFileName",dataFileName,string("simData"));
 
