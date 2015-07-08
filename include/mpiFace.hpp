@@ -71,6 +71,8 @@ private:
   matrix<double> bufGradUL;      //! !! TEMP HACK !! Outgoing buffer for sending UL
 
 #ifndef _NO_MPI
+  MPI_Comm* myComm;
+
   MPI_Request UL_out;
   MPI_Request UR_in;
   MPI_Request gradUL_out;

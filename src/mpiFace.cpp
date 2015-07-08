@@ -31,14 +31,15 @@ void mpiFace::setupRightState(void)
 #endif
 
 #ifndef _NO_MPI
-  IDR = rightParams[0];
-  relRot = rightParams[1];
-  procL = rightParams[2];
-  procR = rightParams[3];
+  IDR = myInfo.IDR;
+  relRot = myInfo.relRot;
+  procL = myInfo.procL;
+  procR = myInfo.procR;
+  myComm = myInfo.gridComm;
 
   /* Send/Get # of flux points to/from right element */
-  MPI_Irecv(&nFptsR,1,MPI_INT,procR,ID,MPI_COMM_WORLD,&nFpts_in);
-  MPI_Isend(&nFptsL,1,MPI_INT,procR,IDR,MPI_COMM_WORLD,&nFpts_out);
+  MPI_Irecv(&nFptsR,1,MPI_INT,procR,ID,*myComm,&nFpts_in);
+  MPI_Isend(&nFptsL,1,MPI_INT,procR,IDR,*myComm,&nFpts_out);
 
   // Sloppy, but necessary to breakup communication from computation more efficiently
   isMPI = 1;
@@ -111,8 +112,8 @@ void mpiFace::communicate(void)
 
   // The send/receive pairs are tagged by the processor-local face ID of the
   // face on the receiving end of the call
-  MPI_Irecv(bufUR.getData(),UR.getSize(),MPI_DOUBLE,procR,ID,MPI_COMM_WORLD,&UR_in);
-  MPI_Isend(UL.getData(),UL.getSize(),MPI_DOUBLE,procR,IDR,MPI_COMM_WORLD,&UL_out);
+  MPI_Irecv(bufUR.getData(),UR.getSize(),MPI_DOUBLE,procR,ID,*myComm,&UR_in);
+  MPI_Isend(UL.getData(),UL.getSize(),MPI_DOUBLE,procR,IDR,*myComm,&UL_out);
 
   if (params->viscous) {
     // !!! TEMP HACK !!! Just until I update Matrix class to 3D+
@@ -121,8 +122,8 @@ void mpiFace::communicate(void)
         for (int k=0; k<nFields; k++)
           bufGradUL(i,j+k*nDims) = gradUL[i](j,k);
 
-    MPI_Irecv(bufGradUR.getData(),bufGradUR.getSize(),MPI_DOUBLE,procR,ID,MPI_COMM_WORLD,&gradUR_in);
-    MPI_Isend(bufGradUL.getData(),bufGradUL.getSize(),MPI_DOUBLE,procR,IDR,MPI_COMM_WORLD,&gradUL_out);
+    MPI_Irecv(bufGradUR.getData(),bufGradUR.getSize(),MPI_DOUBLE,procR,ID,*myComm,&gradUR_in);
+    MPI_Isend(bufGradUL.getData(),bufGradUL.getSize(),MPI_DOUBLE,procR,IDR,*myComm,&gradUL_out);
   }
 #endif
 }

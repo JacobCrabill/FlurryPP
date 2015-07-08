@@ -206,5 +206,7 @@ private:
 
   int nRKSteps;
 
+  int gridID, gridRank, nprocPerGrid;
+
   vector<double> RKa, RKb;
 };

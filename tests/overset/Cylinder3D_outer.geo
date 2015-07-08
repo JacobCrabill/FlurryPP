@@ -9,10 +9,10 @@
 
 // Gmsh allows variables; these will be used to set desired
 // element sizes at various Points
-cl1 = 8;     // Farthest exterior size   6
-cl2 = .02;   // Near-body size    .02
-cl3 = 6;     // Outlet/wake size   5
-cl4 = .3;    // Nearfield-box size 4
+cl1 = 10;     // Farthest exterior size   6
+cl2 = .04;   // Near-body size    .02
+cl3 = 8;     // Outlet/wake size   5
+cl4 = .5;    // Nearfield-box size 4
 
 // Interior box of mesh
 Point(1) = {-2.5, -2.5, 0, cl4};

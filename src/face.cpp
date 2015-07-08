@@ -20,17 +20,15 @@
 #include "../include/flux.hpp"
 #include "../include/ele.hpp"
 
-void face::initialize(ele *eL, ele *eR, int locF_L, const vector<int> &rightParams, int gID, input *params)
+void face::initialize(ele *eL, ele *eR, int gID, int locF_L, faceInfo myInfo, input *params)
 {
   ID = gID;
 
-  this->locF_L = locF_L;
   this->eL = eL;
   this->eR = eR;
+  this->locF_L = locF_L;
+  this->myInfo = myInfo;
   this->params = params;
-
-  // Note: this is locF_R for internal faces, bcType for boundary faces, and right ID for mpi faces
-  this->rightParams = rightParams;
 
   nDims = params->nDims;
   nFields = params->nFields;
@@ -41,7 +39,7 @@ void face::initialize(ele *eL, ele *eR, int locF_L, const vector<int> &rightPara
   tempUL.resize(nFields);
 
   // Needed for MPI faces to separate communication from flux calculation
-  isMPI = 0;
+  isMPI = myInfo.isMPI;
 }
 
 void face::setupFace(void)

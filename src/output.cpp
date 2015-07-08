@@ -549,7 +549,7 @@ void writeMeshTecplot(solver* Solver, input* params)
 
   /* --- Wait for all processes to get here, otherwise there won't be a
    *     directory to put .vtus into --- */
-  //MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
   cout << "Opening file for writing" << endl;
@@ -575,12 +575,12 @@ void writeMeshTecplot(solver* Solver, input* params)
 
   dataFile << "# " << nPrism << " " << nHex << " " << nNodes << " " << nCells << " " << nNodesWall << " " << nNodesOver << endl;
   dataFile << "TITLE = \"" << fileName << "\"" << endl;
-  dataFile << "VARIABLES = \"X\", \"Y\", \"Z\", \"bodyTag\"" << endl;
+  dataFile << "VARIABLES = \"X\", \"Y\", \"Z\", \"bodyTag\", \"IBLANK\"" << endl;
   dataFile << "ZONE T = \"VOL_MIXED\", N=" << nNodes << ", E=" << nCells << ", ET=BRICK, F=FEPOINT" << endl;
 
   for (int iv=0; iv<nNodes; iv++) {
     //cout << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " " << Geo->xv(iv,2) << " " << gridID << endl;
-    dataFile << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " " << Geo->xv(iv,2) << " " << gridID << endl;
+    dataFile << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " " << Geo->xv(iv,2) << " " << gridID << " " << Geo->iblank[iv] << endl;
   }
 
   for (int ic=0; ic<nCells; ic++) {
