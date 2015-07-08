@@ -520,14 +520,15 @@ void writeMeshTecplot(solver* Solver, input* params)
 
 #ifndef _NO_MPI
   /* --- All processors write their solution to their own .vtu file --- */
-  sprintf(fileNameC,"%s_/%s_%d.plt",&fileName[0],&fileName[0],params->rank);
+  sprintf(fileNameC,"%s/%s_%d.plt",&fileName[0],&fileName[0],params->rank);
 #else
   /* --- Filename to write to --- */
-  sprintf(fileNameC,"%s_.plt",&fileName[0],iter);
+  sprintf(fileNameC,"%s.plt",&fileName[0],iter);
 #endif
 
-  if (params->rank == 0)
-    cout << "Writing Tecplot mesh file " << string(fileNameC) << "...  " << flush;
+  //if (params->rank == 0)
+  //  cout << "Writing Tecplot mesh file " << string(fileNameC) << "...  " << flush;
+  cout << "Writing Tecplot mesh file " << string(fileNameC) << "...  " << endl;
 
 #ifndef _NO_MPI
   /* --- Write folder for output mesh files --- */
@@ -548,36 +549,29 @@ void writeMeshTecplot(solver* Solver, input* params)
 
   /* --- Wait for all processes to get here, otherwise there won't be a
    *     directory to put .vtus into --- */
-  MPI_Barrier(MPI_COMM_WORLD);
+  //MPI_Barrier(MPI_COMM_WORLD);
 #endif
+
+  cout << "Opening file for writing" << endl;
 
   dataFile.open(fileNameC);
   dataFile.precision(16);
 
   // Count wall-boundary nodes
-  int ib = 0;
-  int nNodesWall=0;
-  for (auto& bc:Geo->bcList) {
-    if (bc == SLIP_WALL || bc == ISOTHERMAL_NOSLIP || bc == ADIABATIC_NOSLIP)
-      nNodesWall += Geo->nBndPts[ib];
-    ib++;
-  }
-
+  int nNodesWall = Geo->iwall.size();
   // Count overset-boundary nodes
-  ib = 0;
-  int nNodesOver=0;
-  for (auto& bc:Geo->bcList) {
-    if (bc == OVERSET)
-      nNodesOver += Geo->nBndPts[ib];
-    ib++;
-  }
+  int nNodesOver = Geo->iover.size();
 
-  int gridID = 1;
+  int gridID = Geo->gridID;
+
+  cout << "nNodesWall = " << nNodesWall << ", nNodesOver = " << nNodesOver << ", gridID = " << gridID << endl;
 
   int nPrism = 0;
-  int nNodes = Solver->Geo->nVerts;
-  int nCells = Solver->Geo->nEles;
+  int nNodes = Geo->nVerts;
+  int nCells = Geo->nEles;
   int nHex = nCells;
+
+  cout << "nNodes = " << nNodes << ", nEles = " << nCells << endl;
 
   dataFile << "# " << nPrism << " " << nHex << " " << nNodes << " " << nCells << " " << nNodesWall << " " << nNodesOver << endl;
   dataFile << "TITLE = \"" << fileName << "\"" << endl;
@@ -585,35 +579,26 @@ void writeMeshTecplot(solver* Solver, input* params)
   dataFile << "ZONE T = \"VOL_MIXED\", N=" << nNodes << ", E=" << nCells << ", ET=BRICK, F=FEPOINT" << endl;
 
   for (int iv=0; iv<nNodes; iv++) {
+    //cout << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " " << Geo->xv(iv,2) << " " << gridID << endl;
     dataFile << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " " << Geo->xv(iv,2) << " " << gridID << endl;
   }
 
   for (int ic=0; ic<nCells; ic++) {
     for (int j=0; j<8; j++) {
-      dataFile << Geo->c2v(ic,j) << " ";
+      dataFile << Geo->c2v(ic,j)+1 << " ";
     }
     dataFile << endl;
   }
 
   // output wall-boundary node IDs
-  ib = 0;
-  for (auto& bc:Geo->bcList) {
-    if (bc == SLIP_WALL || bc == ISOTHERMAL_NOSLIP || bc == ADIABATIC_NOSLIP) {
-      for (int iv=0; iv<Geo->nBndPts[ib]; iv++)
-        dataFile << Geo->bndPts(ib,iv) << endl;
-    }
-    ib++;
-  }
+  for (auto& iv:Geo->iwall)
+    dataFile << iv+1 << endl;
 
   // output overset-boundary node IDs
-  ib = 0;
-  for (auto& bc:Geo->bcList) {
-    if (bc == OVERSET) {
-      for (int iv=0; iv<Geo->nBndPts[ib]; iv++)
-        dataFile << Geo->bndPts(ib,iv) << endl;
-    }
-    ib++;
-  }
+  for (auto& iv:Geo->iover)
+    dataFile << iv+1 << endl;
 
   dataFile.close();
+
+  if (params->rank == 0) cout << "done." << endl;
 }

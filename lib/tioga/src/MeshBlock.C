@@ -65,108 +65,108 @@ void MeshBlock::tagBoundary(void)
   char intstring[7];
   char fname[80];  
   
-  //
+
   // do this only once
-  // i.e. when the meshblock is first 
+  // i.e. when the meshblock is first
   // initialized, cellRes would be NULL in this case
-  //
-  if (cellRes == NULL) 
+
+  if (cellRes == NULL)
+  {
+
+    cellRes=(double *) malloc(sizeof(double)*ncells);
+    nodeRes=(double *) malloc(sizeof(double)*nnodes);
+    if (userSpecifiedNodeRes == NULL && userSpecifiedCellRes == NULL)
     {
-      //
-      cellRes=(double *) malloc(sizeof(double)*ncells);
-      nodeRes=(double *) malloc(sizeof(double)*nnodes);
-      if (userSpecifiedNodeRes ==NULL && userSpecifiedCellRes ==NULL)
-	{
-	  //
-	  // this is a local array
-	  //
-	  iflag=(int *)malloc(sizeof(int)*nnodes);
-	  //
-	  for(i=0;i<nnodes;i++) iflag[i]=0;
-	  for(i=0;i<nnodes;i++) nodeRes[i]=0.0;
-	  //
-	  k=0;
-	  for(n=0;n<ntypes;n++)
-	    {
-	      nvert=nv[n];
-	      for(i=0;i<nc[n];i++)
-		{
-		  for(m=0;m<nvert;m++)
-		    {
-		      inode[m]=vconn[n][nvert*i+m]-BASE;
-		      i3=3*inode[m];
-		      for(j=0;j<3;j++)
-			xv[m][j]=x[i3+j];
-		    }
-		  vol=computeCellVolume(xv,nvert);
-		  cellRes[k++]=vol;
-		  for(m=0;m<nvert;m++)
-		    {
-		      iflag[inode[m]]++;
-		      nodeRes[inode[m]]+=vol;
-		    }	      
-		}
-	    }
-	}
-      else
-	{
-	  k=0;
-	  for(n=0;n<ntypes;n++)
-	    {
-	      for(i=0;i<nc[n];i++)		
-		{
-		  cellRes[k]=userSpecifiedCellRes[k];
-		  k++;
-		}
-	    }
-	  for(k=0;k<nnodes;k++) nodeRes[k]=userSpecifiedNodeRes[k];
-	}	  
-      //
-      // compute nodal resolution as the average of 
-      // all the cells associated with it. This takes care
-      // of partition boundaries as well.
-      //
-      for(i=0;i<nnodes;i++)
-	{
-          if (iflag[i]!=0)  nodeRes[i]/=iflag[i];
-	  iflag[i]=0;
-	}
-      //
-      // now tag the boundary nodes
-      // reuse the iflag array
-      //
-      //tracei(nobc);
-      for(i=0;i<nobc;i++)
-        { 
-          ii=(obcnode[i]-BASE);
-	  iflag[(obcnode[i]-BASE)]=1;
-        }
-      //
-      // now tag all the nodes of boundary cells
-      // to be mandatory receptors
-      //
+
+      // this is a local array
+
+      iflag=(int *)malloc(sizeof(int)*nnodes);
+
+      for(i=0;i<nnodes;i++) iflag[i]=0;
+      for(i=0;i<nnodes;i++) nodeRes[i]=0.0;
+
+      k=0;
       for(n=0;n<ntypes;n++)
-	{
-	  nvert=nv[n];
-	  for(i=0;i<nc[n];i++)
-	    {
-	      itag=0;
-	      for(m=0;m<nvert;m++)
-		{
-		  inode[m]=vconn[n][nvert*i+m]-BASE;
-		  if (iflag[inode[m]]) itag=1;
-		}
-	      if (itag)
-		{
-		  for(m=0;m<nvert;m++)
-		    {
-		      //iflag[inode[m]]=1;
-		      nodeRes[inode[m]]=BIGVALUE;
-		    }
-		}
-	    }
-	}
-      /*
+      {
+        nvert=nv[n];
+        for(i=0;i<nc[n];i++)
+        {
+          for(m=0;m<nvert;m++)
+          {
+            inode[m]=vconn[n][nvert*i+m]-BASE;
+            i3=3*inode[m];
+            for(j=0;j<3;j++)
+              xv[m][j]=x[i3+j];
+          }
+          vol=computeCellVolume(xv,nvert);
+          cellRes[k++]=vol;
+          for(m=0;m<nvert;m++)
+          {
+            iflag[inode[m]]++;
+            nodeRes[inode[m]]+=vol;
+          }
+        }
+      }
+    }
+    else
+    {
+      k=0;
+      for(n=0;n<ntypes;n++)
+      {
+        for(i=0;i<nc[n];i++)
+        {
+          cellRes[k]=userSpecifiedCellRes[k];
+          k++;
+        }
+      }
+      for(k=0;k<nnodes;k++) nodeRes[k]=userSpecifiedNodeRes[k];
+    }
+
+    // compute nodal resolution as the average of
+    // all the cells associated with it. This takes care
+    // of partition boundaries as well.
+
+    for(i=0;i<nnodes;i++)
+    {
+      if (iflag[i]!=0)  nodeRes[i]/=iflag[i];
+      iflag[i]=0;
+    }
+
+    // now tag the boundary nodes
+    // reuse the iflag array
+
+    //tracei(nobc);
+    for(i=0;i<nobc;i++)
+    {
+      ii=(obcnode[i]-BASE);
+      iflag[(obcnode[i]-BASE)]=1;
+    }
+
+    // now tag all the nodes of boundary cells
+    // to be mandatory receptors
+
+    for(n=0;n<ntypes;n++)
+    {
+      nvert=nv[n];
+      for(i=0;i<nc[n];i++)
+      {
+        itag=0;
+        for(m=0;m<nvert;m++)
+        {
+          inode[m]=vconn[n][nvert*i+m]-BASE;
+          if (iflag[inode[m]]) itag=1;
+        }
+        if (itag)
+        {
+          for(m=0;m<nvert;m++)
+          {
+            //iflag[inode[m]]=1;
+            nodeRes[inode[m]]=BIGVALUE;
+          }
+        }
+      }
+    }
+    /*
       sprintf(intstring,"%d",100000+myid);
       sprintf(fname,"nodeRes%s.dat",&(intstring[1]));
       fp=fopen(fname,"w");
@@ -178,30 +178,30 @@ void MeshBlock::tagBoundary(void)
        }
       fclose(fp);
       */
-      //
-      // now tag all the cells which have 
-      // mandatory receptors as nodes as not acceptable
-      // donors
-      k=0;
-      for(n=0;n<ntypes;n++)
-	{
-	  nvert=nv[n];
-	  for(i=0;i<nc[n];i++)
-	    {
-	      for(m=0;m<nvert;m++)
-		{
-		  inode[m]=vconn[n][nvert*i+m]-BASE;
-		  if (iflag[inode[m]]) 
-		    {
-		      cellRes[k]=BIGVALUE;
-		      break;
-		    }
-		}
-	      k++;
-	    }
-	}
-      free(iflag);
+
+    // now tag all the cells which have
+    // mandatory receptors as nodes as not acceptable
+    // donors
+    k=0;
+    for(n=0;n<ntypes;n++)
+    {
+      nvert=nv[n];
+      for(i=0;i<nc[n];i++)
+      {
+        for(m=0;m<nvert;m++)
+        {
+          inode[m]=vconn[n][nvert*i+m]-BASE;
+          if (iflag[inode[m]])
+          {
+            cellRes[k]=BIGVALUE;
+            break;
+          }
+        }
+        k++;
+      }
     }
+    free(iflag);
+  }
 }
 
 void MeshBlock::writeGridFile(int bid)

@@ -445,8 +445,8 @@ void geo::setOversetConnectivity(void)
 
   tioga_registergrid_data_(&gridID,&nVerts,xv.getData(),iblank.data(),&nwall,&nover,iwall.data(),iover.data(),&ntypes,&nodesPerCell,&nEles,c2v.getData());
 
-  MPI_Finalize();
-  exit(0);
+//  MPI_Finalize();
+//  exit(0);
 
   tioga_preprocess_grids_();
 
