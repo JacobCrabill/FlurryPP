@@ -552,6 +552,86 @@ point ele::calcPos(const point &loc)
   return pt;
 }
 
+point ele::getRefLoc(const point &pos)
+{
+  point xin;  // Current iterate xi_n (in reference space)
+  point xn;   // Current iterate's physical position
+  Vec3 dx;    // Difference from current iterate to desired position
+
+  matrix<double> J(nDims,nDims);
+  matrix<double> Jinv(nDims,nDims);
+
+  double tol = 1e-6;  // Want to go to smaller tolerance once all working
+
+  // No direct inverse-isoparametric mapping, so must iterate (Newton's Method)
+  // Note: Initial guess is (0,0,0)
+  getInverseMapping(xin,J,Jinv);
+  xn = J*xin;
+  dx = xn - pos;
+
+  while (dx.norm() > tol) {
+    xin -= Jinv*dx;
+    getInverseMapping(xin,J,Jinv);
+    xn = J*xin;
+    dx = xn - pos;
+  }
+
+  return xin;
+}
+
+void ele::getInverseMapping(const point xi, matrix<double> &J, matrix<double> &Jinv)
+{
+  matrix<double> dshape(nNodes,nDims);
+  J.setup(nDims,nDims);    J.initializeToZero();
+  Jinv.setup(nDims,nDims); Jinv.initializeToZero();
+  double detJ = 0;
+
+  // Get shape (isoparametric mapping) derivatives at mesh nodes
+  switch (eType) {
+  case QUAD:
+    dshape_quad(xi,dshape,nNodes);
+    break;
+
+  case HEX:
+    dshape_hex(xi,dshape,nNodes);
+    break;
+  }
+
+  // Calculate Jacobian matrix and its inverse
+  if (nDims == 2) {
+    for (int n=0; n<nNodes; n++)
+      for (int dim2=0; dim2<nDims; dim2++)
+        for (int dim1=0; dim1<nDims; dim1++)
+          J(dim2,dim1) += dshape(n,dim1)*nodes[n][dim1];
+
+    detJ = J(0,0)*J(1,1) - J(1,0)*J(0,1);
+    if (detJ <= 0) FatalError("Negative Jacobian in inverse-mapping calculation");
+
+    Jinv(0,0) = J(1,1)/detJ;  Jinv(0,1) =-J(0,1)/detJ;
+    Jinv(1,0) =-J(1,0)/detJ;  Jinv(1,1) = J(0,0)/detJ;
+  }
+  else {
+    for (int n=0; n<nNodes; n++)
+      for (int dim2=0; dim2<nDims; dim2++)
+        for (int dim1=0; dim1<nDims; dim1++)
+          J(dim2,dim1) += dshape(n,dim1)*nodes[n][dim1];
+
+    double xr = J(0,0);   double xs = J(0,1);   double xt = J(0,2);
+    double yr = J(1,0);   double ys = J(1,1);   double yt = J(1,2);
+    double zr = J(2,0);   double zs = J(2,1);   double zt = J(2,2);
+    detJ = xr*(ys*zt - yt*zs) - xs*(yr*zt - yt*zr) + xt*(yr*zs - ys*zr);
+    if (detJ <= 0) FatalError("Negative Jacobian in inverse-mapping calculation");
+
+        Jinv(0,0) = ys*zt - yt*zs;  Jinv(0,1) = xt*zs - xs*zt;  Jinv(0,2) = xs*yt - xt*ys;
+    Jinv(1,0) = yt*zr - yr*zt;  Jinv(1,1) = xr*zt - xt*zr;  Jinv(1,2) = xt*yr - xr*yt;
+    Jinv(2,0) = yr*zs - ys*zr;  Jinv(2,1) = xs*zr - xr*zs;  Jinv(2,2) = xr*ys - xs*yr;
+
+    for (int i=0; i<nDims; i++)
+      for (int j=0; j<nDims; j++)
+        Jinv(i,j) /= detJ;
+  }
+}
+
 void ele::calcPosSpts(void)
 {
   for (int spt=0; spt<nSpts; spt++) {
@@ -607,7 +687,7 @@ void ele::setInitialCondition()
     double rho, vx, vy, vz, p;
     double gamma = params->gamma;
 
-    if (params->ic_type == 0) {
+    if (params->icType == 0) {
       /* --- Uniform "Freestream" solution --- */
       rho = params->rhoIC;
       vx = params->vxIC;
@@ -626,7 +706,7 @@ void ele::setInitialCondition()
         U_spts(spt,nDims+1) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy + vz*vz));
       }
     }
-    else if (params->ic_type == 1) {
+    else if (params->icType == 1) {
       /* --- Isentropic Vortex of strength eps centered at (0,0) --- */
       double eps = 5.0;
       for (int spt=0; spt<nSpts; spt++) {        
@@ -647,7 +727,7 @@ void ele::setInitialCondition()
         U_spts(spt,nDims+1) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
       }
     }
-    else if (params->ic_type == 2) {
+    else if (params->icType == 2) {
       /* --- Isentropic Vortex of strength eps centered at (0,0) (Liang version) --- */
       double eps = 1.0;  // See paper by Liang and Miyaji, CPR Deforming Domains
       double rc  = 1.0;
@@ -679,20 +759,20 @@ void ele::setInitialCondition()
     }
   }
   else if (params->equation == ADVECTION_DIFFUSION) {
-    if (params->ic_type == 0) {
+    if (params->icType == 0) {
       /* --- Simple Gaussian bump centered at (0,0) --- */
       for (int spt=0; spt<nSpts; spt++) {
         double r2 = pos_spts[spt]*pos_spts[spt];
         U_spts(spt,0) = exp(-r2);
       }
     }
-    else if (params->ic_type == 1) {
+    else if (params->icType == 1) {
       /* --- Test case for debugging - linear solution x+y+z over domain --- */
       for (int spt=0; spt<nSpts; spt++) {
         U_spts(spt,0) = pos_spts[spt].x + pos_spts[spt].y + pos_spts[spt].z;
       }
     }
-    else if (params->ic_type == 2) {
+    else if (params->icType == 2) {
       /* --- Test case for debugging - cos(x)*cos(y)*cos(z) over domain --- */
       for (int spt=0; spt<nSpts; spt++)
         U_spts(spt,0) = cos(2*pi*pos_spts[spt].x/6.)*cos(2*pi*pos_spts[spt].y/6.)*cos(2*pi*pos_spts[spt].z/6.);
@@ -1400,7 +1480,7 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
   else if (nDims == 3) {
     order = cbrt(nCells) - 2;
     nSpts = (order+1)*(order+1)*(order+1);
-    nFpts = 4*(order+1)*(order+1);
+    nFpts = 6*(order+1)*(order+1);
   }
 
   loc_spts = Geo->getLocSpts(eType,order);
@@ -1448,74 +1528,177 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
     if (str1.compare("Density")==0) {
       foundRho = true;
       double tmp;
-      // Skip the data at the mesh nodes and flux points along 'bottom' edge
-      for (int i=0; i<2+(order+1); i++) {
-        ss >> tmp;
-      }
-
-      // Get the data at the solution points
-      for (int i=0; i<(order+1); i++) {
-        ss >> tmp;
-        for (int j=0; j<(order+1); j++) {
-          ss >> U_spts(j+i*(order+1),0);
+      if (nDims == 2) {
+        // Skip the data at the mesh nodes and flux points along 'bottom' edge
+        for (int i=0; i<2+(order+1); i++) {
+          ss >> tmp;
         }
-        ss >> tmp;
+
+        // Get the data at the solution points
+        for (int i=0; i<(order+1); i++) {
+          ss >> tmp;
+          for (int j=0; j<(order+1); j++) {
+            ss >> U_spts(j+i*(order+1),0);
+          }
+          ss >> tmp;
+        }
+      }
+      else {
+        // Skip the data at the mesh nodes and flux points along 'bottom' face
+        for (int i=0; i<(order+3)*(order+3); i++)
+          ss >> tmp;
+
+        // Get the data at the solution points
+        for (int k=0; k<(order+1); k++) {
+          // Skip front-face nodes / flux points
+          for (int m=0; m<(order+3); m++)
+            ss >> tmp;
+
+          for (int j=0; j<(order+1); j++) {
+            ss >> tmp;
+            for (int i=0; i<(order+1); i++) {
+              ss >> U_spts(i+(order+1)*(j+(order+1)*k),0);
+            }
+            ss >> tmp;
+          }
+
+          // Skip back-face nodes / flux points
+          for (int m=0; m<(order+3); m++)
+            ss >> tmp;
+        }
       }
     }
     else if (str1.compare("Velocity")==0) {
       foundV = true;
       double tmp1, tmp2, tmp3;
-      // Skip the data at the mesh nodes and flux points along 'bottom' edge
-      for (int i=0; i<2+(order+1); i++) {
-        ss >> tmp1 >> tmp2 >> tmp3;
-      }
-
-      // Get the data at the solution points; skip the flux points at
-      // either end of each row
-      for (int i=0; i<(order+1); i++) {
-        ss >> tmp1 >> tmp2 >> tmp3;
-        for (int j=0; j<(order+1); j++) {
-          ss >> tempV(j+i*(order+1),0);
-          ss >> tempV(j+i*(order+1),1);
-          if (nDims == 3)
-            ss >> tempV(j+i*(order+1),2);
-          else
-            ss >> tmp1;
+      if (nDims == 2) {
+        // Skip the data at the mesh nodes and flux points along 'bottom' edge
+        for (int i=0; i<2+(order+1); i++) {
+          ss >> tmp1 >> tmp2 >> tmp3;
         }
-        ss >> tmp1 >> tmp2 >> tmp3;
+
+        // Get the data at the solution points; skip the flux points at
+        // either end of each row
+        for (int i=0; i<(order+1); i++) {
+          ss >> tmp1 >> tmp2 >> tmp3;
+          for (int j=0; j<(order+1); j++) {
+            ss >> tempV(j+i*(order+1),0);
+            ss >> tempV(j+i*(order+1),1);
+            ss >> tmp1;
+          }
+          ss >> tmp1 >> tmp2 >> tmp3;
+        }
+      }
+      else {
+        // Skip the data at the mesh nodes and flux points along 'bottom' face
+        for (int i=0; i<(order+3)*(order+3); i++)
+          ss >> tmp1 >> tmp2 >> tmp3;
+
+        // Get the data at the solution points
+        for (int k=0; k<(order+1); k++) {
+          // Skip front-face nodes / flux points
+          for (int m=0; m<(order+3); m++)
+            ss >> tmp1 >> tmp2 >> tmp3;
+
+          for (int j=0; j<(order+1); j++) {
+            ss >> tmp1 >> tmp2 >> tmp3;
+            for (int i=0; i<(order+1); i++) {
+              ss >> tempV(i+(order+1)*(j+(order+1)*k),0);
+              ss >> tempV(i+(order+1)*(j+(order+1)*k),1);
+              ss >> tempV(i+(order+1)*(j+(order+1)*k),2);
+            }
+            ss >> tmp1 >> tmp2 >> tmp3;
+          }
+
+          // Skip back-face nodes / flux points
+          for (int m=0; m<(order+3); m++)
+            ss >> tmp1 >> tmp2 >> tmp3;
+        }
       }
     }
     else if (str1.compare("Pressure")==0) {
       foundP = true;
       double tmp;
-      // Skip the data at the mesh nodes and flux points along 'bottom' edge
-      for (int i=0; i<2+(order+1); i++) {
-        ss >> tmp;
-      }
-
-      // Get the data at the solution points
-      for (int i=0; i<(order+1); i++) {
-        ss >> tmp;
-        for (int j=0; j<(order+1); j++) {
-          ss >> tempP[j+i*(order+1)];
+      if (nDims == 2) {
+        // Skip the data at the mesh nodes and flux points along 'bottom' edge
+        for (int i=0; i<2+(order+1); i++) {
+          ss >> tmp;
         }
-        ss >> tmp;
+
+        // Get the data at the solution points
+        for (int i=0; i<(order+1); i++) {
+          ss >> tmp;
+          for (int j=0; j<(order+1); j++) {
+            ss >> tempP[j+i*(order+1)];
+          }
+          ss >> tmp;
+        }
+      }
+      else {
+        // Skip the data at the mesh nodes and flux points along 'bottom' face
+        for (int i=0; i<(order+3)*(order+3); i++)
+          ss >> tmp;
+
+        // Get the data at the solution points
+        for (int k=0; k<(order+1); k++) {
+          // Skip front-face nodes / flux points
+          for (int m=0; m<(order+3); m++)
+            ss >> tmp;
+
+          for (int j=0; j<(order+1); j++) {
+            ss >> tmp;
+            for (int i=0; i<(order+1); i++) {
+              ss >> tempP[i+(order+1)*(j+(order+1)*k)];
+            }
+            ss >> tmp;
+          }
+
+          // Skip back-face nodes / flux points
+          for (int m=0; m<(order+3); m++)
+            ss >> tmp;
+        }
       }
     }
     else if (str1.compare("EntropyErr")==0 && params->calcEntropySensor) {
       double tmp;
-      // Skip the data at the mesh nodes and flux points along 'bottom' edge
-      for (int i=0; i<2+(order+1); i++) {
-        ss >> tmp;
-      }
-
-      // Get the data at the solution points
-      for (int i=0; i<(order+1); i++) {
-        ss >> tmp;
-        for (int j=0; j<(order+1); j++) {
-          ss >> S_spts(j+i*(order+1));
+      if (nDims == 2) {
+        // Skip the data at the mesh nodes and flux points along 'bottom' edge
+        for (int i=0; i<2+(order+1); i++) {
+          ss >> tmp;
         }
-        ss >> tmp;
+
+        // Get the data at the solution points
+        for (int i=0; i<(order+1); i++) {
+          ss >> tmp;
+          for (int j=0; j<(order+1); j++) {
+            ss >> S_spts(j+i*(order+1));
+          }
+          ss >> tmp;
+        }
+      }
+      else {
+        // Skip the data at the mesh nodes and flux points along 'bottom' face
+        for (int i=0; i<(order+3)*(order+3); i++)
+          ss >> tmp;
+
+        // Get the data at the solution points
+        for (int k=0; k<(order+1); k++) {
+          // Skip front-face nodes / flux points
+          for (int m=0; m<(order+3); m++)
+            ss >> tmp;
+
+          for (int j=0; j<(order+1); j++) {
+            ss >> tmp;
+            for (int i=0; i<(order+1); i++) {
+              ss >> S_spts(i+(order+1)*(j+(order+1)*k));
+            }
+            ss >> tmp;
+          }
+
+          // Skip back-face nodes / flux points
+          for (int m=0; m<(order+3); m++)
+            ss >> tmp;
+        }
       }
     }
     else {

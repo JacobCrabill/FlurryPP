@@ -28,9 +28,18 @@ class tioga
 
  public:
   int ihigh;
+
   /** basic constuctor */
-  tioga() { mb = NULL; holeMap=NULL; pc=NULL; sendCount=NULL; recvCount=NULL;
-    obblist=NULL; isym=2;ihigh=0;};
+  tioga() {
+    mb = NULL;
+    holeMap=NULL;
+    pc=NULL;
+    sendCount=NULL;
+    recvCount=NULL;
+    obblist=NULL;
+    isym=2;
+    ihigh=0;
+  };
  
   /** basic destructor */
   ~tioga(); 
@@ -56,6 +65,7 @@ class tioga
   /** perform overset grid connectivity */
 
   void performConnectivity(void);
+
   void performConnectivityHighOrder(void);
 
   /** update data */
@@ -77,11 +87,12 @@ class tioga
   void getDonorCount(int *dcount, int *fcount);
   
   void getDonorInfo(int *receptors,int *indices,double *frac,int *dcount);
+
   /** set symmetry bc */
-  void setSymmetry(int syminput) { isym=syminput;};
+  void setSymmetry(int syminput) { isym=syminput;}
+
   /** set resolutions for nodes and cells */
-  void setResolutions(double *nres,double *cres)
-  { mb->setResolutions(nres,cres);}    
+  void setResolutions(double *nres,double *cres) { mb->setResolutions(nres,cres);}
 
   void set_cell_iblank(int *iblank_cell)
   {

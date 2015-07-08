@@ -43,7 +43,7 @@ void geo::setup(input* params)
 {
   this->params = params;
 
-  switch(params->mesh_type) {
+  switch(params->meshType) {
     case (READ_MESH):
       readGmsh(params->meshFileName);
       break;
@@ -423,8 +423,6 @@ void geo::matchMPIFaces(void)
     }
   }
   nMpiFaces = mpiFaces.size();
-
-  cout << "nMpiFaces = " << nMpiFaces << endl;
 
   // Clean up the bcType and bndEdges arrays now that it's safe to do so [remove mpiFaces from them]
   bndFaces.erase(std::remove(bndFaces.begin(), bndFaces.end(), -1), bndFaces.end());

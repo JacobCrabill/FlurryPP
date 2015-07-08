@@ -82,10 +82,10 @@ public:
   int equation;  //! {0 | Advection/diffusion} {1 | Euler/Navier-Stokes}
   int viscous;   //! {0 | No diffusion/Viscosity} {1 | Diffusion/Viscosity}
   int order;
-  int ic_type;
+  int icType;
   int motion;
   int test_case;
-  int riemann_type;
+  int riemannType;
 
 
   /* --- Viscous Solver Parameters --- */
@@ -124,9 +124,9 @@ public:
 
   string dataFileName;
   int resType;
-  int monitor_res_freq;
-  int plot_freq;
-  int plot_type;
+  int monitorResFreq;
+  int plotFreq;
+  int plotType;
 
   bool calcEntropySensor;
 
@@ -173,7 +173,7 @@ public:
 
   /* --- Mesh Parameters --- */
   string meshFileName;
-  int mesh_type;
+  int meshType;
   int nx, ny, nz;
   double xmin, xmax, ymin, ymax, zmin, zmax;
   double periodicTol, periodicDX, periodicDY, periodicDZ;

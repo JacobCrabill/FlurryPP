@@ -44,7 +44,7 @@ extern "C" {
    * f1: get_nodes_per_cell (cellID, nodesPerCell)
    * f2: get_recepter_nodes (cellID, pointsPerCell, receptor_nodes_XYZ)
    * f3: donor_inclusion_test (cellID, posXYZ, passFlag, rst[ipoint])
-   * f4: donor_frac (cellID)
+   * f4: donor_frac (cellID, xsearch, nweights, inode, frac, rst, ndim)
    * f5: convert_to_modal (cellID, pointsPerCell, nodalVals, nPts, indexOut, modalVals)
    */
   void tioga_set_highorder_callback_(void (*f1)(int*, int*),

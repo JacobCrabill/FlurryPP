@@ -90,6 +90,18 @@ double getCFLLimit(int order)
   }
 }
 
+Vec3 operator*(matrix<double>& mat, Vec3 &vec)
+{
+  Vec3 out;
+  int nDims = mat.getDim1();
+  for (int i=0; i<nDims; i++) {
+    for (int j=0; j<nDims; j++) {
+      out[i] += mat(i,j)*vec[j];
+    }
+  }
+  return out;
+}
+
 
 void simTimer::startTimer(void)
 {

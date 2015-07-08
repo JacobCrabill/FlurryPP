@@ -129,10 +129,10 @@ void face::calcInviscidFlux(void)
     laxFriedrichsFlux();
   }
   else if (params->equation == NAVIER_STOKES) {
-    if (params->riemann_type==0) {
+    if (params->riemannType==0) {
       rusanovFlux();
     }
-    else if (params->riemann_type==1) {
+    else if (params->riemannType==1) {
       roeFlux();
     }
   }
