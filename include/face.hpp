@@ -43,7 +43,7 @@ struct faceInfo {
   int procL;
   int procR;
 #ifndef _NO_MPI
-  MPI_Comm* gridComm; //! MPI communicator for this grid
+  MPI_Comm gridComm; //! MPI communicator for this grid
 #endif
 };
 

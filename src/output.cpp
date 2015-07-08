@@ -552,7 +552,7 @@ void writeMeshTecplot(solver* Solver, input* params)
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-  cout << "Opening file for writing" << endl;
+  cout << "rank " << params->rank << ": Opening file for writing" << endl;
 
   dataFile.open(fileNameC);
   dataFile.precision(16);

@@ -475,6 +475,9 @@ void geo::matchMPIFaces(void)
   /* --- Split MPI Processes Based Upon gridID: Create MPI_Comm for each grid --- */
   MPI_Comm_split(MPI_COMM_WORLD, gridID, params->rank, &gridComm);
 
+  MPI_Comm_rank(gridComm,&gridRank);
+  MPI_Comm_size(gridComm,&nprocPerGrid);
+
   // 1) Get a list of all the MPI faces on the processor
   // These will be all unassigned boundary faces (bcType == -1) - copy over to mpiEdges
   for (int i=0; i<nBndFaces; i++) {
@@ -699,13 +702,13 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
           relRot = compareOrientationMPI(ic,fid1,gIC_R[i],mpiLocF_R[i]);
         }
         struct faceInfo info;
-        info.IDR = mpiLocF_R[i];
-        info.locF_R = locF_R[i];
+        info.IDR = locF_R[i];
+        info.locF_R = mpiLocF_R[i];
         info.relRot = relRot;
         info.procL = gridRank;
         info.procR = procR[i];
         info.isMPI = 1;
-        info.gridComm = &gridComm;  // Note that this is equivalent to MPI_COMM_WORLD if non-overset (ngrids = 1)
+        info.gridComm = gridComm;  // Note that this is equivalent to MPI_COMM_WORLD if non-overset (ngrids = 1)
         mpiFacesVec[i]->initialize(&eles[f2c(ff,0)],NULL,i,fid1,info,params);
       }
     }
@@ -903,12 +906,14 @@ void geo::readGmsh(string fileName)
         meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
         break;
 
-      case 5:
+      case 6:
         // Linear prism; read as collapsed-face hex
         c2nv.push_back(8);
         c2nf.push_back(6);
         ctype.push_back(HEX);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[2] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[6];
+        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6];
+        c2v_tmp[3] = c2v_tmp[2];
+        c2v_tmp[7] = c2v_tmp[6];
         break;
 
       default:

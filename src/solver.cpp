@@ -479,7 +479,9 @@ void solver::setupElesFaces(void) {
 
 void solver::finishMpiSetup(void)
 {
-  if (params->rank==0) cout << "Solver: Setting up MPI face communicataions" << endl;
+  //if (params->rank==0)
+  cout << "rank = " << params->rank << ": ";
+    cout << "Solver: Setting up MPI face communicataions" << endl;
 #pragma omp parallel for
   for (uint i=0; i<mpiFaces.size(); i++) {
     mpiFaces[i]->finishRightSetup();
