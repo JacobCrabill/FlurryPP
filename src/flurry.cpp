@@ -75,6 +75,8 @@ int main(int argc, char *argv[]) {
   /* Write initial data file */
   writeData(&Solver,&params);
 
+  //writeMeshTecplot(&Solver,&params);
+
   /* --- Calculation Loop --- */
   for (params.iter=params.initIter+1; params.iter<=params.iterMax; params.iter++) {
 

@@ -40,11 +40,19 @@ geo::geo()
 
 }
 
+geo::~geo()
+{
+#ifndef _NO_MPI
+  MPI_Comm_free(&gridComm);
+#endif
+}
+
 void geo::setup(input* params)
 {
   this->params = params;
 
   meshType = params->meshType;
+  gridID = 0;
   gridRank = params->rank;
   nprocPerGrid = params->nproc;
 
@@ -63,6 +71,7 @@ void geo::setup(input* params)
       // Find out which grid this process will be handling
       nprocPerGrid = params->nproc/params->nGrids;
       gridID = params->rank / nprocPerGrid;
+      gridRank = params->rank % nprocPerGrid;
       readGmsh(params->oversetGrids[gridID]);
       break;
 
@@ -185,11 +194,7 @@ void geo::processConn2D(void)
 
   /* --- Setup MPI Processor Boundary Faces --- */
 #ifndef _NO_MPI
-  if (params->nproc > 1) {
-
-    matchMPIFaces();
-
-  } // nproc > 1
+  matchMPIFaces();
 #endif
 
   /* --- Setup Cell-To-Edge, Edge-To-Cell --- */
@@ -273,8 +278,10 @@ void geo::processConn3D(void)
 
       // Get global vertex list for face
       vector<int> facev(ct2fnv[ctype[e]][f]);
-      for (int i=0; i<ct2fnv[ctype[e]][f]; i++)
+      for (int i=0; i<ct2fnv[ctype[e]][f]; i++) {
         facev[i] = c2v(e,iface[i]);
+        if (i>0 && facev[i] == facev[i-1]) facev[i] = -1;
+      }
 
       // Sort the vertices for easier comparison later
       std::sort(facev.begin(),facev.end());
@@ -358,7 +365,7 @@ void geo::processConn3D(void)
     }
   }
 
-  /* --- Setup Cell-To-Edge, Edge-To-Cell --- */
+  /* --- Setup Cell-To-Face, Face-To-Cell --- */
 
   c2f.setup(nEles,getMax(c2nf));
   c2b.setup(nEles,getMax(c2nf));
@@ -411,19 +418,41 @@ void geo::processConn3D(void)
 
   /* --- Setup MPI Processor Boundary Faces --- */
 #ifndef _NO_MPI
-    matchMPIFaces();
+  matchMPIFaces();
 #endif
 
 }
 
 void geo::setOversetConnectivity(void)
 {
+  // Setup iwall, iover (nodes on wall & overset boundaries)
+  iover.resize(0);
+  iwall.resize(0);
+  for (int ib=0; ib<nBounds; ib++) {
+    if (bcList[ib] == OVERSET) {
+      for (int iv=0; iv<nBndPts[ib]; iv++) {
+        iover.push_back(bndPts(ib,iv));
+      }
+    }
+    else if (bcList[ib] == SLIP_WALL || bcList[ib] == ADIABATIC_NOSLIP || bcList[ib] == ISOTHERMAL_NOSLIP) {
+      for (int iv=0; iv<nBndPts[ib]; iv++) {
+        iwall.push_back(bndPts(ib,iv));
+      }
+    }
+  }
+
   int nwall = iwall.size();
   int nover = iover.size();
   int ntypes = 1;           //! Number of element types in grid block
-  int nodesPerCell = 6;     //! Number of nodes per element for first element type
+  int nodesPerCell = 8;     //! Number of nodes per element for first element type
+  iblank.resize(nVerts);
+
+  cout << "Grid " << gridID << ", rank " << gridRank << ": nwall = " << nwall << ", nover = " << nover << endl;
 
   tioga_registergrid_data_(&gridID,&nVerts,xv.getData(),iblank.data(),&nwall,&nover,iwall.data(),iover.data(),&ntypes,&nodesPerCell,&nEles,c2v.getData());
+
+//  MPI_Finalize();
+//  exit(0);
 
   tioga_preprocess_grids_();
 
@@ -438,9 +467,9 @@ void geo::setOversetConnectivity(void)
 void geo::matchMPIFaces(void)
 {
 #ifndef _NO_MPI
-  if (params->nproc <= 1) return;
+  if (nprocPerGrid <= 1) return;
 
-  if (params->rank == 0) {
+  if (gridRank == 0) {
     if (meshType == OVERSET_MESH)
       cout << "Geo: Grid block " << gridID << ": Matching MPI faces" << endl;
     else
@@ -448,8 +477,10 @@ void geo::matchMPIFaces(void)
   }
 
   /* --- Split MPI Processes Based Upon gridID: Create MPI_Comm for each grid --- */
-  MPI_Comm gridComm;
   MPI_Comm_split(MPI_COMM_WORLD, gridID, params->rank, &gridComm);
+
+  MPI_Comm_rank(gridComm,&gridRank);
+  MPI_Comm_size(gridComm,&nprocPerGrid);
 
   // 1) Get a list of all the MPI faces on the processor
   // These will be all unassigned boundary faces (bcType == -1) - copy over to mpiEdges
@@ -556,9 +587,14 @@ void geo::matchMPIFaces(void)
   for (auto &P:procR)
     if (P==-1) FatalError("MPI face left unmatched!");
 
-  if (params->rank == 0) cout << "Geo: All MPI faces matched!  nMpiFaces = " << nMpiFaces << endl;
+  //if (params->rank == 0)
+  //cout << "rank " << params->rank << ": ";
+  if (gridRank == 0)
+    cout << "Geo: Grid " << gridID << ": All MPI faces matched!  nMpiFaces = " << nMpiFaces << endl;
 
-  MPI_Comm_free(&gridComm);
+  MPI_Barrier(gridComm);
+
+  //cout << "rank " << params->rank << " leaving matchMPIFaces()" << endl;
 #endif
 }
 
@@ -570,7 +606,12 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
   faces.resize(nIntFaces+nBndFaces);
   mpiFacesVec.resize(nMpiFaces);
 
-  if (params->rank==0) cout << "Geo: Setting up elements" << endl;
+  if (gridRank==0) {
+    if (meshType == OVERSET_MESH)
+      cout << "Geo: Grid " << gridID << ": Setting up elements" << endl;
+    else
+      cout << "Geo: Setting up elements" << endl;
+  }
 
   // Setup the elements
   int ic = 0;
@@ -584,7 +625,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     e.nodes.resize(c2nv[ic]);
     for (int iv=0; iv<c2nv[ic]; iv++) {
       e.nodeID[iv] = c2v(ic,iv);
-      e.nodes[iv] = xv[c2v(ic,iv)];
+      e.nodes[iv] = point(xv[c2v(ic,iv)]);
     }
 
     // Global face IDs for internal & boundary faces
@@ -602,7 +643,13 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
   vector<int> cellFaces;
 
-  if (params->rank==0) cout << "Geo: Setting up internal faces" << endl;
+  if (gridRank==0) {
+    if (meshType == OVERSET_MESH)
+      cout << "Geo: Grid " << gridID << ": Setting up internal faces" << endl;
+    else
+      cout << "Geo: Setting up internal faces" << endl;
+  }
+
 
   // Internal Faces
   for (int i=0; i<nIntFaces; i++) {
@@ -621,11 +668,19 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       cellFaces.assign(c2f[ic2], c2f[ic2]+c2nf[ic2]);  // List of cell's faces
       int fid2 = findFirst(cellFaces,ff);           // Which one is this face
       int relRot = compareOrientation(ic1,fid1,ic2,fid2);
-      faces[i]->initialize(&eles[f2c(ff,0)],&eles[f2c(ff,1)],fid1,{fid2,relRot},ff,params);
+      struct faceInfo info;
+      info.locF_R = fid2;
+      info.relRot = relRot;
+      faces[i]->initialize(&eles[f2c(ff,0)],&eles[f2c(ff,1)],ff,fid1,info,params);
     }
   }
 
-  if (params->rank==0) cout << "Geo: Setting up boundary faces" << endl;
+  if (gridRank==0) {
+    if (meshType == OVERSET_MESH)
+      cout << "Geo: Grid " << gridID << ": Setting up boundary faces" << endl;
+    else
+      cout << "Geo: Setting up boundary faces" << endl;
+  }
 
   // Boundary Faces
   for (int i=0; i<nBndFaces; i++) {
@@ -639,7 +694,9 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     if (f2c(ff,1) != -1) {
       FatalError("Boundary face has a right element assigned.");
     }else{
-      faces[nIntFaces+i]->initialize(&eles[f2c(ff,0)],NULL,fid1,{bcType[i]},ff,params);
+      struct faceInfo info;
+      info.bcType = bcType[i];
+      faces[nIntFaces+i]->initialize(&eles[f2c(ff,0)],NULL,ff,fid1,info,params);
     }
   }
 
@@ -647,10 +704,14 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
   // MPI Faces
   if (params->nproc > 1) {
 
-    if (params->rank==0) cout << "Geo: Setting up MPI faces" << endl;
+    if (gridRank==0) {
+      if (meshType == OVERSET_MESH)
+        cout << "Geo: Grid " << gridID << ": Setting up MPI faces" << endl;
+      else
+        cout << "Geo: Setting up MPI faces" << endl;
+    }
 
     for (int i=0; i<nMpiFaces; i++) {
-      //mpiFace *F = new mpiFace();
       mpiFacesVec[i] = make_shared<mpiFace>();
       // Find global face ID of current boundary face
       int ff = mpiFaces[i];
@@ -663,10 +724,17 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
         int relRot = 0;
         if (nDims == 3) {
           // Find the relative orientation (rotation) between left & right faces
-          int fid2 = mpiLocF_R[i];
-          relRot = compareOrientationMPI(ic,fid1,gIC_R[i],fid2);
+          relRot = compareOrientationMPI(ic,fid1,gIC_R[i],mpiLocF_R[i]);
         }
-        mpiFacesVec[i]->initialize(&eles[f2c(ff,0)],NULL,fid1,{locF_R[i],relRot,params->rank,procR[i]},i,params);
+        struct faceInfo info;
+        info.IDR = locF_R[i];
+        info.locF_R = mpiLocF_R[i];
+        info.relRot = relRot;
+        info.procL = gridRank;
+        info.procR = procR[i];
+        info.isMPI = 1;
+        info.gridComm = gridComm;  // Note that this is equivalent to MPI_COMM_WORLD if non-overset (ngrids = 1)
+        mpiFacesVec[i]->initialize(&eles[f2c(ff,0)],NULL,i,fid1,info,params);
       }
     }
   }
@@ -678,7 +746,12 @@ void geo::readGmsh(string fileName)
   ifstream meshFile;
   string str;
 
-  if (params->rank==0) cout << "Geo: Reading mesh file " << fileName << endl;
+  if (meshType == OVERSET_MESH) {
+    if (gridRank==0) cout << "Geo: Grid " << gridID << ": Reading mesh file " << fileName << endl;
+  }
+  else {
+    if (gridRank==0) cout << "Geo: Reading mesh file " << fileName << endl;
+  }
 
   meshFile.open(fileName.c_str());
   if (!meshFile.is_open())
@@ -763,7 +836,8 @@ void geo::readGmsh(string fileName)
   getline(meshFile,str); // Clear end of line, just in case
 
   for (int i=0; i<nVerts; i++) {
-    meshFile >> iv >> xv(i,0) >> xv(i,1) >> xv(i,2);
+    meshFile >> iv >> xv(i,0) >> xv(i,1);
+    if (nDims == 3) meshFile >> xv(i,2);
   }
 
   /* --- Read Element Connectivity --- */
@@ -856,6 +930,16 @@ void geo::readGmsh(string fileName)
         c2nf.push_back(6);
         ctype.push_back(HEX);
         meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+        break;
+
+      case 6:
+        // Linear prism; read as collapsed-face hex
+        c2nv.push_back(8);
+        c2nf.push_back(6);
+        ctype.push_back(HEX);
+        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6];
+        c2v_tmp[3] = c2v_tmp[2];
+        c2v_tmp[7] = c2v_tmp[6];
         break;
 
       default:
@@ -1720,6 +1804,9 @@ void geo::partitionMesh(void)
     gridRank = rank % nprocPerGrid;
     rank = gridRank;
     nproc = nprocPerGrid;
+
+    if (nproc <= 1) return; // No additional partitioning needed
+
     if (rank == 0) cout << "Geo: Partitioning mesh block " << gridID << " across " << nprocPerGrid << " processes" << endl;
     if (rank == 0) cout << "Geo:   Number of elements in block " << gridID << " : " << nEles << endl;
   }
@@ -1801,8 +1888,8 @@ void geo::partitionMesh(void)
   nVerts = myNodes.size();
 
   // Map from global to local to reset c2v array using local data
-  vector<int> ivg2iv(nVerts_g);
-  for (auto &iv:ivg2iv) iv = -1;
+  vector<int> ivg2iv;
+  ivg2iv.assign(nVerts_g,-1);
 
   // Transfer over all needed vertices to local array
   int nv = 0;
@@ -1841,7 +1928,7 @@ void geo::partitionMesh(void)
     }
   }
 
-  // Lastly, update c2v and bndPts from global --> local node IDs
+  // Lastly, update c2v from global --> local node IDs
   std::transform(c2v.getData(),c2v.getData()+c2v.getSize(),c2v.getData(), [=](int ivg){return ivg2iv[ivg];});
 
   if (meshType == OVERSET_MESH)
@@ -1850,6 +1937,7 @@ void geo::partitionMesh(void)
     cout << "Geo:   On rank " << rank << ": nEles = " << nEles << endl;
 
   if (rank == 0) cout << "Geo: Done partitioning mesh" << endl;
+
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }

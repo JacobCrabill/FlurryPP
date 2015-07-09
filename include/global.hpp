@@ -83,7 +83,8 @@ enum BC_TYPE {
   SLIP_WALL = 8,
   ISOTHERMAL_NOSLIP = 9,
   ADIABATIC_NOSLIP = 10,
-  OVERSET = 11
+  OVERSET = 11,
+  SYMMETRY = 12
 };
 
 /*! Enumeration for VCJH scheme (correction function) to use */

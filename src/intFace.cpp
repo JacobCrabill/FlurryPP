@@ -21,8 +21,8 @@
 void intFace::setupRightState(void)
 {
   // This is kinda messy, but avoids separate initialize function
-  locF_R = rightParams[0];
-  relRot = rightParams[1];
+  locF_R = myInfo.locF_R;
+  relRot = myInfo.relRot;
 
   if (nDims == 2)
     nFptsR = eR->order+1;

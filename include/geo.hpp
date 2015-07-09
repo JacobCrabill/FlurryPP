@@ -30,6 +30,8 @@ class geo
 public:
   geo();
 
+  ~geo();
+
   /* === Primay setup routines === */
 
   //! Setup the geomery using input parameters
@@ -116,6 +118,10 @@ private:
   vector<int> nBndPts_g; //! Global number of points on each boundary
   map<int,int> bcIdMap;  //! Map from Gmsh boundary ID to Flurry BC ID
   int nEles_g, nVerts_g;
+
+#ifndef _NO_MPI
+  MPI_Comm gridComm;
+#endif
 
   void processConn2D(void);
   void processConn3D(void);

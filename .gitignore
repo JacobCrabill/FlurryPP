@@ -48,6 +48,7 @@ lib/
 
 # Visualization Output Files
 *.vtu
+*.pvtu
 *.plt
 *.csv
 *.csv.*

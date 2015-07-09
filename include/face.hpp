@@ -18,6 +18,8 @@
 
 #include <vector>
 
+#include "mpi.h"
+
 #include "global.hpp"
 
 class ele;
@@ -25,12 +27,32 @@ class ele;
 #include "matrix.hpp"
 #include "input.hpp"
 
+//! Struct to pass into each face; values assigned as needed based on face type
+struct faceInfo {
+  int isMPI = 0;
+
+  //! intFace parameters
+  int locF_R;
+  int relRot;
+
+  //! boundFace parameters
+  int bcType;
+
+  //! mpiFace parameters
+  int IDR;
+  int procL;
+  int procR;
+#ifndef _NO_MPI
+  MPI_Comm gridComm; //! MPI communicator for this grid
+#endif
+};
+
 class face
 {
 public:
 
   /*! Assign basic parameters to boundary */
-  void initialize(ele *eL, ele *eR, int locF_L, const vector<int> &rightParams, int gID, input* params);
+  void initialize(ele *eL, ele *eR, int gID, int locF_L, struct faceInfo myInfo, input* params);
 
   /*! Setup access to the left elements' data */
   void setupFace(void);
@@ -80,6 +102,7 @@ protected:
   int locF_L;
   int fptStartL, fptEndL;
   vector<int> rightParams;
+  struct faceInfo myInfo;
 
   ele* eL;
   ele* eR;
