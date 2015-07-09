@@ -19,7 +19,7 @@
 #include "ele.hpp"
 #include "geo.hpp"
 
-/*! Write solution to file (of type params->plot_type) */
+/*! Write solution to file (of type params->plotType) */
 void writeData(solver *Solver, input *params);
 
 /*! Write solution data to a CSV file. */

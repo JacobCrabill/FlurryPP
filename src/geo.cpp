@@ -44,7 +44,7 @@ void geo::setup(input* params)
 {
   this->params = params;
 
-  meshType = params->mesh_type;
+  meshType = params->meshType;
   gridRank = params->rank;
   nprocPerGrid = params->nproc;
 

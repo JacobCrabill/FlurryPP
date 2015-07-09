@@ -10,7 +10,7 @@ dt            .005
 
 viscous       0   (0: Inviscid, 1: Viscous)
 motion        0   (0: Static, 1: Perturbation test case)
-riemann_type  0   (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
+riemannType  0   (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
 
 # =============================================================
 # Physics Parameters
@@ -27,15 +27,15 @@ diffD        .1   (Diffusion Coefficient)
 # =============================================================
 #   Advection: 0-Gaussian,     1-u=x+y+z test case,  2-u=cos(x)*cos(y)*cos(z) test case
 #   N-S:       0-Uniform flow, 1-Uniform+Vortex
-ic_type       1
+icType       1
 test_case     0
 iterMax       2000
 
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plot_freq         100       (Frequency to write plot files)
-monitor_res_freq  10       (Frequency to print residual to terminal)
+plotFreq         100       (Frequency to write plot files)
+monitorResFreq  10       (Frequency to print residual to terminal)
 resType           2         (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName      Test3Da    (Filename prefix for output files)
 entropySensor     0         (Calculate & plot entropy-error sensor)
@@ -43,8 +43,8 @@ entropySensor     0         (Calculate & plot entropy-error sensor)
 # =============================================================
 # Mesh Options
 # =============================================================
-# mesh_type - 0: Read mesh, 1: Create mesh
-mesh_type     0
+# meshType - 0: Read mesh, 1: Create mesh
+meshType     0
 mesh_file_name   HexBox_10x10x10.msh
 periodicDX    20
 periodicDY    20

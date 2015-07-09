@@ -26,10 +26,10 @@
 
 void writeData(solver *Solver, input *params)
 {
-  if (params->plot_type == 0) {
+  if (params->plotType == 0) {
     writeCSV(Solver,params);
   }
-  else if (params->plot_type == 1) {
+  else if (params->plotType == 1) {
     writeParaview(Solver,params);
   }
 
@@ -479,7 +479,7 @@ void writeResidual(solver *Solver, input *params)
     int colW = 16;
     cout.precision(6);
     cout.setf(ios::scientific, ios::floatfield);
-    if (iter==1 || (iter/params->monitor_res_freq)%25==0) {
+    if (iter==1 || (iter/params->monitorResFreq)%25==0) {
       cout << endl;
       cout << setw(8) << left << "Iter";
       if (params->equation == ADVECTION_DIFFUSION) {
@@ -523,7 +523,7 @@ void writeMeshTecplot(solver* Solver, input* params)
   sprintf(fileNameC,"%s_/%s_%d.plt",&fileName[0],&fileName[0],params->rank);
 #else
   /* --- Filename to write to --- */
-  sprintf(fileNameC,"%s_.plt",&fileName[0],iter);
+  sprintf(fileNameC,"%s_.plt",&fileName[0]);
 #endif
 
   if (params->rank == 0)

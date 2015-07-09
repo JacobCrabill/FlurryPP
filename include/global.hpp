@@ -58,7 +58,7 @@ enum ETYPE {
 };
 
 /*! Enumeration for mesh (either create cartesian mesh or read from file) */
-enum MESH_TYPE {
+enum meshType {
   READ_MESH   = 0,
   CREATE_MESH = 1,
   OVERSET_MESH = 2
@@ -199,6 +199,10 @@ struct point
     z = std::abs(z);
   }
 
+  double norm(void) {
+    return std::sqrt(x*x+y*y+z*z);
+  }
+
 };
 
 //! For clearer notation when a vector is implied, rather than a point
@@ -313,6 +317,8 @@ vector<T> operator*(const vector<T>& lhs, double rhs)
 
   return out;
 }
+
+Vec3 operator*(matrix<double>& mat, Vec3 &vec);
 
 //----------Performance boost mod----------------------
 /*template<typename T>
