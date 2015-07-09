@@ -337,7 +337,7 @@ void input::readInputFile(char *filename)
   else {
     // Reading in the mesh in one form or another
     if (meshType == READ_MESH) {
-      opts.getScalarValue("mesh_file_name",meshFileName);
+      opts.getScalarValue("meshFileName",meshFileName);
     }
     else if (meshType == OVERSET_MESH) {
       opts.getVectorValue("oversetGrids",oversetGrids);

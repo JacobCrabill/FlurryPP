@@ -469,8 +469,12 @@ void geo::matchMPIFaces(void)
 #ifndef _NO_MPI
   if (nprocPerGrid <= 1) return;
 
-  if (gridRank == 0)
+  if (gridRank == 0) {
+    if (meshType == OVERSET_MESH)
       cout << "Geo: Grid block " << gridID << ": Matching MPI faces" << endl;
+    else
+      cout << "Geo: Matching MPI faces" << endl;
+  }
 
   /* --- Split MPI Processes Based Upon gridID: Create MPI_Comm for each grid --- */
   MPI_Comm_split(MPI_COMM_WORLD, gridID, params->rank, &gridComm);
@@ -602,7 +606,12 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
   faces.resize(nIntFaces+nBndFaces);
   mpiFacesVec.resize(nMpiFaces);
 
-  if (gridRank==0) cout << "Geo: Grid " << gridID << ": Setting up elements" << endl;
+  if (gridRank==0) {
+    if (meshType == OVERSET_MESH)
+      cout << "Geo: Grid " << gridID << ": Setting up elements" << endl;
+    else
+      cout << "Geo: Setting up elements" << endl;
+  }
 
   // Setup the elements
   int ic = 0;
@@ -616,7 +625,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     e.nodes.resize(c2nv[ic]);
     for (int iv=0; iv<c2nv[ic]; iv++) {
       e.nodeID[iv] = c2v(ic,iv);
-      e.nodes[iv] = xv[c2v(ic,iv)];
+      e.nodes[iv] = point(xv[c2v(ic,iv)]);
     }
 
     // Global face IDs for internal & boundary faces
@@ -634,7 +643,13 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
   vector<int> cellFaces;
 
-  if (gridRank==0) cout << "Geo: Grid " << gridID << ": Setting up internal faces" << endl;
+  if (gridRank==0) {
+    if (meshType == OVERSET_MESH)
+      cout << "Geo: Grid " << gridID << ": Setting up internal faces" << endl;
+    else
+      cout << "Geo: Setting up internal faces" << endl;
+  }
+
 
   // Internal Faces
   for (int i=0; i<nIntFaces; i++) {
@@ -660,7 +675,12 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     }
   }
 
-  if (gridRank==0) cout << "Geo: Grid " << gridID << ": Setting up boundary faces" << endl;
+  if (gridRank==0) {
+    if (meshType == OVERSET_MESH)
+      cout << "Geo: Grid " << gridID << ": Setting up boundary faces" << endl;
+    else
+      cout << "Geo: Setting up boundary faces" << endl;
+  }
 
   // Boundary Faces
   for (int i=0; i<nBndFaces; i++) {
@@ -684,7 +704,12 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
   // MPI Faces
   if (params->nproc > 1) {
 
-    if (gridRank==0) cout << "Geo: Grid " << gridID << ": Setting up MPI faces" << endl;
+    if (gridRank==0) {
+      if (meshType == OVERSET_MESH)
+        cout << "Geo: Grid " << gridID << ": Setting up MPI faces" << endl;
+      else
+        cout << "Geo: Setting up MPI faces" << endl;
+    }
 
     for (int i=0; i<nMpiFaces; i++) {
       mpiFacesVec[i] = make_shared<mpiFace>();
@@ -811,7 +836,8 @@ void geo::readGmsh(string fileName)
   getline(meshFile,str); // Clear end of line, just in case
 
   for (int i=0; i<nVerts; i++) {
-    meshFile >> iv >> xv(i,0) >> xv(i,1) >> xv(i,2);
+    meshFile >> iv >> xv(i,0) >> xv(i,1);
+    if (nDims == 3) meshFile >> xv(i,2);
   }
 
   /* --- Read Element Connectivity --- */

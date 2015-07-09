@@ -40,9 +40,6 @@ void mpiFace::setupRightState(void)
   /* Send/Get # of flux points to/from right element */
   MPI_Irecv(&nFptsR,1,MPI_INT,procR,ID,myComm,&nFpts_in);
   MPI_Isend(&nFptsL,1,MPI_INT,procR,IDR,myComm,&nFpts_out);
-
-  // Sloppy, but necessary to breakup communication from computation more efficiently
-  isMPI = 1;
 #endif
 }
 

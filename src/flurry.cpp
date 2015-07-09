@@ -65,10 +65,6 @@ int main(int argc, char *argv[]) {
   /* Setup the solver, all elements and faces, and all FR operators for computation */
   Solver.setup(&params,&Geo);
 
-
-  writeMeshTecplot(&Solver,&params);
-
-
   /* Stat timer for simulation (ignoring pre-processing) */
   simTimer runTime;
   runTime.startTimer();
@@ -78,6 +74,8 @@ int main(int argc, char *argv[]) {
 
   /* Write initial data file */
   writeData(&Solver,&params);
+
+  //writeMeshTecplot(&Solver,&params);
 
   /* --- Calculation Loop --- */
   for (params.iter=params.initIter+1; params.iter<=params.iterMax; params.iter++) {
