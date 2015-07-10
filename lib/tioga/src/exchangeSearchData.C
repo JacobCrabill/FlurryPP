@@ -19,14 +19,14 @@ void tioga::exchangeSearchData(void)
   //
   sndPack=(PACKET *)malloc(sizeof(PACKET)*nsend);
   rcvPack=(PACKET *)malloc(sizeof(PACKET)*nrecv);
-  //
+
   for(i=0;i<nsend;i++)     
     {
       sndPack[i].nints=sndPack[i].nreals=0;
       sndPack[i].intData=NULL;
       sndPack[i].realData=NULL;
     }
-  //
+
   for(i=0;i<nrecv;i++)     
     {
       rcvPack[i].nints=rcvPack[i].nreals=0;

@@ -2,11 +2,10 @@
 
 void tioga::exchangeDonors(void)
 {
-  int i,j,k,l,m;
-  int i3;
+  int i,j,k;
   int nsend,nrecv;
   PACKET *sndPack,*rcvPack;
-  int meshtag,procid,pointid,remoteid;
+  int meshtag,pointid,remoteid;
   double donorRes;
   double *receptorResolution;
   int *donorRecords;
@@ -54,12 +53,12 @@ void tioga::exchangeDonors(void)
 
   for(k=0;k<nrecv;k++)
   {
-    m=0;
+    int nints=0;
     for(i=0;i<rcvPack[k].nints/3;i++)
     {
-      meshtag=rcvPack[k].intData[m++];
-      pointid=rcvPack[k].intData[m++];
-      remoteid=rcvPack[k].intData[m++];
+      meshtag=rcvPack[k].intData[nints++];
+      pointid=rcvPack[k].intData[nints++];
+      remoteid=rcvPack[k].intData[nints++];
       donorRes=rcvPack[k].realData[i];
       mb->insertAndSort(pointid,k,meshtag,remoteid,donorRes);
     }
@@ -77,27 +76,27 @@ void tioga::exchangeDonors(void)
   // packet
 
   for(i=0;i<nrecords;i++)
-    {
-      k=donorRecords[2*i];
-      sndPack[k].nints++;
-      sndPack[k].nreals++;
-    }
+  {
+    k=donorRecords[2*i];
+    sndPack[k].nints++;
+    sndPack[k].nreals++;
+  }
 
   // allocate the data containers
 
   for(k=0;k<nsend;k++)
-    {
-     sndPack[k].intData=(int *)malloc(sizeof(int)*sndPack[k].nints);
-     sndPack[k].realData=(double *)malloc(sizeof(double)*sndPack[k].nreals);
-     icount[k]=dcount[k]=0;
-    }
+  {
+    sndPack[k].intData=(int *)malloc(sizeof(int)*sndPack[k].nints);
+    sndPack[k].realData=(double *)malloc(sizeof(double)*sndPack[k].nreals);
+    icount[k]=dcount[k]=0;
+  }
 
   for (i=0;i<nrecords;i++)
-    {
-      k=donorRecords[2*i];
-      sndPack[k].intData[icount[k]++]=donorRecords[2*i+1];
-      sndPack[k].realData[dcount[k]++]=receptorResolution[i];
-    }
+  {
+    k=donorRecords[2*i];
+    sndPack[k].intData[icount[k]++]=donorRecords[2*i+1];
+    sndPack[k].realData[dcount[k]++]=receptorResolution[i];
+  }
 
   // now communicate the data (comm2)
 
@@ -111,11 +110,11 @@ void tioga::exchangeDonors(void)
 
   mb->initializeInterpList(ninterp);
 
-  m=0;
+  ninterp=0;
   for(k=0;k<nrecv;k++)
     for(i=0;i<rcvPack[k].nints;i++)
-      mb->findInterpData(&m,rcvPack[k].intData[i],rcvPack[k].realData[i]);
-  mb->set_ninterp(m);
+      mb->findInterpData(&ninterp,rcvPack[k].intData[i],rcvPack[k].realData[i]);
+  mb->set_ninterp(ninterp);
 
   //printf("process %d has (%d,%d) points to interpolate out %d donors\n",myid,ninterp,m,mb->donorCount);
 
@@ -130,20 +129,20 @@ void tioga::exchangeDonors(void)
 
   
   for(i=0;i<nrecords;i++)
-    {
-      k=donorRecords[2*i];
-      sndPack[k].nints++;
-   }
+  {
+    k=donorRecords[2*i];
+    sndPack[k].nints++;
+  }
   for(k=0;k<nsend;k++)
-    {
-      sndPack[k].intData=(int *)malloc(sizeof(int)*sndPack[k].nints);
-      icount[k]=0;
-    }  
+  {
+    sndPack[k].intData=(int *)malloc(sizeof(int)*sndPack[k].nints);
+    icount[k]=0;
+  }
   for(i=0;i<nrecords;i++)
-    {
-      k=donorRecords[2*i];
-      sndPack[k].intData[icount[k]++]=donorRecords[2*i+1];
-    }
+  {
+    k=donorRecords[2*i];
+    sndPack[k].intData[icount[k]++]=donorRecords[2*i+1];
+  }
 
   // communicate the cancellation data (comm 3)
 

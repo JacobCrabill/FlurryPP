@@ -157,13 +157,13 @@ void MeshBlock::search(void)
   donorCount=0;
   ipoint=0;
   for(i=0;i<nsearch;i++)
-    {
-      adt->searchADT(this,&(donorId[i]),&(xsearch[3*i]));
-      if (donorId[i] > -1) {
-	donorCount++;
-      }
-      ipoint+=3;
+  {
+    adt->searchADT(this,&(donorId[i]),&(xsearch[3*i]));
+    if (donorId[i] > -1) {
+      donorCount++;
     }
+    ipoint+=3;
+  }
   //printf("found %d donors out of %d points\n",donorCount,nsearch);
 
   free(icell);

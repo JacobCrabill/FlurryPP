@@ -618,9 +618,7 @@ void MeshBlock::markWallBoundary(int *sam,int nx[3],double extents[6])
    free(inode);
 }
 	
-void MeshBlock::getQueryPoints(OBB *obc,
-			       int *nints,int **intData,
-			       int *nreals, double **realData)
+void MeshBlock::getQueryPoints(OBB *obc,int *nints,int **intData,int *nreals, double **realData)
 {
   int i,j,k;
   int i3;
@@ -630,39 +628,37 @@ void MeshBlock::getQueryPoints(OBB *obc,
   int m;
 
   inode=(int *)malloc(sizeof(int)*nnodes);
-  *nints=*nreals=0; 
+  *nints=*nreals=0;
   for(i=0;i<nnodes;i++)
+  {
+    i3=3*i;
+    for(j=0;j<3;j++) xd[j]=0;
+    for(j=0;j<3;j++)
+      for(k=0;k<3;k++)
+        xd[j]+=(x[i3+k]-obc->xc[k])*obc->vec[j][k];
+
+    if (fabs(xd[0]) <= obc->dxc[0] && fabs(xd[1]) <= obc->dxc[1] && fabs(xd[2]) <= obc->dxc[2])
     {
-      i3=3*i;
-      for(j=0;j<3;j++) xd[j]=0;
-      for(j=0;j<3;j++)
-	for(k=0;k<3;k++)
-	  xd[j]+=(x[i3+k]-obc->xc[k])*obc->vec[j][k];
+      inode[*nints]=i;
+      (*nints)++;
+      (*nreals)+=3;
 
-      if (fabs(xd[0]) <= obc->dxc[0] &&
-	  fabs(xd[1]) <= obc->dxc[1] &&
-	  fabs(xd[2]) <= obc->dxc[2])
-	{
-	  inode[*nints]=i;
-	  (*nints)++;
-	  (*nreals)+=3;
-
-	}
     }
-  //
+  }
+
   (*intData)=(int *)malloc(sizeof(int)*(*nints));
   (*realData)=(double *)malloc(sizeof(double)*(*nreals));
-  //
+
   m=0;
   for(i=0;i<*nints;i++)
-    {
-      i3=3*inode[i];
-      (*intData)[i]=inode[i];
-      (*realData)[m++]=x[i3];
-      (*realData)[m++]=x[i3+1];
-      (*realData)[m++]=x[i3+2];
-    }
-  //
+  {
+    i3=3*inode[i];
+    (*intData)[i]=inode[i];
+    (*realData)[m++]=x[i3];
+    (*realData)[m++]=x[i3+1];
+    (*realData)[m++]=x[i3+2];
+  }
+
   free(inode);
 }  
 	  

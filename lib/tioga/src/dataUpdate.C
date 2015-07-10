@@ -4,17 +4,17 @@
 #define ROW 0
 #define COLUMN 1
 
-void MeshBlock::getInterpolatedSolution(int* nints,int* nreals,int** intData,double** realData,double* q,
-                                        int nvar, int interptype)
+void MeshBlock::getInterpolatedSolution(int* nints, int* nreals, int** intData, double** realData,
+                                        double* q, int nvar, int interptype)
 {
   int i;
   int k,m,inode;
   double weight;
   double* qq;
   int icount,dcount;
-  //
+
   qq=(double *)malloc(sizeof(double)*nvar);
-  //
+
   (*nints)=(*nreals)=0;
   for(i=0; i<ninterp; i++)
   {
@@ -25,11 +25,11 @@ void MeshBlock::getInterpolatedSolution(int* nints,int* nreals,int** intData,dou
     }
   }
   if ((*nints)==0) return;
-  //
+
   (*intData)=(int *)malloc(sizeof(int)*2*(*nints));
   (*realData)=(double *)malloc(sizeof(double)*(*nreals));
   icount=dcount=0;
-  //
+
   if (interptype==ROW) // Row-major vs. col-major data
   {
     for(i=0; i<ninterp; i++)
