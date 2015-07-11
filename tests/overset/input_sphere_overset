@@ -2,7 +2,7 @@
 # Basic Options
 # =============================================================
 equation      1    (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
-order         2    (Polynomial order to use)
+order         1    (Polynomial order to use)
 timeType      4    (0: Forward Euler, 4: RK44)
 dtType        1    (0: Fixed, 1: CFL-based)
 CFL           .7
@@ -34,11 +34,11 @@ icType       0
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plot_freq         200      (Frequency to write plot files)
-monitorResFreq  10       (Frequency to print residual to terminal)
-resType           2         (1: 1-norm, 2: 2-norm, 3: Inf-norm)
-dataFileName      Sphere    (Filename prefix for output files)
-entropySensor     0         (Calculate & plot entropy-error sensor)
+plotFreq        10      (Frequency to write plot files)
+monitorResFreq  1       (Frequency to print residual to terminal)
+resType         2         (1: 1-norm, 2: 2-norm, 3: Inf-norm)
+dataFileName    Sphere    (Filename prefix for output files)
+entropySensor   0         (Calculate & plot entropy-error sensor)
 
 # =============================================================
 # Mesh Options

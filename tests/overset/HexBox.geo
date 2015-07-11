@@ -3,9 +3,9 @@ xmin = -5;  xmax = 5;
 ymin = -5;  ymax = 5;
 zmin = -5;  zmax = 5;
 
-nx = 35;
-ny = 35;
-nz = 35;
+nx = 20;
+ny = 20;
+nz = 20;
 
 Point(0) = {xmin,ymin,zmin};
 Point(1) = {xmax,ymin,zmin};

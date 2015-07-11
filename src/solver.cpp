@@ -29,12 +29,20 @@ class boundFace;
 
 solver::solver()
 {
+  tg = NULL;
+}
+
+solver::~solver()
+{
+  if (tg != NULL)
+    delete tg;
 }
 
 void solver::setup(input *params, geo *Geo)
 {
   this->params = params;
   this->Geo = Geo;
+  this->tg = Geo->tg; // Geo will have initialized this already if needed
 
   params->time = 0.;
 
@@ -59,6 +67,7 @@ void solver::setup(input *params, geo *Geo)
 
   /* Setup the FR operators for computation */
   setupOperators();
+
 
   if (params->meshType == OVERSET_MESH)
     setupOverset();

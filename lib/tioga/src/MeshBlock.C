@@ -55,11 +55,7 @@ void MeshBlock::tagBoundary(void)
   double xv[8][3];
   double vol;
   int *iflag;
-  int nvert,i3;
-  FILE *fp;
-  char intstring[7];
-  char fname[80];  
-  
+  int nvert,i3;  
 
   // do this only once
   // i.e. when the meshblock is first
@@ -161,18 +157,6 @@ void MeshBlock::tagBoundary(void)
         }
       }
     }
-    /*
-      sprintf(intstring,"%d",100000+myid);
-      sprintf(fname,"nodeRes%s.dat",&(intstring[1]));
-      fp=fopen(fname,"w");
-      for(i=0;i<nnodes;i++)
-       {
-        if (nodeRes[i]==BIGVALUE) {
-         fprintf(fp,"%e %e %e\n",x[3*i],x[3*i+1],x[3*i+2]);
-         }
-       }
-      fclose(fp);
-      */
 
     // now tag all the cells which have
     // mandatory receptors as nodes as not acceptable

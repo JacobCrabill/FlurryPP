@@ -64,6 +64,8 @@ public:
 
   solver();
 
+  ~solver();
+
   //! Setup the solver with the given simulation parameters & geometry
   void setup(input *params, geo *Geo);
 

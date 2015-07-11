@@ -44,6 +44,9 @@ geo::~geo()
 #ifndef _NO_MPI
   MPI_Comm_free(&gridComm);
 #endif
+
+  if (nodesPerCell != NULL)
+    delete nodesPerCell;
 }
 
 void geo::setup(input* params)
@@ -448,14 +451,18 @@ void geo::registerGridDataTIOGA(void)
   int nwall = iwall.size();
   int nover = iover.size();
   int ntypes = 1;           //! Number of element types in grid block
-  int nodesPerCell = 8;     //! Number of nodes per element for each element type (but only one type so far)
+  nodesPerCell = new int[1];
+  nodesPerCell[0] = 8;      //! Number of nodes per element for each element type (but only one type so far)
   iblank.resize(nVerts);
+  iblankCell.resize(nEles);
 
-  //conn = new int*[1];
+  // Need an int**, even if only have one element type
   conn[0] = c2v.getData();
 
   tg->registerGridData(gridID,nVerts,xv.getData(),iblank.data(),nwall,nover,iwall.data(),
-                       iover.data(),ntypes,&nodesPerCell,&nEles,&conn[0]);
+                       iover.data(),ntypes,nodesPerCell,&nEles,&conn[0]);
+
+  tg->set_cell_iblank(iblankCell.data());
 }
 
 void geo::updateOversetConnectivity(void)
@@ -466,6 +473,9 @@ void geo::updateOversetConnectivity(void)
   // Process overset-grid connectivity
   // (set iblanks, exchange donor info, setup interpolation points & weights)
   tg->performConnectivityHighOrder();
+
+  // This appears to be needed in addition to the high-order-specific processing above?
+  tg->performConnectivity();
 }
 
 void geo::writeOversetConnectivity(void)

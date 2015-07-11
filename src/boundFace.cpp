@@ -277,6 +277,14 @@ void boundFace::applyBCs(void)
           ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
         }
       }
+      else if (bcType == OVERSET) {
+        // Temporary hack: Just set equal to left state.
+        // Future versions will interpolate from other grid...?
+        rhoR = rhoL;
+        for (uint i=0; i<nDims; i++)
+          vR[i] = vL[i];
+        ER = eL;
+      }
       else {
         cout << "Boundary Condition: " << bcType << endl;
         FatalError("Boundary condition not recognized.");

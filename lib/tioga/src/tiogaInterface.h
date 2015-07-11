@@ -51,7 +51,7 @@ extern "C" {
                                      void (*f2)(int *,int *,double *),
                                      void (*f3)(int *,double *,int *,double *),
                                      void (*f4)(int *,double *,int *,int *,double *,double *,int *),
-                                     void (*f5)(int *,int *,double *,int *,int *,double *), void* context);
+                                     void (*f5)(int *,int *,double *,int *,int *,double *));
 
 
   void tioga_delete_(void);

@@ -159,10 +159,9 @@ extern "C" {
                                      void (*f2)(int *,int *,double *),
                                      void (*f3)(int *,double *,int *,double *),
                                      void (*f4)(int *,double *,int *,int *,double *,double *,int *),
-                                     void (*f5)(int *,int *,double *,int *,int *,double *),
-                                     void *context)
+                                     void (*f5)(int *,int *,double *,int *,int *,double *))
   {
-    tg->setcallback(f1,f2,f3,f4,f5,context);
+    tg->setcallback(f1,f2,f3,f4,f5);
     //getNodesPerCell=f1;
     //getReceptorNodes=f2;
     //donorInclusionTest=f3;

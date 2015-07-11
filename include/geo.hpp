@@ -112,14 +112,16 @@ public:
   vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
 
   /* --- Overset-Related Variables --- */
-  int nprocPerGrid;   //! Number of MPI processes assigned to each (overset) grid block
-  int gridID;         //! Which (overset) grid block is this process handling
-  int gridRank;       //! MPI rank of process *within* the grid block [0 to nprocPerGrid-1]
-  vector<int> iblank; //! Output of TIOGA: flag for whether vertex is normal, blanked, or receptor
-  vector<int> iwall;  //! List of nodes on wall boundaries
-  vector<int> iover;  //! List of nodes on overset boundaries
+  int nprocPerGrid;       //! Number of MPI processes assigned to each (overset) grid block
+  int gridID;             //! Which (overset) grid block is this process handling
+  int gridRank;           //! MPI rank of process *within* the grid block [0 to nprocPerGrid-1]
+  vector<int> iblank;     //! Output of TIOGA: flag for whether vertex is normal, blanked, or receptor
+  vector<int> iblankCell; //! Output? of TIOGA: flag for whether cell is normal, blanked, or receptor
+  vector<int> iwall;      //! List of nodes on wall boundaries
+  vector<int> iover;      //! List of nodes on overset boundaries
 
-  tioga* tg;  //! Pointer to Tioga object for processing overset grids
+  tioga* tg;           //! Pointer to Tioga object for processing overset grids
+  int* nodesPerCell;   //! Pointer for Tioga to know # of nodes for each element type
   array<int*,1> conn;  //! Pointer to c2v for each element type [but only 1, so will be size(1)]
 
 private:

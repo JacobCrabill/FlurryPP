@@ -119,7 +119,7 @@ void face::getLeftState()
 void face::calcInviscidFlux(void)
 {
   if (!isMPI)
-    getLeftState();  // Idea: instead of using ptrs to ele data, do copy?
+    getLeftState();
   this->getRightState(); // <-- makes this more general for all face types, and allows face memory to be contiguous
 
   // Calculate common inviscid flux at flux points
