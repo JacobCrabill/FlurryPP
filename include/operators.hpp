@@ -38,13 +38,18 @@ public:
   //! Setup operator for calculation of gradient at the solution points
   void setupGradSpts(vector<point> &loc_spts);
 
-  //! Setup an interpolation operation between two sets of points using solution basis
-  void setupInterpolate(vector<point> &pts_from, vector<point> &pts_to, matrix<double> &opp_interp);
-
   /*! Setup operator to calculate divergence of correction function at solution points
    *  based upon the normal flux correction at the flux points */
   void setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts);
 
+  //! Setup an interpolation operation between solution points and given points using solution basis
+  matrix<double> setupInterpolateSptsIpts(matrix<double>& loc_ipts);
+
+  //! Interpolate a set of values at the solution points of an element to given interpolation points
+  void interpolateSptsToPoints(matrix<double>& Q_spts, matrix<double>& Q_ipts, matrix<double>& loc_ipts);
+
+  //! Get interpolation weights at given point
+  void getInterpWeights(double* loc_ipt, double* weights);
 
   void setupCorrectGradU(void);
 

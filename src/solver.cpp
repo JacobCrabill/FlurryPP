@@ -21,10 +21,11 @@
 class intFace;
 class boundFace;
 
-#include "../include/input.hpp"
-#include "../include/geo.hpp"
-#include "../include/intFace.hpp"
-#include "../include/boundFace.hpp"
+#include "input.hpp"
+#include "geo.hpp"
+#include "intFace.hpp"
+#include "boundFace.hpp"
+#include "tiogaInterface.h"
 
 solver::solver()
 {
@@ -58,6 +59,9 @@ void solver::setup(input *params, geo *Geo)
 
   /* Setup the FR operators for computation */
   setupOperators();
+
+  if (params->meshType == OVERSET_MESH)
+    setupOverset();
 
   /* Additional Setup */
 
@@ -596,4 +600,108 @@ void solver::shockCapture(void)
   for (uint i=0; i<eles.size(); i++) {
     eles[i].sensor = opers[eles[i].eType][eles[i].order].shockCaptureInEle(eles[i].U_spts,params->threshold);
   }
+}
+
+
+/* ---- Overset-Grid Functions ---- */
+
+void solver::setupOverset(void)
+{
+  setupOversetData();
+
+  // Give TIOGA a pointer to this solver for access to callback functions
+  tg->setcallback(this);
+
+  Geo->updateOversetConnectivity();
+}
+
+void solver::setupOversetData(void)
+{
+  // Allocate storage for global solution vector (for use with Tioga)
+  // and initialize to 0
+  int nSptsTotal = 0;
+  for (uint i=0; i<eles.size(); i++) nSptsTotal += eles[i].getNSpts();
+  U_spts.assign(nSptsTotal*params->nFields,0);
+}
+
+void solver::setGlobalSolutionArray(void)
+{
+  int ind = 0;
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].getUSpts(&U_spts[ind]);
+    ind += eles[i].getNSpts() * params->nFields;
+  }
+}
+
+void solver::updateElesSolutionArrays(void)
+{
+  int ind = 0;
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].setUSpts(&U_spts[ind]);
+    ind += eles[i].getNSpts() * params->nFields;
+  }
+}
+
+void solver::callDataUpdateTIOGA(void)
+{
+  tg->dataUpdate_highorder(params->nFields,U_spts.data(),0);
+}
+
+/* ---- Callback Functions for TIOGA Overset Grid Library ---- */
+
+void solver::getNodesPerCell(int* cellID, int* nNodes)
+{
+  (*nNodes) = eles[*cellID].getNSpts();
+}
+
+void solver::getReceptorNodes(int* cellID, int* nNodes, double* posNodes)
+{
+  eles[*cellID].getPosSpts(posNodes);
+}
+
+void solver::donorInclusionTest(int* cellID, double* xyz, int* passFlag, double* rst)
+{
+  point refPt = eles[*cellID].getRefLoc(point(xyz));
+
+  // Determine if point is in cell: [x,y,z] should all lie between [-1,1]
+  double tol = -1e-10;
+  *(passFlag) = ( (1-abs(refPt.x)>tol) && (1-abs(refPt.y)>tol) && (1-abs(refPt.z)>tol) );
+
+  rst[0] = refPt.x;
+  rst[1] = refPt.y;
+  rst[2] = refPt.z;
+}
+
+void solver::donorWeights(int* cellID, double* xyz, int* nWeights, int* iNode, double* weights, double* rst, int* fracSize)
+{
+  int ic = *cellID;
+
+  // Get starting offset for global solution-point index
+  int iStart = 0;
+  for (int i=0; i<ic; i++)
+    iStart += eles[i].getNSpts();
+
+  // Put the global indices of ele's spts into inode array
+  (*nWeights) = eles[ic].getNSpts();
+  for (int i=0; i<(*nWeights); i++)
+    iNode[i] = iStart + i;
+
+  opers[eles[ic].eType][eles[ic].order].getInterpWeights(rst,weights);
+}
+
+void solver::convertToModal(int* cellID, int* nPtsIn, double* uIn, int* nPtsOut, int* iStart, double* uOut)
+{
+  // This is apparently supposed to convert nodal data to modal data...
+  // ...but I don't need it.  So, just copy the data over.
+
+  int ic = *cellID;
+  *nPtsOut = *nPtsIn;
+
+  // Copy uIn to uOut
+  uOut = uIn;
+
+  // Get starting offset for global solution-point index
+  *iStart = 0;
+  for (int i=0; i<ic; i++)
+    *iStart += eles[i].getNSpts();
 }

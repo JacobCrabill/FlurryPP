@@ -1756,6 +1756,13 @@ point ele::getPosFpt(uint fpt)
   return pos_fpts[fpt];
 }
 
+void ele::getPosSpts(double* posSpts)
+{
+  for (int spt=0; spt<nSpts; spt++)
+    for (int dim=0; dim<nDims; dim++)
+      posSpts[spt*3+dim] = pos_spts[spt][dim];
+}
+
 uint ele::getNDims() const
 {
   return nDims;
@@ -1796,5 +1803,19 @@ void ele::setNFpts(int value)
 double ele::getSensor(void)
 {
    return sensor;
+}
+
+void ele::getUSpts(double* Uvec)
+{
+  for (int spt=0; spt<nSpts; spt++)
+    for (int field=0; field<nFields; field++)
+      Uvec[spt*nFields+field] = U_spts(spt,field);
+}
+
+void ele::setUSpts(double* Uvec)
+{
+  for (int spt=0; spt<nSpts; spt++)
+    for (int field=0; field<nFields; field++)
+      U_spts(spt,field) = Uvec[spt*nFields+field];
 }
 

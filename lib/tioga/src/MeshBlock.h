@@ -4,8 +4,22 @@
  * Jay Sitaraman
  * 02/20/2014
  */
+
+#pragma once
+
 #include "codetypes.h"
+
+class ADT;
+class solver;
+//class MeshBlock;
+
 #include "ADT.h"
+
+#include "solver.hpp" // Include Flurry's 'solver' class for callback functions
+
+#define ROW 0
+#define COLUMN 1
+#define NFRAC 1331
 
 class MeshBlock
 {
@@ -45,12 +59,14 @@ class MeshBlock
   INTEGERLIST *cancelList;  /** receptors that need to be cancelled because of */
   int ncancel;              /** conflicts with the state of their donors */
 
+  solver* Solver; //! Flurry solver object for callback functions
+
   /* ---- Callback functions for high-order overset connectivity ---- */
 
   /*!
    * \brief Get the number of solution points in given cell
    */
-  void (*get_nodes_per_cell)(int* cellID, int* nNodes);
+  void (*getNodesPerCell)(int* cellID, int* nNodes);
 
   /*!
    * \brief Get the physical position of solution points in given cell
@@ -58,7 +74,7 @@ class MeshBlock
    * input: cellID, nNodes
    * output: xyz [size: nNodes x 3, row-major]
    */
-  void (*get_receptor_nodes)(int* cellID, int* nNodes, double* xyz);
+  void (*getReceptorNodes)(int* cellID, int* nNodes, double* xyz);
 
   /*!
    * \brief Determine whether a point (x,y,z) lies within a cell
@@ -71,7 +87,7 @@ class MeshBlock
    * @param[out] passFlag  Is the point inside the cell? (no:0, yes:1)
    * @param[out] rst       Position of point within cell in reference coordinates
    */
-  void (*donor_inclusion_test)(int* cellID, double* xyz, int* passFlag, double* rst);
+  void (*donorInclusionTest)(int* cellID, double* xyz, int* passFlag, double* rst);
 
   /*!
    * \brief Get interpolation points & weights for current cell,
@@ -85,9 +101,9 @@ class MeshBlock
    * @param[in]  rst       Reference coordinates of receptor point within cell
    * @param[in]  ndim      Amount of memory allocated to 'frac' (# of doubles)
    */
-  void (*donor_frac)(int* cellID, double* xyz, int* nweights, int* inode, double* weights, double* rst, int* ndim);
+  void (*donorWeights)(int* cellID, double* xyz, int* nweights, int* inode, double* weights, double* rst, int* ndim);
 
-  void (*convert_to_modal)(int *,int *,double *,int *,int *,double *);
+  void (*convertToModal)(int *,int *,double *,int *,int *,double *);
 
   /* ---- End High-Order Callback Function Definitions ---- */
 
@@ -241,12 +257,15 @@ class MeshBlock
                    void (*f4)(int *,double *,int *,int *,double *,double *,int *),
                    void (*f5)(int *,int *,double *,int *,int*,double *))
   {
-    get_nodes_per_cell=f1;    // (cellID, pointsPerCell*)                       [* = output]
-    get_receptor_nodes=f2;    // (cellID, pointsPerCell, receptor_nodes_XYZ*)
-    donor_inclusion_test=f3;  // (cellID, posXYZ, passFlag*, rst[iPoint]*)
-    donor_frac=f4;            // (cellID, xsearch, nweights, inode, frac*, rst, ndim)
-    convert_to_modal=f5;      // (cellID, pointsPerCell, nodalVals, nPts, indexOut*, modalVals*)
+    getNodesPerCell=f1;    // (cellID, pointsPerCell*)                       [* = output]
+    getReceptorNodes=f2;    // (cellID, pointsPerCell, receptor_nodes_XYZ*)
+    donorInclusionTest=f3;  // (cellID, posXYZ, passFlag*, rst[iPoint]*)
+    donorWeights=f4;            // (cellID, xsearch, nweights, inode, frac*, rst, ndim)
+    convertToModal=f5;      // (cellID, pointsPerCell, nodalVals, nPts, indexOut*, modalVals*)
   }
+
+  //! For Flurry: Setup access to solver object for callback functions
+  void setcallback(solver* _solver) { Solver = _solver; }
 
   void writeCellFile(int);
 

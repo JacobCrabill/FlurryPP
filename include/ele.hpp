@@ -134,6 +134,8 @@ public:
 
   point getPosFpt(uint spt);
 
+  void getPosSpts(double* posSpts);
+
   /*! Find the reference location of a point inside an element given its
    *  physical position */
   point getRefLoc(const point &pos);
@@ -161,6 +163,9 @@ public:
   void setupArrays();
   void setupAllGeometry();
   void restart(ifstream &file, input *_params, geo *_Geo);
+
+  void getUSpts(double* Uvec);
+  void setUSpts(double* Uvec);
 
 private:
 

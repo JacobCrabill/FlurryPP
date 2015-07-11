@@ -21,9 +21,10 @@ METIS_INC_DIR = /usr/local/include/
 MPI_INC_DIR   = /usr/lib/openmpi/include
 
 # Location of libtioga.a
+TIOGA_INC   = ./lib/tioga/src
 TIOGA_LIB   = ./lib/tioga/src/libtioga.a
 
-CXX_BASE    = -pipe -Wall -W -std=c++11 $(DEFINES)
+CXX_BASE    = -pipe -Wall -W -std=c++11 -Wno-comment -I./include -I$(TIOGA_INC) $(DEFINES)
 CXX_STD     = -g -02
 CXX_DEBUG   = -g -pg -O0
 CXX_RELEASE = -O3

@@ -32,6 +32,10 @@ class oper;
 #include "mpiFace.hpp"
 #include "operators.hpp"
 
+class tioga;
+
+#include "tioga.h"
+
 class solver
 {
 friend class geo; // Probably only needed if I make eles, opers private?
@@ -52,6 +56,9 @@ public:
 
   //! Vector of all MPI faces handled by this solver
   vector<shared_ptr<mpiFace>> mpiFaces;
+
+  //! Pointer to Tioga object for processing overset grids
+  tioga* tg;
 
   /* === Setup Functions === */
 
@@ -190,6 +197,37 @@ public:
 
   /* === Functions Related to Overset Grids === */
 
+  //! Do initial preprocessing for overset grids
+  void setupOverset();
+
+  /*!
+   * \brief Initialize overset-related data storage
+   *
+   * Allocates global storage for overset data. Re-call if adding elements,
+   * changing polynomial orders, etc.
+   */
+  void setupOversetData();
+
+  //! Copy data from elements into global solution array
+  void setGlobalSolutionArray();
+
+  //! Copy data from global solution array back into elements
+  void updateElesSolutionArrays();
+
+  //! Perform the overset data interpolation using TIOGA high-order
+  void callDataUpdateTIOGA();
+
+  /* ---- Callback functions specifically for TIOGA ---- */
+
+  void getNodesPerCell(int* cellID, int* nNodes);
+
+  void getReceptorNodes(int* cellID, int* nNodes, double* posNodes);
+
+  void donorInclusionTest(int* cellID, double* xyz, int* passFlag, double* rst);
+
+  void donorWeights(int* cellID, double* xyz, int* nweights, int* iNode, double* weights, double* rst, int* fracSize);
+
+  void convertToModal(int* cellID, int* nPtsIn, double* uIn, int* nPtsOut, int* iStart, double* uOut);
 
 private:
   //! Pointer to the parameters object for the current solution
@@ -209,4 +247,9 @@ private:
   int gridID, gridRank, nprocPerGrid;
 
   vector<double> RKa, RKb;
+
+  /* ---- Overset Grid Variables / Functions ---- */
+
+  vector<double> U_spts; //! Global solution vector for solver (over all elements)
+
 };

@@ -77,6 +77,11 @@ int main(int argc, char *argv[]) {
 
   //writeMeshTecplot(&Solver,&params);
 
+#ifndef _NO_MPI
+  // Allow all processes to finish initial file writing before starting computation
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
   /* --- Calculation Loop --- */
   for (params.iter=params.initIter+1; params.iter<=params.iterMax; params.iter++) {
 

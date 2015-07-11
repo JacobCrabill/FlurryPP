@@ -14,16 +14,20 @@
  */
 #pragma once
 
+#include <array>
 #include <string>
 #include <vector>
 
 #include "global.hpp"
+
+class tioga;
 
 #include "ele.hpp"
 #include "input.hpp"
 #include "solver.hpp"
 #include "face.hpp"
 #include "mpiFace.hpp"
+#include "tioga.h"
 
 class geo
 {
@@ -67,7 +71,18 @@ public:
   vector<double> getQptWeights1D(int order);
 
   //! Update connectivity / node-blanking for overset grids
-  void setOversetConnectivity();
+  void registerGridDataTIOGA();
+
+  /*!
+   * \brief Call TIOGA to re-process overset connectivity
+   *
+   * Called once during pre-processing by default; re-call each iteration
+   * for moving-mesh cases
+   */
+  void updateOversetConnectivity();
+
+  //! Have TIOGA output the mesh along with nodal IBLANK values
+  void writeOversetConnectivity();
 
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces;
@@ -103,6 +118,9 @@ public:
   vector<int> iblank; //! Output of TIOGA: flag for whether vertex is normal, blanked, or receptor
   vector<int> iwall;  //! List of nodes on wall boundaries
   vector<int> iover;  //! List of nodes on overset boundaries
+
+  tioga* tg;  //! Pointer to Tioga object for processing overset grids
+  array<int*,1> conn;  //! Pointer to c2v for each element type [but only 1, so will be size(1)]
 
 private:
 

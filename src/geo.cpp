@@ -24,11 +24,10 @@
 #include <sstream>
 #include <unordered_set>
 
-#include "../include/face.hpp"
-#include "../include/intFace.hpp"
-#include "../include/boundFace.hpp"
-#include "../include/mpiFace.hpp"
-#include "../lib/tioga/src/tiogaInterface.h"
+#include "face.hpp"
+#include "intFace.hpp"
+#include "boundFace.hpp"
+#include "mpiFace.hpp"
 
 #ifndef _NO_MPI
 #include "mpi.h"
@@ -66,8 +65,6 @@ void geo::setup(input* params)
       break;
 
     case OVERSET_MESH:
-      int ierr;
-      tioga_init_(&ierr);
       // Find out which grid this process will be handling
       nprocPerGrid = params->nproc/params->nGrids;
       gridID = params->rank / nprocPerGrid;
@@ -88,7 +85,7 @@ void geo::setup(input* params)
   processPeriodicBoundaries();
 
   if (meshType == OVERSET_MESH) {
-    setOversetConnectivity();
+    registerGridDataTIOGA();
   }
 }
 
@@ -423,8 +420,15 @@ void geo::processConn3D(void)
 
 }
 
-void geo::setOversetConnectivity(void)
+void geo::registerGridDataTIOGA(void)
 {
+  /* Note that this function should only be needed once during preprocessing */
+
+  // Allocate TIOGA grid processor
+  tg = new tioga();
+
+  tg->setCommunicator(MPI_COMM_WORLD,params->rank,params->nproc);
+
   // Setup iwall, iover (nodes on wall & overset boundaries)
   iover.resize(0);
   iwall.resize(0);
@@ -444,24 +448,30 @@ void geo::setOversetConnectivity(void)
   int nwall = iwall.size();
   int nover = iover.size();
   int ntypes = 1;           //! Number of element types in grid block
-  int nodesPerCell = 8;     //! Number of nodes per element for first element type
+  int nodesPerCell = 8;     //! Number of nodes per element for each element type (but only one type so far)
   iblank.resize(nVerts);
 
-  cout << "Grid " << gridID << ", rank " << gridRank << ": nwall = " << nwall << ", nover = " << nover << endl;
+  //conn = new int*[1];
+  conn[0] = c2v.getData();
 
-  tioga_registergrid_data_(&gridID,&nVerts,xv.getData(),iblank.data(),&nwall,&nover,iwall.data(),iover.data(),&ntypes,&nodesPerCell,&nEles,c2v.getData());
+  tg->registerGridData(gridID,nVerts,xv.getData(),iblank.data(),nwall,nover,iwall.data(),
+                       iover.data(),ntypes,&nodesPerCell,&nEles,&conn[0]);
+}
 
-//  MPI_Finalize();
-//  exit(0);
+void geo::updateOversetConnectivity(void)
+{
+  // Pre-process the grids
+  tg->profile();
 
-  tioga_preprocess_grids_();
+  // Process overset-grid connectivity
+  // (set iblanks, exchange donor info, setup interpolation points & weights)
+  tg->performConnectivityHighOrder();
+}
 
-  tioga_performconnectivity_();
-
-  double* dummyU;
-  int nVars = 0;
-  int itype = 0;
-  tioga_writeoutputfiles_(dummyU,&nVars,&itype);
+void geo::writeOversetConnectivity(void)
+{
+  // Write out only the mesh with IBLANK info (no solution data)
+  tg->writeData(0,NULL,0);
 }
 
 void geo::matchMPIFaces(void)
