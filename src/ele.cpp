@@ -554,6 +554,10 @@ point ele::calcPos(const point &loc)
 
 point ele::getRefLoc(const point &pos)
 {
+  // --- NOTE: Need a better method for high-aspect-ratio elements!! ---
+  // Tested in Matlab; fails if element if too thin in one direction, even if
+  // point is within element
+  // What about using Nelder-Meade to minimiz norm(dx)?
   point xin;  // Current iterate xi_n (in reference space)
   point xn;   // Current iterate's physical position
   Vec3 dx;    // Difference from current iterate to desired position
@@ -564,16 +568,17 @@ point ele::getRefLoc(const point &pos)
   double tol = 1e-6;  // Want to go to smaller tolerance once all working
 
   // No direct inverse-isoparametric mapping, so must iterate (Newton's Method)
-  // Note: Initial guess is (0,0,0)
-  getInverseMapping(xin,J,Jinv);
-  xn = J*xin;
+  // Note: Initial guess is (0,0,0) by point()
+  xn = calcPos(xin);
   dx = xn - pos;
 
-  while (dx.norm() > tol) {
+  int iter = 0;
+  while (dx.norm() > tol && iter < 200) {
     xin -= Jinv*dx;
     getInverseMapping(xin,J,Jinv);
-    xn = J*xin;
+    xn = calcPos(xin);
     dx = xn - pos;
+    iter++;
   }
 
   return xin;
@@ -602,7 +607,7 @@ void ele::getInverseMapping(const point xi, matrix<double> &J, matrix<double> &J
     for (int n=0; n<nNodes; n++)
       for (int dim2=0; dim2<nDims; dim2++)
         for (int dim1=0; dim1<nDims; dim1++)
-          J(dim2,dim1) += dshape(n,dim1)*nodes[n][dim1];
+          J(dim2,dim1) += dshape(n,dim2)*nodes[n][dim1];
 
     detJ = J(0,0)*J(1,1) - J(1,0)*J(0,1);
     if (detJ <= 0) FatalError("Negative Jacobian in inverse-mapping calculation");
@@ -614,7 +619,7 @@ void ele::getInverseMapping(const point xi, matrix<double> &J, matrix<double> &J
     for (int n=0; n<nNodes; n++)
       for (int dim2=0; dim2<nDims; dim2++)
         for (int dim1=0; dim1<nDims; dim1++)
-          J(dim2,dim1) += dshape(n,dim1)*nodes[n][dim1];
+          J(dim2,dim1) += dshape(n,dim2)*nodes[n][dim1];
 
     double xr = J(0,0);   double xs = J(0,1);   double xt = J(0,2);
     double yr = J(1,0);   double ys = J(1,1);   double yt = J(1,2);

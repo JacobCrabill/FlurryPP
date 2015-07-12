@@ -315,8 +315,8 @@ void dshape_hex(const point &in_rst, matrix<double> &out_dshape, int nNodes)
     out_dshape(2,1) =  0.125*(1+xi)*(1-mu);
     out_dshape(3,1) =  0.125*(1-xi)*(1-mu);
 
-    out_dshape(4,1) = -0.125*(1-xi)*(1+mu);;
-    out_dshape(5,1) = -0.125*(1+xi)*(1+mu);;
+    out_dshape(4,1) = -0.125*(1-xi)*(1+mu);
+    out_dshape(5,1) = -0.125*(1+xi)*(1+mu);
     out_dshape(6,1) =  0.125*(1+xi)*(1+mu);
     out_dshape(7,1) =  0.125*(1-xi)*(1+mu);
 

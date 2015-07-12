@@ -1062,4 +1062,5 @@ void tioga::setcallback(void (*f1)(int*, int*),
 void tioga::setcallback(solver* _solver)
 {
   mb->setcallback(_solver);
+  ihigh=1;
 }

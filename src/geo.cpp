@@ -462,6 +462,7 @@ void geo::registerGridDataTIOGA(void)
   tg->registerGridData(gridID,nVerts,xv.getData(),iblank.data(),nwall,nover,iwall.data(),
                        iover.data(),ntypes,nodesPerCell,&nEles,&conn[0]);
 
+  // Give iblankCell to TIOGA for Flurry to access later
   tg->set_cell_iblank(iblankCell.data());
 }
 
@@ -470,12 +471,12 @@ void geo::updateOversetConnectivity(void)
   // Pre-process the grids
   tg->profile();
 
+  // This appears to be needed in addition to the high-order-specific processing below?
+  tg->performConnectivity();
+
   // Process overset-grid connectivity
   // (set iblanks, exchange donor info, setup interpolation points & weights)
   tg->performConnectivityHighOrder();
-
-  // This appears to be needed in addition to the high-order-specific processing above?
-  tg->performConnectivity();
 }
 
 void geo::writeOversetConnectivity(void)
