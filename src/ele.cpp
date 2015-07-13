@@ -20,8 +20,9 @@
 
 #include <sstream>
 
-#include "../include/polynomials.hpp"
-#include "../include/flux.hpp"
+#include "polynomials.hpp"
+#include "flux.hpp"
+#include "funcs.hpp"
 
 using namespace std;
 
@@ -635,6 +636,135 @@ void ele::getInverseMapping(const point xi, matrix<double> &J, matrix<double> &J
       for (int j=0; j<nDims; j++)
         Jinv(i,j) /= detJ;
   }
+}
+
+double ele::getDxNelderMeade(point refLoc, point physPos)
+{
+  point pt = calcPos(refLoc);
+  Vec3 dx = physPos - pt;
+  return dx.norm();
+}
+
+point ele::getRefLocNelderMeade(point pos)
+{
+  // First, do a quick check to see if the point is even close to being in the element
+  double xmin, ymin, zmin;
+  double xmax, ymax, zmax;
+  xmin = ymin = zmin =  1e15;
+  xmax = ymax = zmax = -1e15;
+  for (int i=0; i<nNodes; i++) {
+    xmin = min(nodes[i].x, xmin);
+    ymin = min(nodes[i].y, ymin);
+    zmin = min(nodes[i].z, zmin);
+
+    xmax = max(nodes[i].x, xmax);
+    ymax = max(nodes[i].y, ymax);
+    zmax = max(nodes[i].z, zmax);
+  }
+  if (pos.x < xmin || pos.y < ymin || pos.z < zmin ||
+      pos.x > xmax || pos.y > ymax || pos.z > zmax) {
+    // Point does not lie within cell - return an obviously bad ref position
+    point pt;
+    pt.x = 99; pt.y = 99; pt.z = 99;
+    return pt;
+  }
+
+  // Use the simple Nelder-Meade algorithm to find the reference location which
+  // maps to the given physical position
+
+  int nPts = 4;
+  int nVars = 3;
+  vector<double> F(4);
+  matrix<double> X(4,3);
+
+  // Starting location for search
+  X(0,0) = 0;  X(0,1) = 0;   X(0,2) = 0;
+  X(1,0) = .2; X(1,1) = 0;   X(1,2) = 0;
+  X(2,0) = 0;  X(2,1) = .2;  X(2,2) = 0;
+  X(3,0) = 0;  X(3,1) = 0;   X(3,2) = .2;
+
+  // Evaluate the 'function' at the initial 'points'
+  for (int i=0; i<nPts; i++)
+    F[i] = getDxNelderMeade(point(X[i]),pos);
+
+  double tol = 1e-6;
+  int iter = 0;
+  while (iter < 100 && getMin(F)>tol) {
+    auto ind = getOrder(F);
+    point Xn = point(X[ind[nPts-1]]);  // Point with the highest value of F
+    point X0;                          // Centroid of all other points
+    point Xr;                          // Reflected point
+
+    // Take centroid of all points besides Xn
+    for (int j=0; j<nPts-1; j++)
+      X0 += point(X[ind[j]])/(nPts-1);
+    // Reflect Xn around X0
+    Xr = X0 + (X0-Xn);
+
+    double Fr = getDxNelderMeade(Xr,pos);
+
+    // Determine what to do with the new point
+    if (Fr < F[ind[nPts-2]]) {
+      // We will be keeping this point
+      if (Fr < F[ind[0]]) {
+        // This one's good; keep going! Expand from Xr
+        point Xe = Xr + (X0-Xn);
+        double Fe = getDxNelderMeade(Xe,pos);
+
+        if (Fe < Fr) {
+          // This one's even better; use it instead
+          for (int i=0; i<nVars; i++) {
+            X(ind[nPts-1],i) = Xe[i];
+            F[ind[nPts-1]] = Fe;
+          }
+        }
+        else {
+          // Xe/Fe was no better; stick with Fr, Xr
+          for (int i=0; i<nVars; i++) {
+            X(ind[nPts-1],i) = Xr[i];
+            F[ind[nPts-1]] = Fr;
+          }
+        }
+      }
+      else {
+        // This one's somewhere in the middle; replace Xn with Xr
+        for (int i=0; i<nVars; i++) {
+          X(ind[nPts-1],i) = Xr[i];
+          F[ind[nPts-1]] = Fr;
+        }
+      }
+    }
+    else {
+      // Try reducing the size of the simplex
+      point Xc = X0 - (X0-Xn)*.5;
+      double Fc = getDxNelderMeade(Xc,pos);
+      if (Fc < F[ind[nPts-1]]) {
+        // Bringing this point in is better; use it
+        for (int i=0; i<nVars; i++) {
+          X(ind[nPts-1],i) = Xc[i];
+          F[ind[nPts-1]] = Fc;
+        }
+      }
+      else {
+        // Bringing this point in didn't work; shrink the simplex onto
+        // the smallest-valued vertex
+        point X1 = point(X[ind[0]]);
+        for (int i=1; i<nPts; i++) {
+          for (int j=0; j<nVars; j++) {
+            X(ind[i],j) = X1[j] + 0.5*(X(ind[i],j)-X1[j]);
+          }
+          point xTmp = point(X[ind[i]]);
+          F[ind[i]] = getDxNelderMeade(xTmp,pos);
+        }
+      }
+    }
+
+    // Continue to iterate
+    iter++;
+  }
+
+  auto ind = getOrder(F);
+  return point(X[ind[nPts-1]]);
 }
 
 void ele::calcPosSpts(void)

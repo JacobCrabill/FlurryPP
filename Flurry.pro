@@ -29,7 +29,8 @@ SOURCES += src/global.cpp \
     lib/tioga/src/tioga.C \
     lib/tioga/src/tiogaInterface.C \
     lib/tioga/src/math.c \
-    lib/tioga/src/utils.c
+    lib/tioga/src/utils.c \
+    src/funcs.cpp
 		   
 HEADERS += include/global.hpp \
     include/matrix.hpp \
@@ -54,7 +55,8 @@ HEADERS += include/global.hpp \
     lib/tioga/src/parallelComm.h \
     lib/tioga/src/tioga.h \
     lib/tioga/src/tiogaInterface.h \
-    lib/tioga/src/utils.h
+    lib/tioga/src/utils.h \
+    include/funcs.hpp
 
 DISTFILES += \
     README.md \

@@ -670,7 +670,7 @@ void solver::getReceptorNodes(int* cellID, int* nNodes, double* posNodes)
 
 void solver::donorInclusionTest(int* cellID, double* xyz, int* passFlag, double* rst)
 {
-  point refPt = eles[*cellID].getRefLoc(point(xyz));
+  point refPt = eles[*cellID].getRefLocNelderMeade(point(xyz));
 
   // Determine if point is in cell: [x,y,z] should all lie between [-1,1]
   double tol = -1e-10;

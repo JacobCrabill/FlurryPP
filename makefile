@@ -44,6 +44,7 @@ DESTDIR       = ./bin
 ####### Files
 
 SOURCES = 	src/global.cpp \
+		src/funcs.cpp \
 		src/matrix.cpp \
 		src/input.cpp \
 		src/ele.cpp \
@@ -60,6 +61,7 @@ SOURCES = 	src/global.cpp \
 		src/solver.cpp
 
 OBJECTS = 	obj/global.o \
+		obj/funcs.o \
 		obj/matrix.o \
 		obj/input.o \
 		obj/ele.o \
@@ -124,6 +126,9 @@ obj/global.o: src/global.cpp include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/global.o src/global.cpp
+
+obj/funcs.o: src/funcs.cpp include/funcs.hpp include/global.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/funcs.o src/funcs.cpp
 
 obj/matrix.o: src/matrix.cpp include/matrix.hpp \
 		include/error.hpp

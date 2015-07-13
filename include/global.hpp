@@ -155,6 +155,14 @@ struct point
     return c;
   }
 
+  point operator/(point b) {
+    struct point c;
+    c.x = x / b.x;
+    c.y = y / b.y;
+    c.z = z / b.z;
+    return c;
+  }
+
   point& operator+=(point b) {
     x += b.x;
     y += b.y;
@@ -162,31 +170,38 @@ struct point
     return *this;
   }
 
-    point& operator-=(point b) {
+  point& operator-=(point b) {
     x -= b.x;
     y -= b.y;
     z -= b.z;
     return *this;
   }
 
-    point& operator+=(double* b) {
-      x += b[0];
-      y += b[1];
-      z += b[2];
-      return *this;
-    }
+  point& operator+=(double* b) {
+    x += b[0];
+    y += b[1];
+    z += b[2];
+    return *this;
+  }
 
-      point& operator-=(double* b) {
-      x -= b[0];
-      y -= b[1];
-      z -= b[2];
-      return *this;
-    }
+  point& operator-=(double* b) {
+    x -= b[0];
+    y -= b[1];
+    z -= b[2];
+    return *this;
+  }
 
   point& operator/=(double a) {
     x /= a;
     y /= a;
     z /= a;
+    return *this;
+  }
+
+  point& operator*=(double a) {
+    x *= a;
+    y *= a;
+    z *= a;
     return *this;
   }
 
@@ -205,6 +220,9 @@ struct point
   }
 
 };
+
+point operator/(point a, double b);
+point operator*(point a, double b);
 
 //! For clearer notation when a vector is implied, rather than a point
 typedef struct point Vec3;
@@ -269,7 +287,7 @@ void vecAssign(vector<T> &vec, vector<int> &ind, T val)
   for (auto& i:ind) vec[i] = val;
 }
 
-// Good for numeric types
+// Good for numeric types - meant for ints or uints though
 template<typename T>
 T getMax(vector<T> &vec)
 {
@@ -279,6 +297,18 @@ T getMax(vector<T> &vec)
   }
 
   return max;
+}
+
+// Good for numeric types
+template<typename T>
+T getMin(vector<T> &vec)
+{
+  T min = 1e15;
+  for (auto& i:vec) {
+    if (i<min) min = i;
+  }
+
+  return min;
 }
 
 template<typename T>

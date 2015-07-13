@@ -105,6 +105,8 @@ Vec3 operator*(matrix<double>& mat, Vec3 &vec)
   return out;
 }
 
+point operator/(point a, double b) { return a/=b; }
+point operator*(point a, double b) { return a*=b; }
 
 void simTimer::startTimer(void)
 {
