@@ -191,6 +191,9 @@ public:
   /* === Functions Related to Overset Grids === */
 
 
+  void calcAvgSolution();
+  void checkEntropy();
+
 private:
   //! Pointer to the parameters object for the current solution
   input *params;

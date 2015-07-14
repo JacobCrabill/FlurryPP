@@ -610,7 +610,14 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       int ff = mpiFaces[i];
       ic = f2c(ff,0);
       // Find local face ID of global face within element
-      int fid1 = mpiLocF[i];
+      int fid1;
+      if (nDims == 2) {
+        cellFaces.assign(c2f[ic],c2f[ic]+c2nf[ic]);
+        fid1 = findFirst(cellFaces,ff);
+      }
+      else {
+        fid1 = mpiLocF[i];
+      }
       if (f2c(ff,1) != -1) {
         FatalError("MPI face has a right element assigned.");
       }else{
@@ -812,7 +819,7 @@ void geo::readGmsh(string fileName)
         meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
         break;
 
-      case 5:
+      case 6:
         // Linear prism; read as collapsed-face hex
         c2nv.push_back(8);
         c2nf.push_back(6);

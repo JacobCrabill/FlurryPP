@@ -162,6 +162,8 @@ public:
   void setupAllGeometry();
   void restart(ifstream &file, input *_params, geo *_Geo);
 
+  void checkEntropy();
+
 private:
 
   /* --- Simulation/Mesh Parameters --- */
@@ -189,6 +191,8 @@ private:
   matrix<double> Uc_fpts;          //! Common solution at flux points
   matrix<double> dUc_fpts;         //! Common minus discontinuous solution at flux points
   vector<double> waveSp_fpts;      //! Maximum wave speed at each flux point
+
+  vector<double> Uavg;             //! Average solution over element
 
   // Gradients
   vector<matrix<double> > dU_spts;  //! Gradient of solution at solution points

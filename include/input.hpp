@@ -188,9 +188,12 @@ public:
   int vcjhSchemeTri;
   int vcjhSchemeQuad;
 
-  /* --- Shock Capturing Parameters --- */
-  int scFlag;       // Shock Capturing Flag
-  double threshold; // Threshold for considering as shock -Set to 1.0 by default
+  /* --- Shock Capturing, Filtering & Stabilization Parameters --- */
+  int scFlag;       //! Shock Capturing Flag
+  double threshold; //! Threshold for considering as shock -Set to 1.0 by default
+
+  double exps0;     //! Minimum entropy bound for polynomial squeezing
+  int squeeze;      //! Flag to turn on polynomial squeezing or not
 
   /* --- PID Boundary Conditions --- */
   double Kp;

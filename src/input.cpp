@@ -369,6 +369,8 @@ void input::readInputFile(char *filename)
   if(scFlag == 1)
     opts.getScalarValue("threshold",threshold,1.0);
 
+  opts.getScalarValue("squeeze",squeeze,0);
+
   /* --- Cleanup ---- */
   opts.closeFile();
 
@@ -377,6 +379,11 @@ void input::readInputFile(char *filename)
     initIter = restartIter;
   }else{
     initIter = 0;
+  }
+
+  if (squeeze) {
+    // Entropy bound for polynomial squeezing
+    exps0 = .9*pBound/(gamma*rhoBound);
   }
 
   iter = initIter;
