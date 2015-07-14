@@ -647,6 +647,7 @@ double ele::getDxNelderMeade(point refLoc, point physPos)
 
 point ele::getRefLocNelderMeade(point pos)
 {
+  //cout << "In Nelder-Meade" << endl;
   // First, do a quick check to see if the point is even close to being in the element
   double xmin, ymin, zmin;
   double xmax, ymax, zmax;
@@ -687,9 +688,9 @@ point ele::getRefLocNelderMeade(point pos)
   for (int i=0; i<nPts; i++)
     F[i] = getDxNelderMeade(point(X[i]),pos);
 
-  double tol = 1e-6;
+  double tol = 1e-10;
   int iter = 0;
-  while (iter < 100 && getMin(F)>tol) {
+  while (iter < 200 && getMin(F)>tol) {
     auto ind = getOrder(F);
     point Xn = point(X[ind[nPts-1]]);  // Point with the highest value of F
     point X0;                          // Centroid of all other points

@@ -42,7 +42,7 @@ geo::geo()
 geo::~geo()
 {
 #ifndef _NO_MPI
-  MPI_Comm_free(&gridComm);
+  //MPI_Comm_free(&gridComm);
 #endif
 
   if (nodesPerCell != NULL)
@@ -473,6 +473,8 @@ void geo::updateOversetConnectivity(void)
 
   // This appears to be needed in addition to the high-order-specific processing below?
   tg->performConnectivity();
+
+  writeOversetConnectivity();
 
   // Process overset-grid connectivity
   // (set iblanks, exchange donor info, setup interpolation points & weights)

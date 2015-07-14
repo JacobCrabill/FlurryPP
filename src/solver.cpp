@@ -152,6 +152,14 @@ void solver::calcResidual(int step)
     shockCapture();
   }
 
+  if (params->meshType == OVERSET_MESH) {
+    setGlobalSolutionArray();
+
+    callDataUpdateTIOGA();
+
+    updateElesSolutionArrays();
+  }
+
   extrapolateU();
 
 #ifndef _NO_MPI
@@ -616,6 +624,8 @@ void solver::shockCapture(void)
 
 void solver::setupOverset(void)
 {
+  if (gridRank == 0) cout << "Solver: Grid " << gridID << ": Setting up overset connectivity" << endl;
+
   setupOversetData();
 
   // Give TIOGA a pointer to this solver for access to callback functions
@@ -665,11 +675,13 @@ void solver::getNodesPerCell(int* cellID, int* nNodes)
 
 void solver::getReceptorNodes(int* cellID, int* nNodes, double* posNodes)
 {
+  if (*cellID >= eles.size()) cout << "Invalid cellID!  cellID = " << *cellID << endl;
   eles[*cellID].getPosSpts(posNodes);
 }
 
 void solver::donorInclusionTest(int* cellID, double* xyz, int* passFlag, double* rst)
 {
+  //cout <<"donorInclusionTest" << endl;
   point refPt = eles[*cellID].getRefLocNelderMeade(point(xyz));
 
   // Determine if point is in cell: [x,y,z] should all lie between [-1,1]

@@ -87,7 +87,7 @@ Plane Surface(2) = {6,-1}; // Outer outer region
 Recombine Surface {1,2};
 
 // Extrude in Z-direction
-Extrude {0,0,1} {
+Extrude {0,0,.5} {
   Surface{1,2}; 
   Layers{2};  
   Recombine;

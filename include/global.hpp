@@ -127,6 +127,7 @@ struct point
       case 2:
         return z;
       default:
+        cout << "ind = " << ind << ": " << flush;
         FatalError("Invalid index for point struct.");
     }
   }

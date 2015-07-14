@@ -988,7 +988,7 @@ void MeshBlock::getInternalNodes(void)
   ctag=(int *)malloc(sizeof(int)*ncells);
 
   for(int i=0;i<ncells;i++)
-    if (iblank_cell[i]==-1) ctag[nreceptorCells++]=i+1;
+    if (iblank_cell[i]==-1) ctag[nreceptorCells++]=i+BASE;
 
   if (pointsPerCell!=NULL) free(pointsPerCell);
   pointsPerCell=(int *)malloc(sizeof(int)*nreceptorCells);
@@ -1067,11 +1067,13 @@ void MeshBlock::getExtraQueryPoints(OBB *obc,
 void MeshBlock::processPointDonors(void)
 {
   double *frac;
+  int    *ind;
   int icell;
   int ndim;
 
   ndim=NFRAC;
   frac=(double *) malloc(sizeof(double)*ndim);
+  ind =(int    *) malloc(sizeof(int   )*ndim);
   ninterp2=0;
 
   for(int i=0; i<nsearch; i++)
@@ -1098,12 +1100,15 @@ void MeshBlock::processPointDonors(void)
 
       // Use the user-specified callback function to get the donor cell's interpolation weights
       // Outputs: nweights, inode, frac,
-      Solver->donorWeights(&(icell), &(xsearch[3*i]), &(interpList2[m].nweights), &(interpList2[m].inode[0]), frac, &(rst[3*i]), &ndim);
+      Solver->donorWeights(&(icell), &(xsearch[3*i]), &(interpList2[m].nweights), ind, frac, &(rst[3*i]), &ndim);
 
       interpList2[m].weights=(double *)malloc(sizeof(double)*interpList2[m].nweights);
+      interpList2[m].inode  =(int    *)malloc(sizeof(int   )*interpList2[m].nweights);
 
-      for(int j=0; j<interpList2[m].nweights; j++)
-        interpList2[m].weights[j]=frac[j];
+      for(int j=0; j<interpList2[m].nweights; j++) {
+        interpList2[m].weights[j] = frac[j];
+        interpList2[m].inode[j]   = ind[j];
+      }
       interpList2[m].receptorInfo[0]=isearch[2*i];
       interpList2[m].receptorInfo[1]=isearch[2*i+1];
       m++;

@@ -34,8 +34,8 @@ icType       0
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        10      (Frequency to write plot files)
-monitorResFreq  1       (Frequency to print residual to terminal)
+plotFreq        100      (Frequency to write plot files)
+monitorResFreq  10       (Frequency to print residual to terminal)
 resType         2         (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    Sphere    (Filename prefix for output files)
 entropySensor   0         (Calculate & plot entropy-error sensor)

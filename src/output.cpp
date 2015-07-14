@@ -122,7 +122,10 @@ void writeParaview(solver *Solver, input *params)
 
 #ifndef _NO_MPI
   /* --- All processors write their solution to their own .vtu file --- */
-  sprintf(fileNameC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,params->rank);
+  //if (params->meshType == OVERSET_MESH)
+  //  sprintf(fileNameC,"%s_%.09d/%s%d_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],Solver->gridID,iter,Solver->gridRank);
+  //else
+    sprintf(fileNameC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,params->rank);
 #else
   /* --- Filename to write to --- */
   sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],iter);

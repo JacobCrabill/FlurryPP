@@ -19,7 +19,7 @@ class solver;
 
 #define ROW 0
 #define COLUMN 1
-#define NFRAC 1331
+#define NFRAC 121  // why 1331...? Going to make smaller...
 
 class MeshBlock
 {

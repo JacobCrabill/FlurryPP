@@ -8,6 +8,7 @@
 ####### Compiler, tools and options
 
 CXX           = g++
+F90           = mpif90
 LINK          = g++
 MPICXX        = mpicxx
 MPILD         = mpicxx
@@ -22,17 +23,17 @@ MPI_INC_DIR   = /usr/lib/openmpi/include
 
 # Location of libtioga.a
 TIOGA_INC   = ./lib/tioga/src
-TIOGA_LIB   = ./lib/tioga/src/libtioga.a
+TIOGA_LIB   = #./lib/tioga/src/libtioga.a
 
-CXX_BASE    = -pipe -Wall -W -std=c++11 -Wno-comment -I./include -I$(TIOGA_INC) $(DEFINES)
+CXX_BASE    = -pipe -Wunused-parameter -Wuninitialized -std=c++11 -I./include -I$(TIOGA_INC) $(DEFINES)
 CXX_STD     = -g -02
-CXX_DEBUG   = -g -pg -O0
+CXX_DEBUG   = -g -pg -O0 -rdynamic
 CXX_RELEASE = -O3
 
 CXXFLAGS_RELEASE = $(CXX_BASE) $(CXX_RELEASE) -Wno-unknown-pragmas -D_NO_MPI $(DEFINES)
 CXXFLAGS_DEBUG   = $(CXX_BASE) $(CXX_DEBUG) -Wno-unknown-pragmas -D_NO_MPI $(DEFINES)
 CXXFLAGS_OPENMP  = $(CXX_BASE) $(CXX_RELEASE) -fopenmp -D_NO_MPI $(DEFINES)
-CXXFLAGS_MPI     = $(CXX_BASE) $(DEFINES) -Wno-unknown-pragmas -Wno-literal-suffix -Wno-missing-field-initializers
+CXXFLAGS_MPI     = $(CXX_BASE) $(DEFINES) -Wno-literal-suffix
 CXXFLAGS_MPI    += -I$(METIS_INC_DIR) -I$(MPI_INC_DIR)
 CXXFLAGS_MPI    += -L$(METIS_LIB_DIR)
 
@@ -58,7 +59,15 @@ SOURCES = 	src/global.cpp \
 		src/mpiFace.cpp \
 		src/flux.cpp \
 		src/flurry.cpp \
-		src/solver.cpp
+		src/solver.cpp \
+		lib/tioga/src/ADT.C \
+		lib/tioga/src/MeshBlock.C \
+		lib/tioga/src/parallelComm.C \
+		lib/tioga/src/tioga.C \
+		lib/tioga/src/utils.c \
+		lib/tioga/src/kaiser.f \
+		lib/tioga/src/cellVolume.f90 \
+		lib/tioga/src/median.F90 
 
 OBJECTS = 	obj/global.o \
 		obj/funcs.o \
@@ -75,7 +84,15 @@ OBJECTS = 	obj/global.o \
 		obj/mpiFace.o \
 		obj/flux.o \
 		obj/flurry.o \
-		obj/solver.o
+		obj/solver.o \
+		obj/ADT.o \
+		obj/MeshBlock.o \
+		obj/parallelComm.o \
+		obj/utils.o \
+		obj/tioga.o \
+		obj/kaiser.o \
+		obj/median.o \
+		obj/cellVolume.o
 
 TARGET        = Flurry
 
@@ -83,6 +100,12 @@ TARGET        = Flurry
 
 .cpp.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o "$@" "$<"
+
+.f90.o:
+	$(F90) -c $(FFLAGS) $(INCPATH) -o "$@" "$<"
+	
+.F90.o:
+	$(F90) -c $(FFLAGS) $(INCPATH) -o "$@" "$<"
 
 ####### Build rules
 
@@ -110,6 +133,7 @@ openmp: $(TARGET)
 mpi: CXX=$(MPICXX)
 mpi: LINK=$(MPILD)
 mpi: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_RELEASE)
+mpi: FFLAGS=-O3
 mpi: LIBS+= -lmetis $(TIOGA_LIB)
 mpi: $(TARGET)
 
@@ -117,6 +141,7 @@ mpi: $(TARGET)
 mpidebug: CXX=$(MPICXX)
 mpidebug: LINK=$(MPILD)
 mpidebug: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_DEBUG)
+mpidebug: FFLAGS=-g -O0 -rdynamic
 mpidebug: LIBS+= -lmetis $(TIOGA_LIB)
 mpidebug: $(TARGET)
 
@@ -251,3 +276,39 @@ obj/solver.o: src/solver.cpp include/solver.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/solver.o src/solver.cpp
+	
+obj/ADT.o: lib/tioga/src/ADT.C lib/tioga/src/ADT.h \
+  	lib/tioga/src/codetypes.h \
+	lib/tioga/src/utils.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/ADT.o lib/tioga/src/ADT.C
+
+obj/utils.o: lib/tioga/src/utils.c lib/tioga/src/utils.h 
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/utils.o lib/tioga/src/utils.c
+	
+obj/parallelComm.o: lib/tioga/src/parallelComm.C lib/tioga/src/parallelComm.h \
+  	lib/tioga/src/codetypes.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/parallelComm.o lib/tioga/src/parallelComm.C
+	
+obj/MeshBlock.o: lib/tioga/src/MeshBlock.C lib/tioga/src/MeshBlock.h \
+  	lib/tioga/src/codetypes.h \
+	lib/tioga/src/utils.h \
+	lib/tioga/src/ADT.h \
+	lib/tioga/src/parallelComm.h \
+	include/solver.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/MeshBlock.o lib/tioga/src/MeshBlock.C
+
+obj/tioga.o: lib/tioga/src/tioga.C lib/tioga/src/tioga.h \
+  	lib/tioga/src/codetypes.h \
+	lib/tioga/src/utils.h \
+	lib/tioga/src/parallelComm.h \
+	lib/tioga/src/MeshBlock.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/tioga.o lib/tioga/src/tioga.C
+
+obj/kaiser.o: lib/tioga/src/kaiser.f 
+	$(F90) -c $(FFLAGS) $(INCPATH) -o obj/kaiser.o lib/tioga/src/kaiser.f
+	
+obj/cellVolume.o: lib/tioga/src/cellVolume.f90
+	$(F90) -c $(FFLAGS) $(INCPATH) -o obj/cellVolume.o lib/tioga/src/cellVolume.f90
+
+obj/median.o: lib/tioga/src/median.F90 
+	$(F90) -c $(FFLAGS) $(INCPATH) -o obj/median.o lib/tioga/src/median.F90

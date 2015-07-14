@@ -80,13 +80,17 @@ void tioga::performConnectivity(void)
 
 void tioga::performConnectivityHighOrder(void)
 {
+  //cout << "getInternalNodes" << endl;
   mb->getInternalNodes();
+  MPI_Barrier(MPI_COMM_WORLD);
+  //cout << "exchangePointSearchData" << endl;
   exchangePointSearchData();
   mb->ihigh=1;
+  //cout << "search" << endl;
   mb->search();
   mb->processPointDonors();
   iorphanPrint=1;
-}  
+}
 
 void tioga::dataUpdate(int nvar,double *q,int interptype)
 {
