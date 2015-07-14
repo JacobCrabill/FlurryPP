@@ -40,7 +40,7 @@ void writeCSV(solver *Solver, input *params)
   ofstream dataFile;
   int iter = params->iter;
 
-  char fileNameC[100];
+  char fileNameC[256];
   string fileName = params->dataFileName;
   sprintf(fileNameC,"%s.csv.%.09d",&fileName[0],iter);
 
@@ -117,7 +117,7 @@ void writeParaview(solver *Solver, input *params)
   ofstream dataFile;
   int iter = params->iter;
 
-  char fileNameC[100];
+  char fileNameC[256];
   string fileName = params->dataFileName;
 
 #ifndef _NO_MPI
@@ -138,7 +138,7 @@ void writeParaview(solver *Solver, input *params)
   /* --- Write 'master' .pvtu file --- */
   if (params->rank == 0) {
     ofstream pVTU;
-    char pvtuC[100];
+    char pvtuC[256];
     sprintf(pvtuC,"%s_%.09d.pvtu",&fileName[0],iter);
 
     pVTU.open(pvtuC);
@@ -164,7 +164,7 @@ void writeParaview(solver *Solver, input *params)
     pVTU << "      <PDataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\" />" << endl;
     pVTU << "    </PPoints>" << endl;
 
-    char filnameTmpC[100];
+    char filnameTmpC[256];
     for (int p=0; p<params->nproc; p++) {
       sprintf(filnameTmpC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,p);
       pVTU << "    <Piece Source=\"" << string(filnameTmpC) << "\" />" << endl;
@@ -174,7 +174,7 @@ void writeParaview(solver *Solver, input *params)
 
     pVTU.close();
 
-    char datadirC[100];
+    char datadirC[256];
     char *datadir = &datadirC[0];
     sprintf(datadirC,"%s_%.09d",&fileName[0],iter);
 

@@ -663,6 +663,7 @@ void solver::updateElesSolutionArrays(void)
 
 void solver::callDataUpdateTIOGA(void)
 {
+  //cout << "Calling dataUpdate_highorder" << endl;
   tg->dataUpdate_highorder(params->nFields,U_spts.data(),0);
 }
 

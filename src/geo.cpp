@@ -46,7 +46,7 @@ geo::~geo()
 #endif
 
   if (nodesPerCell != NULL)
-    delete nodesPerCell;
+    delete[] nodesPerCell;
 }
 
 void geo::setup(input* params)

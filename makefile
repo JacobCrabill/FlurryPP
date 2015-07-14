@@ -27,7 +27,7 @@ TIOGA_LIB   = #./lib/tioga/src/libtioga.a
 
 CXX_BASE    = -pipe -Wunused-parameter -Wuninitialized -std=c++11 -I./include -I$(TIOGA_INC) $(DEFINES)
 CXX_STD     = -g -02
-CXX_DEBUG   = -g -pg -O0 -rdynamic
+CXX_DEBUG   = -g -pg -O1 -rdynamic -fsanitize=address -fno-omit-frame-pointer
 CXX_RELEASE = -O3
 
 CXXFLAGS_RELEASE = $(CXX_BASE) $(CXX_RELEASE) -Wno-unknown-pragmas -D_NO_MPI $(DEFINES)
@@ -118,6 +118,7 @@ clean:
 .PHONY: debug
 debug: DBG=-pg
 debug: CXXFLAGS=$(CXXFLAGS_DEBUG)
+debug: LIBS+= -lasan
 debug: $(TARGET)
 
 .PHONY: release
@@ -141,8 +142,8 @@ mpi: $(TARGET)
 mpidebug: CXX=$(MPICXX)
 mpidebug: LINK=$(MPILD)
 mpidebug: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_DEBUG)
-mpidebug: FFLAGS=-g -O0 -rdynamic
-mpidebug: LIBS+= -lmetis $(TIOGA_LIB)
+mpidebug: FFLAGS=-g -O1 -rdynamic -fsanitize=address -fno-omit-frame-pointer
+mpidebug: LIBS+= -lmetis $(TIOGA_LIB) -lasan
 mpidebug: $(TARGET)
 
 ####### Compile

@@ -1,7 +1,7 @@
 // Gmsh project created on Wed Jul  1 14:24:32 2015
-xmin = -2;  xmax = 2;
-ymin = -2;  ymax = 2;
-zmin = -2;  zmax = 2;
+xmin = -1.5;  xmax = 1.5;
+ymin = -1.5;  ymax = 1.5;
+zmin = -1.5;  zmax = 1.5;
 
 nx = 15;
 ny = 15;
