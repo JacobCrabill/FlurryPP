@@ -314,7 +314,7 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("restartIter",restartIter);
   }
 
-  opts.getScalarValue("meshType",meshType,1); // CREATE_MESH by default
+  opts.getScalarValue("meshType",meshType);
 
   if (meshType == CREATE_MESH) {
     opts.getScalarValue("nDims",nDims,2);

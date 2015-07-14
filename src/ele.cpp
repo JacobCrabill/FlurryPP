@@ -1269,6 +1269,44 @@ void ele::getEntropyErrPlot(matrix<double> &S)
   }
 }
 
+bool ele::checkDensity()
+{
+  /* --- Fisrt, check if density is negative and squeeze if needed --- */
+  bool negRho = false;
+  double minRho = 1e15;
+  double tol = 1e-10;   // Tolerance for squeezing
+
+  for (int spt=0; spt<nSpts; spt++) {
+    if (U_spts(spt,0) < 0) {
+      negRho = true;
+      minRho = min(minRho,U_spts(spt,0));
+      break;
+    }
+  }
+
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    if (U_fpts(fpt,0) < 0) {
+      negRho = true;
+      minRho = min(minRho,U_fpts(fpt,0));
+      break;
+    }
+  }
+
+  // --- Do the squeezing on density (if needed) ---
+  if (negRho) {
+    double eps = abs(Uavg[0] - tol)/(Uavg[0] - minRho);
+    for (int spt=0; spt<nSpts; spt++) {
+      U_spts(spt,0) = (1-eps)*Uavg[0] + eps*U_spts(spt,0);
+    }
+
+    for (int fpt=0; fpt<nFpts; fpt++) {
+      U_fpts(fpt,0) = (1-eps)*Uavg[0] + eps*U_fpts(fpt,0);
+    }
+  }
+
+  return negRho;
+}
+
 void ele::checkEntropy()
 {
   /* --- Fisrt, check if density is negative and squeeze if needed --- */
@@ -1304,7 +1342,6 @@ void ele::checkEntropy()
     }
   }
 
-
   /* --- Next, check for entropy loss and correct if needed --- */
 
   double minTau = 1e15; // Entropy-bounding value
@@ -1336,7 +1373,6 @@ void ele::checkEntropy()
       w = Uavg[3]/rho;
     double vMagSq = u*u+v*v+w*w;
     double p = (params->gamma-1)*(Uavg[nDims+1] - 0.5*rho*vMagSq);
-    double tmp = params->exps0*std::pow(rho,params->gamma);
     double Eps = minTau / (minTau - p + params->exps0*std::pow(rho,params->gamma) + tol);
 
     for (int spt=0; spt<nSpts; spt++) {

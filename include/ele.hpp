@@ -162,6 +162,7 @@ public:
   void setupAllGeometry();
   void restart(ifstream &file, input *_params, geo *_Geo);
 
+  bool checkDensity();
   void checkEntropy();
 
 private:

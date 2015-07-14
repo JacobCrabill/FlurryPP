@@ -192,6 +192,7 @@ public:
 
 
   void calcAvgSolution();
+  bool checkDensity();
   void checkEntropy();
 
 private:
