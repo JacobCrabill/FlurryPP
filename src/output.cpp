@@ -203,8 +203,14 @@ void writeParaview(solver *Solver, input *params)
   Solver->extrapolateUMpts();
 
   if (params->equation == NAVIER_STOKES) {
+    if (params->squeeze) {
+      Solver->calcAvgSolution();
+      Solver->checkEntropy();
+    }
+
     if (params->calcEntropySensor)
       Solver->calcEntropyErr_spts();
+
     Solver->extrapolateSFpts();
     Solver->extrapolateSMpts();
   }

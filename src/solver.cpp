@@ -137,6 +137,8 @@ void solver::calcResidual(int step)
 
   extrapolateU();
 
+  extrapolateUMpts();
+
 
   if (params->squeeze) {
     /* --- Polynomial-Squeezing stabilization procedure --- */

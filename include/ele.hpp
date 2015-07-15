@@ -117,6 +117,9 @@ public:
   /*! Get vector of primitive variables at a flux point */
   vector<double> getPrimitivesFpt(uint fpt);
 
+  /*! Get vector of primitive variables at a mesh point */
+  vector<double> getPrimitivesMpt(uint mpt);
+
   /*! Get the full matrix of solution values at spts + fpts combined */
   void getPrimitivesPlot(matrix<double> &V);
 
