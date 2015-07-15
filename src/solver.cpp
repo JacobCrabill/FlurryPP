@@ -162,6 +162,18 @@ void solver::calcResidual(int step)
 
   extrapolateU();
 
+  if (params->squeeze) {
+    /* --- Polynomial-Squeezing stabilization procedure --- */
+    calcAvgSolution();
+
+//    bool squeezed = checkDensity();
+
+//    if (squeezed)
+//      extrapolateU();
+
+    checkEntropy();
+  }
+
 #ifndef _NO_MPI
   doCommunication();
 #endif
@@ -259,6 +271,34 @@ void solver::extrapolateU(void)
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     opers[eles[i].eType][eles[i].order].applySptsFpts(eles[i].U_spts,eles[i].U_fpts);
+  }
+}
+
+void solver::calcAvgSolution()
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    opers[eles[i].eType][eles[i].order].calcAvgU(eles[i].U_spts,eles[i].detJac_spts,eles[i].Uavg);
+  }
+}
+
+bool solver::checkDensity()
+{
+  bool squeezed = false;
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    bool check = eles[i].checkDensity();
+    squeezed = check|| squeezed;
+  }
+
+  return squeezed;
+}
+
+void solver::checkEntropy()
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].checkEntropy();
   }
 }
 

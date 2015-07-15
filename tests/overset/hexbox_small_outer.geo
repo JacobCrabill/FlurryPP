@@ -1,11 +1,11 @@
 // Gmsh project created on Wed Jul  1 14:24:32 2015
 xmin = -4;  xmax = 4;
-ymin = -4;  ymax = 4;
+ymin = -3.1;  ymax = 3;
 zmin = -4;  zmax = 4;
 
-nx = 15;
-ny = 15;
-nz = 5;
+nx = 11;
+ny = 7;
+nz = 11;
 
 Point(0) = {xmin,ymin,zmin};
 Point(1) = {xmax,ymin,zmin};

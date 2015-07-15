@@ -708,6 +708,22 @@ void oper::applyCorrectGradU(matrix<double> &dUc_fpts, vector<matrix<double>> &d
     opp_correctU[dim].timesMatrixPlus(dUc_fpts,dU_spts[dim]);
 }
 
+void oper::calcAvgU(matrix<double> &U_spts, vector<double> &detJ_spts, vector<double> &Uavg)
+{
+  auto weights = Geo->getQptWeights(order);
+
+  Uavg.assign(nFields,0);
+  double vol = 0;
+  for (uint spt=0; spt<nSpts; spt++) {
+    for (uint i=0; i<nFields; i++) {
+      Uavg[i] += U_spts(spt,i)*weights[spt]*detJ_spts[spt];
+    }
+    vol += weights[spt]*detJ_spts[spt];
+  }
+
+  for (auto &i:Uavg) i/= vol;
+}
+
 
 const matrix<double> &oper::get_oper_div_spts()
 {

@@ -7,7 +7,9 @@ timeType      4    (0: Forward Euler, 4: RK44)
 dtType        1    (0: Fixed, 1: CFL-based)
 CFL           .7
 dt            .005
-iterMax       10       
+iterMax       500
+restart       0
+restartIter   400
 
 viscous       0   (0: Inviscid, 1: Viscous)
 motion        0   (0: Static, 1: Perturbation test case)
@@ -34,8 +36,8 @@ icType       0
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        1      (Frequency to write plot files)
-monitorResFreq  1       (Frequency to print residual to terminal)
+plotFreq        50      (Frequency to write plot files)
+monitorResFreq  25       (Frequency to print residual to terminal)
 resType         2         (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    Box    (Filename prefix for output files)
 entropySensor   0         (Calculate & plot entropy-error sensor)
@@ -107,6 +109,6 @@ nzBound   0
 spts_type_quad  Legendre
 
 # Shock Capturing Parameters
-shockCapture 1
+shockCapture 0
 threshold .1
-squeeze
+squeeze    0

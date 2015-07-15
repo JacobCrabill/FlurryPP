@@ -740,7 +740,14 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       int ff = mpiFaces[i];
       ic = f2c(ff,0);
       // Find local face ID of global face within element
-      int fid1 = mpiLocF[i];
+      int fid1;
+      if (nDims == 2) {
+        cellFaces.assign(c2f[ic],c2f[ic]+c2nf[ic]);
+        fid1 = findFirst(cellFaces,ff);
+      }
+      else {
+        fid1 = mpiLocF[i];
+      }
       if (f2c(ff,1) != -1) {
         FatalError("MPI face has a right element assigned.");
       }else{

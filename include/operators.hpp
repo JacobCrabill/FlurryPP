@@ -86,6 +86,9 @@ public:
   map<int,matrix<double>*> get_oper_grad_spts;
   map<int,matrix<double>*> get_oper_correct;
 
+  //! Calculate average density over an element (needed for negative-density correction)
+  void calcAvgU(matrix<double>& U_spts, vector<double>& detJ_spts, vector<double>& Uavg);
+
 private:
   geo *Geo;
   input *params;

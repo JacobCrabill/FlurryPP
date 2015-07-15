@@ -231,6 +231,10 @@ public:
 
   void convertToModal(int* cellID, int* nPtsIn, double* uIn, int* nPtsOut, int* iStart, double* uOut);
 
+  void calcAvgSolution();
+  bool checkDensity();
+  void checkEntropy();
+
 private:
   //! Pointer to the parameters object for the current solution
   input *params;
