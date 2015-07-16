@@ -169,3 +169,10 @@ void mpiFace::setRightStateSolution(void)
   // Right state handled by counterpart across boundary - do nothing.
 #endif
 }
+
+vector<double> mpiFace::computeWallForce()
+{
+  // Not a wall boundary - return 0
+  vector<double> force = {0,0,0};
+  return force;
+}

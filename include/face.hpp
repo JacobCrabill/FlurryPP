@@ -52,6 +52,9 @@ public:
    *  Either put directly into ele's memory, or send across MPI boundary */
   virtual void setRightStateSolution(void) =0;
 
+  /*! Compute the force on any wall boundary conditions */
+  virtual vector<double> computeWallForce(void) =0;
+
   /*! Calculate the common inviscid flux on the face */
   void calcInviscidFlux(void);
 

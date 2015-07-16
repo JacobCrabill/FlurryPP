@@ -304,3 +304,27 @@ void boundFace::setRightStateSolution(void)
 {
   // No right state; do nothing
 }
+
+vector<double> boundFace::computeWallForce(void)
+{
+  vector<double> force = {0,0,0};
+
+  if (bcType == SLIP_WALL) {
+    auto weights = getQuadratureWeights1D(nFptsL-1);
+
+    for (int fpt=0; fpt<nFptsL; fpt++) {
+      double rho = UL(fpt,0);
+
+      double vMagSq = 0;
+      for (int dim=0; dim<nDims; dim++)
+        vMagSq += UL(fpt,dim+1)*UL(fpt,dim+1)/(rho*rho);
+
+      double p = (params->gamma-1)*(UL(fpt,nDims+1) - 0.5*rho*vMagSq);
+
+      for (int dim=0; dim<nDims; dim++)
+        force[dim] += p*normL(fpt,dim)*dAL[fpt]*weights[fpt];
+    }
+  }
+
+  return force;
+}

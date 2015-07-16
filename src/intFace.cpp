@@ -133,3 +133,10 @@ void intFace::setRightStateSolution(void)
     for (int j=0; j<nFields; j++)
       UcR[i][j] = UC(i,j);
 }
+
+vector<double> intFace::computeWallForce()
+{
+  // Not a wall boundary - return 0
+  vector<double> force = {0,0,0};
+  return force;
+}

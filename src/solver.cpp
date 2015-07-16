@@ -477,6 +477,20 @@ void solver::moveMesh(int step)
   }
 }
 
+vector<double> solver::computeWallForce(void)
+{
+  vector<double> force(params->nDims);
+
+  for (uint i=0; i<faces.size(); i++) {
+    auto fTmp = faces[i]->computeWallForce();
+
+    for (int dim=0; dim<params->nDims; dim++)
+      force[dim] += fTmp[dim];
+  }
+
+  return force;
+}
+
 void solver::setupOperators()
 {
   if (params->rank==0) cout << "Solver: Setting up FR operators" << endl;
