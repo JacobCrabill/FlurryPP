@@ -239,6 +239,9 @@ bool checkNaN(double* vec, int size);
 /*! Get polynomial-order-based CFL limit.  Borrowed from Josh's zefr code. */
 double getCFLLimit(int order);
 
+/*! Get the Gaussian quadrature weights for the given polynomial order */
+vector<double> getQuadratureWeights1D(int order);
+
 //double randRange(double xMin, double xMax);
 
 /*! Find indices of all values in vec equal to val */

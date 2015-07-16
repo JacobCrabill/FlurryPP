@@ -397,6 +397,10 @@ void input::readInputFile(char *filename)
 
   iter = initIter;
 
+  // Calculate U_infinity for force-coefficient normalization
+  if (nDims==2) wBound = 0;
+  Uinf = sqrt(uBound*uBound+vBound*vBound+wBound*wBound);
+
   if (viscous) nonDimensionalize();
 }
 

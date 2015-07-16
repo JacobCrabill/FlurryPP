@@ -1190,6 +1190,28 @@ vector<double> ele::getPrimitivesFpt(uint fpt)
   return V;
 }
 
+vector<double> ele::getPrimitivesMpt(uint mpt)
+{
+  vector<double> V(nFields);
+
+  if (params->equation == ADVECTION_DIFFUSION) {
+    V[0] = U_mpts[mpt][0];
+  }
+  else if (params->equation == NAVIER_STOKES) {
+    V[0] = U_mpts(mpt,0);
+    V[1] = U_mpts(mpt,1)/V[0];
+    V[2] = U_mpts(mpt,2)/V[0];
+    double vMagSq = V[1]*V[1]+V[2]*V[2];
+    if (nDims == 3) {
+      V[3] = U_mpts(mpt,3)/V[0];
+      vMagSq += V[3]*V[3];
+    }
+    V[nDims+1] = (params->gamma-1)*(U_mpts(mpt,nDims+1) - 0.5*V[0]*vMagSq);
+  }
+
+  return V;
+}
+
 void ele::getPrimitivesPlot(matrix<double> &V)
 {
   if (eType == QUAD) {
@@ -1450,6 +1472,9 @@ void ele::checkEntropy()
   double minRho = 1e15;
   double tol = 1e-10;   // Tolerance for squeezing
 
+  int nMpts = 4;
+  if (nDims == 3) nMpts = 8;
+
   for (int spt=0; spt<nSpts; spt++) {
     if (U_spts(spt,0) < 0) {
       negRho = true;
@@ -1466,6 +1491,14 @@ void ele::checkEntropy()
     }
   }
 
+  for (int mpt=0; mpt<nMpts; mpt++) {
+    if (U_mpts(mpt,0) < 0) {
+      negRho = true;
+      minRho = min(minRho,U_mpts(mpt,0));
+      break;
+    }
+  }
+
   // --- Do the squeezing on density (if needed) ---
   if (negRho) {
     double eps = abs(Uavg[0] - tol)/(Uavg[0] - minRho);
@@ -1475,6 +1508,10 @@ void ele::checkEntropy()
 
     for (int fpt=0; fpt<nFpts; fpt++) {
       U_fpts(fpt,0) = (1-eps)*Uavg[0] + eps*U_fpts(fpt,0);
+    }
+
+    for (int mpt=0; mpt<nMpts; mpt++) {
+      U_mpts(mpt,0) = (1-eps)*Uavg[0] + eps*U_mpts(mpt,0);
     }
   }
 
@@ -1492,6 +1529,15 @@ void ele::checkEntropy()
 
   for (int fpt=0; fpt<nFpts; fpt++) {
     auto phi = getPrimitivesFpt(fpt);
+    double rho = phi[0];
+    double p = phi[nDims+1];
+
+    // Get minimum 'tau' value
+    minTau = std::min(minTau, p - params->exps0*std::pow(rho,params->gamma));
+  }
+
+  for (int mpt=0; mpt<nMpts; mpt++) {
+    auto phi = getPrimitivesMpt(mpt);
     double rho = phi[0];
     double p = phi[nDims+1];
 
@@ -1520,6 +1566,12 @@ void ele::checkEntropy()
     for (int fpt=0; fpt<nFpts; fpt++) {
       for (int i=0; i<nFields; i++) {
         U_fpts(fpt,i) = Eps*Uavg[i] + (1-Eps)*U_fpts(fpt,i);
+      }
+    }
+
+    for (int mpt=0; mpt<nMpts; mpt++) {
+      for (int i=0; i<nFields; i++) {
+        U_mpts(mpt,i) = Eps*Uavg[i] + (1-Eps)*U_mpts(mpt,i);
       }
     }
   }

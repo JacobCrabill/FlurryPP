@@ -47,6 +47,9 @@ public:
   //! Do nothing [handled sparately via comminicate()]
   void setRightStateSolution(void);
 
+  //! Do nothing [not a wall boundary]
+  vector<double> computeWallForce(void);
+
   //! Send the right-state data across the processor boundary using MPI
   void communicate(void);
 

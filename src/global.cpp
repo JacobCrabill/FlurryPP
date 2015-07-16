@@ -93,6 +93,47 @@ double getCFLLimit(int order)
   }
 }
 
+vector<double> getQuadratureWeights1D(int order)
+{
+  // Order here refers to the order of a polynomial fit through
+  // the Gauss points, not the order of accuracy of integration
+  // using the same number of points
+
+  vector<double> outWts(order+1);
+
+  if (order == 0) {
+    outWts[0] =  2.0;
+  }
+  else if(order == 1) {
+    outWts[0] = 1.0;
+    outWts[1] = 1.0;
+  }
+  else if(order == 2) {
+    outWts[0] = 0.5555555555555556;
+    outWts[1] = 0.8888888888888888;
+    outWts[2] = 0.5555555555555556;
+  }
+  else if(order == 3) {
+    outWts[0] = 0.3478548451374538;
+    outWts[1] = 0.6521451548625461;
+    outWts[2] = 0.6521451548625461;
+    outWts[3] = 0.3478548451374538;
+  }
+  else if(order == 4) {
+    outWts[0] = 0.2369268850561891;
+    outWts[1] = 0.4786286704993665;
+    outWts[2] = 0.000000000000000;
+    outWts[3] = 0.4786286704993665;
+    outWts[4] = 0.2369268850561891;
+  }
+  else {
+    cout << "Order = " << order << ": " << flush;
+    FatalError("Gauss quadrature weights for this order not implemented.");
+  }
+
+  return outWts;
+}
+
 Vec3 operator*(matrix<double>& mat, Vec3 &vec)
 {
   Vec3 out;

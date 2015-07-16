@@ -170,6 +170,7 @@ public:
   //! Apply mesh motion
   void moveMesh(int step);
 
+  vector<double> computeWallForce(void);
 
   /* === Functions for Shock Capturing & Filtering=== */
 

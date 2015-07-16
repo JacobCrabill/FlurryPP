@@ -39,6 +39,9 @@ public:
   /*! No right element at a boundary - do nothing. */
   void setRightStateSolution(void);
 
+  /*! For wall boundary conditions, compute the force on the wall */
+  vector<double> computeWallForce(void);
+
 private:
   int bcType;  //! Boundary condition to apply to this face
 

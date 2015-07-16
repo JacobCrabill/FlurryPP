@@ -206,8 +206,14 @@ void writeParaview(solver *Solver, input *params)
   Solver->extrapolateUMpts();
 
   if (params->equation == NAVIER_STOKES) {
+    if (params->squeeze) {
+      Solver->calcAvgSolution();
+      Solver->checkEntropy();
+    }
+
     if (params->calcEntropySensor)
       Solver->calcEntropyErr_spts();
+
     Solver->extrapolateSFpts();
     Solver->extrapolateSMpts();
   }
@@ -476,6 +482,15 @@ void writeResidual(solver *Solver, input *params)
     }
   }
 
+  vector<double> force(params->nDims);
+  if (params->equation == NAVIER_STOKES) {
+    auto fTmp = Solver->computeWallForce();
+#ifndef _NO_MPI
+    MPI_Reduce(fTmp.data(), force.data(), params->nDims, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+#endif
+    for (auto &f:force) f /= (0.5*params->rhoBound*params->Uinf*params->Uinf);
+  }
+
 #ifndef _NO_MPI
   if (params->nproc > 1) {
     if (params->resType == 3) {
@@ -512,19 +527,35 @@ void writeResidual(solver *Solver, input *params)
         cout << setw(colW) << left << "rhoE";
         if (params->dtType == 1)
           cout << setw(colW) << left << "deltaT";
+        cout << setw(colW) << left << "CD";
+        cout << setw(colW) << left << "CL";
+        if (params->nDims == 3)
+          cout << setw(colW) << left << "CN";
       }
       cout << endl;
     }
 
+    // Print residuals
     cout << setw(8) << left << iter;
     for (int i=0; i<params->nFields; i++) {
       cout << setw(colW) << left << res[i];
     }
+
+    // Print time step (for CFL time-stepping)
     if (params->dtType == 1)
       cout << setw(colW) << left << params->dt;
+
+    // Print wall forces
+    if (params->equation == NAVIER_STOKES) {
+      for (int dim=0; dim<params->nDims; dim++) {
+        cout << setw(colW) << left << force[dim];
+      }
+    }
+
     cout << endl;
   }
 }
+
 
 void writeMeshTecplot(solver* Solver, input* params)
 {

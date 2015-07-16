@@ -162,6 +162,8 @@ void solver::calcResidual(int step)
 
   extrapolateU();
 
+  extrapolateUMpts();
+
   if (params->squeeze) {
     /* --- Polynomial-Squeezing stabilization procedure --- */
     calcAvgSolution();
@@ -497,6 +499,20 @@ void solver::moveMesh(int step)
   for (uint i=0; i<eles.size(); i++) {
     eles[i].move(step);
   }
+}
+
+vector<double> solver::computeWallForce(void)
+{
+  vector<double> force(params->nDims);
+
+  for (uint i=0; i<faces.size(); i++) {
+    auto fTmp = faces[i]->computeWallForce();
+
+    for (int dim=0; dim<params->nDims; dim++)
+      force[dim] += fTmp[dim];
+  }
+
+  return force;
 }
 
 void solver::setupOperators()

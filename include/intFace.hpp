@@ -35,6 +35,9 @@ public:
   //! Put the common solution into the right element's memory (viscous cases)
   void setRightStateSolution(void);
 
+  //! Do nothing [not a wall boundary]
+  vector<double> computeWallForce(void);
+
 private:
   int locF_R;              //! Right element's local face ID
   int relRot;              //! Relative rotation of right element's face (for 3D)
