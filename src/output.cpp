@@ -205,7 +205,7 @@ void writeParaview(solver *Solver, input *params)
   if (params->equation == NAVIER_STOKES) {
     if (params->squeeze) {
       Solver->calcAvgSolution();
-      Solver->checkEntropy();
+      Solver->checkEntropyPlot();
     }
 
     if (params->calcEntropySensor)

@@ -195,6 +195,7 @@ public:
   void calcAvgSolution();
   bool checkDensity();
   void checkEntropy();
+  void checkEntropyPlot();
 
 private:
   //! Pointer to the parameters object for the current solution

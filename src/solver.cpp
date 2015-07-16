@@ -137,8 +137,7 @@ void solver::calcResidual(int step)
 
   extrapolateU();
 
-  extrapolateUMpts();
-
+  //extrapolateUMpts();
 
   if (params->squeeze) {
     /* --- Polynomial-Squeezing stabilization procedure --- */
@@ -277,6 +276,14 @@ void solver::checkEntropy()
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].checkEntropy();
+  }
+}
+
+void solver::checkEntropyPlot()
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].checkEntropyPlot();
   }
 }
 
