@@ -147,6 +147,9 @@ void writeParaview(solver *Solver, input *params)
     pVTU << "    <PPointData Scalars=\"Density\" Vectors=\"Velocity\" >" << endl;
     pVTU << "      <PDataArray type=\"Float32\" Name=\"Density\" />" << endl;
     if (params->equation == NAVIER_STOKES) {
+      if (params->scFlag == 1) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"Sensor\" />" << endl;
+      }
       pVTU << "      <PDataArray type=\"Float32\" Name=\"Velocity\" NumberOfComponents=\"3\" />" << endl;
       pVTU << "      <PDataArray type=\"Float32\" Name=\"Pressure\" />" << endl;
       if (params->calcEntropySensor) {

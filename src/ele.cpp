@@ -1343,7 +1343,6 @@ void ele::checkEntropy()
     if (U_spts(spt,0) < 0) {
       negRho = true;
       minRho = min(minRho,U_spts(spt,0));
-      break;
     }
   }
 
@@ -1351,7 +1350,6 @@ void ele::checkEntropy()
     if (U_fpts(fpt,0) < 0) {
       negRho = true;
       minRho = min(minRho,U_fpts(fpt,0));
-      break;
     }
   }
 
@@ -1376,7 +1374,7 @@ void ele::checkEntropy()
     double p = phi[nDims+1];
 
     // Get minimum 'tau' value
-    minTau = min(minTau, p - params->exps0*pow(rho,params->gamma));
+    minTau = std::min(minTau, p - params->exps0*std::pow(rho,params->gamma));
   }
 
   for (int fpt=0; fpt<nFpts; fpt++) {
@@ -1428,7 +1426,6 @@ void ele::checkEntropyPlot()
     if (U_spts(spt,0) < 0) {
       negRho = true;
       minRho = min(minRho,U_spts(spt,0));
-      break;
     }
   }
 
@@ -1436,7 +1433,6 @@ void ele::checkEntropyPlot()
     if (U_fpts(fpt,0) < 0) {
       negRho = true;
       minRho = min(minRho,U_fpts(fpt,0));
-      break;
     }
   }
 
@@ -1444,7 +1440,6 @@ void ele::checkEntropyPlot()
     if (U_mpts(mpt,0) < 0) {
       negRho = true;
       minRho = min(minRho,U_mpts(mpt,0));
-      break;
     }
   }
 
@@ -1473,7 +1468,7 @@ void ele::checkEntropyPlot()
     double p = phi[nDims+1];
 
     // Get minimum 'tau' value
-    minTau = min(minTau, p - params->exps0*pow(rho,params->gamma));
+    minTau = std::min(minTau, p - params->exps0*std::pow(rho,params->gamma));
   }
 
   for (int fpt=0; fpt<nFpts; fpt++) {

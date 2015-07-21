@@ -383,7 +383,7 @@ void input::readInputFile(char *filename)
 
   if (squeeze) {
     // Entropy bound for polynomial squeezing
-    exps0 = .7*pBound/(gamma*rhoBound);
+    exps0 = 0.0*pBound/(pow(rhoBound,gamma));
   }
 
   iter = initIter;
