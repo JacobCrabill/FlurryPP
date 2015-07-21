@@ -1479,7 +1479,6 @@ void ele::checkEntropy()
     if (U_spts(spt,0) < 0) {
       negRho = true;
       minRho = min(minRho,U_spts(spt,0));
-      break;
     }
   }
 
@@ -1487,7 +1486,89 @@ void ele::checkEntropy()
     if (U_fpts(fpt,0) < 0) {
       negRho = true;
       minRho = min(minRho,U_fpts(fpt,0));
-      break;
+    }
+  }
+
+  // --- Do the squeezing on density (if needed) ---
+  if (negRho) {
+    double eps = abs(Uavg[0] - tol)/(Uavg[0] - minRho);
+    for (int spt=0; spt<nSpts; spt++) {
+      U_spts(spt,0) = (1-eps)*Uavg[0] + eps*U_spts(spt,0);
+    }
+
+    for (int fpt=0; fpt<nFpts; fpt++) {
+      U_fpts(fpt,0) = (1-eps)*Uavg[0] + eps*U_fpts(fpt,0);
+    }
+  }
+
+  /* --- Next, check for entropy loss and correct if needed --- */
+
+  double minTau = 1e15; // Entropy-bounding value
+  for (int spt=0; spt<nSpts; spt++) {
+    auto phi = getPrimitives(spt);
+    double rho = phi[0];
+    double p = phi[nDims+1];
+
+    // Get minimum 'tau' value
+    minTau = std::min(minTau, p - params->exps0*std::pow(rho,params->gamma));
+  }
+
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    auto phi = getPrimitivesFpt(fpt);
+    double rho = phi[0];
+    double p = phi[nDims+1];
+
+    // Get minimum 'tau' value
+    minTau = std::min(minTau, p - params->exps0*std::pow(rho,params->gamma));
+  }
+
+  if (minTau < 0) {
+    // Only apply squeezing if Tau < 0; otherwise, not needed
+    double rho = Uavg[0];
+    double u = Uavg[1]/rho;
+    double v = Uavg[2]/rho;
+    double w = 0;
+    if (nDims==3)
+      w = Uavg[3]/rho;
+    double vMagSq = u*u+v*v+w*w;
+    double p = (params->gamma-1)*(Uavg[nDims+1] - 0.5*rho*vMagSq);
+    double Eps = minTau / (minTau - p + params->exps0*std::pow(rho,params->gamma));
+
+    for (int spt=0; spt<nSpts; spt++) {
+      for (int i=0; i<nFields; i++) {
+        U_spts(spt,i) = Eps*Uavg[i] + (1-Eps)*U_spts(spt,i);
+      }
+    }
+
+    for (int fpt=0; fpt<nFpts; fpt++) {
+      for (int i=0; i<nFields; i++) {
+        U_fpts(fpt,i) = Eps*Uavg[i] + (1-Eps)*U_fpts(fpt,i);
+      }
+    }
+  }
+}
+
+void ele::checkEntropyPlot()
+{
+  /* --- Fisrt, check if density is negative and squeeze if needed --- */
+  bool negRho = false;
+  double minRho = 1e15;
+  double tol = 1e-10;   // Tolerance for squeezing
+
+  int nMpts = 4;
+  if (nDims == 3) nMpts = 8;
+
+  for (int spt=0; spt<nSpts; spt++) {
+    if (U_spts(spt,0) < 0) {
+      negRho = true;
+      minRho = min(minRho,U_spts(spt,0));
+    }
+  }
+
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    if (U_fpts(fpt,0) < 0) {
+      negRho = true;
+      minRho = min(minRho,U_fpts(fpt,0));
     }
   }
 
@@ -1495,7 +1576,6 @@ void ele::checkEntropy()
     if (U_mpts(mpt,0) < 0) {
       negRho = true;
       minRho = min(minRho,U_mpts(mpt,0));
-      break;
     }
   }
 
@@ -1524,7 +1604,7 @@ void ele::checkEntropy()
     double p = phi[nDims+1];
 
     // Get minimum 'tau' value
-    minTau = min(minTau, p - params->exps0*pow(rho,params->gamma));
+    minTau = std::min(minTau, p - params->exps0*std::pow(rho,params->gamma));
   }
 
   for (int fpt=0; fpt<nFpts; fpt++) {

@@ -162,7 +162,7 @@ void solver::calcResidual(int step)
 
   extrapolateU();
 
-  extrapolateUMpts();
+  //extrapolateUMpts();
 
   if (params->squeeze) {
     /* --- Polynomial-Squeezing stabilization procedure --- */
@@ -301,6 +301,14 @@ void solver::checkEntropy()
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].checkEntropy();
+  }
+}
+
+void solver::checkEntropyPlot()
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    eles[i].checkEntropyPlot();
   }
 }
 
@@ -569,7 +577,7 @@ void solver::readRestartFile(void) {
   dataFile.precision(15);
 
   // Get the file name & open the file
-  char fileNameC[50];
+  char fileNameC[256];
   string fileName = params->dataFileName;
 #ifndef _NO_MPI
   /* --- All processors write their solution to their own .vtu file --- */
@@ -599,7 +607,7 @@ void solver::readRestartFile(void) {
   }
 
   if (!found)
-    FatalError("Cannot fine UnstructuredData tag in restart file.");
+    FatalError("Cannot find UnstructuredData tag in restart file.");
 
   // Read restart data & setup all data arrays
   for (auto& e:eles) {

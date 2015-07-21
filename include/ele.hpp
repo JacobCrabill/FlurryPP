@@ -176,6 +176,7 @@ public:
 
   bool checkDensity();
   void checkEntropy();
+  void checkEntropyPlot();
 
 private:
 
