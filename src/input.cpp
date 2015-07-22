@@ -315,9 +315,9 @@ void input::readInputFile(char *filename)
   }
 
   opts.getScalarValue("meshType",meshType);
+  opts.getScalarValue("nDims",nDims,2);
 
   if (meshType == CREATE_MESH) {
-    opts.getScalarValue("nDims",nDims,2);
     opts.getScalarValue("nx",nx,10);
     opts.getScalarValue("ny",ny,10);
     opts.getScalarValue("nz",nz,10);

@@ -1476,9 +1476,6 @@ void ele::checkEntropy()
   double minRho = 1e15;
   double tol = 1e-10;   // Tolerance for squeezing
 
-  int nMpts = 4;
-  if (nDims == 3) nMpts = 8;
-
   for (int spt=0; spt<nSpts; spt++) {
     if (U_spts(spt,0) < 0) {
       negRho = true;

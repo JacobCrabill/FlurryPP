@@ -188,10 +188,10 @@ void geo::processConn2D(void)
     int iv1 = f2v(bndFaces[i],0);
     int iv2 = f2v(bndFaces[i],1);
     for (int bnd=0; bnd<nBounds; bnd++) {
-      if (findFirst(bndPts[bnd],iv1,bndPts.dim1)!=-1 && findFirst(bndPts[bnd],iv2,bndPts.dim1)!=-1) {
+      if (findFirst(bndPts[bnd],iv1,bndPts.dims[1])!=-1 && findFirst(bndPts[bnd],iv2,bndPts.dims[1])!=-1) {
         // The edge lies on this boundary
         bcType[i] = bcList[bnd];
-        bcFaces[bnd].insertRow(f2v[bndFaces[i]],INSERT_AT_END,f2v.dim1);
+        bcFaces[bnd].insertRow(f2v[bndFaces[i]],INSERT_AT_END,f2v.dims[1]);
         break;
       }
     }
@@ -354,7 +354,7 @@ void geo::processConn3D(void)
     for (int bnd=0; bnd<nBounds; bnd++) {
       bool isOnBound = true;
       for (int j=0; j<f2nv[bndFaces[i]]; j++) {
-        if (findFirst(bndPts[bnd],f2v(bndFaces[i],j),bndPts.dim1) == -1) {
+        if (findFirst(bndPts[bnd],f2v(bndFaces[i],j),bndPts.dims[1]) == -1) {
           isOnBound = false;
           break;
         }
@@ -364,7 +364,7 @@ void geo::processConn3D(void)
         //cout << "bndFace matched to bc " << bcList[bnd] << endl;
         // The edge lies on this boundary
         bcType[i] = bcList[bnd];
-        bcFaces[bnd].insertRow(f2v[bndFaces[i]],INSERT_AT_END,f2v.dim1);
+        bcFaces[bnd].insertRow(f2v[bndFaces[i]],INSERT_AT_END,f2v.dims[1]);
         break;
       }
     }
@@ -1348,12 +1348,12 @@ void geo::createMesh()
 
   // Remove duplicates in bndPts
   for (int i=0; i<nBounds; i++) {
-    std::sort(bndPts[i], bndPts[i]+bndPts.dim1);
-    int* it = std::unique(bndPts[i], bndPts[i]+bndPts.dim1);
+    std::sort(bndPts[i], bndPts[i]+bndPts.dims[1]);
+    int* it = std::unique(bndPts[i], bndPts[i]+bndPts.dims[1]);
     nBndPts[i] = std::distance(bndPts[i],it);
   }
   int maxNBndPts = getMax(nBndPts);
-  bndPts.removeCols(bndPts.dim1-maxNBndPts);
+  bndPts.removeCols(bndPts.dims[1]-maxNBndPts);
 }
 
 void geo::processPeriodicBoundaries(void)

@@ -163,18 +163,13 @@ void solver::calcResidual(int step)
 
   extrapolateU();
 
-  //extrapolateUMpts();
-
+  /* --- Polynomial-Squeezing stabilization procedure --- */
   if (params->squeeze) {
-    /* --- Polynomial-Squeezing stabilization procedure --- */
+
     calcAvgSolution();
 
-//    bool squeezed = checkDensity();
-
-//    if (squeezed)
-//      extrapolateU();
-
     checkEntropy();
+
   }
 
   if (params->viscous || params->motion) {

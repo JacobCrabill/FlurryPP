@@ -318,19 +318,41 @@ vector<double> boundFace::computeWallForce(void)
   vector<double> force = {0,0,0};
 
   if (bcType == SLIP_WALL) {
-    auto weights = getQuadratureWeights1D(nFptsL-1);
+    if (params->nDims == 2) {
+      auto weights = getQuadratureWeights1D(nFptsL-1);
 
-    for (int fpt=0; fpt<nFptsL; fpt++) {
-      double rho = UL(fpt,0);
+      for (int fpt=0; fpt<nFptsL; fpt++) {
+        double rho = UL(fpt,0);
 
-      double vMagSq = 0;
-      for (int dim=0; dim<nDims; dim++)
-        vMagSq += UL(fpt,dim+1)*UL(fpt,dim+1)/(rho*rho);
+        double vMagSq = 0;
+        for (int dim=0; dim<nDims; dim++)
+          vMagSq += UL(fpt,dim+1)*UL(fpt,dim+1)/(rho*rho);
 
-      double p = (params->gamma-1)*(UL(fpt,nDims+1) - 0.5*rho*vMagSq);
+        double p = (params->gamma-1)*(UL(fpt,nDims+1) - 0.5*rho*vMagSq);
 
-      for (int dim=0; dim<nDims; dim++)
-        force[dim] += p*normL(fpt,dim)*dAL[fpt]*weights[fpt];
+        for (int dim=0; dim<nDims; dim++)
+          force[dim] += p*normL(fpt,dim)*dAL[fpt]*weights[fpt];
+      }
+    }
+    else {
+      int order = sqrt(nFptsL)-1;
+      auto weights = getQuadratureWeights1D(order);
+
+      for (int fpt=0; fpt<nFptsL; fpt++) {
+        int ifpt = fpt%(order+1);
+        int jfpt = floor(fpt/(order+1));
+
+        double rho = UL(fpt,0);
+
+        double vMagSq = 0;
+        for (int dim=0; dim<nDims; dim++)
+          vMagSq += UL(fpt,dim+1)*UL(fpt,dim+1)/(rho*rho);
+
+        double p = (params->gamma-1)*(UL(fpt,nDims+1) - 0.5*rho*vMagSq);
+
+        for (int dim=0; dim<nDims; dim++)
+          force[dim] += p*normL(fpt,dim)*dAL[fpt]*weights[ifpt]*weights[jfpt];
+      }
     }
   }
 
