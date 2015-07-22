@@ -298,7 +298,7 @@ void oper::interpolateSptsToPoints(matrix<double> &Q_spts,matrix<double> &Q_ipts
         // Use the orthogonal 2D Dubiner basis for triangular elements
         for (uint spt=0; spt<nSpts; spt++)
           for (uint field=0; field<Q_spts.dim1; field++)
-            Q_ipts(ipt,field) += eval_dubiner_basis_2d(pt,spt,order);
+            Q_ipts(ipt,field) += Q_spts(spt,field) * eval_dubiner_basis_2d(pt,spt,order);
       }
       break;
     }
@@ -314,7 +314,7 @@ void oper::interpolateSptsToPoints(matrix<double> &Q_spts,matrix<double> &Q_ipts
 
           // 3D Tensor-Product Lagrange Interpolation
           for (uint field=0; field<nFields; field++)
-            Q_ipts(ipt,field) += Lagrange(locSpts1D,pt.x,ispt) * Lagrange(locSpts1D,pt.y,jspt);
+            Q_ipts(ipt,field) += Q_spts(spt,field) * Lagrange(locSpts1D,pt.x,ispt) * Lagrange(locSpts1D,pt.y,jspt);
         }
       }
       break;
@@ -333,8 +333,107 @@ void oper::interpolateSptsToPoints(matrix<double> &Q_spts,matrix<double> &Q_ipts
 
           // 3D Tensor-Product Lagrange Interpolation
           for (uint field=0; field<nFields; field++)
-            Q_ipts(ipt,field) += Lagrange(locSpts1D,pt.x,ispt) * Lagrange(locSpts1D,pt.y,jspt) * Lagrange(locSpts1D,pt.z,kspt);
+            Q_ipts(ipt,field) += Q_spts(spt,field) * Lagrange(locSpts1D,pt.x,ispt) * Lagrange(locSpts1D,pt.y,jspt) * Lagrange(locSpts1D,pt.z,kspt);
         }
+      }
+      break;
+    }
+    default:
+      FatalError("Element type not yet supported.");
+  }
+}
+
+void oper::interpolateToPoint(matrix<double> &Q_spts, vector<double> &Q_ipts, point &loc_ipt)
+{
+  uint nFields = Q_spts.dim1;
+
+  Q_ipts.assign(nFields,0);
+
+  switch(eType) {
+    case TRI: {
+      // Use the orthogonal 2D Dubiner basis for triangular elements
+      for (uint spt=0; spt<nSpts; spt++)
+        for (uint field=0; field<Q_spts.dim1; field++)
+          Q_ipts[field] += Q_spts(spt,field) * eval_dubiner_basis_2d(loc_ipt,spt,order);
+      break;
+    }
+    case QUAD: {
+      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      for (uint spt=0; spt<nSpts; spt++) {
+        // Structured I,J indices of current solution point
+        uint ispt = spt%(nSpts/(order+1));
+        uint jspt = floor(spt/(order+1));
+
+        // 3D Tensor-Product Lagrange Interpolation
+        for (uint field=0; field<nFields; field++)
+          Q_ipts[field] += Q_spts(spt,field) * Lagrange(locSpts1D,loc_ipt.x,ispt) * Lagrange(locSpts1D,loc_ipt.y,jspt);
+      }
+      break;
+    }
+
+    case HEX: {
+      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      for (uint spt=0; spt<nSpts; spt++) {
+        // Structured I,J,K indices of current solution point
+        uint kspt = spt/((order+1)*(order+1));
+        uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+        uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+
+        // 3D Tensor-Product Lagrange Interpolation
+        for (uint field=0; field<nFields; field++)
+          Q_ipts[field] += Q_spts(spt,field) * Lagrange(locSpts1D,loc_ipt.x,ispt) * Lagrange(locSpts1D,loc_ipt.y,jspt) * Lagrange(locSpts1D,loc_ipt.z,kspt);
+      }
+      break;
+    }
+    default:
+      FatalError("Element type not yet supported.");
+  }
+}
+
+void oper::interpolateFluxToPoint(vector<matrix<double>> &F_spts, matrix<double> &F_ipt, point &loc_ipt)
+{
+  uint nDims   = F_spts[0].dim0;
+  uint nFields = F_spts[0].dim1;
+
+  F_ipt.setup(nDims,nFields);
+  F_ipt.initializeToZero();
+
+  switch(eType) {
+    case TRI: {
+      // Use the orthogonal 2D Dubiner basis for triangular elements
+      for (uint spt=0; spt<nSpts; spt++)
+        for (uint dim=0; dim<nDims; dim++)
+          for (uint field=0; field<nFields; field++)
+            F_ipt(dim,field) += F_spts[spt](dim,field) * eval_dubiner_basis_2d(loc_ipt,spt,order);
+      break;
+    }
+    case QUAD: {
+      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      for (uint spt=0; spt<nSpts; spt++) {
+        // Structured I,J indices of current solution point
+        uint ispt = spt%(nSpts/(order+1));
+        uint jspt = floor(spt/(order+1));
+
+        // 3D Tensor-Product Lagrange Interpolation
+        for (uint dim=0; dim<nDims; dim++)
+          for (uint field=0; field<nFields; field++)
+            F_ipt(dim,field) += F_spts[spt](dim,field) * Lagrange(locSpts1D,loc_ipt.x,ispt) * Lagrange(locSpts1D,loc_ipt.y,jspt);
+      }
+      break;
+    }
+
+    case HEX: {
+      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      for (uint spt=0; spt<nSpts; spt++) {
+        // Structured I,J,K indices of current solution point
+        uint kspt = spt/((order+1)*(order+1));
+        uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+        uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+
+        // 3D Tensor-Product Lagrange Interpolation
+        for (uint dim=0; dim<nDims; dim++)
+          for (uint field=0; field<nFields; field++)
+            F_ipt(dim,field) += F_spts[spt](dim,field) * Lagrange(locSpts1D,loc_ipt.x,ispt) * Lagrange(locSpts1D,loc_ipt.y,jspt) * Lagrange(locSpts1D,loc_ipt.z,kspt);
       }
       break;
     }

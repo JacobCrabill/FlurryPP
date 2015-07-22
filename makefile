@@ -44,31 +44,6 @@ DESTDIR       = ./bin
 
 ####### Files
 
-SOURCES = 	src/global.cpp \
-		src/funcs.cpp \
-		src/matrix.cpp \
-		src/input.cpp \
-		src/ele.cpp \
-		src/polynomials.cpp \
-		src/operators.cpp \
-		src/geo.cpp \
-		src/output.cpp \
-		src/face.cpp \
-		src/intFace.cpp \
-		src/boundFace.cpp \
-		src/mpiFace.cpp \
-		src/flux.cpp \
-		src/flurry.cpp \
-		src/solver.cpp \
-		lib/tioga/src/ADT.C \
-		lib/tioga/src/MeshBlock.C \
-		lib/tioga/src/parallelComm.C \
-		lib/tioga/src/tioga.C \
-		lib/tioga/src/utils.c \
-		lib/tioga/src/kaiser.f \
-		lib/tioga/src/cellVolume.f90 \
-		lib/tioga/src/median.F90 
-
 OBJECTS = 	obj/global.o \
 		obj/funcs.o \
 		obj/matrix.o \
@@ -77,14 +52,17 @@ OBJECTS = 	obj/global.o \
 		obj/polynomials.o \
 		obj/operators.o \
 		obj/geo.o \
+		obj/geo_overset.o \
 		obj/output.o \
 		obj/face.o \
 		obj/intFace.o \
 		obj/boundFace.o \
 		obj/mpiFace.o \
+		obj/overFace.o \
 		obj/flux.o \
 		obj/flurry.o \
 		obj/solver.o \
+		obj/solver_overset.o \
 		obj/ADT.o \
 		obj/MeshBlock.o \
 		obj/parallelComm.o \
@@ -210,6 +188,12 @@ obj/geo.o: src/geo.cpp src/geo_overset.cpp include/geo.hpp \
 		include/geo.inl
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/geo.o src/geo.cpp
 
+obj/geo_overset.o: src/geo_overset.cpp include/geo.hpp \
+	include/ele.hpp \
+	include/face.hpp \
+	include/overFace.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/geo_overset.o src/geo_overset.cpp
+
 obj/output.o: src/output.cpp include/output.hpp \
 		include/global.hpp \
 		include/error.hpp \
@@ -245,6 +229,9 @@ obj/boundFace.o: src/boundFace.cpp include/boundFace.hpp include/face.hpp
 obj/mpiFace.o: src/mpiFace.cpp include/mpiFace.hpp include/face.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/mpiFace.o src/mpiFace.cpp
 
+obj/overFace.o: src/overFace.cpp include/overFace.hpp include/face.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/overFace.o src/overFace.cpp
+
 obj/flux.o: src/flux.cpp include/flux.hpp \
 		include/global.hpp \
 		include/error.hpp \
@@ -266,7 +253,7 @@ obj/flurry.o: src/flurry.cpp include/flurry.hpp \
 		include/output.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/flurry.o src/flurry.cpp
 
-obj/solver.o: src/solver.cpp src/solver_overset.cpp include/solver.hpp \
+obj/solver.o: src/solver.cpp include/solver.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp \
@@ -277,6 +264,11 @@ obj/solver.o: src/solver.cpp src/solver_overset.cpp include/solver.hpp \
 		include/operators.hpp \
 		include/polynomials.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/solver.o src/solver.cpp
+
+obj/solver_overset.o: src/solver_overset.cpp include/solver.hpp \
+		include/geo.hpp \
+		include/input.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/solver_overset.o src/solver_overset.cpp
 	
 obj/ADT.o: lib/tioga/src/ADT.C lib/tioga/src/ADT.h \
   	lib/tioga/src/codetypes.h \

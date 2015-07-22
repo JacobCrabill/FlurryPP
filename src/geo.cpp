@@ -28,6 +28,7 @@
 #include "intFace.hpp"
 #include "boundFace.hpp"
 #include "mpiFace.hpp"
+#include "overFace.hpp"
 
 #ifndef _NO_MPI
 #include "mpi.h"
@@ -533,7 +534,7 @@ void geo::matchMPIFaces(void)
         if (procR[F] != -1) continue; // Face already matched
 
         for (int j=0; j<f2nv[mpiFaces[F]]; j++) {
-          myFace[j] = mpiFaceNodes(F,j);
+          myFace[j] = mpiFaceNodes[mpiFptr[F]+j];
         }
         if (compareFaces(myFace,tmpFace)) {
           procR[F] = p;
@@ -756,7 +757,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
   // Internal Faces
   if (meshType == OVERSET_MESH) {
     for (auto &ff: overFaces) {
-      shared_ptr<face> oface = make_shared<overFace>();
+      shared_ptr<overFace> oface = make_shared<overFace>();
 
       int ic = f2c(ff,0);
       if (iblankCell[f2c(ff,0)] == HOLE) {

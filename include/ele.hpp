@@ -28,6 +28,7 @@ class ele
 friend class face;
 friend class boundFace;
 friend class intFace;
+friend class overFace;
 friend class solver;
 
 public:

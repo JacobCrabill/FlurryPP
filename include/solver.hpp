@@ -40,6 +40,7 @@ class tioga;
 class solver
 {
 friend class geo; // Probably only needed if I make eles, opers private?
+friend class overFace;
 
 public:
   /* === Member Variables === */
@@ -128,8 +129,11 @@ public:
   //! Calculate the inviscid interface flux at all element faces
   void calcInviscidFlux_faces(void);
 
-  //! Calculate the inviscid interface flux at all element faces
+  //! Calculate the inviscid interface flux at all MPI-boundary faces
   void calcInviscidFlux_mpi(void);
+
+  //! Calculate the inviscid interface flux at all overset-boundary faces
+  void calcInviscidFlux_overset(void);
 
   //! Have all MPI faces begin their communication
   void doCommunication(void);
@@ -236,6 +240,13 @@ public:
 
   void convertToModal(int* cellID, int* nPtsIn, double* uIn, int* nPtsOut, int* iStart, double* uOut);
 
+  /* ---- My Overset Functions ---- */
+
+  void oversetInterp();
+  void sendRecvOversetData();
+
+  /* ---- Stabilization Functions ---- */
+
   void calcAvgSolution();
   bool checkDensity();
   void checkEntropy();
@@ -269,11 +280,12 @@ private:
   vector<int> interpCell;       //! For each interpolation point, cell which it lies within
   matrix<double> interpPtsPhys; //! Physical positions of fringe points on other grids to interpolate to
   matrix<double> interpPtsRef;  //! Reference position (within interpCell) of fringe points on other grids to interpolate to
-  matrix<double> F_ipts;        //! Interpolated flux vector at interpolation points
+  vector<vector<matrix<double>>> F_ipts; //! Interpolated flux vector at each interpolation point for each grid
 
   // Incoming (overset) data
   vector<int> overProc;         //! Donor-processor ID for each fringe point
   matrix<double> overPtsPhys;   //! Physical positions of each fringe point
-  matrix<double> F_opts;        //! Flux vector at each fringe point
+  vector<matrix<double>> F_opts;        //! Flux vector at each fringe point
   vector<point> overPts;        //! Physical positions of fringe points
+  int nOverPts;                 //! Number of overset flux points on this grid rank
 };

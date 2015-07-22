@@ -766,7 +766,7 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   loc = point(X[ind[nPts-1]]);
 
   // Check to see if final location lies within element or not
-  if (abs(loc.x)<=1 && abs(loc.y)<=1 && abs(loc.z)<=1 && !isnan(loc.norm()))
+  if (std::abs(loc.x)<=1 && std::abs(loc.y)<=1 && std::abs(loc.z)<=1 && !std::isnan(loc.norm()))
     return true;
   else
     return false;

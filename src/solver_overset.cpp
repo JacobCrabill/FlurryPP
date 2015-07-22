@@ -25,37 +25,49 @@
 
 void solver::oversetInterp(void)
 {
+  F_ipts.resize(Geo->nGrids);
+  for (int g=0; g<Geo->nGrids; g++) {
+    for (int i=0; i<Geo->foundPts[g].size(); i++) {
+      point refPos = Geo->foundLocs[g][i];
+      int ic = Geo->foundEles[g][i];
+      matrix<double> F_ipt(params->nDims,params->nFields);
+      opers[eles[ic].eType][eles[ic].order].interpolateFluxToPoint(eles[ic].F_spts, F_ipt, refPos);
+      F_ipts[g].push_back(F_ipt);
+    }
+  }
+
+  Geo->exchangeOversetData(F_ipts, F_opts);
 
 }
-
-/* ---- Basic Tioga-Based Overset-Grid Functions ---- */
 
 void solver::setupOverset(void)
 {
   if (gridRank == 0) cout << "Solver: Grid " << gridID << ": Setting up overset connectivity" << endl;
 
-  uint offset = 0;
+  overPts.resize(0);
   for (auto &oface: overFaces) {
-    oface->fptOffset = offset;
+    oface->fptOffset = overPts.size();
     auto pts = oface->getPosFpts();
     overPts.insert(overPts.begin(),pts.begin(),pts.end());
-    offset += oface->nFptsL;
   }
+  nOverPts = overPts.size();
 
-  overPtsPhys = createMatrix(overPoints);
+  overPtsPhys = createMatrix(overPts);
 
-  F_opts.setup(offset,params->nDims*params->nFields);
+  F_opts.setup(nOverPts,params->nDims*params->nFields);
 
-
-
-
-  //setupOversetData();
-
-  // Give TIOGA a pointer to this solver for access to callback functions
-  tg->setcallback(this);
-
-  Geo->updateOversetConnectivity();
 }
+
+/* ---- Basic Tioga-Based Overset-Grid Functions ---- */
+
+//void solver::setupOverset(void)
+//{
+//  if (gridRank == 0) cout << "Solver: Grid " << gridID << ": Setting up overset connectivity" << endl;
+//  setupOversetData();
+//  // Give TIOGA a pointer to this solver for access to callback functions
+//  tg->setcallback(this);
+//  Geo->updateOversetConnectivity();
+//}
 
 void solver::setupOversetData(void)
 {
