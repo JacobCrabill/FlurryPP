@@ -473,6 +473,11 @@ void writeResidual(solver *Solver, input *params)
     MPI_Reduce(fTmp.data(), force.data(), params->nDims, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 #endif
     for (auto &f:force) f /= (0.5*params->rhoBound*params->Uinf*params->Uinf);
+
+    double alpha = std::atan(params->vBound/params->uBound);
+    fTmp = force;
+    force[0] = fTmp[0]*cos(alpha) + fTmp[1]*sin(alpha);  // Rotate to align with freestream
+    force[1] = fTmp[1]*cos(alpha) - fTmp[0]*sin(alpha);
   }
 
 #ifndef _NO_MPI

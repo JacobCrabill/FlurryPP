@@ -29,7 +29,7 @@ dataFileName      Cylinder2D
 
 # mesh_type - 0: Read mesh, 1: Create mesh
 meshType     0
-meshFileNname  fancy_cyl.msh
+meshFileName  cylinder2D.msh
 
 # The following parameters are only needed when creating a mesh:
 nDims         2

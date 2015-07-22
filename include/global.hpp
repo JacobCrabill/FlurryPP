@@ -31,6 +31,9 @@
 #include <omp.h>
 
 #include "error.hpp"
+
+template<typename T> class matrix;
+
 #include "matrix.hpp"
 
 // Forward declarations of basic Flurry classes
