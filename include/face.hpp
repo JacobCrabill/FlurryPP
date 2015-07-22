@@ -99,7 +99,6 @@ public:
 
   input *params; //! Input parameters for simulation
 
-protected:
   int nFptsL, nFptsR;
   int nDims, nFields;
   int locF_L;
@@ -107,6 +106,7 @@ protected:
   vector<int> rightParams;
   struct faceInfo myInfo;
 
+protected:
   ele* eL;
   ele* eR;
 

@@ -29,6 +29,10 @@ class tioga;
 #include "mpiFace.hpp"
 #include "tioga.h"
 
+#define NORMAL  1
+#define HOLE    0
+#define FRINGE -1
+
 class geo
 {
 public:
@@ -45,7 +49,7 @@ public:
   void processConnectivity();
 
   //! Create the elements and faces needed for the simulation
-  void setupElesFaces(vector<ele> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec);
+  void setupElesFaces(vector<ele> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec, vector<shared_ptr<overFace> >& overFacesVec);
 
   /* === Helper Routines === */
 
@@ -85,7 +89,7 @@ public:
   void writeOversetConnectivity();
 
   int nDims, nFields;
-  int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces;
+  int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces, nOverFaces;
   int nBounds;  //! Number of boundaries  
   int meshType;
 
@@ -97,7 +101,7 @@ public:
   matrix<int> c2e, c2b, e2c, e2v, v2e, v2v, v2c;
   matrix<int> c2f, f2v, f2c;
   vector<int> v2nv, v2nc, c2nv, c2nf, f2nv, ctype;
-  vector<int> intFaces, bndFaces, mpiFaces, mpiCells;
+  vector<int> intFaces, bndFaces, mpiFaces, overFaces, mpiCells;
   vector<int> bcList;            //! List of boundary conditions for each boundary
   vector<int> bcType;            //! Boundary condition for each boundary edge
   matrix<int> bndPts;            //! List of node IDs on each boundary
@@ -112,13 +116,26 @@ public:
   vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
 
   /* --- Overset-Related Variables --- */
+  int nGrids;             //! Number of distinct overset grids
   int nprocPerGrid;       //! Number of MPI processes assigned to each (overset) grid block
   int gridID;             //! Which (overset) grid block is this process handling
   int gridRank;           //! MPI rank of process *within* the grid block [0 to nprocPerGrid-1]
   vector<int> iblank;     //! Output of TIOGA: flag for whether vertex is normal, blanked, or receptor
   vector<int> iblankCell; //! Output? of TIOGA: flag for whether cell is normal, blanked, or receptor
+  vector<int> iblankFace; //! Flag for whether a face is normal, blanked, or receptor
   vector<int> iwall;      //! List of nodes on wall boundaries
   vector<int> iover;      //! List of nodes on overset boundaries
+
+  // Outgoing (interpolated) data
+  vector<int> interpProc;       //! Processor ID for all interpolation points
+  vector<int> interpCell;       //! For each interpolation point, cell which it lies within
+  matrix<double> interpPtsPhys; //! Physical positions of fringe points on other grids to interpolate to
+  matrix<double> interpPtsRef;  //! Reference position (within interpCell) of fringe points on other grids to interpolate to
+
+  // Incoming (overset) data
+  vector<int> overProc;         //! Donor-processor ID for each fringe point
+  matrix<double> overPtsPhys;   //! Physical positions of each fringe point
+  vector<point> overPts;        //! Physical positions of fringe points
 
   tioga* tg;           //! Pointer to Tioga object for processing overset grids
   int* nodesPerCell;   //! Pointer for Tioga to know # of nodes for each element type
@@ -140,11 +157,15 @@ private:
   int nEles_g, nVerts_g;
 
 #ifndef _NO_MPI
-  MPI_Comm gridComm;
+  MPI_Comm gridComm;  //! Intra-grid communicator
+  MPI_Comm interComm; //! Inter-grid communicator (matched by gridRank)
 #endif
 
   void processConn2D(void);
   void processConn3D(void);
+
+  //! Using Tioga's nodal iblanks, set iblank values for all cells and faces
+  void setCellFaceIblanks();
 
   //! Match up pairs of periodic boundary faces
   void processPeriodicBoundaries(void);

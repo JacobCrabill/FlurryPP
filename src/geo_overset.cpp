@@ -1,0 +1,348 @@
+/*!
+ * \file geo_overset.cpp
+ * \brief Overset-related methods for the geo class
+ *
+ * \author - Jacob Crabill
+ *           Aerospace Computing Laboratory (ACL)
+ *           Aero/Astro Department. Stanford University
+ *
+ * \version 0.0.1
+ *
+ * Flux Reconstruction in C++ (Flurry++) Code
+ * Copyright (C) 2015 Jacob Crabill.
+ *
+ */
+
+#include "geo.hpp"
+
+#include <algorithm>
+#include <array>
+#include <cstdlib>
+#include <map>
+#include <memory>
+#include <set>
+#include <sstream>
+
+#include "ele.hpp"
+#include "face.hpp"
+#include "overFace.hpp"
+
+#ifndef _NO_MPI
+#include "mpi.h"
+#include "metis.h"
+#endif
+
+void geo::registerGridDataTIOGA(void)
+{
+  /* Note that this function should only be needed once during preprocessing */
+
+  // Allocate TIOGA grid processor
+  tg = new tioga();
+
+  tg->setCommunicator(MPI_COMM_WORLD,params->rank,params->nproc);
+
+  // Setup iwall, iover (nodes on wall & overset boundaries)
+  iover.resize(0);
+  iwall.resize(0);
+  for (int ib=0; ib<nBounds; ib++) {
+    if (bcList[ib] == OVERSET) {
+      for (int iv=0; iv<nBndPts[ib]; iv++) {
+        iover.push_back(bndPts(ib,iv));
+      }
+    }
+    else if (bcList[ib] == SLIP_WALL || bcList[ib] == ADIABATIC_NOSLIP || bcList[ib] == ISOTHERMAL_NOSLIP) {
+      for (int iv=0; iv<nBndPts[ib]; iv++) {
+        iwall.push_back(bndPts(ib,iv));
+      }
+    }
+  }
+
+  int nwall = iwall.size();
+  int nover = iover.size();
+  int ntypes = 1;           //! Number of element types in grid block
+  nodesPerCell = new int[1];
+  nodesPerCell[0] = 8;      //! Number of nodes per element for each element type (but only one type so far)
+  iblank.resize(nVerts);
+  iblankCell.resize(nEles);
+
+  // Need an int**, even if only have one element type
+  conn[0] = c2v.getData();
+
+  tg->registerGridData(gridID,nVerts,xv.getData(),iblank.data(),nwall,nover,iwall.data(),
+                       iover.data(),ntypes,nodesPerCell,&nEles,&conn[0]);
+
+  // Give iblankCell to TIOGA for Flurry to access later
+  //tg->set_cell_iblank(iblankCell.data()); // not needed if not using high-order TIOGA
+}
+
+void geo::updateOversetConnectivity(void)
+{
+  // Pre-process the grids
+  tg->profile();
+
+  // Have TIOGA perform the nodal overset connectivity (set nodal iblanks)
+  tg->performConnectivity();
+
+  writeOversetConnectivity();
+
+  // Now use new nodal iblanks to set cell and face iblanks
+  setCellFaceIblanks();
+
+  // Process overset-grid connectivity
+  // (set iblanks, exchange donor info, setup interpolation points & weights)
+  //tg->performConnectivityHighOrder();
+}
+
+void geo::setCellFaceIblanks()
+{
+  // Use the TIOGA-supplied nodal iblank values, set iblank values for all cells and faces
+
+  iblankCell.assign(nEles,NORMAL);
+
+  // First, blank all cells which contain a hole node
+  for (int ic=0; ic<nEles; ic++) {
+    for (int j=0; j<c2nv[ic]; j++) {
+      int iv = c2v(ic,j);
+      if (iblank[iv] == HOLE) {
+        iblankCell[ic] = HOLE;
+        break;
+      }
+    }
+  }
+
+  // Next, get the new overset faces & set all hole faces
+  iblankFace.assign(nFaces,NORMAL);
+  for (int ic=0; ic<nEles; ic++) {
+    if (iblankCell[ic] == HOLE) {
+      for (int j=0; j<c2nf[ic]; j++) {
+        int ff = c2f(ic,j);
+        if (iblankFace[ff] == NORMAL) {
+          // If not set yet, assume fringe (overset), but set to hole if any hole nodes
+          iblankFace[ff] = FRINGE;
+          for (int k=0; k<f2nv[ff]; k++) {
+            int iv = f2v(ff,k);
+            if (iblank[iv] == HOLE) {
+              iblankFace[ff] = HOLE;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+}
+
+void geo::writeOversetConnectivity(void)
+{
+  // Write out only the mesh with IBLANK info (no solution data)
+  tg->writeData(0,NULL,0);
+}
+
+void geo::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &overFacesVec)
+{
+  // Get all of the fringe points on this grid
+  uint offset = 0;
+  for (auto &oface: overFacesVec) {
+    oface->fptOffset = offset;
+    auto pts = oface->getPosFpts();
+    overPts.insert(overPts.begin(),pts.begin(),pts.end());
+    offset += oface->nFptsL;
+  }
+
+  overPtsPhys = createMatrix(overPts);
+  int nInterpPts = offset;
+
+  /* ---- Gather all interpolation point data on each grid ---- */
+
+  // Create a new communicator to communicate across grids
+  MPI_Comm_split(MPI_COMM_WORLD, gridRank, nGrids, &interComm);
+
+  // Get the number of interp points for each process on this grid
+  vector<int> nPts_rank(nprocPerGrid);
+  MPI_Allgather(&nInterpPts, 1, MPI_INT, nPts_rank.data(), 1, MPI_INT, gridComm);
+
+  // Accumulate all interpolation points on this grid into single matrix
+  int nPtsGrid = 0;
+  vector<int> recvCnts(nprocPerGrid);
+  vector<int> recvDisp(nprocPerGrid);
+  for (int i=0; i<nprocPerGrid; i++) {
+    nPtsGrid += nPts_rank[i];
+    recvCnts[i] = nPts_rank[i]*3;
+    if (i>0)
+      recvDisp[i] = recvDisp[i-1] + recvCnts[i-1];
+  }
+  matrix<double> overPts_rank(nPtsGrid,3);
+  MPI_Allgatherv(overPtsPhys.getData(), overPtsPhys.getSize(), MPI_DOUBLE, overPts_rank.getData(), recvCnts.data(), recvDisp.data(), MPI_DOUBLE, gridComm);
+
+  // Send this rank's data to all other grids
+  vector<int> nPts_grid(nGrids);
+  MPI_Allgather(&nInterpPts, 1, MPI_INT, nPts_grid.data(), 1, MPI_INT, interComm);
+
+  // Reduce across each grid
+  vector<int> nPts_tmp = nPts_grid;
+  MPI_Allreduce(nPts_tmp.data(), nPts_grid.data(), nGrids, MPI_INT, MPI_SUM, gridComm);
+
+  // Setup storage for all interpolation points in simulation
+  int nPtsTotal = getSum(nPts_grid);
+  interpPtsPhys.setup(nPtsTotal,3);
+
+  recvCnts.resize(nGrids);
+  recvDisp.assign(nGrids,0);
+  for (int i=0; i<nGrids; i++) {
+    recvCnts[i] = nPts_grid[i]*3;
+    if (i>0)
+      recvDisp[i] = recvDisp[i-1] + recvCnts[i-1];
+  }
+  // Send this grid's points to each grid along gridRank
+  MPI_Allgatherv(overPts_rank.getData(), overPts_rank.getSize(), MPI_DOUBLE, interpPtsPhys.getData(), recvCnts.data(), recvDisp.data(), MPI_DOUBLE, interComm);
+
+  /* ---- Check Every Fringe Point for Donor Cell on This Grid ---- */
+
+  vector<vector<int>> foundPts(nGrids);
+  vector<vector<int>> foundRank(nGrids);
+  vector<vector<int>> foundEles(nGrids);
+  vector<vector<point>> foundLocs(nGrids);
+  offset = 0;
+  for (int g=0; g<nGrids; g++) {
+    if (g>0) offset += nPts_grid[g-1];
+
+    if (g == gridID) continue;
+
+    for (int i=0; i<nPts_grid[g]; i++) {
+      // Get requested interpolation point
+      point pt = point(interpPtsPhys[offset+i]);
+      // Check for containment in all eles on this rank of this grid
+      for (auto &e:eles) {
+        /* !! THIS IS HORRIBLY INEFFICIENT !! - should use c2c to march from an
+         * initial guess to the neighboring cell nearest the point in question */
+        point refLoc;
+        bool isInEle = e.getRefLocNelderMeade(pt,refLoc);
+
+        if (isInEle) {
+          foundPts[g].push_back(i);
+          foundRank[g].push_back(gridRank);
+          foundEles[g].push_back(e.IDg); // GLOBAL ele id for this grid
+          foundLocs[g].push_back(refLoc);
+          break;
+        }
+      }
+    }
+  }
+
+  /* ---- Send/Receive the the donor info across grids ---- */
+
+  // Send/Receive the number of matched points on each grid
+  vector<int> nPtsRecv(nGrids);
+  vector<int> nPtsSend(nGrids);
+  vector<MPI_Request> reqs(nGrids);
+  vector<MPI_Request> sends(nGrids);
+  for (int g=0; g<nGrids; g++) {
+    if (g == gridID) continue;
+    nPtsSend[g] = foundPts[g].size();
+    MPI_Irecv(&nPtsRecv[g], 1, MPI_INT, g, gridID, interComm, &reqs[g]);
+    MPI_Isend(&nPtsSend[g], 1, MPI_INT, g, gridID, interComm, &sends[g]);
+  }
+
+  MPI_Status status;
+  for (int g=0; g<nGrids; g++) {
+    if (g != gridID) {
+      MPI_Wait(&reqs[g],&status);
+      MPI_Wait(&sends[g],&status);
+    }
+  }
+
+  // Send/Receive the accompanying point IDs which were matched
+  vector<vector<int>> recvPts(nGrids);
+  for (int g=0; g<nGrids; g++) {
+    if (g == gridID) continue;
+    recvPts[g].resize(nPtsRecv[g]);
+  }
+
+  for (int g=0; g<nGrids; g++) {
+    if (g == gridID) continue;
+    MPI_Irecv(&recvPts[g],  nPtsRecv[g], MPI_INT, g, gridID, interComm, &reqs[g]);
+    MPI_Isend(&foundPts[g], nPtsSend[g], MPI_INT, g, gridID, interComm, &sends[g]);
+  }
+
+  for (int g=0; g<nGrids; g++) {
+    if (g == gridID) continue;
+    MPI_Wait(&reqs[g],&status);
+    MPI_Wait(&sends[g],&status);
+  }
+
+  /* ---- Distribute the the donor info within each grid ---- */
+
+  // Now that each grid has the matched point donor info distributed among its
+  // processes, send to proper gridRank
+  vector<vector<int>> donorGridSend(nprocPerGrid);
+  vector<vector<int>> donorGridRecv(nprocPerGrid);
+  vector<vector<int>> gridPtIdsSend(nprocPerGrid);
+  vector<vector<int>> gridPtIdsRecv(nprocPerGrid);
+  vector<int> nGPtsSend(nprocPerGrid);
+  vector<int> nGPtsRecv(nprocPerGrid);
+  for (int g=0; g<nGrids; g++) {
+    if (g == gridRank) continue;
+    for (int i=0; i<nPtsRecv[g]; i++) {
+      int iv = recvPts[g][i];
+      int nv = nPts_rank[0];
+      int p = 0;
+      while (iv>nv && p<nprocPerGrid) {
+        p++;
+        nv += nPts_rank[p];
+      }
+      iv -= nPts_rank[p]; // Make iv be the process-local point ID
+      donorGridSend[p].push_back(g);
+      gridPtIdsSend[p].push_back(iv);
+      nGPtsSend[p]++;
+    }
+  }
+
+  vector<MPI_Request> reqsGrid(nprocPerGrid);
+  vector<MPI_Request> sendsGrid(nprocPerGrid);
+  vector<MPI_Request> reqsPt(nprocPerGrid);
+  vector<MPI_Request> sendsPt(nprocPerGrid);
+  for (int p=0; p<nprocPerGrid; p++) {
+    if (p == gridRank) continue;
+    MPI_Irecv(&nGPtsRecv[p], 1, MPI_INT, p, gridRank, gridComm, &reqsGrid[p]);
+    MPI_Isend(&nGPtsSend[p], 1, MPI_INT, p, gridRank, gridComm, &sendsGrid[p]);
+  }
+
+  for (int p=0; p<nprocPerGrid; p++) {
+    if (p != gridRank) {
+      MPI_Wait(&reqsGrid[p],&status);
+      MPI_Wait(&sendsGrid[p],&status);
+    }
+  }
+
+  // Send/Receive the accompanying point IDs and gridIDs which were matched
+  vector<vector<int>> recvPts(nGrids);
+  for (int p=0; p<nprocPerGrid; p++) {
+    if (p == gridRank) continue;
+    recvPts[p].resize(nGPtsRecv[p]);
+  }
+
+  for (int p=0; p<nprocPerGrid; p++) {
+    if (p == gridRank) continue;
+    MPI_Irecv(&donorGridRecv[p], nPtsRecv[p], MPI_INT, p, gridRank, gridComm, &reqsGrid[p]);
+    MPI_Irecv(&gridPtIdsRecv[p], nPtsRecv[p], MPI_INT, p, gridRank, gridComm, &reqsPt[p]);
+    MPI_Isend(&donorGridSend[p], nPtsSend[p], MPI_INT, p, gridRank, gridComm, &reqsGrid[p]);
+    MPI_Isend(&gridPtIdsSend[p], nPtsSend[p], MPI_INT, p, gridRank, gridComm, &reqsPt[p]);
+  }
+
+  for (int p=0; p<nprocPerGrid; p++) {
+    if (p == gridRank) continue;
+    MPI_Wait(&reqsGrid[p],&status);
+    MPI_Wait(&reqsPt[p],&status);
+    MPI_Wait(&sendsGrid[p],&status);
+    MPI_Wait(&sendsPt[p],&status);
+  }
+
+  /* ---- Setup Final Receptor/Donor Communications ---- */
+
+  // Now, every single process knows, for each of its points, the grid ID and,
+  // indirectly, the rank of the donor grid segment
+
+
+
+}

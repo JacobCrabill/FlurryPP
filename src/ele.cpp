@@ -645,9 +645,8 @@ double ele::getDxNelderMeade(point refLoc, point physPos)
   return dx.norm();
 }
 
-point ele::getRefLocNelderMeade(point pos)
+bool ele::getRefLocNelderMeade(point pos, point& loc)
 {
-  //cout << "In Nelder-Meade" << endl;
   // First, do a quick check to see if the point is even close to being in the element
   double xmin, ymin, zmin;
   double xmax, ymax, zmax;
@@ -665,9 +664,8 @@ point ele::getRefLocNelderMeade(point pos)
   if (pos.x < xmin || pos.y < ymin || pos.z < zmin ||
       pos.x > xmax || pos.y > ymax || pos.z > zmax) {
     // Point does not lie within cell - return an obviously bad ref position
-    point pt;
-    pt.x = 99; pt.y = 99; pt.z = 99;
-    return pt;
+    loc.x = 99; loc.y = 99; loc.z = 99;
+    return false;
   }
 
   // Use the simple Nelder-Meade algorithm to find the reference location which
@@ -765,7 +763,13 @@ point ele::getRefLocNelderMeade(point pos)
   }
 
   auto ind = getOrder(F);
-  return point(X[ind[nPts-1]]);
+  loc = point(X[ind[nPts-1]]);
+
+  // Check to see if final location lies within element or not
+  if (abs(loc.x)<=1 && abs(loc.y)<=1 && abs(loc.z)<=1 && !isnan(loc.norm()))
+    return true;
+  else
+    return false;
 }
 
 void ele::calcPosSpts(void)

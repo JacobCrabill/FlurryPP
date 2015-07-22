@@ -30,7 +30,10 @@ SOURCES += src/global.cpp \
     lib/tioga/src/tiogaInterface.C \
     lib/tioga/src/math.c \
     lib/tioga/src/utils.c \
-    src/funcs.cpp
+    src/funcs.cpp \
+    src/solver_overset.cpp \
+    src/overFace.cpp \
+    src/geo_overset.cpp
 		   
 HEADERS += include/global.hpp \
     include/matrix.hpp \
@@ -56,7 +59,8 @@ HEADERS += include/global.hpp \
     lib/tioga/src/tioga.h \
     lib/tioga/src/tiogaInterface.h \
     lib/tioga/src/utils.h \
-    include/funcs.hpp
+    include/funcs.hpp \
+    include/overFace.hpp
 
 DISTFILES += \
     README.md \

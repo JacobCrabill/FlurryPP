@@ -135,7 +135,7 @@ public:
   /*! Get position of solution point in physical space */
   point getPosSpt(uint spt);
 
-  point getPosFpt(uint spt);
+  point getPosFpt(uint fpt);
 
   void getPosSpts(double* posSpts);
 
@@ -145,7 +145,7 @@ public:
 
   /*! Find the reference location of a point inside an element given its
    *  physical location, using the Nelder-Meade algorithm */
-  point getRefLocNelderMeade(point pos);
+  bool getRefLocNelderMeade(point pos, point &loc);
 
   /*! Calculate Jacobian & Inverse Jacobian at a reference location in element */
   void getInverseMapping(const point xi, matrix<double> &J, matrix<double> &Jinv);

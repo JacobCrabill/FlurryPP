@@ -30,6 +30,7 @@ class oper;
 #include "intFace.hpp"
 #include "boundFace.hpp"
 #include "mpiFace.hpp"
+#include "overFace.hpp"
 #include "operators.hpp"
 
 class tioga;
@@ -56,6 +57,9 @@ public:
 
   //! Vector of all MPI faces handled by this solver
   vector<shared_ptr<mpiFace>> mpiFaces;
+
+  //! Vector of all MPI faces handled by this solver
+  vector<shared_ptr<overFace>> overFaces;
 
   //! Pointer to Tioga object for processing overset grids
   tioga* tg;
@@ -260,4 +264,16 @@ private:
 
   vector<double> U_spts; //! Global solution vector for solver (over all elements)
 
+  // Outgoing (interpolated) data
+  vector<int> interpProc;       //! Processor ID for all interpolation points
+  vector<int> interpCell;       //! For each interpolation point, cell which it lies within
+  matrix<double> interpPtsPhys; //! Physical positions of fringe points on other grids to interpolate to
+  matrix<double> interpPtsRef;  //! Reference position (within interpCell) of fringe points on other grids to interpolate to
+  matrix<double> F_ipts;        //! Interpolated flux vector at interpolation points
+
+  // Incoming (overset) data
+  vector<int> overProc;         //! Donor-processor ID for each fringe point
+  matrix<double> overPtsPhys;   //! Physical positions of each fringe point
+  matrix<double> F_opts;        //! Flux vector at each fringe point
+  vector<point> overPts;        //! Physical positions of fringe points
 };

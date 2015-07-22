@@ -50,6 +50,7 @@ lib/
 *.vtu
 *.pvtu
 *.plt
+*.dat
 *.csv
 *.csv.*
 

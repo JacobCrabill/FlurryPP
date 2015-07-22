@@ -228,6 +228,8 @@ point operator*(point a, double b);
 //! For clearer notation when a vector is implied, rather than a point
 typedef struct point Vec3;
 
+matrix<double> createMatrix(vector<point> &pts);
+
 int factorial(int n);
 
 void setGlobalVariables(void);
@@ -313,6 +315,18 @@ T getMin(vector<T> &vec)
   }
 
   return min;
+}
+
+template<typename T>
+T getSum(vector<T> &vec)
+{
+  T sum = 0;
+#pragma omp parallel for
+  for (uint i=0; i<vec.size(); i++) {
+    sum += vec[i];
+  }
+
+  return sum;
 }
 
 template<typename T>

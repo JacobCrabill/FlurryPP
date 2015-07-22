@@ -1448,7 +1448,7 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
 
   for(i=0;i<nnodes;i++)
   {
-    iblank[i]=1;
+    iblank[i] = NORMAL;
     if (donorList[i]==NULL)
     {
       for(j=0;j<nmesh;j++) {
@@ -1456,7 +1456,7 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
         {
           if (checkHoleMap(&x[3*i],holemap[j].nx,holemap[j].sam,holemap[j].extents))
           {
-            iblank[i]=0;
+            iblank[i] = HOLE;
             break;
           }
         }
@@ -1479,7 +1479,7 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
           if (!iflag[j]) {
             if (checkHoleMap(&x[3*i],holemap[j].nx,holemap[j].sam,holemap[j].extents))
             {
-              iblank[i]=0;
+              iblank[i] = HOLE;
               break;
             }
           }
@@ -1489,7 +1489,7 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
   }
 
   for(i=0;i<nwbc;i++) {
-    if (iblank[wbcnode[i]-BASE]==0) {
+    if (iblank[wbcnode[i]-BASE]==HOLE) {
       printf("--------------------------------------------------------------------\n");
       printf("Alarm from process %d : wall node is being tagged as a hole %d %p\n",myid,wbcnode[i]-BASE,
              donorList[wbcnode[i]-BASE]);
@@ -1510,7 +1510,7 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
   for(i=0;i<nnodes;i++)
   {
     mtag[i]=mtag1[i]=0;
-    if (iblank[i]==0) mtag[i]=mtag1[i]=1;
+    if (iblank[i] == HOLE) mtag[i]=mtag1[i]=1;
   }
 
   for(iter=0;iter<nfringe;iter++)
@@ -1545,14 +1545,14 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
   *nrecords=0;
   for(i=0;i<nnodes;i++)
   {
-    if (donorList[i]!=NULL && iblank[i]!=0)
+    if (donorList[i]!=NULL && iblank[i]!=HOLE)
     {
       temp=donorList[i];
       while(temp!=NULL)
       {
         if (temp->donorRes < nodeRes[i])
         {
-          iblank[i]=-1;
+          iblank[i] = FRINGE;
           (*nrecords)++;
           break;
         }
@@ -1571,7 +1571,7 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
   k=0;
   for(i=0;i<nnodes;i++)
   {
-    if (iblank[i]==-1)
+    if (iblank[i] == FRINGE)
     {
       temp=donorList[i];
       (*receptorResolution)[k++]=nodeRes[i];

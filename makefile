@@ -197,7 +197,7 @@ obj/operators.o: src/operators.cpp include/operators.hpp \
 		include/polynomials.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/operators.o src/operators.cpp
 
-obj/geo.o: src/geo.cpp include/geo.hpp \
+obj/geo.o: src/geo.cpp src/geo_overset.cpp include/geo.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp \
@@ -266,7 +266,7 @@ obj/flurry.o: src/flurry.cpp include/flurry.hpp \
 		include/output.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/flurry.o src/flurry.cpp
 
-obj/solver.o: src/solver.cpp include/solver.hpp \
+obj/solver.o: src/solver.cpp src/solver_overset.cpp include/solver.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp \

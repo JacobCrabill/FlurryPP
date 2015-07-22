@@ -149,6 +149,19 @@ Vec3 operator*(matrix<double>& mat, Vec3 &vec)
 point operator/(point a, double b) { return a/=b; }
 point operator*(point a, double b) { return a*=b; }
 
+matrix<double> createMatrix(vector<point> &pts)
+{
+  matrix<double> out(pts.size(),3);
+
+  for (uint i=0; i<pts.size(); i++) {
+    for (uint j=0; j<3; j++) {
+      out(i,j) = pts[i][j];
+    }
+  }
+
+  return out;
+}
+
 void simTimer::startTimer(void)
 {
   initTime = std::chrono::high_resolution_clock::now();
