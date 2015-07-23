@@ -186,7 +186,7 @@ void oper::setupExtrapolateSptsMpts(vector<point> &loc_spts)
 
 matrix<double> oper::setupInterpolateSptsIpts(matrix<double> &loc_ipts)
 {
-  uint nIpts = loc_ipts.dim0;
+  uint nIpts = loc_ipts.dims[0];
   matrix<double> opp_interp(nIpts,nSpts);
 
   switch(eType) {
@@ -283,8 +283,8 @@ void oper::getInterpWeights(double* loc_ipt, double* weights)
 
 void oper::interpolateSptsToPoints(matrix<double> &Q_spts,matrix<double> &Q_ipts, matrix<double> &loc_ipts)
 {
-  uint nIpts = loc_ipts.dim0;
-  uint nFields = Q_spts.dim1;
+  uint nIpts = loc_ipts.dims[0];
+  uint nFields = Q_spts.dims[1];
 
   Q_ipts.setup(nIpts,nFields);
   Q_ipts.initializeToZero();
@@ -297,7 +297,7 @@ void oper::interpolateSptsToPoints(matrix<double> &Q_spts,matrix<double> &Q_ipts
 
         // Use the orthogonal 2D Dubiner basis for triangular elements
         for (uint spt=0; spt<nSpts; spt++)
-          for (uint field=0; field<Q_spts.dim1; field++)
+          for (uint field=0; field<Q_spts.dims[1]; field++)
             Q_ipts(ipt,field) += Q_spts(spt,field) * eval_dubiner_basis_2d(pt,spt,order);
       }
       break;
@@ -345,7 +345,7 @@ void oper::interpolateSptsToPoints(matrix<double> &Q_spts,matrix<double> &Q_ipts
 
 void oper::interpolateToPoint(matrix<double> &Q_spts, vector<double> &Q_ipts, point &loc_ipt)
 {
-  uint nFields = Q_spts.dim1;
+  uint nFields = Q_spts.dims[1];
 
   Q_ipts.assign(nFields,0);
 
@@ -353,7 +353,7 @@ void oper::interpolateToPoint(matrix<double> &Q_spts, vector<double> &Q_ipts, po
     case TRI: {
       // Use the orthogonal 2D Dubiner basis for triangular elements
       for (uint spt=0; spt<nSpts; spt++)
-        for (uint field=0; field<Q_spts.dim1; field++)
+        for (uint field=0; field<Q_spts.dims[1]; field++)
           Q_ipts[field] += Q_spts(spt,field) * eval_dubiner_basis_2d(loc_ipt,spt,order);
       break;
     }
@@ -392,8 +392,8 @@ void oper::interpolateToPoint(matrix<double> &Q_spts, vector<double> &Q_ipts, po
 
 void oper::interpolateFluxToPoint(vector<matrix<double>> &F_spts, matrix<double> &F_ipt, point &loc_ipt)
 {
-  uint nDims   = F_spts[0].dim0;
-  uint nFields = F_spts[0].dim1;
+  uint nDims   = F_spts[0].dims[0];
+  uint nFields = F_spts[0].dims[1];
 
   F_ipt.setup(nDims,nFields);
   F_ipt.initializeToZero();

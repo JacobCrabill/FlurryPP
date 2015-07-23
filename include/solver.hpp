@@ -280,12 +280,12 @@ private:
   vector<int> interpCell;       //! For each interpolation point, cell which it lies within
   matrix<double> interpPtsPhys; //! Physical positions of fringe points on other grids to interpolate to
   matrix<double> interpPtsRef;  //! Reference position (within interpCell) of fringe points on other grids to interpolate to
-  vector<vector<matrix<double>>> F_ipts; //! Interpolated flux vector at each interpolation point for each grid
+  vector<matrix<double>> U_ipts; //! Interpolated solution vector at each interpolation point for each grid
 
   // Incoming (overset) data
   vector<int> overProc;         //! Donor-processor ID for each fringe point
   matrix<double> overPtsPhys;   //! Physical positions of each fringe point
-  vector<matrix<double>> F_opts;        //! Flux vector at each fringe point
+  matrix<double> U_opts;        //! Solution vector at each fringe point
   vector<point> overPts;        //! Physical positions of fringe points
   int nOverPts;                 //! Number of overset flux points on this grid rank
 };

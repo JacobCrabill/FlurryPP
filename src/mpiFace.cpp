@@ -95,8 +95,8 @@ void mpiFace::finishRightSetup(void)
 
   UR.setup(nFptsR,nFields);
   bufUR.setup(nFptsR,nFields);
-  bufGradUR.setup(nFptsR,nDims*nFields); // !! TEMP HACK !!  need 3D matrix/array
-  bufGradUL.setup(nFptsR,nDims*nFields); // !! TEMP HACK !!
+  bufGradUR.setup(nFptsR,nDims,nFields); // !! TEMP HACK !!  need 3D matrix/array
+  bufGradUL.setup(nFptsR,nDims,nFields); // !! TEMP HACK !!
 #endif
 }
 
@@ -117,7 +117,7 @@ void mpiFace::communicate(void)
     for (int i=0; i<nFptsL; i++)
       for (int j=0; j<nDims; j++)
         for (int k=0; k<nFields; k++)
-          bufGradUL(i,j+k*nDims) = gradUL[i](j,k);
+          bufGradUL(i,j,k) = gradUL[i](j,k);
 
     MPI_Irecv(bufGradUR.getData(),bufGradUR.getSize(),MPI_DOUBLE,procR,ID,myComm,&gradUR_in);
     MPI_Isend(bufGradUL.getData(),bufGradUL.getSize(),MPI_DOUBLE,procR,IDR,myComm,&gradUL_out);
@@ -146,7 +146,7 @@ void mpiFace::getRightState(void)
     if (params->viscous) {
       for (int dim=0; dim<nDims; dim++)
         for (int j=0; j<nFields; j++)
-          gradUR[fpt](dim,j) = bufGradUR(fptR[i],dim+j*nDims);
+          gradUR[fpt](dim,j) = bufGradUR(fptR[i],dim,j);
     }
 
     fpt++;

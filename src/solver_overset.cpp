@@ -25,19 +25,18 @@
 
 void solver::oversetInterp(void)
 {
-  F_ipts.resize(Geo->nGrids);
+  U_ipts.resize(Geo->nGrids);
   for (int g=0; g<Geo->nGrids; g++) {
     for (int i=0; i<Geo->foundPts[g].size(); i++) {
       point refPos = Geo->foundLocs[g][i];
       int ic = Geo->foundEles[g][i];
-      matrix<double> F_ipt(params->nDims,params->nFields);
-      opers[eles[ic].eType][eles[ic].order].interpolateFluxToPoint(eles[ic].F_spts, F_ipt, refPos);
-      F_ipts[g].push_back(F_ipt);
+      vector<double> U_ipt(params->nFields);
+      opers[eles[ic].eType][eles[ic].order].interpolateToPoint(eles[ic].U_spts, U_ipt, refPos);
+      U_ipts[g].insertRow(U_ipt);
     }
   }
 
-  Geo->exchangeOversetData(F_ipts, F_opts);
-
+  Geo->exchangeOversetData(U_ipts, U_opts);
 }
 
 void solver::setupOverset(void)
@@ -54,7 +53,7 @@ void solver::setupOverset(void)
 
   overPtsPhys = createMatrix(overPts);
 
-  F_opts.setup(nOverPts,params->nDims*params->nFields);
+  U_opts.setup(nOverPts,params->nFields);
 
 }
 

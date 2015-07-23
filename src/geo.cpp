@@ -54,6 +54,8 @@ void geo::setup(input* params)
 {
   this->params = params;
 
+  nDims = params->nDims;
+  nFields = params->nFields;
   meshType = params->meshType;
   gridID = 0;
   gridRank = params->rank;
@@ -612,7 +614,15 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
   /* --- Setup the faces --- */
 
   if (meshType == OVERSET_MESH ) {
+    /* --- Get a unique, sorted list of all overset faces (either from Gmsh
+     * boundary condition, or from TIOGA-based cell blanking) --- */
+
     for (int ff=0; ff<nFaces; ff++) if (iblankFace[ff] == FRINGE) overFaces.push_back(ff);
+    for (int ff=0; ff<nBndFaces; ff++) if (bcType[ff] == OVERSET) overFaces.push_back(ff);
+
+    std::sort(overFaces.begin(),overFaces.end());
+    auto it = std::unique(overFaces.begin(),overFaces.end());
+    overFaces.resize( std::distance(overFaces.begin(),it) );
 
     /*for (auto &ff: intFaces) if (iblankFace[ff] != NORMAL) ff = -1;
     for (auto &ff: bndFaces) if (iblankFace[ff] != NORMAL) ff = -1;
@@ -676,7 +686,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     // Find global face ID of current boundary face
     int ff = bndFaces[i];
 
-    if (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) continue;
+    if ( (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) || bcType[i] == OVERSET)
+      continue;
 
     shared_ptr<face> bface = make_shared<boundFace>();
 
@@ -760,8 +771,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       shared_ptr<overFace> oface = make_shared<overFace>();
 
       int ic = f2c(ff,0);
-      if (iblankCell[f2c(ff,0)] == HOLE) {
-        if (iblankCell[f2c(ff,1)] != NORMAL) // Both cells blanked; shouldn't be here
+      if (ic == -1 || iblankCell[f2c(ff,0)] == HOLE) {
+        if (f2c(ff,1) == -1 || iblankCell[f2c(ff,1)] != NORMAL) // Both cells blanked; shouldn't be here
           FatalError("Face marked as fringe but both cells blanked.");
         ic = f2c(ff,1);
       }

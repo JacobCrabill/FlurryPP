@@ -95,7 +95,7 @@ public:
   void matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &overFacesVec);
 
   //! Send / Receive interpolated data to proper grid and rank
-  void exchangeOversetInterp(vector<vector<matrix<double>>> &F_ipts, vector<matrix<double>> &F_opts);
+  void exchangeOversetData(vector<matrix<double>>& U_ipts, matrix<double>& U_opts);
 
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces, nOverFaces;
@@ -151,10 +151,15 @@ public:
   array<int*,1> conn;  //! Pointer to c2v for each element type [but only 1, so will be size(1)]
 
   // Data for communication between grids
+  vector<int> nPts_rank;           //! Number of fringe points for each rank of current grid
   vector<vector<int>> foundPts;    //! IDs of receptor points from each grid which were found to lie within current grid
   vector<vector<int>> foundRank;   //! gridRank of this process for each found point (for benefit of other processes; probably not needed)
   vector<vector<int>> foundEles;   //! Ele ID which each matched point was found to lie within
   vector<vector<point>> foundLocs; //! Reference location within ele of each matched receptor point
+
+  vector<int> nPtsRecv; //! Number of points incoming from each grid (across interComm)
+  vector<int> nPtsSend; //! Number of points outgoing to each grid (across interComm)
+  vector<vector<int>> recvPts; //! Point IDs which will be received from each grid (across interComm) (counter to foundPts)
 
 private:
 

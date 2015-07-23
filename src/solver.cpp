@@ -188,7 +188,7 @@ void solver::calcResidual(int step)
 
     oversetInterp();
 
-    sendRecvOversetData();
+    //sendRecvOversetData();
 
     calcInviscidFlux_overset();
 
@@ -371,6 +371,14 @@ void solver::calcInviscidFlux_mpi()
 #pragma omp parallel for
   for (uint i=0; i<mpiFaces.size(); i++) {
     mpiFaces[i]->calcInviscidFlux();
+  }
+}
+
+void solver::calcInviscidFlux_overset()
+{
+#pragma omp parallel for
+  for (uint i=0; i<overFaces.size(); i++) {
+    overFaces[i]->calcInviscidFlux();
   }
 }
 

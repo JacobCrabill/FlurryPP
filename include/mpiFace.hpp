@@ -70,8 +70,8 @@ private:
   vector<double> detJacR; //! Determinant of transformation Jacobian
 
   matrix<double> bufUR;      //! Incoming buffer for receving UR
-  matrix<double> bufGradUR;  //! Incoming buffer for receving gradUR
-  matrix<double> bufGradUL;      //! !! TEMP HACK !! Outgoing buffer for sending UL
+  Array<double,3> bufGradUR;  //! Incoming buffer for receving gradUR
+  Array<double,3> bufGradUL;      //! !! TEMP HACK !! Outgoing buffer for sending UL
 
 #ifndef _NO_MPI
   MPI_Comm myComm;

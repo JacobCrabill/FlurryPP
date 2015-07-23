@@ -20,20 +20,22 @@
 
 void overFace::setupRightState(void)
 {
+  fptR.resize(nFptsL);
+
   for (uint i=0; i<nFptsL; i++) {
     point pt = eL->getPosFpt(fptStartL+i);
     posFpts.push_back(pt);
-  }
-
-  // Get access to normal flux storage at right element [use look-up table to get right fpt]
-  for (int i=0; i<nFptsL; i++) {
-    //FR[i] = (Solver->F_opts[fptR[i]]);
   }
 }
 
 void overFace::getRightState(void)
 {
-
+  // Note: fptOffset must be set by Solver during overset setup
+  for (int i=0; i<nFptsL; i++) {
+    for (int k=0; k<nFields; k++) {
+      UR(i,k) = Solver->U_opts(fptOffset+i,k);
+    }
+  }
 }
 
 void overFace::setRightStateFlux(void)
