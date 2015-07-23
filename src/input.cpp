@@ -243,6 +243,7 @@ void input::readInputFile(char *filename)
 
   opts.getScalarValue("equation",equation,1);
   opts.getScalarValue("icType",icType,0);
+  opts.getScalarValue("nDims",nDims,2);
   if (equation==ADVECTION_DIFFUSION) {
     opts.getScalarValue("advectVx",advectVx,1.);
     opts.getScalarValue("advectVy",advectVy,1.);
@@ -275,6 +276,10 @@ void input::readInputFile(char *filename)
       opts.getScalarValue("vzIC",vzIC,wBound);
       opts.getScalarValue("pIC",pIC,pBound);
     }
+    if (nDims == 2)
+      nFields = 4;
+    else
+      nFields = 5;
   }
 
   opts.getScalarValue("timeType",timeType,4);
@@ -315,7 +320,6 @@ void input::readInputFile(char *filename)
   }
 
   opts.getScalarValue("meshType",meshType);
-  opts.getScalarValue("nDims",nDims,2);
 
   if (meshType == CREATE_MESH) {
     opts.getScalarValue("nx",nx,10);

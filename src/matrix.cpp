@@ -354,6 +354,8 @@ void matrix<T>::removeCols(int nCols)
 template<typename T>
 vector<T> matrix<T>::getRow(uint row)
 {
+  if (row > this->dims[0]) FatalError("Attempting to grab row beyond end of matrix.");
+
   vector<T> out;
   out.assign(&(this->data[row*this->dims[1]]),&(this->data[row*this->dims[1]])+this->dims[1]);
   return out;

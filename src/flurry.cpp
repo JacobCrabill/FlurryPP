@@ -21,6 +21,9 @@
 #include <mpi.h>
 #endif
 
+#include <sys/types.h>
+#include <unistd.h>
+
 int main(int argc, char *argv[]) {
   input params;
   geo Geo;
@@ -50,6 +53,16 @@ int main(int argc, char *argv[]) {
     cout << R"(  ---------      Flux Reconstruction in C++      ---------  )" << endl;
     cout << R"(  ========================================================  )" << endl;
     cout << endl;
+  }
+
+  {
+    int blah = 0;
+    char hostname[256];
+    //gethostname(hostname, sizeof(hostname));
+    printf("PID %d ready for attach\n", getpid());
+    fflush(stdout);
+    while (0 == blah)
+      sleep(5);
   }
 
   if (argc<2) FatalError("No input file specified.");

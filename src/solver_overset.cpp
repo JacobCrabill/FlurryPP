@@ -46,19 +46,24 @@ void solver::setupOverset(void)
 {
   if (gridRank == 0) cout << "Solver: Grid " << gridID << ": Setting up overset connectivity" << endl;
 
-  overPts.resize(0);
-  for (auto &oface: overFaces) {
-    oface->fptOffset = overPts.size();
-    auto pts = oface->getPosFpts();
-    overPts.insert(overPts.begin(),pts.begin(),pts.end());
-  }
-  nOverPts = overPts.size();
+  for (auto &oface: overFaces) oface->Solver = this;
 
-  overPtsPhys = createMatrix(overPts);
+//  overPts.resize(0);
+//  for (auto &oface: overFaces) {
+//    oface->fptOffset = overPts.size();
+//    cout << "offset = " << overPts.size();
+//    auto pts = oface->getPosFpts();
+//    overPts.insert(overPts.begin(),pts.begin(),pts.end());
+//  }
+//  nOverPts = overPts.size();
 
-  U_opts.setup(nOverPts,params->nFields);
+//  overPtsPhys = createMatrix(overPts);
 
   Geo->matchOversetPoints(eles, overFaces);
+
+  nOverPts = Geo->overPts.size();
+  overPts = Geo->overPts;
+  U_opts.setup(nOverPts,params->nFields);
 }
 
 /* ---- Basic Tioga-Based Overset-Grid Functions ---- */
