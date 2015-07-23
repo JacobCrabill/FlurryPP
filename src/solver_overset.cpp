@@ -25,8 +25,11 @@
 
 void solver::oversetInterp(void)
 {
+  cout << "Grid " << Geo->gridID << ": Interpolating Overset Data" << endl;
+
   U_ipts.resize(Geo->nGrids);
   for (int g=0; g<Geo->nGrids; g++) {
+    if (g == Geo->gridID) continue;
     for (int i=0; i<Geo->foundPts[g].size(); i++) {
       point refPos = Geo->foundLocs[g][i];
       int ic = Geo->foundEles[g][i];
@@ -55,6 +58,7 @@ void solver::setupOverset(void)
 
   U_opts.setup(nOverPts,params->nFields);
 
+  Geo->matchOversetPoints(eles, overFaces);
 }
 
 /* ---- Basic Tioga-Based Overset-Grid Functions ---- */

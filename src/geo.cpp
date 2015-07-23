@@ -93,6 +93,8 @@ void geo::setup(input* params)
 
   if (meshType == OVERSET_MESH) {
     registerGridDataTIOGA();
+
+    updateOversetConnectivity();
   }
 }
 
@@ -588,7 +590,10 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
     ele e;
     e.ID = ic;
-    e.IDg = ic2icg[ic];
+    if (nprocPerGrid>1)
+      e.IDg = ic2icg[ic];
+    else
+      e.IDg = ic;
     e.eType = ctype[ic];
     e.nNodes = c2nv[ic];
 
@@ -618,11 +623,15 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
      * boundary condition, or from TIOGA-based cell blanking) --- */
 
     for (int ff=0; ff<nFaces; ff++) if (iblankFace[ff] == FRINGE) overFaces.push_back(ff);
-    for (int ff=0; ff<nBndFaces; ff++) if (bcType[ff] == OVERSET) overFaces.push_back(ff);
+    for (int ff=0; ff<nBndFaces; ff++) if (bcType[ff] == OVERSET) overFaces.push_back(bndFaces[ff]);
 
     std::sort(overFaces.begin(),overFaces.end());
     auto it = std::unique(overFaces.begin(),overFaces.end());
     overFaces.resize( std::distance(overFaces.begin(),it) );
+
+//    cout << "Grid " << gridID << ": nFaces = " << nFaces << ", nOverFaces = " << overFaces.size() << endl;
+//    for (auto &ff: overFaces) cout << f2c(ff,0) << endl;
+//    MPI_Barrier(MPI_COMM_WORLD);
 
     /*for (auto &ff: intFaces) if (iblankFace[ff] != NORMAL) ff = -1;
     for (auto &ff: bndFaces) if (iblankFace[ff] != NORMAL) ff = -1;

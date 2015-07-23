@@ -70,7 +70,6 @@ void solver::setup(input *params, geo *Geo)
 
   if (params->meshType == OVERSET_MESH) {
     setupOverset();
-
   }
 
   /* Additional Setup */

@@ -5,7 +5,8 @@ CONFIG -= qt
 QMAKE_CXXFLAGS += -std=c++11
 
 INCLUDEPATH += $$PWD/include \
-    lib/tioga/src
+    lib/tioga/src \
+    /usr/lib/openmpi/include
 
 SOURCES += src/global.cpp \
     src/matrix.cpp \
