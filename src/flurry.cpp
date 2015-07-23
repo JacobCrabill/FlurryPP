@@ -55,15 +55,16 @@ int main(int argc, char *argv[]) {
     cout << endl;
   }
 
-  {
-    int blah = 0;
-    char hostname[256];
-    //gethostname(hostname, sizeof(hostname));
-    printf("PID %d ready for attach\n", getpid());
-    fflush(stdout);
-    while (0 == blah)
-      sleep(5);
-  }
+//  {
+//    // For debugging in parallel: Prints out process ID and waits for you to attach
+//    // with GDB and change the value of 'blah'
+//    int blah = 0;
+//    //gethostname(hostname, sizeof(hostname));
+//    printf("PID %d ready for attach\n", getpid());
+//    fflush(stdout);
+//    while (0 == blah)
+//      sleep(5);
+//  }
 
   if (argc<2) FatalError("No input file specified.");
 

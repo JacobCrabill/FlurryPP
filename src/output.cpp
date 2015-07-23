@@ -122,24 +122,30 @@ void writeParaview(solver *Solver, input *params)
 
 #ifndef _NO_MPI
   /* --- All processors write their solution to their own .vtu file --- */
-  //if (params->meshType == OVERSET_MESH)
-  //  sprintf(fileNameC,"%s_%.09d/%s%d_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],Solver->gridID,iter,Solver->gridRank);
-  //else
+  if (params->meshType == OVERSET_MESH)
+    sprintf(fileNameC,"%s_%.09d/%s%d_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],Solver->gridID,iter,Solver->gridRank);
+  else
     sprintf(fileNameC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,params->rank);
 #else
   /* --- Filename to write to --- */
   sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],iter);
 #endif
 
+  char Iter[10];
+  sprintf(Iter,"%.09d",iter);
+
   if (params->rank == 0)
-    cout << "Writing ParaView file " << string(fileNameC) << "...  " << flush;
+    cout << "Writing ParaView file " << params->dataFileName << "_" << string(Iter) << ".vtu...  " << flush;
 
 #ifndef _NO_MPI
-  /* --- Write 'master' .pvtu file --- */
-  if (params->rank == 0) {
+  /* --- Write 'master' .pvtu file (for each grid, if overset) --- */
+  if (Solver->gridRank == 0) {
     ofstream pVTU;
     char pvtuC[256];
-    sprintf(pvtuC,"%s_%.09d.pvtu",&fileName[0],iter);
+    if (params->meshType == OVERSET_MESH)
+      sprintf(pvtuC,"%s%d_%.09d.pvtu",&fileName[0],Solver->gridID,iter);
+    else
+      sprintf(pvtuC,"%s_%.09d.pvtu",&fileName[0],iter);
 
     pVTU.open(pvtuC);
 
@@ -168,8 +174,11 @@ void writeParaview(solver *Solver, input *params)
     pVTU << "    </PPoints>" << endl;
 
     char filnameTmpC[256];
-    for (int p=0; p<params->nproc; p++) {
-      sprintf(filnameTmpC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,p);
+    for (int p=0; p<Solver->nprocPerGrid; p++) {
+      if (params->meshType == OVERSET_MESH)
+        sprintf(filnameTmpC,"%s_%.09d/%s%d_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],Solver->gridID,iter,p);
+      else
+        sprintf(filnameTmpC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,p);
       pVTU << "    <Piece Source=\"" << string(filnameTmpC) << "\" />" << endl;
     }
     pVTU << "  </PUnstructuredGrid>" << endl;

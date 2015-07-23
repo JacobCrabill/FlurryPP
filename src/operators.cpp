@@ -343,11 +343,12 @@ void oper::interpolateSptsToPoints(matrix<double> &Q_spts,matrix<double> &Q_ipts
   }
 }
 
-void oper::interpolateToPoint(matrix<double> &Q_spts, vector<double> &Q_ipts, point &loc_ipt)
+void oper::interpolateToPoint(matrix<double> &Q_spts, double* Q_ipts, point &loc_ipt)
 {
   uint nFields = Q_spts.dims[1];
 
-  Q_ipts.assign(nFields,0);
+  for (int k=0; k<nFields; k++)
+    Q_ipts[k] = 0;
 
   switch(eType) {
     case TRI: {

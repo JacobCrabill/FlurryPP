@@ -49,7 +49,7 @@ public:
   void interpolateSptsToPoints(matrix<double>& Q_spts, matrix<double>& Q_ipts, matrix<double>& loc_ipts);
 
   //! Interpolate values at the solution points of an element at the given reference location
-  void interpolateToPoint(matrix<double> &Q_spts, vector<double> &Q_ipts, point &loc_ipt);
+  void interpolateToPoint(matrix<double> &Q_spts, double* Q_ipts, point &loc_ipt);
 
   //! Interpolate a flux vector (nDims x nFields) to the given reference location
   void interpolateFluxToPoint(vector<matrix<double>> &F_spts, matrix<double> &F_ipt, point &loc_ipt);

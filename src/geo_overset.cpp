@@ -145,9 +145,8 @@ void geo::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &ov
   overPts.resize(0);
   for (auto &oface: overFacesVec) {
     oface->fptOffset = overPts.size();
-    cout << "offset = " << overPts.size();
     auto pts = oface->getPosFpts();
-    overPts.insert(overPts.begin(),pts.begin(),pts.end());
+    overPts.insert(overPts.end(),pts.begin(),pts.end());
   }
 
   overPtsPhys = createMatrix(overPts);
@@ -373,8 +372,8 @@ void geo::exchangeOversetData(vector<matrix<double>> &U_ipts, matrix<double> &U_
 
   for (int g=0; g<nGrids; g++) {
     if (g == gridID) continue;
-    cout << "Grid " << gridID << ": nFoundPts = " << foundPts[g].size() << " = " << nPtsSend[g] << " = " << U_ipts[g].getDim0() << endl;
-    cout << "Grid " << gridID << ": nRecvPts = " << recvPts[g].size() << " = " << nPtsRecv[g] << " = " << recvU[g].getDim0() << endl;
+//    cout << "Grid " << gridID << ": nFoundPts = " << foundPts[g].size() << " = " << nPtsSend[g] << " = " << U_ipts[g].getDim0() << endl;
+//    cout << "Grid " << gridID << ": nRecvPts = " << recvPts[g].size() << " = " << nPtsRecv[g] << " = " << recvU[g].getDim0() << endl;
     if (nPtsRecv[g] > 0) {
       MPI_Irecv(recvPts[g].data(),  nPtsRecv[g],        MPI_INT,    g, gridID, interComm, &recvsPts[g]);
       MPI_Irecv(recvU[g].getData(), recvU[g].getSize(), MPI_DOUBLE, g, gridID, interComm, &recvsVals[g]);
@@ -386,7 +385,7 @@ void geo::exchangeOversetData(vector<matrix<double>> &U_ipts, matrix<double> &U_
   }
 
 
-  cout << "Waiting on send/recv #1" << endl;
+//  cout << "Waiting on send/recv #1" << endl;
 
   MPI_Status status;
   for (int g=0; g<nGrids; g++) {
@@ -434,7 +433,7 @@ void geo::exchangeOversetData(vector<matrix<double>> &U_ipts, matrix<double> &U_
     }
   }
 
-  cout << "2nd send/recv: start" << endl;
+//  cout << "2nd send/recv: start" << endl;
 
   vector<MPI_Request> reqsGrid(nprocPerGrid);
   vector<MPI_Request> sendsGrid(nprocPerGrid);
@@ -444,7 +443,7 @@ void geo::exchangeOversetData(vector<matrix<double>> &U_ipts, matrix<double> &U_
     MPI_Isend(&nGPtsSend[p], 1, MPI_INT, p, p,        gridComm, &sendsGrid[p]);
   }
 
-  cout << "2nd send/recv: wait" << endl;
+//  cout << "2nd send/recv: wait" << endl;
 
   for (int p=0; p<nprocPerGrid; p++) {
     if (p != gridRank) {
@@ -461,7 +460,7 @@ void geo::exchangeOversetData(vector<matrix<double>> &U_ipts, matrix<double> &U_
     gridURecv[p].setup(nGPtsRecv[p],nFields);
   }
 
-  cout << "3rd send/recv: start" << endl;
+//  cout << "3rd send/recv: start" << endl;
 
   vector<MPI_Request> reqsPt(nprocPerGrid);
   vector<MPI_Request> sendsPt(nprocPerGrid);
@@ -477,7 +476,7 @@ void geo::exchangeOversetData(vector<matrix<double>> &U_ipts, matrix<double> &U_
     MPI_Isend(gridUSend[p].getData(),  gridUSend[p].getSize(), MPI_DOUBLE, p, p, gridComm, &sendsU[p]);
   }
 
-  cout << "3rd send/recv: wait" << endl;
+//  cout << "3rd send/recv: wait" << endl;
 
   for (int p=0; p<nprocPerGrid; p++) {
     //if (p == gridRank) continue;

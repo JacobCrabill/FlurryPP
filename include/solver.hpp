@@ -65,6 +65,14 @@ public:
   //! Pointer to Tioga object for processing overset grids
   tioga* tg;
 
+  /* ==== Misc. Commonly-Used Variables ==== */
+
+  int nRKSteps;
+
+  int gridID, gridRank, nprocPerGrid;
+
+  vector<double> RKa, RKb;
+
   /* === Setup Functions === */
 
   solver();
@@ -264,12 +272,6 @@ private:
 
   //! Lists of cells to apply various adaptation methods to
   vector<int> r_adapt_cells, h_adapt_cells, p_adapt_cells;
-
-  int nRKSteps;
-
-  int gridID, gridRank, nprocPerGrid;
-
-  vector<double> RKa, RKb;
 
   /* ---- Overset Grid Variables / Functions ---- */
 

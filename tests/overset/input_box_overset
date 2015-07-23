@@ -4,12 +4,12 @@
 equation      1    (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
 order         1    (Polynomial order to use)
 timeType      4    (0: Forward Euler, 4: RK44)
-dtType        1    (0: Fixed, 1: CFL-based)
-CFL           .7
-dt            .005
+dtType        0    (0: Fixed, 1: CFL-based)
+CFL           .2
+dt            .02
 iterMax       500
 restart       0
-restartIter   400
+restartIter   100
 
 viscous       0   (0: Inviscid, 1: Viscous)
 motion        0   (0: Static, 1: Perturbation test case)
@@ -78,8 +78,8 @@ mesh_bound   bottom   slip_wall
 mesh_bound   top      sup_in
 mesh_bound   left     sup_in
 mesh_bound   right    sup_out
-mesh_bound   front    symmetry
-mesh_bound   back     symmetry
+mesh_bound   front    sup_in
+mesh_bound   back     sup_out
 
 mesh_bound   overset  overset
 mesh_bound   fluid    fluid

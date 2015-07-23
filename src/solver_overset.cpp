@@ -25,17 +25,17 @@
 
 void solver::oversetInterp(void)
 {
-  cout << "Grid " << Geo->gridID << ": Interpolating Overset Data" << endl;
+//  cout << "Grid " << Geo->gridID << ": Interpolating Overset Data" << endl;
 
   U_ipts.resize(Geo->nGrids);
   for (int g=0; g<Geo->nGrids; g++) {
+    U_ipts[g].setup(Geo->foundPts[g].size(),params->nFields);
     if (g == Geo->gridID) continue;
     for (int i=0; i<Geo->foundPts[g].size(); i++) {
       point refPos = Geo->foundLocs[g][i];
       int ic = Geo->foundEles[g][i];
       vector<double> U_ipt(params->nFields);
-      opers[eles[ic].eType][eles[ic].order].interpolateToPoint(eles[ic].U_spts, U_ipt, refPos);
-      U_ipts[g].insertRow(U_ipt);
+      opers[eles[ic].eType][eles[ic].order].interpolateToPoint(eles[ic].U_spts, U_ipts[g][i], refPos);
     }
   }
 
@@ -51,7 +51,6 @@ void solver::setupOverset(void)
 //  overPts.resize(0);
 //  for (auto &oface: overFaces) {
 //    oface->fptOffset = overPts.size();
-//    cout << "offset = " << overPts.size();
 //    auto pts = oface->getPosFpts();
 //    overPts.insert(overPts.begin(),pts.begin(),pts.end());
 //  }
