@@ -585,3 +585,5 @@ template class Array<set<int>,4>;
 
 template class matrix<int>;
 template class matrix<double>;
+
+template class Array<matrix<double>,2>;
