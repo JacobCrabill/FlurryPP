@@ -350,15 +350,10 @@ void writeParaview(solver *Solver, input *params)
       dataFile << "				</DataArray>" << endl;
     }
 
-    if (params->meshType == OVERSET_MESH) {
+    if (params->meshType == OVERSET_MESH && params->writeIBLANK) {
       /* --- TIOGA iBlank value --- */
       dataFile << "				<DataArray type=\"Float32\" Name=\"IBLANK\" format=\"ascii\">" << endl;
 
-//      int iblank = 1;
-//      for (int i=0; i<Solver->Geo->c2nv[e.ID]; i++) {
-//        int iv = Solver->Geo->c2v(e.ID,i);
-//        iblank = min(iblank, Solver->Geo->iblank[iv]);
-//      }
       for(int k=0; k<nPpts; k++) {
         dataFile << Solver->Geo->iblankCell[e.ID] << " ";
       }

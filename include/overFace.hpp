@@ -44,11 +44,9 @@ public:
   //! Return the physical position of the face's flux points
   vector<point> getPosFpts(void);
 
-  int fptOffset;           //! Offset within Solver's mesh block-global interp point list
-  vector<point> posFpts;    //! Physical locations of left ele's flux points
+  int fptOffset;         //! Offset within Solver's mesh block-global interp point list
+  vector<point> posFpts; //! Physical locations of left ele's flux points
 
 private:
 
-  /* --- Storage for all solution/geometry data at flux points [interpolated right state] --- */
-  vector<matrix<double>> FR;   //! Flux array [nFpts, nDims, nFields]
 };

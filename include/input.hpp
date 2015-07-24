@@ -172,11 +172,12 @@ public:
   double lambda;   //! Lax-Friedrichs upwind coefficient (0: Central, 1: Upwind)
 
   /* --- Mesh Parameters --- */
-  string meshFileName;
-  vector<string> oversetGrids;
-  int meshType;
-  int nx, ny, nz;
-  int nGrids;
+  string meshFileName;          //! Gmsh file name for standard run
+  vector<string> oversetGrids;  //! Gmsh file names of all overset grids being used
+  int meshType;     //! Type of mesh being used: Single Gmsh, create a mesh, or read multiple overset grids
+  int nx, ny, nz;   //! For creating a structured mesh: Number of cells in each direction
+  int nGrids;       //! # of grids in overset calculation
+  int writeIBLANK;  //! Write IBLANK in ParaView output?
   double xmin, xmax, ymin, ymax, zmin, zmax;
   double periodicTol, periodicDX, periodicDY, periodicDZ;
   string create_bcTop, create_bcBottom, create_bcLeft;

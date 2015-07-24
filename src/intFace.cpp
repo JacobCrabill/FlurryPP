@@ -32,11 +32,8 @@ void intFace::setupRightState(void)
   /* --- Will have to introduce 'mortar' elements in the future [for p-adaptation],
    * but for now just force all faces to have same # of flux points [order] --- */
 
-  if (nFptsL != nFptsR) {
-    cout << " rank " << params->rank << ": nFptsL = " << nFptsL << ", nFptsR = " << nFptsR << ", eleR = "  << eR->ID << endl;
-    cout << "iBlankCellR = " << Solver->Geo->iblankCell[eR->ID] << endl;
+  if (nFptsL != nFptsR)
     FatalError("Mortar elements not yet implemented - must have nFptsL==nFptsR");
-  }
 
   /* --- Setup the L/R flux-point matching --- */
   fptR.resize(nFptsL);

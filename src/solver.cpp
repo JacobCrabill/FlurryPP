@@ -581,7 +581,6 @@ void solver::finishMpiSetup(void)
   for (uint i=0; i<mpiFaces.size(); i++) {
     mpiFaces[i]->finishRightSetup();
   }
-  cout << "rank " << params->rank << ": done with MPI." << endl;
 }
 
 void solver::readRestartFile(void) {
@@ -593,8 +592,11 @@ void solver::readRestartFile(void) {
   char fileNameC[256];
   string fileName = params->dataFileName;
 #ifndef _NO_MPI
-  /* --- All processors write their solution to their own .vtu file --- */
-  sprintf(fileNameC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],params->restartIter,&fileName[0],params->restartIter,params->rank);
+  /* --- All processors read their data from their own .vtu file --- */
+  if (params->meshType == OVERSET_MESH)
+    sprintf(fileNameC,"%s_%.09d/%s%d_%.09d_%d.vtu",&fileName[0],params->restartIter,&fileName[0],gridID,params->restartIter,gridRank);
+  else
+    sprintf(fileNameC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],params->restartIter,&fileName[0],params->restartIter,params->rank);
 #else
   sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],params->restartIter);
 #endif
@@ -643,6 +645,13 @@ void solver::readRestartFile(void) {
 #pragma omp parallel for
   for (uint i=0; i<faces.size(); i++) {
     faces[i]->setupFace();
+  }
+
+  // Finish setting up overset faces
+  if (params->rank==0) cout << "overFace: Setting up all overset faces." << endl;
+#pragma omp parallel for
+  for (uint i=0; i<overFaces.size(); i++) {
+    overFaces[i]->setupFace();
   }
 
   // Finish setting up MPI faces

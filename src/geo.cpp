@@ -102,9 +102,6 @@ void geo::processConnectivity()
   else if (nDims == 3)
     processConn3D();
 
-  iblankCell.resize(nEles);
-  iblankFace.resize(nFaces);
-
   if (meshType == OVERSET_MESH) {
     registerGridDataTIOGA();
 
@@ -709,8 +706,6 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
     shared_ptr<face> iface = make_shared<intFace>();
 
-    iface->Solver = Solver;
-
     int ic1 = f2c(ff,0);
     // Find local face ID of global face within first element [on left]
     cellFaces.assign(c2f[ic1],c2f[ic1]+c2nf[ic1]);
@@ -786,8 +781,6 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       // Find global face ID of current boundary face
       int ff = mpiFaces[i];
 
-      //if (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) continue;
-
       shared_ptr<mpiFace> mface = make_shared<mpiFace>();
 
       int ic = f2c(ff,0);
@@ -836,23 +829,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
       int ic = f2c(ff,0);
       if (ic == -1 || iblankCell[f2c(ff,0)] == HOLE) {
-        if (f2c(ff,1) == -1 || iblankCell[f2c(ff,1)] == HOLE) { // Both cells blanked or non-existant; shouldn't be here
-/*          cout << "Grid " << gridID << ", gridRank " << gridRank << ":" << endl;
-//          cout << "ic1 = " << f2c(ff,0) << ", ic2 = " << f2c(ff,1) << endl;
-//          cout << "iblankCell = " << iblankCell[f2c(ff,0)];
-//          if (f2c(ff,1)>=0)
-//            cout << ", " << iblankCell[f2c(ff,1)];
-//          cout << endl;
-//          cout << "iblankFace = " << iblankFace[ff] << endl;
-//          point midPt;
-//          int ic1 = f2c(ff,0);
-//          for (int i=0; i<c2nv[ic1]; i++) {
-//            midPt += point(xv[c2v(ic1,i)]);
-//          }
-//          midPt /= c2nv[ic1];
-//          cout << "cell center: " << midPt.x << ", " << midPt.y << ", " << midPt.z << endl; */
-//          FatalError("Face marked as fringe but both cells blanked.");
-          // Actually, this appears to happen when a fringe face is ALSO an MPI face
+        if (f2c(ff,1) == -1 || iblankCell[f2c(ff,1)] == HOLE) {
+          // This happens when a fringe face is ALSO an MPI-boundary face
           // Since the other processor has the non-blanked cell, just ignore the face here
           ff = -1; // to remove from vector later
           continue;
@@ -866,6 +844,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
       struct faceInfo info;
       ic = eleMap[ic];
+      oface->Solver = Solver;
       oface->initialize(&eles[ic],NULL,ff,fid,info,params);
 
       overFacesVec.push_back(oface);

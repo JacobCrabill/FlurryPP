@@ -63,16 +63,12 @@ void geo::registerGridDataTIOGA(void)
   nodesPerCell = new int[1];
   nodesPerCell[0] = 8;      //! Number of nodes per element for each element type (but only one type so far)
   iblank.resize(nVerts);
-  iblankCell.resize(nEles);
 
   // Need an int**, even if only have one element type
   conn[0] = c2v.getData();
 
   tg->registerGridData(gridID,nVerts,xv.getData(),iblank.data(),nwall,nover,iwall.data(),
                        iover.data(),ntypes,nodesPerCell,&nEles,&conn[0]);
-
-  // Give iblankCell to TIOGA for Flurry to access later
-  //tg->set_cell_iblank(iblankCell.data()); // not needed if not using high-order TIOGA
 }
 
 void geo::updateOversetConnectivity(void)
@@ -83,14 +79,11 @@ void geo::updateOversetConnectivity(void)
   // Have TIOGA perform the nodal overset connectivity (set nodal iblanks)
   tg->performConnectivity();
 
-  writeOversetConnectivity();
+  // Only needed for debugging, really
+  //writeOversetConnectivity();
 
   // Now use new nodal iblanks to set cell and face iblanks
   setCellFaceIblanks();
-
-  // Process overset-grid connectivity
-  // (set iblanks, exchange donor info, setup interpolation points & weights)
-  //tg->performConnectivityHighOrder();
 }
 
 void geo::setCellFaceIblanks()

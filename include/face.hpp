@@ -100,9 +100,6 @@ public:
 
   input *params; //! Input parameters for simulation
 
-
-  solver* Solver; /// DEBUGGING
-
   int nFptsL, nFptsR;
   int nDims, nFields;
   int locF_L;
