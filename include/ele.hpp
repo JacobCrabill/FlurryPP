@@ -35,7 +35,8 @@ public:
   int ID, IDg; //! IDg will be for MPI (if I ever get to that; for now, just a reminder!)
   int eType;
   int order;
-  int nNodes;
+  int nNodes; //! Number of nodes used to define element shape
+  int nMpts;  //! Number of nodes used for plotting (corners, not edge nodes for quadratic eles)
 
   vector<point> loc_spts; //! Location of solution points in parent domain
   vector<point> loc_fpts; //! Location of flux points in parent domain

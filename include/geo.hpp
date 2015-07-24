@@ -149,6 +149,7 @@ public:
   tioga* tg;           //! Pointer to Tioga object for processing overset grids
   int* nodesPerCell;   //! Pointer for Tioga to know # of nodes for each element type
   array<int*,1> conn;  //! Pointer to c2v for each element type [but only 1, so will be size(1)]
+  matrix<int> tg_c2v;  //! 'Cleaned' c2v for Tioga (when quadratic elements present, normal c2v won't work)
 
   // Data for communication between grids
   vector<int> nPts_rank;           //! Number of fringe points for each rank of current grid

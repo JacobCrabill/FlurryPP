@@ -33,8 +33,10 @@ solver::solver()
 
 solver::~solver()
 {
-  if (tg != NULL)
+  if (tg != NULL) {
     delete tg;
+    tg = NULL;
+  }
 }
 
 void solver::setup(input *params, geo *Geo)

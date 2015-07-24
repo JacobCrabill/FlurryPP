@@ -36,6 +36,9 @@ void geo::registerGridDataTIOGA(void)
 {
   /* Note that this function should only be needed once during preprocessing */
 
+  if (gridRank == 0)
+    cout << "Geo: Grid " << gridID << ": Setting up TIOGA interface" << endl;
+
   // Allocate TIOGA grid processor
   tg = new tioga();
 
@@ -64,8 +67,21 @@ void geo::registerGridDataTIOGA(void)
   nodesPerCell[0] = 8;      //! Number of nodes per element for each element type (but only one type so far)
   iblank.resize(nVerts);
 
-  // Need an int**, even if only have one element type
-  conn[0] = c2v.getData();
+  if (c2v.getDim1() > 8) {
+    // Quadratic elements present; setup a different c2v specifically for TIOGA
+    tg_c2v.setup(nEles,8);
+    for (int ic=0; ic<nEles; ic++) {
+      for (int j=0; j<8; j++) {
+        tg_c2v(ic,j) = c2v(ic,j);
+      }
+    }
+    // Need an int**, even if only have one element type
+    conn[0] = tg_c2v.getData();
+  }
+  else {
+    // Need an int**, even if only have one element type
+    conn[0] = c2v.getData();
+  }
 
   tg->registerGridData(gridID,nVerts,xv.getData(),iblank.data(),nwall,nover,iwall.data(),
                        iover.data(),ntypes,nodesPerCell,&nEles,&conn[0]);

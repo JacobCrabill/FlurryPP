@@ -86,7 +86,7 @@ void ele::setupArrays(void)
 
   U_spts.setup(nSpts,nFields);
   U_fpts.setup(nFpts,nFields);
-  U_mpts.setup(nNodes,nFields);
+  U_mpts.setup(nMpts,nFields);
   disFn_fpts.setup(nFpts,nFields);
   dFn_fpts.setup(nFpts,nFields);
   Fn_fpts.setup(nFpts,nFields);
@@ -146,7 +146,7 @@ void ele::setupArrays(void)
   dA_fpts.resize(nFpts);
   waveSp_fpts.resize(nFpts);
 
-  gridVel_nodes.setup(nNodes,nDims);
+  gridVel_nodes.setup(nMpts,nDims);
   gridVel_spts.setup(nSpts,nDims);
   gridVel_fpts.setup(nFpts,nDims);
   gridVel_nodes.initializeToZero();
@@ -171,7 +171,7 @@ void ele::setupArrays(void)
 
   S_spts.setup(nSpts,1);
   S_fpts.setup(nFpts,1);
-  S_mpts.setup(nNodes,1);
+  S_mpts.setup(nMpts,1);
 
   tempF.setup(nDims,nFields);
   tempU.assign(nFields,0);
@@ -1219,7 +1219,7 @@ vector<double> ele::getPrimitivesMpt(uint mpt)
 void ele::getPrimitivesPlot(matrix<double> &V)
 {
   if (eType == QUAD) {
-    V.setup(nSpts+nFpts+nNodes,nFields);
+    V.setup(nSpts+nFpts+nMpts,nFields);
 
     // Get solution at corner points
     for (int k=0; k<nFields; k++) {
@@ -1371,7 +1371,7 @@ void ele::getGridVelPlot(matrix<double> &GV)
 {
   if (nDims == 3) FatalError("Motion not yet supported for 3D cases.");
 
-  GV.setup(nSpts+nFpts+nNodes,nDims);
+  GV.setup(nSpts+nFpts+nMpts,nDims);
 
   // Get solution at corner points
   for (int dim=0; dim<nDims; dim++) {
@@ -1406,7 +1406,7 @@ void ele::getEntropyErrPlot(matrix<double> &S)
 {
   if (nDims == 3) FatalError("Entropy-error calculation not yet supported for 3D cases.");
 
-  S.setup(nSpts+nFpts+nNodes,1);
+  S.setup(nSpts+nFpts+nMpts,1);
 
   // Get solution at corner points
   S(0)                     = S_mpts(0);
@@ -1555,9 +1555,6 @@ void ele::checkEntropyPlot()
   bool negRho = false;
   double minRho = 1e15;
   double tol = 1e-10;   // Tolerance for squeezing
-
-  int nMpts = 4;
-  if (nDims == 3) nMpts = 8;
 
   for (int spt=0; spt<nSpts; spt++) {
     if (U_spts(spt,0) < 0) {

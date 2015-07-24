@@ -167,7 +167,7 @@ void writeParaview(solver *Solver, input *params)
       if (params->calcEntropySensor) {
         pVTU << "      <PDataArray type=\"Float32\" Name=\"EntropyErr\" />" << endl;
       }
-      if (params->meshType == OVERSET_MESH) {
+      if (params->meshType == OVERSET_MESH && params->writeIBLANK) {
         pVTU << "      <PDataArray type=\"Float32\" Name=\"IBLANK\" />" << endl;
       }
     }

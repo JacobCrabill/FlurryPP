@@ -37,7 +37,8 @@
 
 geo::geo()
 {
-
+  tg = NULL;
+  nodesPerCell = NULL;
 }
 
 geo::~geo()
@@ -45,9 +46,15 @@ geo::~geo()
 #ifndef _NO_MPI
   //MPI_Comm_free(&gridComm);
 #endif
+  if (tg != NULL) {
+    delete tg;
+    tg = NULL;
+  }
 
-  if (nodesPerCell != NULL)
+  if (nodesPerCell != NULL) {
     delete[] nodesPerCell;
+    nodesPerCell = NULL;
+  }
 }
 
 void geo::setup(input* params)
@@ -640,6 +647,10 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       e.IDg = ic;
     e.eType = ctype[ic];
     e.nNodes = c2nv[ic];
+    if (nDims == 2)
+      e.nMpts = 4;
+    else
+      e.nMpts = 8;
 
     // Shape [mesh] nodes
     e.nodeID.resize(c2nv[ic]);
@@ -966,7 +977,7 @@ void geo::readGmsh(string fileName)
   }
 
   int nElesGmsh;
-  vector<int> c2v_tmp(9,0);  // Maximum number of nodes/element possible
+  vector<int> c2v_tmp(27,0);  // Maximum number of nodes/element possible
   vector<set<int>> boundPoints(nBounds);
   map<int,int> eType2nv;
   eType2nv[3] = 4;  // Linear quad
@@ -995,71 +1006,97 @@ void geo::readGmsh(string fileName)
     if (bcid == -1) {
       // NOTE: Currently, only quads are supported
       switch(eType) {
-      case 2:
-        // linear triangle -> linear quad
-        c2nv.push_back(4);
-        c2nf.push_back(4);
-        ctype.push_back(QUAD);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2];
-        c2v_tmp[3] = c2v_tmp[2];
-        break;
+        case 2:
+          // linear triangle -> linear quad
+          c2nv.push_back(4);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2];
+          c2v_tmp[3] = c2v_tmp[2];
+          break;
 
-      case 9:
-        // quadratic triangle -> quadratic quad  [corner nodes, then edge-center nodes]
-        c2nv.push_back(8);
-        c2nf.push_back(4);
-        ctype.push_back(QUAD);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[7];
-        c2v_tmp[3] = c2v_tmp[2];
-        c2v_tmp[6] = c2v_tmp[2];
-        break;
+        case 9:
+          // quadratic triangle -> quadratic quad  [corner nodes, then edge-center nodes]
+          c2nv.push_back(8);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[7];
+          c2v_tmp[3] = c2v_tmp[2];
+          c2v_tmp[6] = c2v_tmp[2];
+          break;
 
-      case 3:
-        // linear quadrangle
-        c2nv.push_back(4);
-        c2nf.push_back(4);
-        ctype.push_back(QUAD);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3];
-        break;
+        case 3:
+          // linear quadrangle
+          c2nv.push_back(4);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3];
+          break;
 
-      case 16:
-        // quadratic 8-node (serendipity) quadrangle
-        c2nv.push_back(8);
-        c2nf.push_back(4);
-        ctype.push_back(QUAD);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
-        break;
+        case 16:
+          // quadratic 8-node (serendipity) quadrangle
+          c2nv.push_back(8);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+          break;
 
-      case 10:
-        // quadratic (9-node Lagrange) quadrangle (read as 8-node serendipity)
-        c2nv.push_back(8);
-        c2nf.push_back(4);
-        ctype.push_back(QUAD);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
-        break;
+        case 10:
+          // quadratic (9-node Lagrange) quadrangle (read as 8-node serendipity)
+          c2nv.push_back(8);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+          break;
 
-      case 5:
-        // Linear hexahedron
-        c2nv.push_back(8);
-        c2nf.push_back(6);
-        ctype.push_back(HEX);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
-        break;
+        case 5:
+          // Linear hexahedron
+          c2nv.push_back(8);
+          c2nf.push_back(6);
+          ctype.push_back(HEX);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+          break;
 
-      case 6:
-        // Linear prism; read as collapsed-face hex
-        c2nv.push_back(8);
-        c2nf.push_back(6);
-        ctype.push_back(HEX);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6];
-        c2v_tmp[3] = c2v_tmp[2];
-        c2v_tmp[7] = c2v_tmp[6];
-        break;
+        case 17:
+          // Quadratic (20-Node Serendipity) Hexahedron
+          c2nv.push_back(20);
+          c2nf.push_back(6);
+          ctype.push_back(HEX);
+          // Corner Nodes
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+          // Edge Nodes
+          meshFile >> c2v_tmp[8] >> c2v_tmp[11] >> c2v_tmp[12] >> c2v_tmp[9] >> c2v_tmp[13] >> c2v_tmp[10];
+          meshFile >> c2v_tmp[14] >> c2v_tmp[15] >> c2v_tmp[16] >> c2v_tmp[19] >> c2v_tmp[17] >> c2v_tmp[18];
+          break;
 
-      default:
-        cout << "Gmsh element ID " << k << ", Gmsh Element Type = " << eType << endl;
-        FatalError("element type not recognized");
-        break;
+        case 12:
+          // Quadratic (27-Node Lagrange) Hexahedron (read as 20-node serendipity)
+          c2nv.push_back(20);
+          c2nf.push_back(6);
+          ctype.push_back(HEX);
+          c2v_tmp.resize(20);
+          // Corner Nodes
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+          // Edge Nodes
+          meshFile >> c2v_tmp[8] >> c2v_tmp[11] >> c2v_tmp[12] >> c2v_tmp[9] >> c2v_tmp[13] >> c2v_tmp[10];
+          meshFile >> c2v_tmp[14] >> c2v_tmp[15] >> c2v_tmp[16] >> c2v_tmp[19] >> c2v_tmp[17] >> c2v_tmp[18];
+          break;
+
+
+        case 6:
+          // Linear prism; read as collapsed-face hex
+          c2nv.push_back(8);
+          c2nf.push_back(6);
+          ctype.push_back(HEX);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6];
+          c2v_tmp[3] = c2v_tmp[2];
+          c2v_tmp[7] = c2v_tmp[6];
+          break;
+
+        default:
+          cout << "Gmsh element ID " << k << ", Gmsh Element Type = " << eType << endl;
+          FatalError("element type not recognized");
+          break;
       }
 
       // Increase the size of c2v (max # of vertices per cell) if needed
@@ -1086,31 +1123,39 @@ void geo::readGmsh(string fileName)
       // Boundary cell; put vertices into bndPts
       int nPtsFace = 0;
       switch(eType) {
-      case 1: // Linear edge
-        nPtsFace = 2;
-        break;
+        case 1: // Linear edge
+          nPtsFace = 2;
+          break;
 
-      case 3: // Linear quad
-        nPtsFace = 4;
-        break;
+        case 3: // Linear quad
+          nPtsFace = 4;
+          break;
 
-      case 8: // Quadratic edge
-        nPtsFace = 3;
-        break;
+        case 10: // Quadratic (Lagrange) quad
+          nPtsFace = 4;
+          break;
 
-      case 26: // Cubic Edge
-        nPtsFace = 4;
-        break;
+        case 16: // Quadratic (Serendipity) quad
+          nPtsFace = 4;
+          break;
 
-      case 27: // Quartic Edge
-        nPtsFace = 5;
-        break;
+        case 8: // Quadratic edge
+          nPtsFace = 3;
+          break;
 
-      case 28: // Quintic Edge
-        nPtsFace = 6;
-        break;
+        case 26: // Cubic Edge
+          nPtsFace = 4;
+          break;
 
-      default:
+        case 27: // Quartic Edge
+          nPtsFace = 5;
+          break;
+
+        case 28: // Quintic Edge
+          nPtsFace = 6;
+          break;
+
+        default:
           cout << "Gmsh element ID " << k << ", Gmsh Element Type = " << eType << endl;
           FatalError("Boundary Element (Face) Type Not Recognized!");
       }

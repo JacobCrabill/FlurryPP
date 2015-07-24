@@ -236,17 +236,43 @@ void shape_hex(const point &in_rst, double* out_shape, int nNodes)
   double eta = in_rst.y;
   double mu = in_rst.z;
   switch(nNodes) {
-  case 8:
-    out_shape[0] = 0.125*(1-xi)*(1-eta)*(1-mu);
-    out_shape[1] = 0.125*(1+xi)*(1-eta)*(1-mu);
-    out_shape[2] = 0.125*(1+xi)*(1+eta)*(1-mu);
-    out_shape[3] = 0.125*(1-xi)*(1+eta)*(1-mu);
+    case 8:
+      out_shape[0] = 0.125*(1-xi)*(1-eta)*(1-mu);
+      out_shape[1] = 0.125*(1+xi)*(1-eta)*(1-mu);
+      out_shape[2] = 0.125*(1+xi)*(1+eta)*(1-mu);
+      out_shape[3] = 0.125*(1-xi)*(1+eta)*(1-mu);
 
-    out_shape[4] = 0.125*(1-xi)*(1-eta)*(1+mu);
-    out_shape[5] = 0.125*(1+xi)*(1-eta)*(1+mu);
-    out_shape[6] = 0.125*(1+xi)*(1+eta)*(1+mu);
-    out_shape[7] = 0.125*(1-xi)*(1+eta)*(1+mu);
-    break;
+      out_shape[4] = 0.125*(1-xi)*(1-eta)*(1+mu);
+      out_shape[5] = 0.125*(1+xi)*(1-eta)*(1+mu);
+      out_shape[6] = 0.125*(1+xi)*(1+eta)*(1+mu);
+      out_shape[7] = 0.125*(1-xi)*(1+eta)*(1+mu);
+      break;
+
+    case 20: {
+      double XI[8]  = {-1,1,1,-1,-1,1,1,-1};
+      double ETA[8] = {-1,-1,1,1,-1,-1,1,1};
+      double MU[8]  = {-1,-1,-1,-1,1,1,1,1};
+      // Corner nodes
+      for (int i=0; i<8; i++) {
+        out_shape[i] = .125*(1+xi*XI[i])*(1+eta*ETA[i])*(1+mu*MU[i])*(xi*XI[i]+eta*ETA[i]+mu*MU[i]-2);
+      }
+      // Edge nodes, xi = 0
+      out_shape[8]  = .25*(1-xi*xi)*(1-eta)*(1-mu);
+      out_shape[10] = .25*(1-xi*xi)*(1+eta)*(1-mu);
+      out_shape[16] = .25*(1-xi*xi)*(1-eta)*(1+mu);
+      out_shape[18] = .25*(1-xi*xi)*(1+eta)*(1+mu);
+      // Edge nodes, eta = 0
+      out_shape[9]  = .25*(1-eta*eta)*(1+xi)*(1-mu);
+      out_shape[11] = .25*(1-eta*eta)*(1-xi)*(1-mu);
+      out_shape[17] = .25*(1-eta*eta)*(1+xi)*(1+mu);
+      out_shape[19] = .25*(1-eta*eta)*(1-xi)*(1+mu);
+      // Edge Nodes, mu = 0
+      out_shape[12] = .25*(1-mu*mu)*(1-xi)*(1-eta);
+      out_shape[13] = .25*(1-mu*mu)*(1+xi)*(1-eta);
+      out_shape[14] = .25*(1-mu*mu)*(1+xi)*(1+eta);
+      out_shape[15] = .25*(1-mu*mu)*(1-xi)*(1+eta);
+      break;
+    }
   }
 }
 
@@ -299,37 +325,64 @@ void dshape_hex(const point &in_rst, matrix<double> &out_dshape, int nNodes)
   out_dshape.setup(nNodes,3);
 
   switch(nNodes) {
-  case 8:
-    out_dshape(0,0) = -0.125*(1-eta)*(1-mu);
-    out_dshape(1,0) =  0.125*(1-eta)*(1-mu);
-    out_dshape(2,0) =  0.125*(1+eta)*(1-mu);
-    out_dshape(3,0) = -0.125*(1+eta)*(1-mu);
+    case 8:
+      out_dshape(0,0) = -0.125*(1-eta)*(1-mu);
+      out_dshape(1,0) =  0.125*(1-eta)*(1-mu);
+      out_dshape(2,0) =  0.125*(1+eta)*(1-mu);
+      out_dshape(3,0) = -0.125*(1+eta)*(1-mu);
 
-    out_dshape(4,0) = -0.125*(1-eta)*(1+mu);
-    out_dshape(5,0) =  0.125*(1-eta)*(1+mu);
-    out_dshape(6,0) =  0.125*(1+eta)*(1+mu);
-    out_dshape(7,0) = -0.125*(1+eta)*(1+mu);
+      out_dshape(4,0) = -0.125*(1-eta)*(1+mu);
+      out_dshape(5,0) =  0.125*(1-eta)*(1+mu);
+      out_dshape(6,0) =  0.125*(1+eta)*(1+mu);
+      out_dshape(7,0) = -0.125*(1+eta)*(1+mu);
 
-    out_dshape(0,1) = -0.125*(1-xi)*(1-mu);
-    out_dshape(1,1) = -0.125*(1+xi)*(1-mu);
-    out_dshape(2,1) =  0.125*(1+xi)*(1-mu);
-    out_dshape(3,1) =  0.125*(1-xi)*(1-mu);
+      out_dshape(0,1) = -0.125*(1-xi)*(1-mu);
+      out_dshape(1,1) = -0.125*(1+xi)*(1-mu);
+      out_dshape(2,1) =  0.125*(1+xi)*(1-mu);
+      out_dshape(3,1) =  0.125*(1-xi)*(1-mu);
 
-    out_dshape(4,1) = -0.125*(1-xi)*(1+mu);
-    out_dshape(5,1) = -0.125*(1+xi)*(1+mu);
-    out_dshape(6,1) =  0.125*(1+xi)*(1+mu);
-    out_dshape(7,1) =  0.125*(1-xi)*(1+mu);
+      out_dshape(4,1) = -0.125*(1-xi)*(1+mu);
+      out_dshape(5,1) = -0.125*(1+xi)*(1+mu);
+      out_dshape(6,1) =  0.125*(1+xi)*(1+mu);
+      out_dshape(7,1) =  0.125*(1-xi)*(1+mu);
 
-    out_dshape(0,2) = -0.125*(1-xi)*(1-eta);
-    out_dshape(1,2) = -0.125*(1+xi)*(1-eta);
-    out_dshape(2,2) = -0.125*(1+xi)*(1+eta);
-    out_dshape(3,2) = -0.125*(1-xi)*(1+eta);
+      out_dshape(0,2) = -0.125*(1-xi)*(1-eta);
+      out_dshape(1,2) = -0.125*(1+xi)*(1-eta);
+      out_dshape(2,2) = -0.125*(1+xi)*(1+eta);
+      out_dshape(3,2) = -0.125*(1-xi)*(1+eta);
 
-    out_dshape(4,2) =  0.125*(1-xi)*(1-eta);
-    out_dshape(5,2) =  0.125*(1+xi)*(1-eta);
-    out_dshape(6,2) =  0.125*(1+xi)*(1+eta);
-    out_dshape(7,2) =  0.125*(1-xi)*(1+eta);
-    break;
+      out_dshape(4,2) =  0.125*(1-xi)*(1-eta);
+      out_dshape(5,2) =  0.125*(1+xi)*(1-eta);
+      out_dshape(6,2) =  0.125*(1+xi)*(1+eta);
+      out_dshape(7,2) =  0.125*(1-xi)*(1+eta);
+      break;
+    case 20: {
+      double XI[8]  = {-1,1,1,-1,-1,1,1,-1};
+      double ETA[8] = {-1,-1,1,1,-1,-1,1,1};
+      double MU[8]  = {-1,-1,-1,-1,1,1,1,1};
+      // Corner Nodes
+      for (int i=0; i<8; i++) {
+        out_dshape(i,0) = .125*XI[i] *(1+eta*ETA[i])*(1 + mu*MU[i])*(2*xi*XI[i] +   eta*ETA[i] +   mu*MU[i]-1);
+        out_dshape(i,1) = .125*ETA[i]*(1 + xi*XI[i])*(1 + mu*MU[i])*(  xi*XI[i] + 2*eta*ETA[i] +   mu*MU[i]-1);
+        out_dshape(i,2) = .125*MU[i] *(1 + xi*XI[i])*(1+eta*ETA[i])*(  xi*XI[i] +   eta*ETA[i] + 2*mu*MU[i]-1);
+      }
+      // Edge Nodes, xi = 0
+      out_dshape( 8,0) = -.5*xi*(1-eta)*(1-mu);  out_dshape( 8,1) = -.25*(1-xi*xi)*(1-mu);  out_dshape( 8,2) = -.25*(1-xi*xi)*(1-eta);
+      out_dshape(10,0) = -.5*xi*(1+eta)*(1-mu);  out_dshape(10,1) =  .25*(1-xi*xi)*(1-mu);  out_dshape(10,2) = -.25*(1-xi*xi)*(1+eta);
+      out_dshape(16,0) = -.5*xi*(1-eta)*(1+mu);  out_dshape(16,1) = -.25*(1-xi*xi)*(1+mu);  out_dshape(16,2) =  .25*(1-xi*xi)*(1-eta);
+      out_dshape(18,0) = -.5*xi*(1+eta)*(1+mu);  out_dshape(18,1) =  .25*(1-xi*xi)*(1+mu);  out_dshape(18,2) =  .25*(1-xi*xi)*(1+eta);
+      // Edge Nodes, eta = 0
+      out_dshape( 9,1) = -.5*eta*(1+xi)*(1-mu);  out_dshape( 9,0) =  .25*(1-eta*eta)*(1-mu);  out_dshape( 9,2) = -.25*(1-eta*eta)*(1+xi);
+      out_dshape(11,1) = -.5*eta*(1-xi)*(1-mu);  out_dshape(11,0) = -.25*(1-eta*eta)*(1-mu);  out_dshape(11,2) = -.25*(1-eta*eta)*(1-xi);
+      out_dshape(17,1) = -.5*eta*(1+xi)*(1+mu);  out_dshape(17,0) =  .25*(1-eta*eta)*(1+mu);  out_dshape(17,2) =  .25*(1-eta*eta)*(1+xi);
+      out_dshape(19,1) = -.5*eta*(1-xi)*(1+mu);  out_dshape(19,0) = -.25*(1-eta*eta)*(1+mu);  out_dshape(19,2) =  .25*(1-eta*eta)*(1-xi);
+      // Edge Nodes, mu = 0;
+      out_dshape(12,2) = -.5*mu*(1-xi)*(1-eta);  out_dshape(12,0) = -.25*(1-mu*mu)*(1-eta);  out_dshape(12,1) = -.25*(1-mu*mu)*(1-xi);
+      out_dshape(13,2) = -.5*mu*(1+xi)*(1-eta);  out_dshape(13,0) =  .25*(1-mu*mu)*(1-eta);  out_dshape(13,1) = -.25*(1-mu*mu)*(1+xi);
+      out_dshape(14,2) = -.5*mu*(1+xi)*(1+eta);  out_dshape(14,0) =  .25*(1-mu*mu)*(1+eta);  out_dshape(14,1) =  .25*(1-mu*mu)*(1+xi);
+      out_dshape(15,2) = -.5*mu*(1-xi)*(1+eta);  out_dshape(15,0) = -.25*(1-mu*mu)*(1+eta);  out_dshape(15,1) =  .25*(1-mu*mu)*(1-xi);
+      break;
+    }
   }
 }
 
