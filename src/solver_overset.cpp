@@ -25,8 +25,6 @@
 
 void solver::oversetInterp(void)
 {
-//  cout << "Grid " << Geo->gridID << ": Interpolating Overset Data" << endl;
-
   U_ipts.resize(Geo->nGrids);
   for (int g=0; g<Geo->nGrids; g++) {
     U_ipts[g].setup(Geo->foundPts[g].size(),params->nFields);
@@ -47,16 +45,6 @@ void solver::setupOverset(void)
   if (gridRank == 0) cout << "Solver: Grid " << gridID << ": Setting up overset connectivity" << endl;
 
   for (auto &oface: overFaces) oface->Solver = this;
-
-//  overPts.resize(0);
-//  for (auto &oface: overFaces) {
-//    oface->fptOffset = overPts.size();
-//    auto pts = oface->getPosFpts();
-//    overPts.insert(overPts.begin(),pts.begin(),pts.end());
-//  }
-//  nOverPts = overPts.size();
-
-//  overPtsPhys = createMatrix(overPts);
 
   Geo->matchOversetPoints(eles, overFaces);
 

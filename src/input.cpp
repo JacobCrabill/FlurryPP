@@ -243,7 +243,7 @@ void input::readInputFile(char *filename)
 
   opts.getScalarValue("equation",equation,1);
   opts.getScalarValue("icType",icType,0);
-  opts.getScalarValue("nDims",nDims,2);
+  opts.getScalarValue("nDims",nDims);
   if (equation==ADVECTION_DIFFUSION) {
     opts.getScalarValue("advectVx",advectVx,1.);
     opts.getScalarValue("advectVy",advectVy,1.);
