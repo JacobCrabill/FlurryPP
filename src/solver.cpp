@@ -46,7 +46,7 @@ void solver::setup(input *params, geo *Geo)
   params->time = 0.;
 
   /* Setup the FR elements & faces which will be computed on */
-  Geo->setupElesFaces(eles,faces,mpiFaces,overFaces);
+  Geo->setupElesFaces(eles,faces,mpiFaces,overFaces,this); // REMOVE this LATER
 
   gridID = Geo->gridID;
   gridRank = Geo->gridRank;
@@ -576,11 +576,12 @@ void solver::setupElesFaces(void) {
 
 void solver::finishMpiSetup(void)
 {
-  if (params->rank==0) cout << "Solver: Setting up MPI face communicataions" << endl;
+  if (params->rank==0) cout << "Solver: Setting up MPI face communications" << endl;
 #pragma omp parallel for
   for (uint i=0; i<mpiFaces.size(); i++) {
     mpiFaces[i]->finishRightSetup();
   }
+  cout << "rank " << params->rank << ": done with MPI." << endl;
 }
 
 void solver::readRestartFile(void) {

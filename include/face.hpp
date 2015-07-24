@@ -32,7 +32,7 @@ struct faceInfo {
   int isMPI = 0;
 
   //! intFace parameters
-  int locF_R;
+  int LocF_R;
   int relRot;
 
   //! boundFace parameters
@@ -99,6 +99,9 @@ public:
   int ID; //! Global ID of face
 
   input *params; //! Input parameters for simulation
+
+
+  solver* Solver; /// DEBUGGING
 
   int nFptsL, nFptsR;
   int nDims, nFields;

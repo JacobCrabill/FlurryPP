@@ -156,16 +156,19 @@ void writeParaview(solver *Solver, input *params)
     pVTU << "    <PPointData Scalars=\"Density\" Vectors=\"Velocity\" >" << endl;
     pVTU << "      <PDataArray type=\"Float32\" Name=\"Density\" />" << endl;
     if (params->equation == NAVIER_STOKES) {
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"Velocity\" NumberOfComponents=\"3\" />" << endl;
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"Pressure\" />" << endl;
+      if (params->motion) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"GridVelocity\" NumberOfComponents=\"3\" />" << endl;
+      }
       if (params->scFlag == 1) {
         pVTU << "      <PDataArray type=\"Float32\" Name=\"Sensor\" />" << endl;
       }
-      pVTU << "      <PDataArray type=\"Float32\" Name=\"Velocity\" NumberOfComponents=\"3\" />" << endl;
-      pVTU << "      <PDataArray type=\"Float32\" Name=\"Pressure\" />" << endl;
       if (params->calcEntropySensor) {
         pVTU << "      <PDataArray type=\"Float32\" Name=\"EntropyErr\" />" << endl;
       }
-      if (params->motion) {
-        pVTU << "      <PDataArray type=\"Float32\" Name=\"GridVelocity\" NumberOfComponents=\"3\" />" << endl;
+      if (params->meshType == OVERSET_MESH) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"IBLANK\" />" << endl;
       }
     }
     pVTU << "    </PPointData>" << endl;
@@ -282,17 +285,6 @@ void writeParaview(solver *Solver, input *params)
     dataFile << endl;
     dataFile << "				</DataArray>" << endl;
 
-    if(params->scFlag == 1){
-      /* --- Shock Sensor --- */
-      dataFile << "				<DataArray type=\"Float32\" Name=\"Sensor\" format=\"ascii\">" << endl;
-      for(int k=0; k<nPpts; k++) {
-        dataFile << sensor << " ";
-      }
-      dataFile << endl;
-      dataFile << "				</DataArray>" << endl;
-    }
-
-
     if (params->equation == NAVIER_STOKES) {
       /* --- Velocity --- */
       dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" Name=\"Velocity\" format=\"ascii\">" << endl;
@@ -338,6 +330,16 @@ void writeParaview(solver *Solver, input *params)
       }
     }
 
+    if(params->scFlag == 1){
+      /* --- Shock Sensor --- */
+      dataFile << "				<DataArray type=\"Float32\" Name=\"Sensor\" format=\"ascii\">" << endl;
+      for(int k=0; k<nPpts; k++) {
+        dataFile << sensor << " ";
+      }
+      dataFile << endl;
+      dataFile << "				</DataArray>" << endl;
+    }
+
     if (params->equation == NAVIER_STOKES && params->calcEntropySensor) {
       /* --- Entropy Error Estimate --- */
       dataFile << "				<DataArray type=\"Float32\" Name=\"EntropyErr\" format=\"ascii\">" << endl;
@@ -350,15 +352,15 @@ void writeParaview(solver *Solver, input *params)
 
     if (params->meshType == OVERSET_MESH) {
       /* --- TIOGA iBlank value --- */
-      dataFile << "				<DataArray type=\"Float32\" Name=\"iBlank\" format=\"ascii\">" << endl;
+      dataFile << "				<DataArray type=\"Float32\" Name=\"IBLANK\" format=\"ascii\">" << endl;
 
-      int iblank = 1;
-      for (int i=0; i<Solver->Geo->c2nv[e.ID]; i++) {
-        int iv = Solver->Geo->c2v(e.ID,i);
-        iblank = min(iblank, Solver->Geo->iblank[iv]);
-      }
+//      int iblank = 1;
+//      for (int i=0; i<Solver->Geo->c2nv[e.ID]; i++) {
+//        int iv = Solver->Geo->c2v(e.ID,i);
+//        iblank = min(iblank, Solver->Geo->iblank[iv]);
+//      }
       for(int k=0; k<nPpts; k++) {
-        dataFile << iblank << " ";
+        dataFile << Solver->Geo->iblankCell[e.ID] << " ";
       }
       dataFile << endl;
       dataFile << "				</DataArray>" << endl;

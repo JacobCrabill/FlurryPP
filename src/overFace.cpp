@@ -20,8 +20,6 @@
 
 void overFace::setupRightState(void)
 {
-  fptR.resize(nFptsL);
-
   for (uint i=0; i<nFptsL; i++) {
     point pt = eL->getPosFpt(fptStartL+i);
     posFpts.push_back(pt);

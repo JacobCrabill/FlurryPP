@@ -21,7 +21,7 @@
 void intFace::setupRightState(void)
 {
   // This is kinda messy, but avoids separate initialize function
-  locF_R = myInfo.locF_R;
+  faceID_R = myInfo.LocF_R;
   relRot = myInfo.relRot;
 
   if (nDims == 2)
@@ -32,16 +32,19 @@ void intFace::setupRightState(void)
   /* --- Will have to introduce 'mortar' elements in the future [for p-adaptation],
    * but for now just force all faces to have same # of flux points [order] --- */
 
-  if (nFptsL != nFptsR)
+  if (nFptsL != nFptsR) {
+    cout << " rank " << params->rank << ": nFptsL = " << nFptsL << ", nFptsR = " << nFptsR << ", eleR = "  << eR->ID << endl;
+    cout << "iBlankCellR = " << Solver->Geo->iblankCell[eR->ID] << endl;
     FatalError("Mortar elements not yet implemented - must have nFptsL==nFptsR");
+  }
 
   /* --- Setup the L/R flux-point matching --- */
   fptR.resize(nFptsL);
   if (nDims == 2) {
     // For 1D faces [line segments] only - find first/last ID of fpts;
     // right element's are simply reversed
-    fptStartR = (locF_R*(nFptsR)) + nFptsR;
-    fptEndR = (locF_R*(nFptsR));
+    fptStartR = (faceID_R*(nFptsR)) + nFptsR;
+    fptEndR = (faceID_R*(nFptsR));
 
     int fpt = 0;
     for (int i=fptStartR-1; i>=fptEndR; i--) {
@@ -53,8 +56,8 @@ void intFace::setupRightState(void)
     // Only for quad tensor-product faces
     int order = sqrt(nFptsL)-1;
 
-    fptStartR = nFptsR*locF_R;
-    fptEndR = nFptsR*(locF_R+1);
+    fptStartR = nFptsR*faceID_R;
+    fptEndR = nFptsR*(faceID_R+1);
 
     for (int i=0; i<nFptsL; i++) {
       int ifpt = i%(order+1);

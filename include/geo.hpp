@@ -50,7 +50,7 @@ public:
   void processConnectivity();
 
   //! Create the elements and faces needed for the simulation
-  void setupElesFaces(vector<ele> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec, vector<shared_ptr<overFace> >& overFacesVec);
+  void setupElesFaces(vector<ele> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec, vector<shared_ptr<overFace> >& overFacesVec, solver* Solver);
 
   /* === Helper Routines === */
 
@@ -118,7 +118,7 @@ public:
   vector<matrix<int> > bcFaces;  //! List of nodes on each face (edge) for each boundary condition
   vector<int> nFacesPerBnd;      //! List of # of faces on each boundary
   vector<int> procR;             //! What processor lies to the 'right' of this face
-  vector<int> locF_R;            //! The local mpiFace ID of each mpiFace on the opposite processor
+  vector<int> faceID_R;            //! The local mpiFace ID of each mpiFace on the opposite processor
   vector<int> gIC_R;             //! The global cell ID of the right cell on the opposite processor
   vector<int> mpiLocF;           //! Element-local face ID of MPI Face in left cell
   vector<int> mpiLocF_R;         //! Element-local face ID of MPI Face in right cell

@@ -38,7 +38,7 @@ void mpiFace::setupRightState(void)
   myComm = myInfo.gridComm;
 
   /* Send/Get # of flux points to/from right element */
-  MPI_Irecv(&nFptsR,1,MPI_INT,procR,ID,myComm,&nFpts_in);
+  MPI_Irecv(&nFptsR,1,MPI_INT,procR,ID, myComm,&nFpts_in);
   MPI_Isend(&nFptsL,1,MPI_INT,procR,IDR,myComm,&nFpts_out);
 #endif
 }

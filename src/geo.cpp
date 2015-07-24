@@ -90,12 +90,6 @@ void geo::setup(input* params)
   processConnectivity();
 
   processPeriodicBoundaries();
-
-  if (meshType == OVERSET_MESH) {
-    registerGridDataTIOGA();
-
-    updateOversetConnectivity();
-  }
 }
 
 
@@ -110,6 +104,17 @@ void geo::processConnectivity()
 
   iblankCell.resize(nEles);
   iblankFace.resize(nFaces);
+
+  if (meshType == OVERSET_MESH) {
+    registerGridDataTIOGA();
+
+    updateOversetConnectivity();
+  }
+
+  /* --- Setup MPI Processor Boundary Faces --- */
+#ifndef _NO_MPI
+  matchMPIFaces();
+#endif
 }
 
 void geo::processConn2D(void)
@@ -200,11 +205,6 @@ void geo::processConn2D(void)
       }
     }
   }
-
-  /* --- Setup MPI Processor Boundary Faces --- */
-#ifndef _NO_MPI
-  matchMPIFaces();
-#endif
 
   /* --- Setup Cell-To-Edge, Edge-To-Cell --- */
 
@@ -424,12 +424,6 @@ void geo::processConn3D(void)
       }
     }
   }
-
-  /* --- Setup MPI Processor Boundary Faces --- */
-#ifndef _NO_MPI
-  matchMPIFaces();
-#endif
-
 }
 
 void geo::matchMPIFaces(void)
@@ -495,8 +489,10 @@ void geo::matchMPIFaces(void)
   int maxNMpiFaces = getMax(nMpiFaces_proc);
   matrix<int> mpiFaceNodes_proc(nprocPerGrid,maxNMpiFaces*maxNodesPerFace);
   matrix<int> mpiFptr_proc(nprocPerGrid,maxNMpiFaces+1);
+  matrix<int> mpiFid_proc(nprocPerGrid,maxNMpiFaces);
   MPI_Allgather(mpiFaceNodes.data(),mpiFaceNodes.size(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,gridComm);
   MPI_Allgather(mpiFptr.data(),mpiFptr.size(),MPI_INT,mpiFptr_proc.getData(),maxNMpiFaces+1,MPI_INT,gridComm);
+  MPI_Allgather(mpiFaces.data(),nMpiFaces,MPI_INT,mpiFid_proc.getData(),maxNMpiFaces,MPI_INT,gridComm);
 
   matrix<int> mpiCells_proc, mpiLocF_proc;
   if (nDims == 3) {
@@ -507,11 +503,26 @@ void geo::matchMPIFaces(void)
     MPI_Allgather(mpiLocF.data(),mpiLocF.size(),MPI_INT,mpiLocF_proc.getData(),maxNMpiFaces,MPI_INT,gridComm);
   }
 
+  // For overset meshes, can have an overset face *also* be an MPI face known only to one of the processes
+  // So, exchange face Iblank info
+  vector<int> mpiIblank;
+  vector<int> mpiIblankR;
+  matrix<int> mpiIblank_proc;
+  if (meshType == OVERSET_MESH) {
+    mpiIblank.resize(nMpiFaces);
+    mpiIblankR.resize(nMpiFaces);
+    mpiIblank_proc.setup(nprocPerGrid,maxNMpiFaces);
+    for (int i=0; i<nMpiFaces; i++)
+      mpiIblank[i] = iblankFace[mpiFaces[i]];
+
+    MPI_Allgather(mpiIblank.data(), nMpiFaces, MPI_INT, mpiIblank_proc.getData(), maxNMpiFaces, MPI_INT, gridComm);
+  }
+
   // Now that we have each processor's boundary nodes, start matching faces
   // Again, note that this is written for to be entirely general instead of 2D-specific
   // Find out what processor each face is adjacent to
   procR.resize(nMpiFaces);
-  locF_R.resize(nMpiFaces);
+  faceID_R.resize(nMpiFaces);
   if (nDims == 3) {
     gIC_R.resize(nMpiFaces);
     mpiLocF_R.resize(nMpiFaces);
@@ -542,11 +553,13 @@ void geo::matchMPIFaces(void)
         }
         if (compareFaces(myFace,tmpFace)) {
           procR[F] = p;
-          locF_R[F] = i;
+          faceID_R[F] = mpiFid_proc(p,i);
           if (nDims == 3) {
             gIC_R[F] = mpiCells_proc(p,i);
             mpiLocF_R[F] = mpiLocF_proc(p,i);
           }
+          if (meshType == OVERSET_MESH)
+            mpiIblankR[F] = mpiIblank_proc(p,i);
           break;
         }
       }
@@ -556,18 +569,49 @@ void geo::matchMPIFaces(void)
   for (auto &P:procR)
     if (P==-1) FatalError("MPI face left unmatched!");
 
-  //if (params->rank == 0)
-  //cout << "rank " << params->rank << ": ";
+  // For overset grids: Now that we have iblank info for both sides, we can remove
+  // any faces which should actually be overset faces
+  if (meshType == OVERSET_MESH) {
+    for (int F=0; F<nMpiFaces; F++) {
+      if (mpiIblank[F] != NORMAL || mpiIblankR[F] != NORMAL) {
+        // Not a normal face; figure out if hole or fringe
+        if (mpiIblank[F] == HOLE || mpiIblankR[F] == HOLE)
+          iblankFace[mpiFaces[F]] = HOLE;
+        else
+          iblankFace[mpiFaces[F]] = FRINGE;
+        if (mpiCells[F]<0 || mpiLocF[F]<0 || procR[F]<0 || faceID_R[F]<0 || gIC_R[F]<0 || mpiLocF_R[F]<0)
+          FatalError("AAAAAHHHH!!");
+        mpiFaces[F] = -1;
+        mpiCells[F] = -1;
+        mpiLocF[F] = -1;
+        procR[F] = -1;
+        faceID_R[F] = -1;
+        if (nDims == 3) {
+          gIC_R[F] = -1;
+          mpiLocF_R[F] = -1;
+        }
+      }
+    }
+    mpiFaces.erase(std::remove(mpiFaces.begin(), mpiFaces.end(), -1), mpiFaces.end());
+    mpiCells.erase(std::remove(mpiCells.begin(), mpiCells.end(), -1), mpiCells.end());
+    mpiLocF.erase(std::remove(mpiLocF.begin(), mpiLocF.end(), -1), mpiLocF.end());
+    procR.erase(std::remove(procR.begin(), procR.end(), -1), procR.end());
+    faceID_R.erase(std::remove(faceID_R.begin(), faceID_R.end(), -1), faceID_R.end());
+    if (nDims == 3) {
+      gIC_R.erase(std::remove(gIC_R.begin(), gIC_R.end(), -1), gIC_R.end());
+      mpiLocF_R.erase(std::remove(mpiLocF_R.begin(), mpiLocF_R.end(), -1), mpiLocF_R.end());
+    }
+    nMpiFaces = mpiFaces.size();
+  }
+
   if (gridRank == 0)
     cout << "Geo: Grid " << gridID << ": All MPI faces matched!  nMpiFaces = " << nMpiFaces << endl;
 
-  MPI_Barrier(gridComm);
-
-  //cout << "rank " << params->rank << " leaving matchMPIFaces()" << endl;
+  MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
 
-void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec, vector<shared_ptr<overFace>> &overFacesVec)
+void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec, vector<shared_ptr<overFace>> &overFacesVec, solver *Solver)
 {
   if (nEles<=0) FatalError("Cannot setup elements array - nEles = 0");
 
@@ -583,7 +627,10 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
   }
 
   // Setup the elements
-  int ic = 0;
+  vector<int> eleMap; // For overset meshes where some cells are blanked, map from 'ic' to 'eles' index
+  eleMap.assign(nEles,-1);
+
+  int nc = 0;
   for (int ic=0; ic<nEles; ic++) {
     // Skip any hole cells
     if (meshType == OVERSET_MESH && iblankCell[ic] != NORMAL) continue;
@@ -614,6 +661,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     }
 
     eles.push_back(e);
+    eleMap[ic] = nc;
+    nc++;
   }
 
   /* --- Setup the faces --- */
@@ -660,6 +709,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
     shared_ptr<face> iface = make_shared<intFace>();
 
+    iface->Solver = Solver;
+
     int ic1 = f2c(ff,0);
     // Find local face ID of global face within first element [on left]
     cellFaces.assign(c2f[ic1],c2f[ic1]+c2nf[ic1]);
@@ -673,9 +724,11 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       int fid2 = findFirst(cellFaces,ff);           // Which one is this face
       int relRot = compareOrientation(ic1,fid1,ic2,fid2);
       struct faceInfo info;
-      info.locF_R = fid2;
+      info.LocF_R = fid2;
       info.relRot = relRot;
-      iface->initialize(&eles[f2c(ff,0)],&eles[f2c(ff,1)],ff,fid1,info,params);
+      ic1 = eleMap[ic1];
+      ic2 = eleMap[ic2];
+      iface->initialize(&eles[ic1],&eles[ic2],ff,fid1,info,params);
     }
 
     faces.push_back(iface);
@@ -700,7 +753,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
     shared_ptr<face> bface = make_shared<boundFace>();
 
-    ic = f2c(ff,0);
+    int ic = f2c(ff,0);
     // Find local face ID of global face within element
     cellFaces.assign(c2f[ic],c2f[ic]+c2nf[ic]);
     int fid1 = findFirst(cellFaces,ff);
@@ -709,7 +762,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     }else{
       struct faceInfo info;
       info.bcType = bcType[i];
-      bface->initialize(&eles[f2c(ff,0)],NULL,ff,fid1,info,params);
+      ic = eleMap[ic];
+      bface->initialize(&eles[ic],NULL,ff,fid1,info,params);
     }
 
     faces.push_back(bface);
@@ -732,11 +786,11 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       // Find global face ID of current boundary face
       int ff = mpiFaces[i];
 
-      if (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) continue;
+      //if (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) continue;
 
       shared_ptr<mpiFace> mface = make_shared<mpiFace>();
 
-      ic = f2c(ff,0);
+      int ic = f2c(ff,0);
       // Find local face ID of global face within element
       int fid1;
       if (nDims == 2) {
@@ -755,14 +809,15 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
           relRot = compareOrientationMPI(ic,fid1,gIC_R[i],mpiLocF_R[i]);
         }
         struct faceInfo info;
-        info.IDR = locF_R[i];
-        info.locF_R = mpiLocF_R[i];
+        info.IDR = faceID_R[i];
+        info.LocF_R = mpiLocF_R[i];
         info.relRot = relRot;
         info.procL = gridRank;
         info.procR = procR[i];
         info.isMPI = 1;
         info.gridComm = gridComm;  // Note that this is equivalent to MPI_COMM_WORLD if non-overset (ngrids = 1)
-        mface->initialize(&eles[f2c(ff,0)],NULL,i,fid1,info,params);
+        ic = eleMap[ic];
+        mface->initialize(&eles[ic],NULL,ff,fid1,info,params);
       }
 
       mpiFacesVec.push_back(mface);
@@ -781,8 +836,27 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
       int ic = f2c(ff,0);
       if (ic == -1 || iblankCell[f2c(ff,0)] == HOLE) {
-        if (f2c(ff,1) == -1 || iblankCell[f2c(ff,1)] != NORMAL) // Both cells blanked; shouldn't be here
-          FatalError("Face marked as fringe but both cells blanked.");
+        if (f2c(ff,1) == -1 || iblankCell[f2c(ff,1)] == HOLE) { // Both cells blanked or non-existant; shouldn't be here
+/*          cout << "Grid " << gridID << ", gridRank " << gridRank << ":" << endl;
+//          cout << "ic1 = " << f2c(ff,0) << ", ic2 = " << f2c(ff,1) << endl;
+//          cout << "iblankCell = " << iblankCell[f2c(ff,0)];
+//          if (f2c(ff,1)>=0)
+//            cout << ", " << iblankCell[f2c(ff,1)];
+//          cout << endl;
+//          cout << "iblankFace = " << iblankFace[ff] << endl;
+//          point midPt;
+//          int ic1 = f2c(ff,0);
+//          for (int i=0; i<c2nv[ic1]; i++) {
+//            midPt += point(xv[c2v(ic1,i)]);
+//          }
+//          midPt /= c2nv[ic1];
+//          cout << "cell center: " << midPt.x << ", " << midPt.y << ", " << midPt.z << endl; */
+//          FatalError("Face marked as fringe but both cells blanked.");
+          // Actually, this appears to happen when a fringe face is ALSO an MPI face
+          // Since the other processor has the non-blanked cell, just ignore the face here
+          ff = -1; // to remove from vector later
+          continue;
+        }
         ic = f2c(ff,1);
       }
 
@@ -791,11 +865,13 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       int fid = findFirst(cellFaces,ff);
 
       struct faceInfo info;
-      oface->initialize(&eles[f2c(ff,0)],NULL,ff,fid,info,params);
+      ic = eleMap[ic];
+      oface->initialize(&eles[ic],NULL,ff,fid,info,params);
 
       overFacesVec.push_back(oface);
     }
   }
+  overFaces.erase(std::remove(overFaces.begin(), overFaces.end(), -1), overFaces.end());
   // Final # of overset faces
   nOverFaces = overFacesVec.size();
 }

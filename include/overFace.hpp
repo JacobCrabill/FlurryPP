@@ -48,10 +48,6 @@ public:
   vector<point> posFpts;    //! Physical locations of left ele's flux points
 
 private:
-  int locF_R;              //! Right element's local face ID
-  int relRot;              //! Relative rotation of right element's face (for 3D)
-  int fptStartR, fptEndR;
-  vector<int> fptR;        //! Indices of flux points in right element
 
   /* --- Storage for all solution/geometry data at flux points [interpolated right state] --- */
   vector<matrix<double>> FR;   //! Flux array [nFpts, nDims, nFields]
