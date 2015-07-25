@@ -61,7 +61,7 @@ public:
 
   void applyGradSpts(matrix<double> &U_spts, vector<matrix<double> > &dU_spts);
 
-  void applyGradFSpts(vector<matrix<double>> &F_spts, vector<vector<matrix<double>>> &dF_spts);
+  void applyGradFSpts(vector<matrix<double>> &F_spts, Array<matrix<double>,2>& dF_spts);
 
   void applyDivFSpts(vector<matrix<double>> &F_spts, matrix<double> &divF_spts);
 

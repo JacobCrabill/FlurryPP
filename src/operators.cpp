@@ -740,12 +740,12 @@ void oper::applyGradSpts(matrix<double> &U_spts, vector<matrix<double> > &dU_spt
     opp_grad_spts[dim].timesMatrix(U_spts,dU_spts[dim]);
 }
 
-void oper::applyGradFSpts(vector<matrix<double>> &F_spts, vector<vector<matrix<double>>> &dF_spts)
+void oper::applyGradFSpts(vector<matrix<double>> &F_spts, Array<matrix<double>,2> &dF_spts)
 {
   // Note: dim1 is flux direction, dim2 is derivative direction
   for (uint dim1=0; dim1<nDims; dim1++)
-    for (uint dim2=0; dim2<dF_spts.size(); dim2++)
-      opp_grad_spts[dim2].timesMatrix(F_spts[dim1],dF_spts[dim2][dim1]);
+    for (uint dim2=0; dim2<dF_spts.dims[0]; dim2++)
+      opp_grad_spts[dim2].timesMatrix(F_spts[dim1],dF_spts(dim2,dim1));
 }
 
 

@@ -118,15 +118,14 @@ void ele::setupArrays(void)
 
   F_spts.resize(nDims);
   F_fpts.resize(nDims);
-  dF_spts.resize(nDims);
+  dF_spts.setup(nDims,nDims);
   tdF_spts.resize(nDims);
   for (int i=0; i<nDims; i++) {
     F_spts[i].setup(nSpts,nFields);
     F_fpts[i].setup(nFpts,nFields);
-    dF_spts[i].resize(nDims);
     tdF_spts[i].setup(nSpts,nFields);
     for (int j=0; j<nDims; j++) {
-      dF_spts[i][j].setup(nSpts,nFields);
+      dF_spts(i,j).setup(nSpts,nFields);
     }
   }
 
@@ -1012,9 +1011,9 @@ void ele::transformGradF_spts(int step)
     double A = gridVel_spts(spt,1)*Jac_spts[spt](0,1) - gridVel_spts(spt,0)*Jac_spts[spt](1,1);
     double B = gridVel_spts(spt,0)*Jac_spts[spt](1,0) - gridVel_spts(spt,1)*Jac_spts[spt](0,0);
     for (int k=0; k<nFields; k++) {
-      dF_spts[0][0](spt,k) =  dF_spts[0][0](spt,k)*Jac_spts[spt](1,1) - dF_spts[0][1](spt,k)*Jac_spts[spt](0,1) + dU_spts[0](spt,k)*A;
-      dF_spts[1][1](spt,k) = -dF_spts[1][0](spt,k)*Jac_spts[spt](1,0) + dF_spts[1][1](spt,k)*Jac_spts[spt](0,0) + dU_spts[1](spt,k)*B;
-      divF_spts[step](spt,k) = dF_spts[0][0](spt,k)+dF_spts[1][1](spt,k);
+      dF_spts(0,0)(spt,k) =  dF_spts(0,0)(spt,k)*Jac_spts[spt](1,1) - dF_spts(0,1)(spt,k)*Jac_spts[spt](0,1) + dU_spts[0](spt,k)*A;
+      dF_spts(1,1)(spt,k) = -dF_spts(1,0)(spt,k)*Jac_spts[spt](1,0) + dF_spts(1,1)(spt,k)*Jac_spts[spt](0,0) + dU_spts[1](spt,k)*B;
+      divF_spts[step](spt,k) = dF_spts(0,0)(spt,k)+dF_spts(1,1)(spt,k);
     }
   }
 }
