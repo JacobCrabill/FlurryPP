@@ -62,8 +62,12 @@ OBJECTS = 	obj/global.o \
 		obj/flux.o \
 		obj/flurry.o \
 		obj/solver.o \
-		obj/solver_overset.o \
-		obj/ADT.o \
+		obj/solver_overset.o
+
+ifeq ($(mpi),n)
+# Don't compile TIOGA objects
+else
+OBJECTS+= obj/ADT.o \
 		obj/MeshBlock.o \
 		obj/parallelComm.o \
 		obj/utils.o \
@@ -71,6 +75,7 @@ OBJECTS = 	obj/global.o \
 		obj/kaiser.o \
 		obj/median.o \
 		obj/cellVolume.o
+endif
 
 TARGET        = Flurry
 
@@ -85,10 +90,10 @@ TARGET        = Flurry
 .F90.o:
 	$(F90) -c $(FFLAGS) $(INCPATH) -o "$@" "$<"
 
-####### Build rules
-
 $(TARGET):  $(OBJECTS)
 	$(LINK) $(LFLAGS) -o $(DESTDIR)/$(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS) $(DBG)
+
+####### Build rules
 
 clean:
 	cd obj && rm -f *.o && cd .. && rm -f bin/Flurry

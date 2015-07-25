@@ -5,6 +5,7 @@ dt            .00001  # Time step size
 viscous       0
 motion        0
 riemann_type  0    # Advection: use 0; N-S: 0: Rusanov, 1: Roe
+nDims         2
 
 # Initial Condition
 #   Advection: 0-Gaussian, 1-u=x+y test case
@@ -14,16 +15,16 @@ test_case     0
 iterMax       5000
 
 # Plotting/Output Parameters
-plot_freq         100  # Frequency to write plot files
-monitor_res_freq  100  # Frequency to print residual to terminal
+plotFreq         100  # Frequency to write plot files
+monitorResFreq  100  # Frequency to print residual to terminal
 resType           2    # 1: 1-norm, 2: 2-norm, 3: Inf-norm
 dataFileName      supWedge  # Filename prefix for output files
 
 # mesh_type - 0: Read mesh, 1: Create mesh
-mesh_type     1
+meshType     1
+nDims         2
 
 # The following parameters are only needed when creating a mesh:
-nDims         2
 nx            30
 ny            30
 xmin          0
@@ -38,12 +39,6 @@ create_bcBottom  slip_wall
 create_bcLeft    sup_in
 create_bcRight   sup_out
 
-# Initial Conditions
-vxIC     683.709
-vyIC    -120.556
-rhoIC    1.168
-pIC      100000
-
 # Boundary Conditions [for all freestream/inlet-type boundaries]
 rhoBound 1.168
 uBound   683.709
@@ -56,3 +51,10 @@ pBound   100000
 
 # Other FR-method parameters
 spts_type_quad  Legendre
+
+# Shock Capturing
+scFlag  0
+threshole  .1
+
+# Shu / Lv's Stablization Procedure
+squeeze  0

@@ -18,7 +18,9 @@
 
 #include <vector>
 
+#ifndef _NO_MPI
 #include "mpi.h"
+#endif
 
 #include "global.hpp"
 
@@ -30,16 +32,15 @@ class ele;
 //! Struct to pass into each face; values assigned as needed based on face type
 struct faceInfo {
   int isMPI = 0;
+  int IDR;
 
-  //! intFace parameters
-  int LocF_R;
+  //! Relative orientation between 3D faces
   int relRot;
 
   //! boundFace parameters
   int bcType;
 
-  //! mpiFace parameters
-  int IDR;
+  //! mpiFace parameters  
   int procL;
   int procR;
 

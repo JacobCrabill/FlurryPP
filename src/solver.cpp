@@ -28,22 +28,28 @@ class boundFace;
 
 solver::solver()
 {
+#ifndef _NO_MPI
   tg = NULL;
+#endif
 }
 
 solver::~solver()
 {
+#ifndef _NO_MPI
   if (tg != NULL) {
     delete tg;
     tg = NULL;
   }
+#endif
 }
 
 void solver::setup(input *params, geo *Geo)
 {
   this->params = params;
   this->Geo = Geo;
+#ifndef _NO_MPI
   this->tg = Geo->tg; // Geo will have initialized this already if needed
+#endif
 
   params->time = 0.;
 

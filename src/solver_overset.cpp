@@ -93,8 +93,10 @@ void solver::updateElesSolutionArrays(void)
 
 void solver::callDataUpdateTIOGA(void)
 {
+#ifndef _NO_MPI
   //cout << "Calling dataUpdate_highorder" << endl;
   tg->dataUpdate_highorder(params->nFields,U_spts.data(),0);
+#endif
 }
 
 /* ---- Callback Functions for TIOGA Overset Grid Library ---- */

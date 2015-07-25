@@ -21,8 +21,9 @@
 #include <mpi.h>
 #endif
 
-#include <sys/types.h>
-#include <unistd.h>
+#ifdef _MPI_DEBUG
+#include <unistd.h>  // for getpid()
+#endif
 
 int main(int argc, char *argv[]) {
   input params;
@@ -56,6 +57,17 @@ int main(int argc, char *argv[]) {
   }
 
   if (argc<2) FatalError("No input file specified.");
+
+#ifdef _MPI_DEBUG
+  {
+    // Useful for debugging in parallel with GDB or similar debugger
+    // Sleep until a debugger is attached (change 'blah' once attached to continue)
+    int blah = 0;
+    cout << "Process " << getpid() << " ready for GDB attach" << endl;
+    while (blah == 0)
+      sleep(5);
+  }
+#endif
 
   setGlobalVariables();
 

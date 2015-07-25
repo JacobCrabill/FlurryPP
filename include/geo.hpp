@@ -20,7 +20,9 @@
 
 #include "global.hpp"
 
+#ifndef _NO_MPI
 class tioga;
+#endif
 
 #include "ele.hpp"
 #include "input.hpp"
@@ -28,7 +30,10 @@ class tioga;
 #include "face.hpp"
 #include "mpiFace.hpp"
 #include "overFace.hpp"
+
+#ifndef _NO_MPI
 #include "tioga.h"
+#endif
 
 #define NORMAL  1
 #define HOLE    0
@@ -146,7 +151,9 @@ public:
   matrix<double> overPtsPhys;   //! Physical positions of each fringe point
   vector<point> overPts;        //! Physical positions of fringe points
 
+#ifndef _NO_MPI
   tioga* tg;           //! Pointer to Tioga object for processing overset grids
+#endif
   int* nodesPerCell;   //! Pointer for Tioga to know # of nodes for each element type
   array<int*,1> conn;  //! Pointer to c2v for each element type [but only 1, so will be size(1)]
   matrix<int> tg_c2v;  //! 'Cleaned' c2v for Tioga (when quadratic elements present, normal c2v won't work)

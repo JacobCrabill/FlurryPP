@@ -37,19 +37,21 @@
 
 geo::geo()
 {
+#ifndef _NO_MPI
   tg = NULL;
+#endif
+
   nodesPerCell = NULL;
 }
 
 geo::~geo()
 {
 #ifndef _NO_MPI
-  //MPI_Comm_free(&gridComm);
-#endif
   if (tg != NULL) {
     delete tg;
     tg = NULL;
   }
+#endif
 
   if (nodesPerCell != NULL) {
     delete[] nodesPerCell;
@@ -77,6 +79,7 @@ void geo::setup(input* params)
       createMesh();
       break;
 
+#ifndef _NO_MPI
     case OVERSET_MESH:
       // Find out which grid this process will be handling
       nGrids = params->nGrids;
@@ -85,6 +88,7 @@ void geo::setup(input* params)
       gridRank = params->rank % nprocPerGrid;
       readGmsh(params->oversetGrids[gridID]);
       break;
+#endif
 
     default:
       FatalError("Mesh type not recognized.");
@@ -109,6 +113,8 @@ void geo::processConnectivity()
   else if (nDims == 3)
     processConn3D();
 
+#ifndef _NO_MPI
+  /* --- Use TIOGA to find all hole nodes, then setup overset-face connectivity --- */
   if (meshType == OVERSET_MESH) {
     registerGridDataTIOGA();
 
@@ -116,7 +122,6 @@ void geo::processConnectivity()
   }
 
   /* --- Setup MPI Processor Boundary Faces --- */
-#ifndef _NO_MPI
   matchMPIFaces();
 #endif
 }
@@ -610,8 +615,6 @@ void geo::matchMPIFaces(void)
 
   if (gridRank == 0)
     cout << "Geo: Grid " << gridID << ": All MPI faces matched!  nMpiFaces = " << nMpiFaces << endl;
-
-  MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
 
@@ -730,7 +733,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       int fid2 = findFirst(cellFaces,ff);           // Which one is this face
       int relRot = compareOrientation(ic1,fid1,ic2,fid2);
       struct faceInfo info;
-      info.LocF_R = fid2;
+      info.IDR = fid2;
       info.relRot = relRot;
       ic1 = eleMap[ic1];
       ic2 = eleMap[ic2];
@@ -814,7 +817,6 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
         }
         struct faceInfo info;
         info.IDR = faceID_R[i];
-        info.LocF_R = mpiLocF_R[i];
         info.relRot = relRot;
         info.procL = gridRank;
         info.procR = procR[i];

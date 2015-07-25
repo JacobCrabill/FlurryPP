@@ -33,9 +33,10 @@ class oper;
 #include "overFace.hpp"
 #include "operators.hpp"
 
+#ifndef _NO_MPI
 class tioga;
-
 #include "tioga.h"
+#endif
 
 class solver
 {
@@ -62,8 +63,10 @@ public:
   //! Vector of all MPI faces handled by this solver
   vector<shared_ptr<overFace>> overFaces;
 
+#ifndef _NO_MPI
   //! Pointer to Tioga object for processing overset grids
   tioga* tg;
+#endif
 
   /* ==== Misc. Commonly-Used Variables ==== */
 

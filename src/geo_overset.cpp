@@ -34,6 +34,7 @@
 
 void geo::registerGridDataTIOGA(void)
 {
+#ifndef _NO_MPI
   /* Note that this function should only be needed once during preprocessing */
 
   if (gridRank == 0)
@@ -85,10 +86,12 @@ void geo::registerGridDataTIOGA(void)
 
   tg->registerGridData(gridID,nVerts,xv.getData(),iblank.data(),nwall,nover,iwall.data(),
                        iover.data(),ntypes,nodesPerCell,&nEles,&conn[0]);
+#endif
 }
 
 void geo::updateOversetConnectivity(void)
 {
+#ifndef _NO_MPI
   // Pre-process the grids
   tg->profile();
 
@@ -100,6 +103,7 @@ void geo::updateOversetConnectivity(void)
 
   // Now use new nodal iblanks to set cell and face iblanks
   setCellFaceIblanks();
+#endif
 }
 
 void geo::setCellFaceIblanks()
@@ -144,12 +148,15 @@ void geo::setCellFaceIblanks()
 
 void geo::writeOversetConnectivity(void)
 {
+#ifndef _NO_MPI
   // Write out only the mesh with IBLANK info (no solution data)
   tg->writeData(0,NULL,0);
+#endif
 }
 
 void geo::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &overFacesVec)
 {
+#ifndef _NO_MPI
   // Get all of the fringe points on this grid
   overPts.resize(0);
   for (auto &oface: overFacesVec) {
@@ -261,11 +268,13 @@ void geo::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &ov
     MPI_Wait(&reqs[g],&status);
     MPI_Wait(&sends[g],&status);
   }
+#endif
 }
 
 
 void geo::exchangeOversetData(vector<matrix<double>> &U_ipts, matrix<double> &U_opts)
 {
+#ifndef _NO_MPI
   /* ---- Send/Receive the the interpolated data across grids using interComm ---- */
 
   // Send/Receive the number of matched points on each grid
@@ -388,4 +397,5 @@ void geo::exchangeOversetData(vector<matrix<double>> &U_ipts, matrix<double> &U_
       }
     }
   }
+#endif
 }

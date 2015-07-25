@@ -21,7 +21,7 @@
 void intFace::setupRightState(void)
 {
   // This is kinda messy, but avoids separate initialize function
-  faceID_R = myInfo.LocF_R;
+  faceID_R = myInfo.IDR;
   relRot = myInfo.relRot;
 
   if (nDims == 2)

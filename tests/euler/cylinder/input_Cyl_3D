@@ -47,9 +47,6 @@ entropySensor   0         (Calculate & plot entropy-error sensor)
 meshType     0
 meshFileName   cylinder3D.msh
 nDims         3
-periodicDX    99
-periodicDY    99
-periodicDZ    99
 
 # The following parameters are only needed when creating a mesh:
 # nDims, nx, ny, nz, xmin, xmax, etc.
@@ -102,3 +99,6 @@ spts_type_quad  Legendre
 # Shock Capturing Parameters
 shockCapture 0
 threshold .1
+
+# Shu / Lv's Stabilization Procedure
+squeeze  0
