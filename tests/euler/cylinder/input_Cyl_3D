@@ -35,7 +35,7 @@ icType       0
 # Plotting/Output Options
 # =============================================================
 plotFreq        2000      (Frequency to write plot files)
-monitorResFreq  200       (Frequency to print residual to terminal)
+monitorResFreq  50        (Frequency to print residual to terminal)
 resType         2         (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    Cylinder3D    (Filename prefix for output files)
 entropySensor   0         (Calculate & plot entropy-error sensor)

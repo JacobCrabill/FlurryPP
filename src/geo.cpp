@@ -965,6 +965,7 @@ void geo::readGmsh(string fileName)
   for (int i=0; i<nVerts; i++) {
     meshFile >> iv >> xv(i,0) >> xv(i,1);
     if (nDims == 3) meshFile >> xv(i,2);
+    getline(meshFile,str);
   }
 
   /* --- Read Element Connectivity --- */
