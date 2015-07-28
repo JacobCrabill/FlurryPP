@@ -311,7 +311,7 @@ void input::readInputFile(char *filename)
 
     /* --- LDG Flux Parameters --- */
     opts.getScalarValue("LDG_penFact",penFact,0.5);
-    opts.getScalarValue("LDG_tau",tau,1.0);
+    opts.getScalarValue("LDG_tau",tau,.0);
   }
 
   opts.getScalarValue("restart",restart,0);

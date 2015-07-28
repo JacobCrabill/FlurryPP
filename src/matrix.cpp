@@ -128,7 +128,7 @@ T& Array<T,N>::operator()(int i, int j, int k, int l)
     return data[l+dims[3]*(k+dims[2]*(j+dims[1]*i))];
   }
   else {
-    cout << "i=" << i << ", this->dims[0]=" << dims[0] << ", j=" << j << ", this->dims[1]=" << dims[1] << ", ";
+    cout << "i=" << i << ", dim0=" << dims[0] << ", j=" << j << ", dim1=" << dims[1] << ", ";
     cout << "k=" << k << ", dim2=" << dims[2] << ", l=" << l << ", dim3=" << dims[3] << endl;
     FatalError("Attempted out-of-bounds access in Array.");
   }
@@ -141,7 +141,7 @@ T& matrix<T>::operator()(int i, int j)
     return this->data[j+this->dims[1]*i];
   }
   else {
-    cout << "i=" << i << ", this->dims[0]=" << this->dims[0] << ", j=" << j << ", this->dims[1]=" << this->dims[1];
+    cout << "i=" << i << ", dim0=" << this->dims[0] << ", j=" << j << ", dim1=" << this->dims[1] << endl;
     FatalError("Attempted out-of-bounds access in matrix.");
   }
 }

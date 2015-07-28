@@ -181,7 +181,7 @@ void face::calcViscousFlux(void)
           // Adiabatic wall boundary condition (Neumann-type BC)
           for (int dim=0; dim<nDims; dim++) {
             for (int k=0; k<nFields; k++) {
-              Fc(dim,k) = tempFR(dim,fpt) + params->tau*normL(fpt,dim)*(UL(k) - UR(k));
+              Fc(dim,k) = tempFR(dim,fpt) + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
             }
           }
         }
@@ -189,7 +189,7 @@ void face::calcViscousFlux(void)
           // All other boundary conditions (Dirichlet-type BC)
           for (int dim=0; dim<nDims; dim++) {
             for (int k=0; k<nFields; k++) {
-              Fc(dim,k) = tempFL(dim,fpt) + params->tau*normL(fpt,dim)*(UL(k) - UR(k));
+              Fc(dim,k) = tempFL(dim,fpt) + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
             }
           }
         }
