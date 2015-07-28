@@ -1868,6 +1868,11 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
     nFpts = 6*(order+1)*(order+1);
   }
 
+  if (order != params->order) {
+    cout << "ele order = " << order << ", input order = " << params->order << endl;
+    FatalError("Cannot restart a simulation using a different polynomial order.");
+  }
+
   loc_spts = Geo->getLocSpts(eType,order);
   loc_fpts = Geo->getLocFpts(eType,order);
 

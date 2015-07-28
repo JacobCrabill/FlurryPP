@@ -46,16 +46,9 @@ geo::geo()
 
 geo::~geo()
 {
-#ifndef _NO_MPI
-  if (tg != NULL) {
-    delete tg;
-    tg = NULL;
-  }
-#endif
-
   if (nodesPerCell != NULL) {
     delete[] nodesPerCell;
-    nodesPerCell = NULL;
+    //nodesPerCell = NULL;
   }
 }
 
@@ -771,6 +764,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     }else{
       struct faceInfo info;
       info.bcType = bcType[i];
+      info.isBnd = 1;
       ic = eleMap[ic];
       bface->initialize(&eles[ic],NULL,ff,fid1,info,params);
     }

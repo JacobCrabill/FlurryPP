@@ -99,7 +99,8 @@ void geo::updateOversetConnectivity(void)
   tg->performConnectivity();
 
   // Only needed for debugging, really
-  //writeOversetConnectivity();
+  if (params->writeIBLANK)
+    writeOversetConnectivity();
 
   // Now use new nodal iblanks to set cell and face iblanks
   setCellFaceIblanks();

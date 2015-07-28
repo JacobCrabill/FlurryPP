@@ -38,7 +38,7 @@ solver::~solver()
 #ifndef _NO_MPI
   if (tg != NULL) {
     delete tg;
-    tg = NULL;
+    //tg = NULL;
   }
 #endif
 }
@@ -674,16 +674,15 @@ void solver::initializeSolution()
 {
   if (params->rank==0) cout << "Solver: Initializing Solution... " << flush;
 
+  if (!params->restart) {
 #pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    eles[i].setInitialCondition();
+    for (uint i=0; i<eles.size(); i++) {
+      eles[i].setInitialCondition();
+    }
   }
 
   /* If running a moving-mesh case and using CFL-based time-stepping,
    * calc initial dt for grid velocity calculation */
-  /* If running a moving-mesh case and using CFL-based time-stepping,
-   * calc initial dt for grid velocity calculation */
-  //if ( (params->motion!=0 || params->slipPenalty==1) && params->dtType == 1 ) {
   if (params->dtType == 1) {
     extrapolateU();
     double dt = INFINITY;

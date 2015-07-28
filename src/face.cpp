@@ -40,6 +40,7 @@ void face::initialize(ele *eL, ele *eR, int gID, int locF_L, faceInfo myInfo, in
 
   // Needed for MPI faces to separate communication from flux calculation
   isMPI = myInfo.isMPI;
+  isBnd = myInfo.isBnd;
 }
 
 void face::setupFace(void)
@@ -150,7 +151,6 @@ void face::calcInviscidFlux(void)
     // Still assuming nFptsL = nFptsR
     for (int i=0; i<nFptsL; i++) {
       for (int j=0; j<nFields; j++) {
-        UC(i,j) = 0.5*( UL(i,j) + UR(i,j) );
         UcL[i][j] = UC(i,j);
       }
     }
@@ -165,31 +165,73 @@ void face::calcInviscidFlux(void)
 void face::calcViscousFlux(void)
 {
   if (params->equation == NAVIER_STOKES) {
+
+    if (isBnd) this->getRightState(); // Re-apply boundary conditions
+
     for (int fpt=0; fpt<nFptsL; fpt++) {
       // Calculate discontinuous viscous flux at flux points
       viscousFlux(UL[fpt], gradUL[fpt], tempFL, params);
       viscousFlux(UR[fpt], gradUR[fpt], tempFR, params);
 
       // Calculte common viscous flux at flux points
-      //ldgFlux(UL[i], UR[i], tempFL, tempFL, Fn[i], params);
-
-      double penFact = params->penFact;
-      if ( normL(fpt,0)+normL(fpt,1) < 0 )
-        penFact = -params->penFact;
-
-      double normX = normL(fpt,0);
-      double normY = normL(fpt,1);
-
       matrix<double> Fc(nDims,nFields);
-      for(int k=0; k<nFields; k++) {
-        Fc(0,k) = 0.5*(tempFL(0,k) + tempFR(0,k)) + penFact*normX*( normX*(tempFL(0,k) - tempFR(0,k)) + normY*(tempFL(1,k) - tempFR(1,k)) ) + params->tau*normX*(UL(fpt,k) - UR(fpt,k));
-        Fc(1,k) = 0.5*(tempFL(1,k) + tempFR(1,k)) + penFact*normY*( normX*(tempFL(0,k) - tempFR(0,k)) + normY*(tempFL(1,k) - tempFR(1,k)) ) + params->tau*normY*(UL(fpt,k) - UR(fpt,k));
+
+      if (isBnd) {
+        if (isBnd > 1) {
+          // Adiabatic wall boundary condition (Neumann-type BC)
+          for (int dim=0; dim<nDims; dim++) {
+            for (int k=0; k<nFields; k++) {
+              Fc(dim,k) = tempFR(dim,fpt) + params->tau*normL(fpt,dim)*(UL(k) - UR(k));
+            }
+          }
+        }
+        else {
+          // All other boundary conditions (Dirichlet-type BC)
+          for (int dim=0; dim<nDims; dim++) {
+            for (int k=0; k<nFields; k++) {
+              Fc(dim,k) = tempFL(dim,fpt) + params->tau*normL(fpt,dim)*(UL(k) - UR(k));
+            }
+          }
+        }
+      }
+      else {
+        // All general interior-type faces (interior, MPI, overset)
+        double penFact = params->penFact;
+        if (nDims == 2) {
+          if ( normL(fpt,0)+normL(fpt,1) < 0 )
+            penFact = -params->penFact;
+        }
+        else if (nDims == 3) {
+          if (normL(fpt,0)+normL(fpt,1)+sqrt(2.)*normL(fpt,2) < 0) {
+            penFact = -params->penFact;
+          }
+        }
+
+        double normX = normL(fpt,0);
+        double normY = normL(fpt,1);
+        double normZ = 0;
+        if (nDims == 3)
+          normZ = normL(fpt,2);
+
+        if (nDims == 2) {
+          for(int k=0; k<nFields; k++) {
+            Fc(0,k) = 0.5*(tempFL(0,k) + tempFR(0,k)) + penFact*normX*( normX*(tempFL(0,k) - tempFR(0,k)) + normY*(tempFL(1,k) - tempFR(1,k)) ) + params->tau*normX*(UL(fpt,k) - UR(fpt,k));
+            Fc(1,k) = 0.5*(tempFL(1,k) + tempFR(1,k)) + penFact*normY*( normX*(tempFL(0,k) - tempFR(0,k)) + normY*(tempFL(1,k) - tempFR(1,k)) ) + params->tau*normY*(UL(fpt,k) - UR(fpt,k));
+          }
+        }
+        else if (nDims == 3) {
+          for(int k=0; k<nFields; k++) {
+            Fc(0,k) = 0.5*(tempFL(0,k) + tempFR(0,k)) + penFact*normX*( normX*(tempFL(0,k) - tempFR(0,k)) + normY*(tempFL(1,k) - tempFR(1,k)) + normZ*(tempFL(2,k) - tempFR(2,k)) ) + params->tau*normX*(UL(fpt,k) - UR(fpt,k));
+            Fc(1,k) = 0.5*(tempFL(0,k) + tempFR(0,k)) + penFact*normY*( normX*(tempFL(0,k) - tempFR(0,k)) + normY*(tempFL(1,k) - tempFR(1,k)) + normZ*(tempFL(2,k) - tempFR(2,k)) ) + params->tau*normY*(UL(fpt,k) - UR(fpt,k));
+            Fc(2,k) = 0.5*(tempFL(0,k) + tempFR(0,k)) + penFact*normZ*( normX*(tempFL(0,k) - tempFR(0,k)) + normY*(tempFL(1,k) - tempFR(1,k)) + normZ*(tempFL(2,k) - tempFR(2,k)) ) + params->tau*normZ*(UL(fpt,k) - UR(fpt,k));
+          }
+        }
       }
 
       // calculate normal flux from discontinuous solution at flux points
-      for(int k=0; k<nFields; k++)
-        Fn(fpt,k) += Fc(0,k)*normL(fpt,0) + Fc(1,k)*normL(fpt,1);
-
+      for (int dim=0; dim<nDims; dim++)
+        for(int k=0; k<nFields; k++)
+          Fn(fpt,k) += Fc(dim,k)*normL(fpt,dim);
     }
   }
   else if (params->equation == ADVECTION_DIFFUSION) {
@@ -409,15 +451,28 @@ void face::laxFriedrichsFlux(void)
 //! First step of the LDG flux - take a biased average of the solution
 void face::ldgSolution()
 {
-  // Choosing a unique direction for the switch
-  for (int fpt=0; fpt<nFptsL; fpt++) {
+  if (isBnd) {
+    for (int fpt=0; fpt<nFptsL; fpt++)
+      for(int k=0;k<nFields;k++)
+        UC(fpt,k) = 0.5*(UL(fpt,k) + UR(fpt,k));
+  }
+  else {
+    // Choosing a unique direction for the switch
+    for (int fpt=0; fpt<nFptsL; fpt++) {
 
-    double penFact = params->penFact;
-    if ( normL(fpt,0)+normL(fpt,1) < 0 )
-      penFact = -params->penFact;
+      double penFact = params->penFact;
+      if (nDims == 2) {
+        if ( normL(fpt,0)+normL(fpt,1) < 0 )
+          penFact = -params->penFact;
+      }
+      else if (nDims == 3) {
+        if (normL(fpt,0)+normL(fpt,1)+sqrt(2.)*normL(fpt,2) < 0) {
+          penFact = -params->penFact;
+        }
+      }
 
-    for(int k=0;k<nFields;k++)
-      UC(fpt,k) = 0.5*(UL(fpt,k) + UR(fpt,k)) - penFact*(UL(fpt,k) - UR(fpt,k));
-
+      for(int k=0;k<nFields;k++)
+        UC(fpt,k) = 0.5*(UL(fpt,k) + UR(fpt,k)) - penFact*(UL(fpt,k) - UR(fpt,k));
+    }
   }
 }

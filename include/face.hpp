@@ -31,7 +31,8 @@ class ele;
 
 //! Struct to pass into each face; values assigned as needed based on face type
 struct faceInfo {
-  int isMPI = 0;
+  int isMPI = 0;  //! Flag for whether face is an MPI-boundary face
+  int isBnd = 0;  //! Flag for whether face is a boundary-condition face
   int IDR;
 
   //! Relative orientation between 3D faces
@@ -135,4 +136,5 @@ protected:
   vector<point> posFpts;
 
   int isMPI;  //! Flag for MPI faces to separate communication from flux calculation
+  int isBnd;  //! Flag for boundary faces for use in LDG routines
 };

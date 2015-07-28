@@ -254,14 +254,11 @@ void input::readInputFile(char *filename)
   }
   else if (equation==NAVIER_STOKES) {
     opts.getScalarValue("gamma",gamma,1.4);
-    opts.getScalarValue("RGas",RGas,286.9);
     opts.getScalarValue("rhoBound",rhoBound,1.);
     opts.getScalarValue("uBound",uBound,.2);
     opts.getScalarValue("vBound",vBound,0.);
     opts.getScalarValue("wBound",wBound,0.);
     opts.getScalarValue("pBound",pBound,.7142857143);
-    opts.getScalarValue("TBound",TBound,300.);
-    opts.getScalarValue("TWall",TWall,300.);
     opts.getScalarValue("entropySensor",calcEntropySensor,false);
     opts.getScalarValue("slipPenalty",slipPenalty,false);
     if (slipPenalty) {
@@ -303,7 +300,10 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("prandtl",prandtl,.72);
     opts.getScalarValue("SGas",SGas,120.);
     opts.getScalarValue("TGas",TGas,291.15);
+    opts.getScalarValue("RGas",RGas,286.9);
 
+    opts.getScalarValue("TWall",TWall,300.);
+    opts.getScalarValue("TBound",TBound,300.);
     opts.getScalarValue("MachBound",MachBound,1.);
     opts.getScalarValue("nxBound",nxBound,1.);
     opts.getScalarValue("nyBound",nyBound,0.);

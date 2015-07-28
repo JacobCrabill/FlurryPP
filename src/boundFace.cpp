@@ -22,6 +22,9 @@ void boundFace::setupRightState(void)
   // This is kinda messy, but avoids separate initialize function
   bcType = myInfo.bcType;
 
+  if (bcType == ADIABATIC_NOSLIP) // For LDG numerical fluxes
+    isBnd = 2;
+
   if (params->slipPenalty) {
     // For PID-controlled BC
     deltaU.setup(nFptsL,nDims);
