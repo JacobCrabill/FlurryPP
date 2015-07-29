@@ -20,14 +20,14 @@ template<typename T, uint N>
 Array<T,N>::Array()
 {
   data.resize(0);
-  dims = {0,0,0,0};
+  dims = {{0,0,0,0}};
 }
 
 template<typename T, uint N>
 Array<T,N>::Array(uint inNDim0, uint inNDim1, uint inDim2, uint inDim3)
 {
   data.resize(inNDim0*inNDim1*inDim2*inDim3);
-  dims = {inNDim0,inNDim1,inDim2,inDim3};
+  dims = {{inNDim0,inNDim1,inDim2,inDim3}};
 }
 
 template<typename T>
@@ -65,7 +65,7 @@ Array<T,N> Array<T,N>::operator=(const Array<T,N> &inMatrix)
 template<typename T, uint N>
 void Array<T,N>::setup(uint inDim0, uint inDim1, uint inDim2, uint inDim3)
 {
-  dims = {inDim0,inDim1,inDim2,inDim3};
+  dims = {{inDim0,inDim1,inDim2,inDim3}};
   data.resize(inDim0*inDim1*inDim2*inDim3);
 }
 
@@ -282,7 +282,7 @@ void matrix<T>::insertRow(T *vec, int rowNum, int length)
   }
 
   if (this->dims[0]==0)
-    this->dims = {0,(uint)length,1,1};
+    this->dims = {{0,(uint)length,1,1}};
 
   this->dims[0]++;
 }

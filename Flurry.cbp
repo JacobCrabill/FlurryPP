@@ -3,8 +3,18 @@
 	<FileVersion major="1" minor="6" />
 	<Project>
 		<Option title="Flurry" />
+		<Option makefile="makefile_centos" />
+		<Option makefile_is_custom="1" />
 		<Option pch_mode="2" />
 		<Option compiler="icc" />
+		<MakeCommands>
+			<Build command="$make -f $makefile $target" />
+			<CompileFile command="$make -f $makefile $file" />
+			<Clean command="$make -f $makefile clean" />
+			<DistClean command="$make -f $makefile distclean$target" />
+			<AskRebuildNeeded command="$make -q -f $makefile $target" />
+			<SilentBuild command="$make -s -f $makefile $target" />
+		</MakeCommands>
 		<Build>
 			<Target title="Debug">
 				<Option output="bin/Debug/Flurry" prefix_auto="1" extension_auto="1" />
@@ -15,12 +25,290 @@
 					<Add option="/Zi" />
 				</Compiler>
 			</Target>
+			<Target title="debug">
+				<Option output="bin/Flurry" prefix_auto="1" extension_auto="1" />
+				<Option type="1" />
+				<Option compiler="icc" />
+				<Option use_console_runner="0" />
+				<MakeCommands>
+					<Build command="$make -f $makefile $target" />
+					<CompileFile command="$make -f $makefile $file" />
+					<Clean command="$make -f $makefile clean" />
+					<DistClean command="$make -f $makefile distclean$target" />
+					<AskRebuildNeeded command="$make -q -f $makefile $target" />
+					<SilentBuild command="$make -s -f $makefile $target" />
+				</MakeCommands>
+			</Target>
+			<Target title="mpi">
+				<Option output="bin/Flurry" prefix_auto="1" extension_auto="1" />
+				<Option type="0" />
+				<Option compiler="icc" />
+				<MakeCommands>
+					<Build command="$make -f $makefile $target" />
+					<CompileFile command="$make -f $makefile $file" />
+					<Clean command="$make -f $makefile clean" />
+					<DistClean command="$make -f $makefile distclean$target" />
+					<AskRebuildNeeded command="$make -q -f $makefile $target" />
+					<SilentBuild command="$make -s -f $makefile $target" />
+				</MakeCommands>
+			</Target>
+			<Target title="mpidebug">
+				<Option output="bin/Flurry" prefix_auto="1" extension_auto="1" />
+				<Option type="0" />
+				<Option compiler="icc" />
+				<MakeCommands>
+					<Build command="$make -f $makefile $target" />
+					<CompileFile command="$make -f $makefile $file" />
+					<Clean command="$make -f $makefile clean" />
+					<DistClean command="$make -f $makefile distclean$target" />
+					<AskRebuildNeeded command="$make -q -f $makefile $target" />
+					<SilentBuild command="$make -s -f $makefile $target" />
+				</MakeCommands>
+			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
 			<Add option="/EHs" />
 		</Compiler>
-		<Unit filename="main.cpp" />
+		<Unit filename="include/boundFace.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/ele.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/error.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/face.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/flurry.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/flux.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/geo.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/geo.inl">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/global.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/input.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/intFace.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/matrix.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/mesh.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/mpiFace.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/operators.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/output.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/polynomials.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="include/solver.hpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/driver/checkfiles.f90">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/driver/gridutils.f90">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/driver/makefile">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/driver/modules.f90">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/driver/testTioga.f90">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/ADT.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/ADT.h">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/MeshBlock.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/MeshBlock.h">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/bookKeeping.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/buildADTrecursion.c">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/cellVolume.f90">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/checkContainment.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/codetypes.h">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/computeCellVolume.c">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/computeCellVolume.f90">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/dataUpdate.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/exchangeBoxes.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/exchangeDonors.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/exchangeSearchData.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/globals.h">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/highOrder.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/holeMap.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/kaiser.f">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/linklist.c">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/makefile">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/math.c">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/median.F90">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/parallelComm.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/parallelComm.h">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/search.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/searchADTrecursion.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/tioga.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/tioga.h">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/tiogaInterface.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/tiogaInterface.h">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/utils.c">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="lib/tioga/src/writeOutput.C">
+			<Option compilerVar="CC" />
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/boundFace.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/ele.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/face.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/flurry.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/flux.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/geo.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/geo_overset.cpp" />
+		<Unit filename="src/global.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/input.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/intFace.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/matrix.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/mesh.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/mpiFace.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/operators.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/output.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/polynomials.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/solver.cpp">
+			<Option target="Debug" />
+		</Unit>
+		<Unit filename="src/solver_overset.cpp" />
 		<Extensions>
 			<code_completion />
 			<envvars />

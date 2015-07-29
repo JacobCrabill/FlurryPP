@@ -765,7 +765,8 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   loc = point(X[ind[nPts-1]]);
 
   // Check to see if final location lies within element or not
-  if (std::abs(loc.x)<=1 && std::abs(loc.y)<=1 && std::abs(loc.z)<=1 && !std::isnan(loc.norm()))
+  double eps = 1e-14;
+  if (std::abs(loc.x)-eps<=1 && std::abs(loc.y)-eps<=1 && std::abs(loc.z)-eps<=1 && !std::isnan(loc.norm()))
     return true;
   else
     return false;
@@ -848,7 +849,7 @@ void ele::setInitialCondition()
     else if (params->icType == 1) {
       /* --- Isentropic Vortex of strength eps centered at (0,0) --- */
       double eps = 5.0;
-      for (int spt=0; spt<nSpts; spt++) {        
+      for (int spt=0; spt<nSpts; spt++) {
         double x = pos_spts[spt].x;
         double y = pos_spts[spt].y;
 
@@ -1394,7 +1395,7 @@ void ele::getGridVelPlot(matrix<double> &GV)
   for (int i=0; i<order+1; i++) {
     for (int j=0; j<order+1; j++) {
       int id = (i+1)*(order+3)+j+1;
-      for (int dim=0; dim<nDims; dim++) {        
+      for (int dim=0; dim<nDims; dim++) {
         GV(id,dim) = gridVel_spts(j+i*(order+1),dim);
       }
     }

@@ -4,7 +4,7 @@ size2 = .7;  // .55
 R1 = .75;  // Radius of inner sphere
 R2 = 3.75;  // Radius of outer sphere
 NN = 9;  // Number of points in each direction on each spherical surface
-NL = 9;  // Number of layers between surfaces
+NL = 12;  // Number of layers between surfaces
 prog1 = 1.15;  // Geometric progression factor for layer width
 
 R1 = Sqrt(R1*R1/3);
