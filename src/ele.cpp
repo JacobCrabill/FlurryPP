@@ -2119,13 +2119,16 @@ vector<double> ele::getNormResidual(int normType)
 {
   vector<double> res(nFields,0);
 
+  // Integrating residual over element using Gaussian integration
+  auto weights = Geo->getQptWeights(order);
+
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
       if (normType == 1) {
-        res[i] += abs(divF_spts[0](spt,i)) / detJac_spts[spt];
+        res[i] += abs(divF_spts[0](spt,i)) * weights[spt];
       }
       else if (normType == 2) {
-        res[i] += divF_spts[0](spt,i)*divF_spts[0](spt,i) / (detJac_spts[spt]*detJac_spts[spt]);
+        res[i] += divF_spts[0](spt,i)*divF_spts[0](spt,i) / detJac_spts[spt] * weights[spt];
       }
       else if (normType == 3) {
         // Infinity norm
