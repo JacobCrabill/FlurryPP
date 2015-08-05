@@ -3,9 +3,9 @@ xmin = -4;  xmax = 4;
 ymin = -.5;  ymax = .5; // 3
 zmin = -4;  zmax = 4;
 
-nx = 36; // 6
+nx = 26; // 6
 ny = 4; // 6
-nz = 36; // 6
+nz = 26; // 6
 
 Point(0) = {xmin,ymin,zmin};
 Point(1) = {xmax,ymin,zmin};

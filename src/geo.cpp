@@ -380,6 +380,7 @@ void geo::processConn3D(void)
 
   c2f.setup(nEles,getMax(c2nf));
   c2b.setup(nEles,getMax(c2nf));
+  c2f.initializeToValue(-1);
   c2b.initializeToZero();
   f2c.setup(nFaces,2);
   f2c.initializeToValue(-1);
@@ -399,6 +400,15 @@ void geo::processConn3D(void)
       std::sort(facev.begin(),facev.end());
 
       bool found = false;
+
+      // Check if face is actually collapsed (nonexistant) (all nodes identical)
+      bool collapsed = true;
+      for (int i=1; i<fnv; i++)
+        collapsed = ( collapsed && (facev[0]==facev[i]) );
+
+      if (collapsed)
+        continue;
+
       for (int f=0; f<nFaces; f++) {
         if (std::equal(f2v[f],f2v[f]+fnv,facev.begin())) {
           found = true;
