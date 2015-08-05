@@ -355,7 +355,7 @@ void geo::processConn3D(void)
   /* --- Match Boundary Faces to Boundary Conditions --- */
 
   bcFaces.resize(nBounds);
-  bcType.assign(nBndFaces,-1);
+  bcType.assign(nBndFaces,NONE);
   for (int i=0; i<nBndFaces; i++) {
     for (int bnd=0; bnd<nBounds; bnd++) {
       bool isOnBound = true;
@@ -1495,15 +1495,17 @@ void geo::processPeriodicBoundaries(void)
   if (nPeriodic%2 != 0) FatalError("Expecting even number of periodic faces; have odd number.");
   if (params->rank==0) cout << "Geo: Processing periodic boundaries" << endl;
 
+  int nUnmatched = 0;
+
   for (auto& i:iPeriodic) {
     if (bndFaces[i]==-1) continue;
+    bool match = false;
     for (auto& j:iPeriodic) {
       if (i==j || bndFaces[i]==-1 || bndFaces[j]==-1) continue;
-      bool match;
       if (nDims == 2) {
         match = checkPeriodicFaces(f2v[bndFaces[i]],f2v[bndFaces[j]]);
       }
-      else if (nDims == 3) {
+      else {
         auto face1 = f2v.getRow(bndFaces[i]);
         auto face2 = f2v.getRow(bndFaces[j]);
         match = checkPeriodicFaces3D(face1, face2);
@@ -1539,14 +1541,37 @@ void geo::processPeriodicBoundaries(void)
         // Flag edges as gone in boundary edges list
         bndFaces[i] = -1;
         bndFaces[j] = -1;
+        bcType[i] = -1;
+        bcType[j] = -1;
+
+        break;
       }
     }
+
+    if (!match)
+      nUnmatched++;
   }
 
-  // Remove no-longer-existing periodic boundary edges and update nBndEdges
+  // Remove no-longer-existing periodic boundary faces and update nBndFaces
   bndFaces.erase(std::remove(bndFaces.begin(), bndFaces.end(), -1), bndFaces.end());
+  bcType.erase(std::remove(bcType.begin(), bcType.end(), -1), bcType.end());
   nBndFaces = bndFaces.size();
   nIntFaces = intFaces.size();
+
+#ifndef _NO_MPI
+  if (nUnmatched>0)
+    processPeriodicMPI();
+#else
+  if (nUnmatched>0)
+    FatalError("Unmatched periodic faces exist.");
+#endif
+}
+
+void geo::processPeriodicMPI(void)
+{
+#ifndef _NO_MPI
+
+#endif
 }
 
 bool geo::compareFaces(vector<int> &face1, vector<int> &face2)
