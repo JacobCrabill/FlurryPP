@@ -127,6 +127,7 @@ public:
   vector<int> gIC_R;             //! The global cell ID of the right cell on the opposite processor
   vector<int> mpiLocF;           //! Element-local face ID of MPI Face in left cell
   vector<int> mpiLocF_R;         //! Element-local face ID of MPI Face in right cell
+  vector<int> mpiPeriodic;       //! Flag for whether an MPI face is also a periodic face
   vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
 
   /* --- Overset-Related Variables --- */
@@ -204,12 +205,13 @@ private:
   //! Check if two given periodic edges match up
   bool checkPeriodicFaces(int *edge1, int *edge2);
   bool checkPeriodicFaces3D(vector<int> &face1, vector<int> &face2);
+  bool comparePeriodicMPI(vector<int> &face1, vector<int> &face2);
 
   //! Compare the orientation (rotation in ref. space) betwen the local faces of 2 elements
   int compareOrientation(int ic1, int ic2, int f1, int f2);
 
   //! Compare the orientation (rotation in ref. space) betwen the local faces of 2 elements across MPI boundary
-  int compareOrientationMPI(int ic1, int ic2, int f1, int f2);
+  int compareOrientationMPI(int ic1, int ic2, int f1, int f2, int isPeriodic);
 
   //! For MPI runs, partition the mesh across all processors
   void partitionMesh(void);

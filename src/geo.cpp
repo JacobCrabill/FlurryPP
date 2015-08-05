@@ -92,8 +92,6 @@ void geo::setup(input* params)
 #endif
 
   processConnectivity();
-
-  processPeriodicBoundaries();
 }
 
 
@@ -105,6 +103,8 @@ void geo::processConnectivity()
     processConn2D();
   else if (nDims == 3)
     processConn3D();
+
+  processPeriodicBoundaries();
 
 #ifndef _NO_MPI
   /* --- Use TIOGA to find all hole nodes, then setup overset-face connectivity --- */
@@ -457,10 +457,15 @@ void geo::matchMPIFaces(void)
   MPI_Comm_size(gridComm,&nprocPerGrid);
 
   // 1) Get a list of all the MPI faces on the processor
-  // These will be all unassigned boundary faces (bcType == -1) - copy over to mpiEdges
+  // These will be all unassigned boundary faces (bcType == NONE, or the
+  // remaining unmatched bcType == PERIODIC faces)
+  // - Copy over to mpiFaces
+  mpiPeriodic.resize(0);
   for (int i=0; i<nBndFaces; i++) {
-    if (bcType[i] < 0) {
+    if (bcType[i] <= 0) {
       mpiFaces.push_back(bndFaces[i]);
+      int periodic = (bcType[i]==PERIODIC) ? 1 : 0;
+      mpiPeriodic.push_back(periodic);
       if (nDims == 3) {
         // Get cell ID & cell-local face ID for face-rotation mapping
         mpiCells.push_back(ic2icg[f2c(bndFaces[i],0)]);
@@ -563,7 +568,14 @@ void geo::matchMPIFaces(void)
         for (int j=0; j<f2nv[mpiFaces[F]]; j++) {
           myFace[j] = mpiFaceNodes[mpiFptr[F]+j];
         }
-        if (compareFaces(myFace,tmpFace)) {
+
+        bool match;
+        if (mpiPeriodic[F])
+          match = comparePeriodicMPI(myFace,tmpFace);
+        else
+          match = compareFaces(myFace,tmpFace);
+
+        if (match) {
           procR[F] = p;
           faceID_R[F] = mpiFid_proc(p,i);
           if (nDims == 3) {
@@ -817,7 +829,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
         int relRot = 0;
         if (nDims == 3) {
           // Find the relative orientation (rotation) between left & right faces
-          relRot = compareOrientationMPI(ic,fid1,gIC_R[i],mpiLocF_R[i]);
+          relRot = compareOrientationMPI(ic,fid1,gIC_R[i],mpiLocF_R[i],mpiPeriodic[i]);
         }
         struct faceInfo info;
         info.IDR = faceID_R[i];
@@ -1497,12 +1509,12 @@ void geo::processPeriodicBoundaries(void)
   nPeriodic = iPeriodic.size();
 
 #ifndef _NO_MPI
-  if (nPeriodic > 0)
-    FatalError("Periodic boundaries not implemented yet with MPI! Recompile for serial.");
+  /*if (nPeriodic > 0)
+    FatalError("Periodic boundaries not implemented yet with MPI! Recompile for serial.");*/
 #endif
 
   if (nPeriodic == 0) return;
-  if (nPeriodic%2 != 0) FatalError("Expecting even number of periodic faces; have odd number.");
+  if (nPeriodic%2 != 0 && nprocPerGrid==1) FatalError("Expecting even number of periodic faces; have odd number.");
   if (params->rank==0) cout << "Geo: Processing periodic boundaries" << endl;
 
   int nUnmatched = 0;
@@ -1511,7 +1523,7 @@ void geo::processPeriodicBoundaries(void)
     if (bndFaces[i]==-1) continue;
     bool match = false;
     for (auto& j:iPeriodic) {
-      if (i==j || bndFaces[i]==-1 || bndFaces[j]==-1) continue;
+      if (i==j || bndFaces[i]==-10 || bndFaces[j]==-10) continue;
       if (nDims == 2) {
         match = checkPeriodicFaces(f2v[bndFaces[i]],f2v[bndFaces[j]]);
       }
@@ -1537,7 +1549,7 @@ void geo::processPeriodicBoundaries(void)
         isBnd[bj] = false;
 
         // Fix f2c - add right cell to combined face, make left cell = -1 in 'deleted' face
-        f2c(bi,1) = f2c[bj][0];
+        f2c(bi,1) = f2c(bj,0);
         f2c(bj,0) = -1;
 
         // Fix c2f - replace 'deleted' edge from right cell with combined face
@@ -1549,10 +1561,10 @@ void geo::processPeriodicBoundaries(void)
         c2b(f2c(bi,1),fID) = false;
 
         // Flag edges as gone in boundary edges list
-        bndFaces[i] = -1;
-        bndFaces[j] = -1;
-        bcType[i] = -1;
-        bcType[j] = -1;
+        bndFaces[i] = -10;
+        bndFaces[j] = -10;
+        bcType[i] = -10;
+        bcType[j] = -10;
 
         break;
       }
@@ -1563,14 +1575,14 @@ void geo::processPeriodicBoundaries(void)
   }
 
   // Remove no-longer-existing periodic boundary faces and update nBndFaces
-  bndFaces.erase(std::remove(bndFaces.begin(), bndFaces.end(), -1), bndFaces.end());
-  bcType.erase(std::remove(bcType.begin(), bcType.end(), -1), bcType.end());
+  bndFaces.erase(std::remove(bndFaces.begin(), bndFaces.end(), -10), bndFaces.end());
+  bcType.erase(std::remove(bcType.begin(), bcType.end(), -10), bcType.end());
   nBndFaces = bndFaces.size();
   nIntFaces = intFaces.size();
 
 #ifndef _NO_MPI
-  if (nUnmatched>0)
-    processPeriodicMPI();
+  //if (nUnmatched>0)
+  //  processPeriodicMPI();
 #else
   if (nUnmatched>0)
     FatalError("Unmatched periodic faces exist.");
@@ -1580,6 +1592,18 @@ void geo::processPeriodicBoundaries(void)
 void geo::processPeriodicMPI(void)
 {
 #ifndef _NO_MPI
+  // First, get list of all unmatched periodic faces
+  vector<int> iPeriodic(0), fPeriodic(0);
+
+  for (int i=0; i<nBndFaces; i++) {
+    if (bcType[i] == PERIODIC) {
+      iPeriodic.push_back(i);
+      fPeriodic.push_back(bndFaces[i]);
+    }
+  }
+
+  int nPeriodic = iPeriodic.size();
+
 
 #endif
 }
@@ -1702,6 +1726,110 @@ bool geo::checkPeriodicFaces3D(vector<int> &face1, vector<int> &face2)
 
   // The faces are aligned across a periodic direction
   return true;
+}
+
+bool geo::comparePeriodicMPI(vector<int> &face1, vector<int> &face2)
+{
+  if (nDims == 2) {
+    double x11, x12, y11, y12, x21, x22, y21, y22;
+    x11 = xv_g(face1[0],0);  y11 = xv_g(face1[0],1);
+    x12 = xv_g(face1[1],0);  y12 = xv_g(face1[1],1);
+    x21 = xv_g(face2[0],0);  y21 = xv_g(face2[0],1);
+    x22 = xv_g(face2[1],0);  y22 = xv_g(face2[1],1);
+
+    double tol = params->periodicTol;
+    double dx = params->periodicDX;
+    double dy = params->periodicDY;
+
+    if ( abs(abs(x21-x11)-dx)<tol && abs(abs(x22-x12)-dx)<tol && abs(y21-y11)<tol && abs(y22-y12)<tol ) {
+      // Faces match up across x-direction, with [0]->[0] and [1]->[1] in each edge
+      return true;
+    }
+    else if ( abs(abs(x22-x11)-dx)<tol && abs(abs(x21-x12)-dx)<tol && abs(y22-y11)<tol && abs(y21-y12)<tol ) {
+      // Faces match up across x-direction, with [0]->[1] and [1]->[0] in each edge
+      return true;
+    }
+    else if ( abs(abs(y21-y11)-dy)<tol && abs(abs(y22-y12)-dy)<tol && abs(x21-x11)<tol && abs(x22-x12)<tol ) {
+      // Faces match up across y-direction, with [0]->[0] and [1]->[1] in each edge
+      return true;
+    }
+    else if ( abs(abs(y22-y11)-dy)<tol && abs(abs(y21-y12)-dy)<tol && abs(x22-x11)<tol && abs(x21-x12)<tol ) {
+      // Faces match up across y-direction, with [0]->[1] and [1]->[0] in each edge
+      return true;
+    }
+
+    // None of the above
+    return false;
+  }
+  else {
+    if (face1.size() != face2.size())
+      return false;
+
+    double tol = params->periodicTol;
+    double dx = params->periodicDX;
+    double dy = params->periodicDY;
+    double dz = params->periodicDZ;
+
+    /* --- Compare faces using normal vectors: normals should be aligned
+     * and offset by norm .dot. {dx,dy,dz} --- */
+
+    Vec3 vec1, vec2;
+
+    // Calculate face normal & centriod for face 1
+    Vec3 norm1;
+    point c1;
+    vec1 = point(xv_g[face1[1]]) - point(xv_g[face1[0]]);
+    vec2 = point(xv_g[face1[2]]) - point(xv_g[face1[0]]);
+    for (uint j=0; j<face1.size(); j++)
+      c1 += xv_g[face1[j]];
+    c1 /= face1.size();
+
+    norm1[0] = vec1[1]*vec2[2] - vec1[2]*vec2[1];
+    norm1[1] = vec1[2]*vec2[0] - vec1[0]*vec2[2];
+    norm1[2] = vec1[0]*vec2[1] - vec1[1]*vec2[0];
+    // Normalize
+    double magNorm1 = sqrt(norm1[0]*norm1[0]+norm1[1]*norm1[1]+norm1[2]*norm1[2]);
+    norm1 /= magNorm1;
+
+    // Calculate face normal & centroid for face 2
+    Vec3 norm2;
+    point c2;
+    vec1 = point(xv_g[face2[1]]) - point(xv_g[face2[0]]);
+    vec2 = point(xv_g[face2[2]]) - point(xv_g[face2[0]]);
+    for (uint j=0; j<face2.size(); j++)
+      c2 += point(xv_g[face2[j]]);
+    c2 /= face2.size();
+    norm2[0] = vec1[1]*vec2[2] - vec1[2]*vec2[1];
+    norm2[1] = vec1[2]*vec2[0] - vec1[0]*vec2[2];
+    norm2[2] = vec1[0]*vec2[1] - vec1[1]*vec2[0];
+    // Normalize
+    double magNorm2 = sqrt(norm2[0]*norm2[0]+norm2[1]*norm2[1]+norm2[2]*norm2[2]);
+    norm2 /= magNorm2;
+
+    // Check for same orientation - norm1 .dot. norm2 should be +/- 1
+    double dot = norm1*norm2;
+    if (abs(1-abs(dot))>tol) return false;
+
+    // Check offset distance - norm .times. {dx,dy,dz} should equal centroid2 - centriod1
+    Vec3 nDXYZ;
+    nDXYZ.x = norm1[0]*dx;
+    nDXYZ.y = norm1[1]*dy;
+    nDXYZ.z = norm1[2]*dz;
+    nDXYZ.abs();
+
+    Vec3 Offset = c2 - c1;
+    Offset.abs();
+
+    Vec3 Diff = Offset - nDXYZ;
+    Diff.abs();
+
+    for (int i=0; i<3; i++) {
+      if (Diff[i]>tol) return false;
+    }
+
+    // The faces are aligned across a periodic direction
+    return true;
+  }
 }
 
 int geo::compareOrientation(int ic1, int f1, int ic2, int f2)
@@ -1853,7 +1981,7 @@ int geo::compareOrientation(int ic1, int f1, int ic2, int f2)
 
 }
 
-int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2)
+int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2, int isPeriodic=0)
 {
   if (nDims == 2) return 1;
 
@@ -1861,6 +1989,7 @@ int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2)
 
   vector<int> tmpFace1(nv), tmpFace2(nv);
 
+  int icg = ic2icg[ic1];
   switch (ctype[ic1]) {
     case HEX:
       // Flux points arranged in 2D grid on each face oriented with each
@@ -1869,45 +1998,45 @@ int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2)
       switch (f1) {
         case 0:
           // Bottom face  (z = -1)
-          tmpFace1[0] = c2v(ic1,0);
-          tmpFace1[1] = c2v(ic1,1);
-          tmpFace1[2] = c2v(ic1,2);
-          tmpFace1[3] = c2v(ic1,3);
+          tmpFace1[0] = c2v_g(icg,0);
+          tmpFace1[1] = c2v_g(icg,1);
+          tmpFace1[2] = c2v_g(icg,2);
+          tmpFace1[3] = c2v_g(icg,3);
           break;
         case 1:
           // Top face  (z = +1)
-          tmpFace1[0] = c2v(ic1,5);
-          tmpFace1[1] = c2v(ic1,4);
-          tmpFace1[2] = c2v(ic1,7);
-          tmpFace1[3] = c2v(ic1,6);
+          tmpFace1[0] = c2v_g(icg,5);
+          tmpFace1[1] = c2v_g(icg,4);
+          tmpFace1[2] = c2v_g(icg,7);
+          tmpFace1[3] = c2v_g(icg,6);
           break;
         case 2:
           // Left face  (x = -1)
-          tmpFace1[0] = c2v(ic1,0);
-          tmpFace1[1] = c2v(ic1,3);
-          tmpFace1[2] = c2v(ic1,7);
-          tmpFace1[3] = c2v(ic1,4);
+          tmpFace1[0] = c2v_g(icg,0);
+          tmpFace1[1] = c2v_g(icg,3);
+          tmpFace1[2] = c2v_g(icg,7);
+          tmpFace1[3] = c2v_g(icg,4);
           break;
         case 3:
           // Right face  (x = +1)
-          tmpFace1[0] = c2v(ic1,2);
-          tmpFace1[1] = c2v(ic1,1);
-          tmpFace1[2] = c2v(ic1,5);
-          tmpFace1[3] = c2v(ic1,6);
+          tmpFace1[0] = c2v_g(icg,2);
+          tmpFace1[1] = c2v_g(icg,1);
+          tmpFace1[2] = c2v_g(icg,5);
+          tmpFace1[3] = c2v_g(icg,6);
           break;
         case 4:
           // Front face  (y = -1)
-          tmpFace1[0] = c2v(ic1,1);
-          tmpFace1[1] = c2v(ic1,0);
-          tmpFace1[2] = c2v(ic1,4);
-          tmpFace1[3] = c2v(ic1,5);
+          tmpFace1[0] = c2v_g(icg,1);
+          tmpFace1[1] = c2v_g(icg,0);
+          tmpFace1[2] = c2v_g(icg,4);
+          tmpFace1[3] = c2v_g(icg,5);
           break;
         case 5:
           // Back face  (y = +1)
-          tmpFace1[0] = c2v(ic1,3);
-          tmpFace1[1] = c2v(ic1,2);
-          tmpFace1[2] = c2v(ic1,6);
-          tmpFace1[3] = c2v(ic1,7);
+          tmpFace1[0] = c2v_g(icg,3);
+          tmpFace1[1] = c2v_g(icg,2);
+          tmpFace1[2] = c2v_g(icg,6);
+          tmpFace1[3] = c2v_g(icg,7);
           break;
       }
       break;
@@ -1971,10 +2100,36 @@ int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2)
   }
 
   // Now, compare the two faces to see the relative orientation [rotation]
-  if      (iv2ivg[tmpFace1[0]] == tmpFace2[0]) return 0;
-  else if (iv2ivg[tmpFace1[1]] == tmpFace2[0]) return 1;
-  else if (iv2ivg[tmpFace1[2]] == tmpFace2[0]) return 2;
-  else if (iv2ivg[tmpFace1[3]] == tmpFace2[0]) return 3;
+  if      (tmpFace1[0] == tmpFace2[0]) return 0;
+  else if (tmpFace1[1] == tmpFace2[0]) return 1;
+  else if (tmpFace1[2] == tmpFace2[0]) return 2;
+  else if (tmpFace1[3] == tmpFace2[0]) return 3;
+  else if (isPeriodic) {
+    if (!comparePeriodicMPI(tmpFace1,tmpFace2))
+      FatalError("Periodic MPI faces improperly matched.");
+
+    point c1, c2;
+    for (auto iv:tmpFace1) c1 += point(xv_g[iv]);
+    for (auto iv:tmpFace2) c2 += point(xv_g[iv]);
+    c1 /= tmpFace1.size();
+    c2 /= tmpFace2.size();
+    Vec3 fDist = c2 - c1;
+    fDist /= sqrt(fDist*fDist); // Normalize
+
+    point pt1;
+    point pt2 = point(xv_g[tmpFace2[0]]);
+
+    for (int i=0; i<4; i++) {
+      pt1 = point(xv_g[tmpFace1[i]]);
+      Vec3 ptDist = pt2 - pt1;        // Vector between points
+      ptDist /= sqrt(ptDist*ptDist); // Normalize
+
+      double dot = fDist*ptDist;
+      if (abs(1-abs(dot))<params->periodicTol) return i; // These points align
+    }
+    // Matching points not found
+    FatalError("Unable to orient periodic MPI faces using simple algorithm.");
+  }
   else FatalError("MPI faces improperly matched.");
 
 }
@@ -2054,6 +2209,8 @@ void geo::partitionMesh(void)
   c2ne_g    = c2nf;     c2nf.resize(0);
   bndPts_g  = bndPts;   bndPts.setup(0,0);
   nBndPts_g = nBndPts;  nBndPts.resize(0);
+
+  cout << "nVerts = " << xv_g.getDim0() << endl;
 
   // Each processor will now grab its own data according to its rank (proc ID)
   for (int i=0; i<nEles; i++) {

@@ -114,8 +114,8 @@ T* Array<T,N>::operator[](int inRow)
     return &data[inRow*dims[1]];
   }
   else {
-    cout << "inRow = " << inRow << endl;
-    //FatalError("Operator[]: Attempted out-of-bounds access in matrix.");
+    cout << "inRow = " << inRow << ", nRows = " << this->dims[0] << endl;
+    FatalError("Operator[]: Attempted out-of-bounds access in matrix.");
   }
 }
 

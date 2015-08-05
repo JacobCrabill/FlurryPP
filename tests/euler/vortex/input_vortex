@@ -3,7 +3,7 @@ order         3    # Polynomial order to use
 dt            .0000125  # Time step size
 timeType      4
 
-riemann_type  0    # Advection: use 0; N-S: 0: Rusanov, 1: Roe
+riemannType  0    # Advection: use 0; N-S: 0: Rusanov, 1: Roe
 nDims         2
 
 advectVx      1    # Advection wave speed, x-component
