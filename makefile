@@ -46,6 +46,7 @@ DESTDIR       = ./bin
 
 OBJECTS = 	obj/global.o \
 		obj/funcs.o \
+		obj/points.o \
 		obj/matrix.o \
 		obj/input.o \
 		obj/ele.o \
@@ -62,7 +63,8 @@ OBJECTS = 	obj/global.o \
 		obj/flux.o \
 		obj/flurry.o \
 		obj/solver.o \
-		obj/solver_overset.o
+		obj/solver_overset.o \
+		obj/superMesh.o
 
 ifeq ($(mpi),n)
 # Don't compile TIOGA objects
@@ -139,6 +141,9 @@ obj/global.o: src/global.cpp include/global.hpp \
 obj/funcs.o: src/funcs.cpp include/funcs.hpp include/global.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/funcs.o src/funcs.cpp
 
+obj/points.o: src/points.cpp include/points.hpp include/funcs.hpp include/global.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/points.o src/points.cpp
+
 obj/matrix.o: src/matrix.cpp include/matrix.hpp \
 		include/error.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/matrix.o src/matrix.cpp
@@ -189,8 +194,7 @@ obj/geo.o: src/geo.cpp src/geo_overset.cpp include/geo.hpp \
 		include/ele.hpp \
 		include/face.hpp \
 		include/operators.hpp \
-		include/polynomials.hpp \
-		include/geo.inl
+		include/polynomials.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/geo.o src/geo.cpp
 
 obj/geo_overset.o: src/geo_overset.cpp include/geo.hpp \
@@ -274,6 +278,12 @@ obj/solver_overset.o: src/solver_overset.cpp include/solver.hpp \
 		include/geo.hpp \
 		include/input.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/solver_overset.o src/solver_overset.cpp
+
+obj/superMesh.o: src/superMesh.cpp include/superMesh.hpp \
+	include/global.hpp \
+	include/matrix.hpp \
+	include/geo.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/superMesh.o src/superMesh.cpp
 	
 obj/ADT.o: lib/tioga/src/ADT.C lib/tioga/src/ADT.h \
   	lib/tioga/src/codetypes.h \

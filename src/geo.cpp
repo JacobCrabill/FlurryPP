@@ -2289,5 +2289,3 @@ void geo::partitionMesh(void)
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
-
-#include "../include/geo.inl"

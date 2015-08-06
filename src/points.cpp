@@ -1,7 +1,22 @@
-#include "global.hpp"
-#include "geo.hpp"
+/*!
+ * \file points.cpp
+ * \brief Functions related to solution, flux, and quadrature points
+ *
+ * \author - Jacob Crabill
+ *           Aerospace Computing Laboratory (ACL)
+ *           Aero/Astro Department. Stanford University
+ *
+ * \version 0.0.1
+ *
+ * Flux Reconstruction in C++ (Flurry++) Code
+ * Copyright (C) 2015 Jacob Crabill.
+ *
+ */
+#include "points.hpp"
 
-vector<point> geo::getLocSpts(int eType, int order)
+#include <sstream>
+
+vector<point> getLocSpts(int eType, int order, string sptsType)
 {
   vector<point> outPts;
 
@@ -366,7 +381,7 @@ vector<point> geo::getLocSpts(int eType, int order)
   }
   else if (eType == QUAD) {
     // Tensor-product element
-    vector<double> spts1D = getPts1D(params->sptsTypeQuad,order);
+    vector<double> spts1D = getPts1D(sptsType,order);
     outPts.resize((order+1)*(order+1));
     for (int i=0; i<order+1; i++) {
       for (int j=0; j<order+1; j++) {
@@ -377,7 +392,7 @@ vector<point> geo::getLocSpts(int eType, int order)
   }
   else if (eType == HEX) {
     // Tensor-product element
-    vector<double> spts1D = getPts1D(params->sptsTypeQuad,order);
+    vector<double> spts1D = getPts1D(sptsType,order);
     outPts.resize((order+1)*(order+1)*(order+1));
     for (int k=0; k<order+1; k++) {
       for (int j=0; j<order+1; j++) {
@@ -393,14 +408,14 @@ vector<point> geo::getLocSpts(int eType, int order)
   return outPts;
 }
 
-vector<point> geo::getLocFpts(int eType, int order)
+vector<point> getLocFpts(int eType, int order, string sptsType)
 {
   vector<point> outPts;
   vector<double> pts1D;
 
   if (eType == TRI) {
     outPts.resize(3*(order+1));
-    pts1D = getPts1D(params->sptsTypeTri,order);
+    pts1D = getPts1D(sptsType,order);
     for (int i=0; i<order+1; i++) {
       // Face 0
       outPts[i].x = pts1D[i];
@@ -415,7 +430,7 @@ vector<point> geo::getLocFpts(int eType, int order)
   }
   else if (eType == QUAD) {
     outPts.resize(4*(order+1));
-    pts1D = getPts1D(params->sptsTypeQuad,order);
+    pts1D = getPts1D(sptsType,order);
     for (int i=0; i<order+1; i++) {
       // Face 0
       outPts[i].x = pts1D[i];
@@ -434,7 +449,7 @@ vector<point> geo::getLocFpts(int eType, int order)
   else if (eType == HEX) {
     int P12 = (order+1)*(order+1);
     outPts.resize(6*P12);
-    pts1D = getPts1D(params->sptsTypeQuad,order);
+    pts1D = getPts1D(sptsType,order);
     // Flux points are ordered such that, as seen from inside the
     // element, the id's increase btm-left->top-right fashion on
     // each face, starting with lowest dimension first ('x' or 'y')
@@ -472,7 +487,7 @@ vector<point> geo::getLocFpts(int eType, int order)
   return outPts;
 }
 
-vector<double> geo::getPts1D(string ptsType, int order)
+vector<double> getPts1D(string ptsType, int order)
 {
   vector<double> outPts(order+1);
 
@@ -670,7 +685,7 @@ vector<double> geo::getPts1D(string ptsType, int order)
   return outPts;
 }
 
-vector<double> geo::getQptWeights(int order)
+vector<double> getQptWeights(int order, int nDims)
 {
   // Tensor-product elements
   vector<double> qwts1D = getQptWeights1D(order);
@@ -698,7 +713,7 @@ vector<double> geo::getQptWeights(int order)
 }
 
 
-vector<double> geo::getQptWeights1D(int order)
+vector<double> getQptWeights1D(int order)
 {
   // Order here refers to the order of a polynomial fit through
   // the Gauss points, not the order of accuracy of integration
