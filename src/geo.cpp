@@ -1101,6 +1101,16 @@ void geo::readGmsh(string fileName)
           meshFile >> c2v_tmp[14] >> c2v_tmp[15] >> c2v_tmp[16] >> c2v_tmp[19] >> c2v_tmp[17] >> c2v_tmp[18];
           break;
 
+        case 4:
+          c2nv.push_back(4);
+          c2nf.push_back(4);
+          ctype.push_back(HEX);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[4];
+          c2v_tmp[3] = 2;
+          c2v_tmp[5] = c2v_tmp[4];
+          c2v_tmp[6] = c2v_tmp[4];
+          c2v_tmp[6] = c2v_tmp[4];
+          break;
 
         case 6:
           // Linear prism; read as collapsed-face hex
@@ -1144,6 +1154,10 @@ void geo::readGmsh(string fileName)
       switch(eType) {
         case 1: // Linear edge
           nPtsFace = 2;
+          break;
+
+        case 2: // Linear triangle
+          nPtsFace = 3;
           break;
 
         case 3: // Linear quad
