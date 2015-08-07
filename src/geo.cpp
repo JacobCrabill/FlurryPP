@@ -1595,31 +1595,9 @@ void geo::processPeriodicBoundaries(void)
   nBndFaces = bndFaces.size();
   nIntFaces = intFaces.size();
 
-#ifndef _NO_MPI
-  //if (nUnmatched>0)
-  //  processPeriodicMPI();
-#else
+#ifdef _NO_MPI
   if (nUnmatched>0)
     FatalError("Unmatched periodic faces exist.");
-#endif
-}
-
-void geo::processPeriodicMPI(void)
-{
-#ifndef _NO_MPI
-  // First, get list of all unmatched periodic faces
-  vector<int> iPeriodic(0), fPeriodic(0);
-
-  for (int i=0; i<nBndFaces; i++) {
-    if (bcType[i] == PERIODIC) {
-      iPeriodic.push_back(i);
-      fPeriodic.push_back(bndFaces[i]);
-    }
-  }
-
-  int nPeriodic = iPeriodic.size();
-
-
 #endif
 }
 

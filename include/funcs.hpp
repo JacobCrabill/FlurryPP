@@ -52,3 +52,9 @@ void dshape_tet(point &in_rs, matrix<double> &out_dshape);
 void getSimplex(int nDims, vector<double> x0, double L, matrix<double> X);
 
 vector<int> getOrder(vector<double> &data);
+
+//! Given points for a cell's face and a point inside the cell, get the outward unit normal
+Vec3 getFaceNormalTri(vector<point> &facePts, point &xc);
+
+//! Given points for a cell's face and a point inside the cell, get the outward unit normal
+Vec3 getFaceNormalQuad(vector<point> &facePts, point &xc);

@@ -184,9 +184,6 @@ private:
   //! Match up pairs of periodic boundary faces
   void processPeriodicBoundaries(void);
 
-  //! Match up periodic faces across processes
-  void processPeriodicMPI();
-
   //! Check if two given periodic edges match up
   bool checkPeriodicFaces(int *edge1, int *edge2);
   bool checkPeriodicFaces3D(vector<int> &face1, vector<int> &face2);

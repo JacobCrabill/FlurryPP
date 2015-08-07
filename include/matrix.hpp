@@ -86,9 +86,46 @@ public:
   vector<T> data;
 };
 
+template<typename T>
+class Array2D : public Array<T,2>
+{
+public:
+
+  Array2D();
+
+  Array2D(uint inDim0, uint inDim1);
+
+  /*! Standard (i,j) access operator */
+  T &operator()(int i, int j=0);
+
+  /*! Insert a row into the Array at location rowNum [zero-indexed], with the default being at the end */
+  void insertRow(const vector<T> &vec, int rowNum = -1);
+
+  void insertRow(T* vec, int rowNum, int length);
+
+  void insertRowUnsized(const vector<T> &vec);
+
+  void insertRowUnsized(T* vec, uint length);
+
+  //! Insert a column at the end of the Array
+  void addCol(void);
+
+  //! Insert a column at the end of the Array
+  void addCols(int nCols);
+
+  //! Remove columns from the end of the Array
+  void removeCols(int nCols = 1);
+
+  vector<T> getRow(uint row);
+
+  //! Return a sub-Array view of the Array using the rows in ind
+  Array2D<T> getRows(vector<int> ind);
+
+  vector<T> getCol(int col);
+};
 
 template <typename T>
-class matrix : public Array<T,2> {
+class matrix : public Array2D<T> {
 public:
 
   matrix();
@@ -98,9 +135,6 @@ public:
   void initializeToZero(void);
 
   void initializeToValue(T val);
-
-  /*! Standard (i,j) access operator */
-  T &operator()(int i, int j=0);
 
   //! Adds the Array a*A to current Array (M += a*A)
   void addMatrix(matrix<T> &A, double a=1);
@@ -129,39 +163,14 @@ public:
   //! Multiplies the Array by the vector A and stores the result in B (B = M*A)
   void timesVector(vector<T> &A, vector<T> &B);
 
-  /*! Insert a row into the Array at location rowNum [zero-indexed], with the default being at the end */
-  void insertRow(const vector<T> &vec, int rowNum = -1);
-
-  void insertRow(T* vec, int rowNum, int length);
-
-  void insertRowUnsized(const vector<T> &vec);
-
-  void insertRowUnsized(T* vec, uint length);
-
-  //! Insert a column at the end of the Array
-  void addCol(void);
-
-  //! Insert a column at the end of the Array
-  void addCols(int nCols);
-
-  //! Remove columns from the end of the Array
-  void removeCols(int nCols = 1);
-
-  vector<T> getRow(uint row);
-
-  //! Return a sub-Array view of the Array using the rows in ind
-  matrix<T> getRows(vector<int> ind);
-
-  vector<T> getCol(int col);
-
-  /*! Prints the contents of the Array to the console */
-  void print(void);
-
   /*! Invert the current Matrix using Gauss elimination with pivots */
   matrix<T> invertMatrix(void);
 
   /*! Reshape a 1D vector into a 2D Array */
   void vecToMatrixResize(vector<T> &A);
+
+  /*! Prints the contents of the Array to the console */
+  void print(void);
 
   /* --- Search Operations --- */
 

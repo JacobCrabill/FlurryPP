@@ -31,6 +31,22 @@ Array<T,N>::Array(uint inNDim0, uint inNDim1, uint inDim2, uint inDim3)
 }
 
 template<typename T>
+Array2D<T>::Array2D()
+{
+  this->data.resize(0);
+  this->dims[0] = 0;
+  this->dims[1] = 0;
+}
+
+template<typename T>
+Array2D<T>::Array2D(uint inNDim0, uint inNDim1)
+{
+  this->data.resize(inNDim0*inNDim1);
+  this->dims[0] = inNDim0;
+  this->dims[1] = inNDim1;
+}
+
+template<typename T>
 matrix<T>::matrix()
 {
   this->data.resize(0);
@@ -45,7 +61,6 @@ matrix<T>::matrix(uint inNDim0, uint inNDim1)
   this->dims[0] = inNDim0;
   this->dims[1] = inNDim1;
 }
-
 
 template<typename T,uint N>
 Array<T,N>::Array(const Array<T,N> &inMatrix)
@@ -135,7 +150,7 @@ T& Array<T,N>::operator()(int i, int j, int k, int l)
 }
 
 template<typename T>
-T& matrix<T>::operator()(int i, int j)
+T& Array2D<T>::operator()(int i, int j)
 {
   if (i<(int)this->dims[0] && i>=0 && j<(int)this->dims[1] && j>=0) {
     return this->data[j+this->dims[1]*i];
@@ -250,7 +265,7 @@ void matrix<T>::timesVector(vector<T> &A, vector<T> &B)
 }
 
 template<typename T>
-void matrix<T>::insertRow(const vector<T> &vec, int rowNum)
+void Array2D<T>::insertRow(const vector<T> &vec, int rowNum)
 {
   if (this->dims[1]!= 0 && vec.size()!=this->dims[1])
     FatalError("Attempting to assign row of wrong size to matrix.");
@@ -268,7 +283,7 @@ void matrix<T>::insertRow(const vector<T> &vec, int rowNum)
 }
 
 template<typename T>
-void matrix<T>::insertRow(T *vec, int rowNum, int length)
+void Array2D<T>::insertRow(T *vec, int rowNum, int length)
 {
   if (this->dims[1]!=0 && length!=(int)this->dims[1])
     FatalError("Attempting to assign row of wrong size to matrix.");
@@ -289,7 +304,7 @@ void matrix<T>::insertRow(T *vec, int rowNum, int length)
 
 
 template<typename T>
-void matrix<T>::insertRowUnsized(const vector<T> &vec)
+void Array2D<T>::insertRowUnsized(const vector<T> &vec)
 {
   // Add row to end, and resize matrix (add columns) if needed
   if (vec.size() > this->dims[1]) addCols(vec.size()-this->dims[1]);
@@ -303,7 +318,7 @@ void matrix<T>::insertRowUnsized(const vector<T> &vec)
 }
 
 template<typename T>
-void matrix<T>::insertRowUnsized(T* vec, uint length)
+void Array2D<T>::insertRowUnsized(T* vec, uint length)
 {
   // Add row to end, and resize matrix (add columns) if needed
   if (length > this->dims[1]) addCols(length-this->dims[1]);
@@ -317,7 +332,7 @@ void matrix<T>::insertRowUnsized(T* vec, uint length)
 }
 
 template<typename T>
-void matrix<T>::addCol(void)
+void Array2D<T>::addCol(void)
 {
   typename vector<T>::iterator it;
   for (uint row=0; row<this->dims[0]; row++) {
@@ -328,7 +343,7 @@ void matrix<T>::addCol(void)
 }
 
 template<typename T>
-void matrix<T>::addCols(int nCols)
+void Array2D<T>::addCols(int nCols)
 {
   typename vector<T>::iterator it;
   for (uint row=0; row<this->dims[0]; row++) {
@@ -339,7 +354,7 @@ void matrix<T>::addCols(int nCols)
 }
 
 template<typename T>
-void matrix<T>::removeCols(int nCols)
+void Array2D<T>::removeCols(int nCols)
 {
   if (nCols == 0) return;
 
@@ -352,7 +367,7 @@ void matrix<T>::removeCols(int nCols)
 }
 
 template<typename T>
-vector<T> matrix<T>::getRow(uint row)
+vector<T> Array2D<T>::getRow(uint row)
 {
   if (row > this->dims[0]) FatalError("Attempting to grab row beyond end of matrix.");
 
@@ -362,7 +377,7 @@ vector<T> matrix<T>::getRow(uint row)
 }
 
 template<typename T>
-matrix<T> matrix<T>::getRows(vector<int> ind)
+Array2D<T> Array2D<T>::getRows(vector<int> ind)
 {
   matrix<T> out;
   for (auto& i:ind) out.insertRow(&(this->data[i*this->dims[1]]),-1,this->dims[1]);
@@ -370,7 +385,7 @@ matrix<T> matrix<T>::getRows(vector<int> ind)
 }
 
 template<typename T>
-vector<T> matrix<T>::getCol(int col)
+vector<T> Array2D<T>::getCol(int col)
 {
   vector<T> out;
   for (uint i=0; i<this->dims[0]; i++) out.push_back(this->data[i*this->dims[1]+col]);
@@ -380,12 +395,13 @@ vector<T> matrix<T>::getCol(int col)
 template<typename T>
 void matrix<T>::print()
 {
-//  for (uint i=0; i<this->dims[0]; i++) {
-//    for (uint j=0; j<this->dims[1]; j++) {
-//      std::cout << std::left << std::setw(10) << std::setprecision(8) << data[i*this->dims[1]+j] << " ";
-//    }
-//    cout << endl;
-//  }
+  cout.precision(8);
+  for (uint i=0; i<this->dims[0]; i++) {
+    for (uint j=0; j<this->dims[1]; j++) {
+      cout << setw(10) << left << this->data[i*this->dims[1]+j] << " ";
+    }
+    cout << endl;
+  }
 }
 
 template<typename T>
@@ -585,6 +601,10 @@ template class Array<set<int>,1>;
 template class Array<set<int>,2>;
 template class Array<set<int>,3>;
 template class Array<set<int>,4>;
+
+template class Array2D<int>;
+template class Array2D<double>;
+template class Array2D<point>;
 
 template class matrix<int>;
 template class matrix<double>;
