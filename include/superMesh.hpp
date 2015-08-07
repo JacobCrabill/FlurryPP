@@ -17,12 +17,21 @@
  */
 #pragma once
 
+#include <array>
 #include <vector>
 
 #include "global.hpp"
 
 #include "geo.hpp"
 #include "matrix.hpp"
+
+struct tetra
+{
+  array<point,4> nodes;    //! Positions of nodes in tet
+  //vector<point> qpts;      //! Locations of quadrature points in tet
+  //vector<double> weights;  //! Weights associated with each quadrature point
+  int donorID;             //! Donor-grid cell ID to which tetra belongs
+};
 
 class superMesh
 {
@@ -46,8 +55,21 @@ public:
   int order;               //! Order of quadrature rule to use
   int nQpts_tet;           //! Number of quadrature points per tet (based on order)
 
-  vector<point> locQpts;    //! Locations of quadrature points in reference tetrahedron
+  vector<point> qpts;       //! Locations of quadrature points in reference tetrahedron
+  vector<double> weights;   //! Quadrature weights
   vector<double> shapeQpts; //! Values of tetrahedron shape basis at quadrature points
+
+  /* !!! -------------------------------------------- !!! */
+  /* use only one of these methods: the 'tetra' method or the Array/'big node list' version */
+
+  vector<tetra> tets;  //! Tetrahedrons comprising the supermesh
+
+  /* !!! -------------------------------------------- !!! */
+
+  Array<point,2> tetNodes; //! Physical nodal positions of each tet in supermesh
+  vector<int> tetDonorID;  //! Donor-grid cell ID for each tet
+
+  /* !!! -------------------------------------------- !!! */
 
   /* ---- Member Functions ---- */
 
@@ -68,9 +90,9 @@ public:
 private:
 
   //! Subdivide the given hexahedron into 5 tetrahedrons
-  Array<double,3> splitHexIntoTet(matrix<double> &hexNodes);
+  vector<tetra> splitHexIntoTet(vector<point> &hexNodes);
 
   //! Use the given face and outward normal to clip the given tet and return the new set of tets
-  Array<double,3> clipTet(matrix<double> &tetNodes, matrix<double> &clipFace, Vec3 &norm);
+  vector<tetra> clipTet(tetra &tet, vector<point> &clipFace, Vec3 &norm);
 
 };

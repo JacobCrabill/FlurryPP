@@ -20,7 +20,6 @@ SOURCES += src/global.cpp \
     src/flux.cpp \
     src/flurry.cpp \
     src/solver.cpp \
-    include/geo.inl \
     src/intFace.cpp \
     src/boundFace.cpp \
     src/mpiFace.cpp \
@@ -34,7 +33,9 @@ SOURCES += src/global.cpp \
     src/funcs.cpp \
     src/solver_overset.cpp \
     src/overFace.cpp \
-    src/geo_overset.cpp
+    src/geo_overset.cpp \
+    src/points.cpp \
+    src/superMesh.cpp
 		   
 HEADERS += include/global.hpp \
     include/matrix.hpp \
@@ -61,7 +62,9 @@ HEADERS += include/global.hpp \
     lib/tioga/src/tiogaInterface.h \
     lib/tioga/src/utils.h \
     include/funcs.hpp \
-    include/overFace.hpp
+    include/overFace.hpp \
+    include/points.hpp \
+    include/superMesh.hpp
 
 DISTFILES += \
     README.md \
