@@ -74,14 +74,13 @@ void superMesh::buildSuperMesh(void)
 
 vector<tetra> superMesh::splitHexIntoTet(vector<point> &hexNodes)
 {
-  vector<tetra> newTets[5];
+  vector<tetra> newTets(5);
 
-  vector<vector<int>> ind = {{0,1,4,3},{2,1,6,3},{5,1,6,4},{7,3,4,6},{1,3,6,4}};
+  int ind[5][4] = {{0,1,4,3},{2,1,6,3},{5,1,6,4},{7,3,4,6},{1,3,6,4}};
 
   for (int i=0; i<5; i++)
     for (int j=0; j<4; j++)
-      for (int k=0; k<3; k++)
-        newTets[i].nodes[j] = hexNodes[ind[i][j]];
+      newTets[i].nodes[j] = hexNodes[ind[i][j]];
 
   return newTets;
 }
@@ -152,7 +151,7 @@ vector<tetra> superMesh::clipTet(tetra &tet, vector<point> &clipFace, Vec3 &norm
       array<int,2> kill, keep;
       int m=0, n=0;
       for (int i=0; i<4; i++) {
-        if (deadPts.find(i)) {
+        if (deadPts.count(i)) {
           kill[m] = i;
           m++;
         }
@@ -217,7 +216,7 @@ vector<tetra> superMesh::clipTet(tetra &tet, vector<point> &clipFace, Vec3 &norm
       // The opposite of case 1; new tet is one corner of original tet
       int keep = -1;
       for (int i=0; i<4; i++) {
-        if (!deadPts.find(i)) {
+        if (!deadPts.count(i)) {
           keep = i;
           break;
         }
@@ -237,7 +236,7 @@ vector<tetra> superMesh::clipTet(tetra &tet, vector<point> &clipFace, Vec3 &norm
       for (int i=0; i<3; i++) {
         Vec3 ab = tet.nodes[ePts[i]] - tet.nodes[keep];
         Vec3 ac = xc - tet.nodes[keep];
-        outTets.nodes[i] = ab*((norm*ac)/(norm*ab)) + tet.nodes[keep];
+        outTets[0].nodes[i] = ab*((norm*ac)/(norm*ab)) + tet.nodes[keep];
       }
       break;
     }

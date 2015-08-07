@@ -1535,7 +1535,7 @@ void geo::processPeriodicBoundaries(void)
   int nUnmatched = 0;
 
   for (auto& i:iPeriodic) {
-    if (bndFaces[i]==-1) continue;
+    if (bndFaces[i]==-10) continue;
     bool match = false;
     for (auto& j:iPeriodic) {
       if (i==j || bndFaces[i]==-10 || bndFaces[j]==-10) continue;

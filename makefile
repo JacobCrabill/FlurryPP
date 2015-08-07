@@ -185,7 +185,7 @@ obj/operators.o: src/operators.cpp include/operators.hpp \
 		include/polynomials.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/operators.o src/operators.cpp
 
-obj/geo.o: src/geo.cpp src/geo_overset.cpp include/geo.hpp \
+obj/geo.o: src/geo.cpp include/geo.hpp \
 		include/global.hpp \
 		include/error.hpp \
 		include/matrix.hpp \

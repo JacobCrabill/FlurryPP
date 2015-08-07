@@ -840,10 +840,10 @@ void getQuadRuleTet(int order, vector<point> &locQpts, vector<double> &weights)
       double wt3 = .042546020777082;
       weights = {wt1,wt1,wt1,wt1,wt2,wt2,wt2,wt2,wt3,wt3,wt3,wt3,wt3,wt3};
     }
-  }
-  default:  {
-    stringstream ss; ss << order;
-    string errMsg = "Tetrahedron quadrature rules for order " + ss.str() + " not implemented.";
-    FatalError(errMsg.c_str());
+    default:  {
+      stringstream ss; ss << order;
+      string errMsg = "Tetrahedron quadrature rules for order " + ss.str() + " not implemented.";
+      FatalError(errMsg.c_str());
+    }
   }
 }
