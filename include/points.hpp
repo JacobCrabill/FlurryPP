@@ -32,3 +32,6 @@ vector<double> getQptWeights(int order, int nDims);
 
 //! Get the Gauss quadrature weights for the Gauss points of the given order [1D]
 vector<double> getQptWeights1D(int order);
+
+//! Get quadrature rule (points & weights) for a tetrahedron for a given order
+void getQuadRuleTet(int order, vector<point> &locQpts, vector<double> &weights);

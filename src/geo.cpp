@@ -1102,6 +1102,7 @@ void geo::readGmsh(string fileName)
           break;
 
         case 4:
+          // Linear tetrahedron; read as collapsed-face hex
           c2nv.push_back(4);
           c2nf.push_back(4);
           ctype.push_back(HEX);
