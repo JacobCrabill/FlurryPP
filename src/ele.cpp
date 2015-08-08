@@ -855,7 +855,8 @@ void ele::setInitialCondition()
 
         double f = 1.0 - (x*x + y*y);
 
-        rho = pow(1. - eps*eps*(gamma-1.)/(8.*gamma*pi*pi)*exp(f), 1.0/(gamma-1.0));
+        // Limiting rho to 1e-3 to avoid negative density/pressure issues
+        rho = max(pow(1. - eps*eps*(gamma-1.)/(8.*gamma*pi*pi)*exp(f), 1.0/(gamma-1.0) + 1e-5), 1e-3);
         vx = 1. - eps*y / (2.*pi) * exp(f/2.);
         vy = 1. + eps*x / (2.*pi) * exp(f/2.);
         p = pow(rho,gamma);
