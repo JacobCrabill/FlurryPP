@@ -1101,6 +1101,17 @@ void geo::readGmsh(string fileName)
           meshFile >> c2v_tmp[14] >> c2v_tmp[15] >> c2v_tmp[16] >> c2v_tmp[19] >> c2v_tmp[17] >> c2v_tmp[18];
           break;
 
+        case 4:
+          // Linear tetrahedron; read as collapsed-face hex
+          c2nv.push_back(4);
+          c2nf.push_back(4);
+          ctype.push_back(HEX);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[4];
+          c2v_tmp[3] = 2;
+          c2v_tmp[5] = c2v_tmp[4];
+          c2v_tmp[6] = c2v_tmp[4];
+          c2v_tmp[6] = c2v_tmp[4];
+          break;
 
         case 6:
           // Linear prism; read as collapsed-face hex
@@ -1144,6 +1155,10 @@ void geo::readGmsh(string fileName)
       switch(eType) {
         case 1: // Linear edge
           nPtsFace = 2;
+          break;
+
+        case 2: // Linear triangle
+          nPtsFace = 3;
           break;
 
         case 3: // Linear quad
@@ -1520,7 +1535,7 @@ void geo::processPeriodicBoundaries(void)
   int nUnmatched = 0;
 
   for (auto& i:iPeriodic) {
-    if (bndFaces[i]==-1) continue;
+    if (bndFaces[i]==-10) continue;
     bool match = false;
     for (auto& j:iPeriodic) {
       if (i==j || bndFaces[i]==-10 || bndFaces[j]==-10) continue;
@@ -2289,5 +2304,3 @@ void geo::partitionMesh(void)
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
-
-#include "../include/geo.inl"

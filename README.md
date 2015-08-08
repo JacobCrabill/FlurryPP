@@ -18,7 +18,7 @@ Shock capturing has been implemented, but is still under development and is not 
 
 Moving grids are supported by the solver, but there are not yet any grid-motion functions implemented beyond a standard test case.
 
-Lastly, overset grids in 3D are supported, utilizing Jay Sitaraman's TIOGA library for hole-blanking whenever solid bodies are embedded inside a mesh.
+Lastly, overset grids in 3D are supported by using the "artificial boundary" method, with Jay Sitaraman's TIOGA library being used for hole-blanking whenever solid bodies are embedded inside a mesh.  Moving overset grids are not quite ready yet, but actively in the works.
 
 Background / Goals of the Project
 =================================

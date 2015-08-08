@@ -22,7 +22,7 @@ static bool abs_compare(int a, int b)
 {
   return (std::abs(a) < std::abs(b));
 }
- 
+
 void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
 {
   // Get access to basic data
@@ -35,8 +35,13 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
   this->eType = eType;
   this->order = order;
 
-  vector<point> loc_spts = Geo->getLocSpts(eType,order);
-  vector<point> loc_fpts = Geo->getLocFpts(eType,order);
+  if (eType == QUAD || eType == HEX)
+    sptsType = params->sptsTypeQuad;
+  else
+    FatalError("Only quads and hexes implemented.");
+
+  vector<point> loc_spts = getLocSpts(eType,order,sptsType);
+  vector<point> loc_fpts = getLocFpts(eType,order,sptsType);
 
   nSpts = loc_spts.size();
   nFpts = loc_fpts.size();
@@ -76,7 +81,7 @@ void oper::setupExtrapolateSptsFpts(vector<point> &loc_fpts)
           opp_spts_to_fpts(fpt,spt) = eval_dubiner_basis_2d(loc_fpts[fpt],spt,order);
           break;
         case QUAD: {
-          vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+          vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
           // First, get the i an j ID of the spt
           ispt = spt%(nSpts/(order+1));
           jspt = floor(spt/(order+1));
@@ -84,7 +89,7 @@ void oper::setupExtrapolateSptsFpts(vector<point> &loc_fpts)
           break;
         }
         case HEX: {
-          vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+          vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
           // First, get the i an j ID of the spt
           kspt = spt/((order+1)*(order+1));
           jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
@@ -120,7 +125,7 @@ void oper::setupExtrapolateSptsMpts(vector<point> &loc_spts)
     case QUAD: {
       uint ispt, jspt;
       opp_spts_to_mpts.setup(4,nSpts);
-      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
         // First, get the i an j ID of the spt
         ispt = spt%(nSpts/(order+1));
@@ -138,7 +143,7 @@ void oper::setupExtrapolateSptsMpts(vector<point> &loc_spts)
       int nv = 8, ne = 12;
       // Have to put extra points on the edges to connect fpts & spts to mpts
       opp_spts_to_mpts.setup(nv+ne*(order+1),nSpts);
-      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
         // First, get the i an j ID of the spt
         kspt = spt/((order+1)*(order+1));
@@ -202,7 +207,7 @@ matrix<double> oper::setupInterpolateSptsIpts(matrix<double> &loc_ipts)
       break;
     }
     case QUAD: {
-      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint ipt=0; ipt<nIpts; ipt++) {
         // Location of the current interpolation point
         point pt = point(loc_ipts[ipt]);
@@ -217,7 +222,7 @@ matrix<double> oper::setupInterpolateSptsIpts(matrix<double> &loc_ipts)
       break;
     }
     case HEX: {
-      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint ipt = 0; ipt < nIpts; ipt++) {
         // Location of the current interpolation point
         point pt = point(loc_ipts[ipt]);
@@ -254,7 +259,7 @@ void oper::getInterpWeights(double* loc_ipt, double* weights)
       break;
     }
     case QUAD: {
-      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
         // Structured I,J indices of current solution point
         uint ispt = spt%(nSpts/(order+1));
@@ -265,7 +270,7 @@ void oper::getInterpWeights(double* loc_ipt, double* weights)
       break;
     }
     case HEX: {
-      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
         // Structured I,J,K indices of current solution point
         uint kspt = spt/((order+1)*(order+1));
@@ -303,7 +308,7 @@ void oper::interpolateSptsToPoints(matrix<double> &Q_spts,matrix<double> &Q_ipts
       break;
     }
     case QUAD: {
-      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint ipt=0; ipt<nIpts; ipt++) {
         // Location of the current interpolation point
         point pt = point(loc_ipts[ipt]);
@@ -321,7 +326,7 @@ void oper::interpolateSptsToPoints(matrix<double> &Q_spts,matrix<double> &Q_ipts
     }
 
     case HEX: {
-      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint ipt = 0; ipt < nIpts; ipt++) {
         // Location of the current interpolation point
         point pt = point(loc_ipts[ipt]);
@@ -359,7 +364,7 @@ void oper::interpolateToPoint(matrix<double> &Q_spts, double* Q_ipts, point &loc
       break;
     }
     case QUAD: {
-      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
         // Structured I,J indices of current solution point
         uint ispt = spt%(nSpts/(order+1));
@@ -373,7 +378,7 @@ void oper::interpolateToPoint(matrix<double> &Q_spts, double* Q_ipts, point &loc
     }
 
     case HEX: {
-      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
         // Structured I,J,K indices of current solution point
         uint kspt = spt/((order+1)*(order+1));
@@ -409,7 +414,7 @@ void oper::interpolateFluxToPoint(vector<matrix<double>> &F_spts, matrix<double>
       break;
     }
     case QUAD: {
-      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
         // Structured I,J indices of current solution point
         uint ispt = spt%(nSpts/(order+1));
@@ -424,7 +429,7 @@ void oper::interpolateFluxToPoint(vector<matrix<double>> &F_spts, matrix<double>
     }
 
     case HEX: {
-      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
         // Structured I,J,K indices of current solution point
         uint kspt = spt/((order+1)*(order+1));
@@ -461,7 +466,7 @@ void oper::setupGradSpts(vector<point> &loc_spts)
     }
   }
   else if (eType == QUAD) {
-    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
     for (dim=0; dim<nDims; dim++) {
       for (spt1=0; spt1<nSpts; spt1++) {
         ispt1 = spt1%(nSpts/(order+1));      // col index - also = to (spt1 - (order+1)*row)
@@ -479,7 +484,7 @@ void oper::setupGradSpts(vector<point> &loc_spts)
     }
   }
   else if (eType == HEX) {
-    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
     for (dim=0; dim<nDims; dim++) {
       for (spt1=0; spt1<nSpts; spt1++) {
         kspt1 = spt1/((order+1)*(order+1));                         // col index - also = to (spt1 - (order+1)*row)
@@ -522,7 +527,7 @@ void oper::setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
     // Not yet implemented
   }
   else if (eType == QUAD) {
-    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
     for(uint spt=0; spt<nSpts; spt++) {
       for(uint fpt=0; fpt<nFpts; fpt++) {
         opp_correction(spt,fpt) = divVCJH_quad(fpt,loc_spts[spt],loc_spts_1D,params->vcjhSchemeQuad,order);
@@ -530,7 +535,7 @@ void oper::setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
     }
   }
   else if (eType == HEX) {
-    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
     for(uint spt=0; spt<nSpts; spt++) {
       for(uint fpt=0; fpt<nFpts; fpt++) {
         opp_correction(spt,fpt) = divVCJH_hex(fpt,loc_spts[spt],loc_spts_1D,params->vcjhSchemeQuad,order);
@@ -641,7 +646,7 @@ void oper::setupVandermonde(vector<point> &loc_spts)
   else if (eType == QUAD) {
     vandermonde1D.setup(order+1,order+1);
     vandermonde2D.setup(nSpts,nSpts);
-    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
     vector<double> loc(nDims);
 
     // Create 1D Vandermonde matrix
@@ -679,7 +684,7 @@ void oper::setupSensingMatrix(void)
     grad_vandermonde.setup(order+1,order+1);
     matrix<double> concentrationMatrix(order+1,order+1);
 
-    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
 
     // create the vandermonde matrix
     for(uint i=0; i<order+1; i++)
@@ -810,7 +815,7 @@ void oper::applyCorrectGradU(matrix<double> &dUc_fpts, vector<matrix<double>> &d
 
 void oper::calcAvgU(matrix<double> &U_spts, vector<double> &detJ_spts, vector<double> &Uavg)
 {
-  auto weights = Geo->getQptWeights(order);
+  auto weights = getQptWeights(order,nDims);
 
   Uavg.assign(nFields,0);
   double vol = 0;

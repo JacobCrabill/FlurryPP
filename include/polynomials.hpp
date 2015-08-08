@@ -45,29 +45,6 @@ double dVCJH_1d(double in_r, int in_mode, int in_order, double in_eta);
 
 // Triangule Dubiner basis
 
-// Bilinear / Biquadratic / etc. shape functions
-
-//! Shape function for linear or quadratic quad (TODO: Generalize to N-noded quad)
-void shape_quad(const point &in_rs, vector<double> &out_shape, int nNodes);
-void shape_quad(const point &in_rs, double* out_shape, int nNodes);
-
-//! Derivative of shape functions for linear or quadratic quad
-void dshape_quad(const point &in_rs, matrix<double> &out_dshape, int nNodes);
-
-//! Shape function for linear hexahedron
-void shape_hex(const point &in_rst, vector<double> &out_shape, int nNodes);
-void shape_hex(const point &in_rst, double* out_shape, int nNodes);
-
-//! Derivative of shape functions for linear hexahedron
-void dshape_hex(const point &in_rst, matrix<double> &out_dshape, int nNodes);
-
-//! Shape function for linear triangle (TODO: Generalize to N-noded tri)
-void shape_tri(const point &in_rs, vector<double> &out_shape);
-void shape_tri(const point &in_rs, double* out_shape);
-
-//! Derivative of shape functions for linear triangle
-void dshape_tri(point &in_rs, matrix<double> &out_dshape);
-
 //! Evaluate a mode of the [alpha,beta] Jacobi polynomial at a point
 double eval_jacobi(double in_r, int in_alpha, int in_beta, int in_mode);
 

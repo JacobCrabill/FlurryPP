@@ -16,7 +16,7 @@
  *
  */
 
-#include "../include/ele.hpp"
+#include "ele.hpp"
 
 #include <sstream>
 
@@ -58,8 +58,13 @@ void ele::setup(input *inParams, geo *inGeo)
   order = params->order;
   nDims = params->nDims;
 
-  loc_spts = Geo->getLocSpts(eType,order);
-  loc_fpts = Geo->getLocFpts(eType,order);
+  if (eType == QUAD || eType == HEX)
+    sptsType = params->sptsTypeQuad;
+  else
+    FatalError("Only quads and hexes implemented.");
+
+  loc_spts = getLocSpts(eType,order,sptsType);
+  loc_fpts = getLocFpts(eType,order,sptsType);
 
   nSpts = loc_spts.size();
   nFpts = loc_fpts.size();
@@ -1728,7 +1733,7 @@ void ele::setPpts(void)
     }
 
     // Get edge points
-    auto locPts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    auto locPts1D = getPts1D(params->sptsTypeQuad,order);
     for (int i=0; i<order+1; i++) {
       double x1 = locPts1D[i];
       point pt, loc;
@@ -1875,8 +1880,8 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
     FatalError("Cannot restart a simulation using a different polynomial order.");
   }
 
-  loc_spts = Geo->getLocSpts(eType,order);
-  loc_fpts = Geo->getLocFpts(eType,order);
+  loc_spts = getLocSpts(eType,order,sptsType);
+  loc_fpts = getLocFpts(eType,order,sptsType);
 
   pos_spts.resize(nSpts);
   pos_fpts.resize(nFpts);
@@ -2121,7 +2126,7 @@ vector<double> ele::getNormResidual(int normType)
   vector<double> res(nFields,0);
 
   // Integrating residual over element using Gaussian integration
-  auto weights = Geo->getQptWeights(order);
+  auto weights = getQptWeights(order,nDims);
 
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {

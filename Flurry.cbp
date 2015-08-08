@@ -31,12 +31,12 @@
 				<Option compiler="icc" />
 				<Option use_console_runner="0" />
 				<MakeCommands>
-					<Build command="$make -f $makefile $target" />
-					<CompileFile command="$make -f $makefile $file" />
+					<Build command="$make -f $makefile $target mpi=n" />
+					<CompileFile command="$make -f $makefile $file mpi=n" />
 					<Clean command="$make -f $makefile clean" />
 					<DistClean command="$make -f $makefile distclean$target" />
-					<AskRebuildNeeded command="$make -q -f $makefile $target" />
-					<SilentBuild command="$make -s -f $makefile $target" />
+					<AskRebuildNeeded command="$make -q -f $makefile $target mpi=n" />
+					<SilentBuild command="$make -s -f $makefile $target mpi=n" />
 				</MakeCommands>
 			</Target>
 			<Target title="mpi">
@@ -88,10 +88,8 @@
 		<Unit filename="include/flux.hpp">
 			<Option target="Debug" />
 		</Unit>
+		<Unit filename="include/funcs.hpp" />
 		<Unit filename="include/geo.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/geo.inl">
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="include/global.hpp">
@@ -118,19 +116,18 @@
 		<Unit filename="include/output.hpp">
 			<Option target="Debug" />
 		</Unit>
+		<Unit filename="include/points.hpp" />
 		<Unit filename="include/polynomials.hpp">
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="include/solver.hpp">
 			<Option target="Debug" />
 		</Unit>
+		<Unit filename="include/superMesh.hpp" />
 		<Unit filename="lib/tioga/driver/checkfiles.f90">
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="lib/tioga/driver/gridutils.f90">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/driver/makefile">
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="lib/tioga/driver/modules.f90">
@@ -153,70 +150,19 @@
 		<Unit filename="lib/tioga/src/MeshBlock.h">
 			<Option target="Debug" />
 		</Unit>
-		<Unit filename="lib/tioga/src/bookKeeping.C">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/buildADTrecursion.c">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
 		<Unit filename="lib/tioga/src/cellVolume.f90">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/checkContainment.C">
-			<Option compilerVar="CC" />
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="lib/tioga/src/codetypes.h">
 			<Option target="Debug" />
 		</Unit>
-		<Unit filename="lib/tioga/src/computeCellVolume.c">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
 		<Unit filename="lib/tioga/src/computeCellVolume.f90">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/dataUpdate.C">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/exchangeBoxes.C">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/exchangeDonors.C">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/exchangeSearchData.C">
-			<Option compilerVar="CC" />
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="lib/tioga/src/globals.h">
 			<Option target="Debug" />
 		</Unit>
-		<Unit filename="lib/tioga/src/highOrder.C">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/holeMap.C">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
 		<Unit filename="lib/tioga/src/kaiser.f">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/linklist.c">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/makefile">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/math.c">
-			<Option compilerVar="CC" />
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="lib/tioga/src/median.F90">
@@ -227,14 +173,6 @@
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="lib/tioga/src/parallelComm.h">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/search.C">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/searchADTrecursion.C">
-			<Option compilerVar="CC" />
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="lib/tioga/src/tioga.C">
@@ -274,6 +212,7 @@
 		<Unit filename="src/flux.cpp">
 			<Option target="Debug" />
 		</Unit>
+		<Unit filename="src/funcs.cpp" />
 		<Unit filename="src/geo.cpp">
 			<Option target="Debug" />
 		</Unit>
@@ -302,6 +241,7 @@
 		<Unit filename="src/output.cpp">
 			<Option target="Debug" />
 		</Unit>
+		<Unit filename="src/points.cpp" />
 		<Unit filename="src/polynomials.cpp">
 			<Option target="Debug" />
 		</Unit>
@@ -309,6 +249,7 @@
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="src/solver_overset.cpp" />
+		<Unit filename="src/superMesh.cpp" />
 		<Extensions>
 			<code_completion />
 			<envvars />

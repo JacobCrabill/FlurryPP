@@ -65,21 +65,6 @@ public:
   //! Create a simple Cartesian mesh from input parameters
   void createMesh();
 
-  //! Get the reference-domain location of the solution points for the given element & polynomial order
-  vector<point> getLocSpts(int eType, int order);
-
-  //! Get the reference-domain location of the flux points for the given element & polynomial order
-  vector<point> getLocFpts(int eType, int order);
-
-  //! Get the point locations of the requested type (i.e. Gauss, Lobatto) for the given order
-  vector<double> getPts1D(string ptsType, int order);
-
-  //! Get the Gauss quadrature weights for the Gauss points of the given order [2D]
-  vector<double> getQptWeights(int order);
-
-  //! Get the Gauss quadrature weights for the Gauss points of the given order [1D]
-  vector<double> getQptWeights1D(int order);
-
   //! Update connectivity / node-blanking for overset grids
   void registerGridDataTIOGA();
 
@@ -104,7 +89,7 @@ public:
 
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces, nOverFaces;
-  int nBounds;  //! Number of boundaries  
+  int nBounds;  //! Number of boundaries
   int meshType;
 
   // Basic [essential] Connectivity Data

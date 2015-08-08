@@ -19,9 +19,11 @@
 
 #include "global.hpp"
 
+#include "funcs.hpp"
 #include "geo.hpp"
 #include "input.hpp"
 #include "matrix.hpp"
+#include "points.hpp"
 
 class oper
 {
@@ -99,6 +101,7 @@ private:
   geo *Geo;
   input *params;
   uint nDims, nFields, eType, order, nSpts, nFpts;
+  string sptsType;
 
   matrix<double> opp_spts_to_fpts;
   matrix<double> opp_spts_to_mpts;
