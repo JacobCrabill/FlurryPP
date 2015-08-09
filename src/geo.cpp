@@ -2203,8 +2203,6 @@ void geo::partitionMesh(void)
   bndPts_g  = bndPts;   bndPts.setup(0,0);
   nBndPts_g = nBndPts;  nBndPts.resize(0);
 
-  cout << "nVerts = " << xv_g.getDim0() << endl;
-
   // Each processor will now grab its own data according to its rank (proc ID)
   for (int i=0; i<nEles; i++) {
     if (epart[i] == rank) {
@@ -2278,8 +2276,6 @@ void geo::partitionMesh(void)
     cout << "Geo:   On rank " << rank << ": nEles = " << nEles << endl;
 
   if (rank == 0) cout << "Geo: Done partitioning mesh" << endl;
-
-  MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
 

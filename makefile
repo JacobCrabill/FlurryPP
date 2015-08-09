@@ -138,7 +138,7 @@ obj/global.o: src/global.cpp include/global.hpp \
 		include/matrix.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/global.o src/global.cpp
 
-obj/funcs.o: src/funcs.cpp include/funcs.hpp include/global.hpp include\matrix.hpp
+obj/funcs.o: src/funcs.cpp include/funcs.hpp include/global.hpp include/matrix.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/funcs.o src/funcs.cpp
 
 obj/points.o: src/points.cpp include/points.hpp include/funcs.hpp include/global.hpp

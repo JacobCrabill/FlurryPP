@@ -83,7 +83,7 @@ public:
   void applyCorrectDivF(matrix<double> &dFn_fpts, matrix<double> &divF_spts);
 
 
-  void applyCorrectGradU(matrix<double>& dUc_fpts, vector<matrix<double> >& dU_spts);
+  void applyCorrectGradU(matrix<double>& dUc_fpts, vector<matrix<double> >& dU_spts, vector<matrix<double> > &JGinv_spts, vector<double> &detJac_spts);
 
   /*! Shock Capturing in the element */
   double shockCaptureInEle(matrix<double> &U_spts, double threshold);

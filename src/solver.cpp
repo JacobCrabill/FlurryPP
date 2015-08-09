@@ -491,7 +491,7 @@ void solver::correctGradU(void)
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].calcDeltaUc();
-    opers[eles[i].eType][eles[i].order].applyCorrectGradU(eles[i].dUc_fpts,eles[i].dU_spts);
+    opers[eles[i].eType][eles[i].order].applyCorrectGradU(eles[i].dUc_fpts,eles[i].dU_spts,eles[i].JGinv_spts,eles[i].detJac_spts);
   }
 }
 
