@@ -2282,3 +2282,62 @@ void geo::partitionMesh(void)
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
+
+void geo::moveMesh(void)
+{
+  for (int iv=0; iv<nVerts; iv++) {
+    for (int dim=0; dim<nDims; dim++) {
+      xv(iv,dim) = xv_new[iv][dim];
+    }
+  }
+
+  switch (params->motion) {
+    case 1: {
+      if (nDims == 2) {
+        for (int iv=0; iv<nVerts; iv++) {
+          /// Taken from Kui, AIAA-2010-5031-661
+          xv_new[iv].x = xv0[iv].x + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+          xv_new[iv].y = xv0[iv].y + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+          gridVel(iv,0) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*params->rkTime/10.);
+          gridVel(iv,1) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*params->rkTime/10.);
+        }
+      }
+      else {
+        for (int iv=0; iv<nVerts; iv++) {
+          /// Taken from Kui, AIAA-2010-5031-661
+          xv_new[iv].x = xv0[iv].x + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*sin(2*pi*params->rkTime/10.);
+          xv_new[iv].y = xv0[iv].y + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*sin(2*pi*params->rkTime/10.);
+          xv_new[iv].z = xv0[iv].z + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*sin(2*pi*params->rkTime/10.);
+          gridVel(iv,0) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*cos(2*pi*params->rkTime/10.);
+          gridVel(iv,1) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*cos(2*pi*params->rkTime/10.);
+          gridVel(iv,2) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*cos(2*pi*params->rkTime/10.);
+        }
+      }
+      break;
+    }
+    case 2: {
+      double t0 = 10.*sqrt(5.);
+      if (nDims == 2) {
+        for (int iv=0; iv<nVerts; iv++) {
+          /// Taken from Liang-Miyaji
+          xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(4*pi*params->rkTime/t0);
+          xv_new[iv].y = xv0[iv].y + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(8*pi*params->rkTime/t0);
+          gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*cos(4*pi*params->rkTime/t0);
+          gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*cos(8*pi*params->rkTime/t0);
+        }
+      }
+      else {
+        for (int iv=0; iv<nVerts; iv++) {
+          /// Taken from Liang-Miyaji
+          xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*params->rkTime/t0);
+          xv_new[iv].y = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*params->rkTime/t0);
+          xv_new[iv].z = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*params->rkTime/t0);
+          gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(4*pi*params->rkTime/t0);
+          gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(8*pi*params->rkTime/t0);
+          gridVel(iv,2) = 8.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(8*pi*params->rkTime/t0);
+        }
+      }
+      break;
+    }
+  }
+}

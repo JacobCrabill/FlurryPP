@@ -53,6 +53,13 @@ void solver::setupOverset(void)
   U_opts.setup(nOverPts,params->nFields);
 }
 
+void solver::updateOversetConnectivity(void)
+{
+  Geo->updateOversetConnectivity();
+
+  //Geo->update
+}
+
 /* ---- Basic Tioga-Based Overset-Grid Functions ---- */
 
 //void solver::setupOverset(void)

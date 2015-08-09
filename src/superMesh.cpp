@@ -23,7 +23,7 @@
 #include <map>
 
 #include "funcs.hpp"
-
+#include "points.hpp"
 
 /*
  * Tetrahedron Node-Ordering Conventions:

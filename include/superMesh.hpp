@@ -22,7 +22,6 @@
 
 #include "global.hpp"
 
-#include "geo.hpp"
 #include "matrix.hpp"
 
 struct tetra

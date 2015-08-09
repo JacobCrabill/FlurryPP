@@ -521,6 +521,9 @@ void solver::moveMesh(int step)
   for (uint i=0; i<eles.size(); i++) {
     eles[i].move(step);
   }
+
+  if (params->meshType == OVERSET_MESH)
+    updateOversetConnectivity();
 }
 
 vector<double> solver::computeWallForce(void)
