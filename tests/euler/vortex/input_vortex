@@ -18,8 +18,8 @@ icType       2
 iterMax       1788855
 
 # Plotting/Output Parameters
-plotFreq         10000  # Frequency to write plot files
-monitorResFreq  500  # Frequency to print residual to terminal
+plotFreq         100  # Frequency to write plot files
+monitorResFreq  10  # Frequency to print residual to terminal
 resType           2    # 1: 1-norm, 2: 2-norm, 3: Inf-norm
 dataFileName      DeformVortex  # Prefix for all output files
 
@@ -33,8 +33,8 @@ create_bcLeft    periodic
 create_bcRight   periodic
 
 # Parameters used when creating the mesh:
-nx            40
-ny            40
+nx            20
+ny            20
 xmin          -5
 xmax          5
 ymin          -5

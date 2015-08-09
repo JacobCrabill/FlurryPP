@@ -12,7 +12,7 @@
  * \version 0.0.1
  *
  * Flux Reconstruction in C++ (Flurry++) Code
- * Copyright (C) 2014 Jacob Crabill.
+ * Copyright (C) 2015 Jacob Crabill.
  *
  */
 #pragma once
@@ -22,13 +22,12 @@
 
 #include "global.hpp"
 
-#include "geo.hpp"
 #include "matrix.hpp"
 
 struct tetra
 {
   array<point,4> nodes;    //! Positions of nodes in tet
-  //vector<point> qpts;      //! Locations of quadrature points in tet
+  vector<point> qpts;      //! Physical positions of quadrature points in tet
   //vector<double> weights;  //! Weights associated with each quadrature point
   int donorID;             //! Donor-grid cell ID to which tetra belongs
 };
@@ -44,36 +43,28 @@ public:
 
   /* ---- Member Variables ---- */
 
-  geo* gridT;              //! Target grid which contains the target cell
-  geo* gridD;              //! Donor grid in which to find the donor cells
+  vector<point> target;     //! Target cell's node positions for which to create local supermesh
+  Array2D<point> donors;  //! Node positions of cells from donor grid which overlap target cell
 
-  int targetCell;          //! Target cell ID for which to create local supermesh
-  vector<int> donorCells;  //! Donor cell IDs from donor grid which overlap target cell
+  int nTets;      //! Total number of tets comprising the supermesh
+  int nQpts;      //! Total number of quadrature points in the whole supermesh
+  int order;      //! Order of quadrature rule to use
+  int nQpts_tet;  //! Number of quadrature points per tet (based on order)
+  int nDonors;    //! Number of donor cells
 
-  int nTets;               //! Total number of tets comprising the supermesh
-  int nQpts;               //! Total number of quadrature points in the whole supermesh
-  int order;               //! Order of quadrature rule to use
-  int nQpts_tet;           //! Number of quadrature points per tet (based on order)
+  Array2D<point> faces;  //! Face points of target cell for use as clipping planes
+  vector<Vec3> normals;  //! Outward face normals for target cell (for clipping)
 
   vector<point> qpts;       //! Locations of quadrature points in reference tetrahedron
   vector<double> weights;   //! Quadrature weights
-  vector<double> shapeQpts; //! Values of tetrahedron shape basis at quadrature points
+  matrix<double> shapeQpts; //! Values of tetrahedron nodal shape basis at quadrature points [nQpts x 4]
 
-  /* !!! -------------------------------------------- !!! */
-  /* use only one of these methods: the 'tetra' method or the Array/'big node list' version */
-
-  vector<tetra> tets;  //! Tetrahedrons comprising the supermesh
-
-  /* !!! -------------------------------------------- !!! */
-
-  Array<point,2> tetNodes; //! Physical nodal positions of each tet in supermesh
-  vector<int> tetDonorID;  //! Donor-grid cell ID for each tet
-
-  /* !!! -------------------------------------------- !!! */
+  vector<tetra> tets;  //! Tetrahedra comprising the supermesh
+  vector<int> parents; //! Parent donor-cell ID for each tet [range 0:(nDonors-1)]
 
   /* ---- Member Functions ---- */
 
-  void setup(geo* _gridT, geo* gridD, int _targetCell, int _order);
+  void setup(vector<point> &_target, Array2D<point> &_donors, int _order);
 
   //! Using given grids and target cell, build the local supermesh
   void buildSuperMesh(void);
@@ -87,12 +78,15 @@ public:
    */
   void getQpts(vector<point> &qptPos, vector<int> &qptCell);
 
+  //! Get the quadrature point locations and weights, and find physical positions of all qpts
+  void setupQuadrature(void);
+
 private:
 
   //! Subdivide the given hexahedron into 5 tetrahedrons
-  vector<tetra> splitHexIntoTet(vector<point> &hexNodes);
+  vector<tetra> splitHexIntoTets(const vector<point> &hexNodes);
 
   //! Use the given face and outward normal to clip the given tet and return the new set of tets
-  vector<tetra> clipTet(tetra &tet, vector<point> &clipFace, Vec3 &norm);
+  vector<tetra> clipTet(tetra &tet, const vector<point> &clipFace, Vec3 &norm);
 
 };

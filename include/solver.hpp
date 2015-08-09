@@ -222,6 +222,9 @@ public:
   //! Do initial preprocessing for overset grids
   void setupOverset();
 
+  //! For moving grids, update the overset connectivity (including adding/removing cells/faces)
+  void updateOversetConnectivity();
+
   /*!
    * \brief Initialize overset-related data storage
    *

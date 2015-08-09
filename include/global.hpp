@@ -223,6 +223,14 @@ struct point
     return std::sqrt(x*x+y*y+z*z);
   }
 
+  point cross(point b) {
+    point v;
+    v.z = x*b.y - y*b.x;
+    v.y = x*b.z - z*b.x;
+    v.x = y*b.z - z*b.y;
+    return v;
+  }
+
 };
 
 point operator/(point a, double b);

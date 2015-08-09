@@ -312,3 +312,58 @@ vector<int> getOrder(vector<double> &data)
 
   return ind;
 }
+
+Vec3 getFaceNormalTri(vector<point> &facePts, point &xc)
+{
+  point pt0 = facePts[0];
+  point pt1 = facePts[1];
+  point pt2 = facePts[2];
+  Vec3 a = pt1 - pt0;
+  Vec3 b = pt2 - pt0;
+  Vec3 norm = a.cross(b);                         // Face normal vector
+  Vec3 dxc = xc - (pt0+pt1+pt2)/3.;  // Face centroid to cell centroid
+  if (norm*dxc > 0) {
+    // Face normal is pointing into cell; flip
+    norm /= -norm.norm();
+  }
+  else {
+    // Face normal is pointing out of cell; keep direction
+    norm /= norm.norm();
+  }
+
+  return norm;
+}
+
+Vec3 getFaceNormalQuad(vector<point> &facePts, point &xc)
+{
+  // Get the (approximate) face normal of an arbitrary 3D quadrilateral
+  // by splitting into 2 triangles and averaging
+
+  // Triangle #1
+  point pt0 = facePts[0];
+  point pt1 = facePts[1];
+  point pt2 = facePts[2];
+  Vec3 a = pt1 - pt0;
+  Vec3 b = pt2 - pt0;
+  Vec3 norm1 = a.cross(b);           // Face normal vector
+  Vec3 dxc = xc - (pt0+pt1+pt2)/3.;  // Face centroid to cell centroid
+  if (norm1*dxc > 0) {
+    // Face normal is pointing into cell; flip
+    norm1 *= -1;
+  }
+
+  // Triangle #2
+  pt0 = facePts[3];
+  a = pt1 - pt0;
+  b = pt2 - pt0;
+  Vec3 norm2 = a.cross(b);
+  if (norm2*dxc > 0) {
+    // Face normal is pointing into cell; flip
+    norm2 *= -1;
+  }
+
+  // Average the two triangle's face outward normals
+  Vec3 norm = (norm1+norm2)/2.;
+
+  return norm;
+}

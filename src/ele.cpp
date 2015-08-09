@@ -196,6 +196,11 @@ void ele::setupAllGeometry(void) {
 
 void ele::move(int step=0)
 {
+
+  for (int i=0; i<nNodes; i++) {
+    nodes[i] = point(Geo->xv_new[Geo->c2v(ID,i)]);
+  }
+
   if (params->motion == 1 || params->motion == 2) {
     perturb();
   }
@@ -224,17 +229,9 @@ void ele::perturb(void)
 
 void ele::calcGridVelocity(void)
 {
-  if (params->motion == 1) {
-    for (int iv=0; iv<nNodes; iv++) {
-      gridVel_nodes(iv,0) = 4.*pi/10.*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*cos(2*pi*params->rkTime/10.); // from Kui
-      gridVel_nodes(iv,1) = 4.*pi/10.*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*cos(2*pi*params->rkTime/10.);
-    }
-  }
-  else if (params->motion == 2) {
-    double t0 = 10.*sqrt(5.);
-    for (int iv=0; iv<nNodes; iv++) {
-      gridVel_nodes(iv,0) = 4.*pi/t0*sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*cos(4*pi*params->rkTime/t0); // from Liang-Miyaji
-      gridVel_nodes(iv,1) = 8.*pi/t0*sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*cos(8*pi*params->rkTime/t0);
+  for (int iv=0; iv<nNodes; iv++) {
+    for (int dim=0; dim<nDims; dim++) {
+      gridVel_nodes(iv,dim) = Geo->gridVel(Geo->c2v(ID,iv),dim);
     }
   }
 

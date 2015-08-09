@@ -30,6 +30,7 @@ class tioga;
 #include "face.hpp"
 #include "mpiFace.hpp"
 #include "overFace.hpp"
+#include "superMesh.hpp"
 
 #ifndef _NO_MPI
 #include "tioga.h"
@@ -56,6 +57,9 @@ public:
 
   //! Create the elements and faces needed for the simulation
   void setupElesFaces(vector<ele> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec, vector<shared_ptr<overFace> >& overFacesVec, solver* Solver);
+
+  //! Update nodal positions and velocities for moving-grid cases
+  void moveMesh(void);
 
   /* === Helper Routines === */
 
@@ -87,6 +91,8 @@ public:
   //! Send / Receive interpolated data to proper grid and rank
   void exchangeOversetData(vector<matrix<double>>& U_ipts, matrix<double>& U_opts);
 
+  void matchOversetDonors(vector<ele> &eles, vector<superMesh> &donors);
+
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces, nOverFaces;
   int nBounds;  //! Number of boundaries
@@ -94,7 +100,10 @@ public:
 
   // Basic [essential] Connectivity Data
   matrix<int> c2v;
-  matrix<double> xv;
+  matrix<double> xv;      //! Current physical position of vertices [static or moving grids]
+  vector<point> xv_new;   //! Physical position of vertices for next time step [moving grids]
+  vector<point> xv0;      //! Initial position of vertices [moving grids]
+  matrix<double> gridVel; //! Grid velocity of vertices
 
   // Additional Connectivity Data
   matrix<int> c2e, c2b, e2c, e2v, v2e, v2v, v2c;
@@ -125,6 +134,11 @@ public:
   vector<int> iblankFace; //! Flag for whether a face is normal, blanked, or receptor
   vector<int> iwall;      //! List of nodes on wall boundaries
   vector<int> iover;      //! List of nodes on overset boundaries
+
+  /* --- Moving-Overset-Grid-Related Variables --- */
+  set<int> holeCells;  //! List of cells in mesh which are currently blanked
+  set<int> unblanks;   //! List of non-existing cells which, due to motion, must be un-blanked
+  set<int> blanks;     //! List of existing cells which, due to motion, must be blanked
 
   // Outgoing (interpolated) data
   vector<int> interpProc;       //! Processor ID for all interpolation points
@@ -183,9 +197,6 @@ private:
 
   //! Match up pairs of periodic boundary faces
   void processPeriodicBoundaries(void);
-
-  //! Match up periodic faces across processes
-  void processPeriodicMPI();
 
   //! Check if two given periodic edges match up
   bool checkPeriodicFaces(int *edge1, int *edge2);
