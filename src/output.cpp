@@ -470,7 +470,6 @@ void writeResidual(solver *Solver, input *params)
 
   if (params->resType == 3) {
     // Infinity Norm
-#pragma omp parallel for
     for (uint e=0; e<Solver->eles.size(); e++) {
       auto resTmp = Solver->eles[e].getNormResidual(params->resType);
       if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
@@ -481,7 +480,6 @@ void writeResidual(solver *Solver, input *params)
   }
   else if (params->resType == 1 || params->resType == 2) {
     // 1-Norm or 2-Norm
-#pragma omp parallel for
     for (uint e=0; e<Solver->eles.size(); e++) {
       auto resTmp = Solver->eles[e].getNormResidual(params->resType);
       if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");

@@ -260,6 +260,5 @@ private:
   /*! Get the values of the nodal shape bases at a solution point */
   void getShape(point loc, vector<double> &shape);
 
-  void perturb(void);
   double getDxNelderMeade(point refLoc, point physPos);
 };

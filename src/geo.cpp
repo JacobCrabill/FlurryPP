@@ -116,6 +116,14 @@ void geo::processConnectivity()
 
   /* --- Setup MPI Processor Boundary Faces --- */
   matchMPIFaces();
+
+  /* --- Additional setup for moving grids --- */
+  if (params->motion) {
+    xv0.resize(nVerts);
+    for (int i=0; i<nVerts; i++) xv0[i] = point(xv[i]);
+    xv_new.resize(nVerts);
+    gridVel.setup(nVerts,nDims);
+  }
 #endif
 }
 
@@ -2281,6 +2289,7 @@ void geo::partitionMesh(void)
 
 void geo::moveMesh(void)
 {
+//#pragma omp parallel for collapse(2)
   for (int iv=0; iv<nVerts; iv++) {
     for (int dim=0; dim<nDims; dim++) {
       xv(iv,dim) = xv_new[iv][dim];
@@ -2290,6 +2299,7 @@ void geo::moveMesh(void)
   switch (params->motion) {
     case 1: {
       if (nDims == 2) {
+        #pragma omp parallel for
         for (int iv=0; iv<nVerts; iv++) {
           /// Taken from Kui, AIAA-2010-5031-661
           xv_new[iv].x = xv0[iv].x + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*params->rkTime/10.);
@@ -2299,6 +2309,7 @@ void geo::moveMesh(void)
         }
       }
       else {
+        #pragma omp parallel for
         for (int iv=0; iv<nVerts; iv++) {
           /// Taken from Kui, AIAA-2010-5031-661
           xv_new[iv].x = xv0[iv].x + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*sin(2*pi*params->rkTime/10.);
@@ -2314,6 +2325,7 @@ void geo::moveMesh(void)
     case 2: {
       double t0 = 10.*sqrt(5.);
       if (nDims == 2) {
+        #pragma omp parallel for
         for (int iv=0; iv<nVerts; iv++) {
           /// Taken from Liang-Miyaji
           xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(4*pi*params->rkTime/t0);
@@ -2323,6 +2335,7 @@ void geo::moveMesh(void)
         }
       }
       else {
+        #pragma omp parallel for
         for (int iv=0; iv<nVerts; iv++) {
           /// Taken from Liang-Miyaji
           xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*params->rkTime/t0);

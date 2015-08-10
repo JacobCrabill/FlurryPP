@@ -13,10 +13,10 @@
  *
  */
 
-#include "../include/intFace.hpp"
+#include "intFace.hpp"
 
-#include "../include/flux.hpp"
-#include "../include/ele.hpp"
+#include "flux.hpp"
+#include "ele.hpp"
 
 void intFace::setupRightState(void)
 {

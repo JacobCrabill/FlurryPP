@@ -198,33 +198,11 @@ void ele::move(int step=0)
 {
 
   for (int i=0; i<nNodes; i++) {
-    nodes[i] = point(Geo->xv_new[Geo->c2v(ID,i)]);
-  }
-
-  if (params->motion == 1 || params->motion == 2) {
-    perturb();
+    nodesRK[0][i] = point(Geo->xv_new[Geo->c2v(ID,i)]);
   }
 
   calcTransforms(step+1);
   calcGridVelocity();
-}
-
-void ele::perturb(void)
-{
-  if (params->motion == 1) {
-    for (int iv=0; iv<nNodes; iv++) {
-      /// Taken from Kui, AIAA-2010-5031-661
-      nodesRK[0][iv].x = nodes[iv].x + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
-      nodesRK[0][iv].y = nodes[iv].y + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
-    }
-  }
-  else if (params->motion == 2) {
-    double t0 = 10.*sqrt(5.);
-    for (int iv=0; iv<nNodes; iv++) {
-      nodesRK[0][iv].x = nodes[iv].x + sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*sin(4*pi*params->rkTime/t0);
-      nodesRK[0][iv].y = nodes[iv].y + sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*sin(8*pi*params->rkTime/t0);
-    }
-  }
 }
 
 void ele::calcGridVelocity(void)
@@ -254,7 +232,6 @@ void ele::calcGridVelocity(void)
         }
       }
     }
-    // replace with: calcGridVelocitySpts();
   }
 }
 

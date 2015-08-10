@@ -38,7 +38,6 @@ solver::~solver()
 #ifndef _NO_MPI
   if (tg != NULL) {
     delete tg;
-    //tg = NULL;
   }
 #endif
 }
@@ -352,7 +351,6 @@ void solver::calcInviscidFlux_spts(void)
 
 void solver::doCommunication()
 {
-#pragma omp parallel for
   for (uint i=0; i<mpiFaces.size(); i++) {
     mpiFaces[i]->communicate();
   }
@@ -368,7 +366,6 @@ void solver::calcInviscidFlux_faces()
 
 void solver::calcInviscidFlux_mpi()
 {
-#pragma omp parallel for
   for (uint i=0; i<mpiFaces.size(); i++) {
     mpiFaces[i]->calcInviscidFlux();
   }
@@ -401,7 +398,6 @@ void solver::calcViscousFlux_faces()
 
 void solver::calcViscousFlux_mpi()
 {
-#pragma omp parallel for
   for (uint i=0; i<mpiFaces.size(); i++) {
     mpiFaces[i]->calcViscousFlux();
   }
@@ -517,6 +513,8 @@ void solver::moveMesh(int step)
 {
   if (!params->motion) return;
 
+  Geo->moveMesh();
+
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i].move(step);
@@ -573,13 +571,13 @@ void solver::setupElesFaces(void) {
   }
 
   // Finish setting up MPI faces
-#pragma omp parallel for
+
   for (uint i=0; i<mpiFaces.size(); i++) {
     mpiFaces[i]->setupFace();
   }
 
   // Finish setting up overset faces
-#pragma omp parallel for
+
   for (uint i=0; i<overFaces.size(); i++) {
     overFaces[i]->setupFace();
   }
@@ -588,7 +586,7 @@ void solver::setupElesFaces(void) {
 void solver::finishMpiSetup(void)
 {
   if (params->rank==0) cout << "Solver: Setting up MPI face communications" << endl;
-#pragma omp parallel for
+
   for (uint i=0; i<mpiFaces.size(); i++) {
     mpiFaces[i]->finishRightSetup();
   }
