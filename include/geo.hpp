@@ -30,6 +30,7 @@ class tioga;
 #include "face.hpp"
 #include "mpiFace.hpp"
 #include "overFace.hpp"
+#include "solver.hpp"
 #include "superMesh.hpp"
 
 #ifndef _NO_MPI
@@ -86,10 +87,10 @@ public:
   /* ---- My Overset Functions ---- */
 
   //! Setup the 'connectivity' between the overset interpolation points & donor grids/cells
-  void matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &overFacesVec);
+  void matchOversetPoints(vector<ele> &eles, struct dataExchange& exchange);
 
   //! Send / Receive interpolated data to proper grid and rank
-  void exchangeOversetData(vector<matrix<double>>& U_ipts, matrix<double>& U_opts);
+  void exchangeOversetData(struct dataExchange &exchange);
 
   void matchOversetDonors(vector<ele> &eles, vector<superMesh> &donors);
 
@@ -147,9 +148,9 @@ public:
   matrix<double> interpPtsRef;  //! Reference position (within interpCell) of fringe points on other grids to interpolate to
 
   // Incoming (overset) data
-  vector<int> overProc;         //! Donor-processor ID for each fringe point
-  matrix<double> overPtsPhys;   //! Physical positions of each fringe point
-  vector<point> overPts;        //! Physical positions of fringe points
+//  vector<int> overProc;         //! Donor-processor ID for each fringe point
+//  matrix<double> overPtsPhys;   //! Physical positions of each fringe point
+//  vector<point> overPts;        //! Physical positions of fringe points
 
 #ifndef _NO_MPI
   tioga* tg;           //! Pointer to Tioga object for processing overset grids
@@ -159,15 +160,15 @@ public:
   matrix<int> tg_c2v;  //! 'Cleaned' c2v for Tioga (when quadratic elements present, normal c2v won't work)
 
   // Data for communication between grids
-  vector<int> nPts_rank;           //! Number of fringe points for each rank of current grid
-  vector<vector<int>> foundPts;    //! IDs of receptor points from each grid which were found to lie within current grid
-  vector<vector<int>> foundRank;   //! gridRank of this process for each found point (for benefit of other processes; probably not needed)
-  vector<vector<int>> foundEles;   //! Ele ID which each matched point was found to lie within
-  vector<vector<point>> foundLocs; //! Reference location within ele of each matched receptor point
+//  vector<int> nPts_rank;           //! Number of fringe points for each rank of current grid
+//  vector<vector<int>> foundPts;    //! IDs of receptor points from each grid which were found to lie within current grid
+//  vector<vector<int>> foundRank;   //! gridRank of this process for each found point (for benefit of other processes; probably not needed)
+//  vector<vector<int>> foundEles;   //! Ele ID which each matched point was found to lie within
+//  vector<vector<point>> foundLocs; //! Reference location within ele of each matched receptor point
 
-  vector<int> nPtsRecv; //! Number of points incoming from each grid (across interComm)
-  vector<int> nPtsSend; //! Number of points outgoing to each grid (across interComm)
-  vector<vector<int>> recvPts; //! Point IDs which will be received from each grid (across interComm) (counter to foundPts)
+//  vector<int> nPtsRecv; //! Number of points incoming from each grid (across interComm)
+//  vector<int> nPtsSend; //! Number of points outgoing to each grid (across interComm)
+//  vector<vector<int>> recvPts; //! Point IDs which will be received from each grid (across interComm) (counter to foundPts)
 
 private:
 

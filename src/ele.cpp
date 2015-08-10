@@ -196,7 +196,6 @@ void ele::setupAllGeometry(void) {
 
 void ele::move(int step=0)
 {
-
   for (int i=0; i<nNodes; i++) {
     nodesRK[0][i] = point(Geo->xv_new[Geo->c2v(ID,i)]);
   }
@@ -213,23 +212,20 @@ void ele::calcGridVelocity(void)
     }
   }
 
-  if (params->motion != 0) {
-
-    gridVel_spts.initializeToZero();
-    for (int spt=0; spt<nSpts; spt++) {
-      for (int iv=0; iv<nNodes; iv++) {
-        for (int dim=0; dim<nDims; dim++) {
-          gridVel_spts(spt,dim) += shape_spts(spt,iv)*gridVel_nodes(iv,dim);
-        }
+  gridVel_spts.initializeToZero();
+  for (int spt=0; spt<nSpts; spt++) {
+    for (int iv=0; iv<nNodes; iv++) {
+      for (int dim=0; dim<nDims; dim++) {
+        gridVel_spts(spt,dim) += shape_spts(spt,iv)*gridVel_nodes(iv,dim);
       }
     }
+  }
 
-    gridVel_fpts.initializeToZero();
-    for (int fpt=0; fpt<nFpts; fpt++) {
-      for (int iv=0; iv<nNodes; iv++) {
-        for (int dim=0; dim<nDims; dim++) {
-          gridVel_fpts(fpt,dim) += shape_fpts(fpt,iv)*gridVel_nodes(iv,dim);
-        }
+  gridVel_fpts.initializeToZero();
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    for (int iv=0; iv<nNodes; iv++) {
+      for (int dim=0; dim<nDims; dim++) {
+        gridVel_fpts(fpt,dim) += shape_fpts(fpt,iv)*gridVel_nodes(iv,dim);
       }
     }
   }

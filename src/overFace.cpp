@@ -31,7 +31,7 @@ void overFace::getRightState(void)
   // Note: fptOffset must be set by Solver during overset setup
   for (int i=0; i<nFptsL; i++) {
     for (int k=0; k<nFields; k++) {
-      UR(i,k) = Solver->U_opts(fptOffset+i,k);
+      UR(i,k) = Solver->exchange.U_in(fptOffset+i,k);
     }
   }
 }

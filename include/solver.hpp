@@ -32,11 +32,30 @@ class oper;
 #include "mpiFace.hpp"
 #include "overFace.hpp"
 #include "operators.hpp"
+#include "superMesh.hpp"
 
 #ifndef _NO_MPI
 class tioga;
 #include "tioga.h"
 #endif
+
+struct dataExchange
+{
+  vector<int> nPts_rank;           //! Number of fringe points for each rank of current grid
+  vector<vector<int>> foundPts;    //! IDs of receptor points from each grid which were found to lie within current grid
+  vector<vector<int>> foundRank;   //! gridRank of this process for each found point (for benefit of other processes; probably not needed)
+  vector<vector<int>> foundEles;   //! Ele ID which each matched point was found to lie within
+  vector<vector<point>> foundLocs; //! Reference location within donor ele of each matched receptor point
+
+  int nOverPts;                 //! Number of overset (receptor) points on this grid
+  matrix<double> overPts;       //! Physical locations of the receptor points on this grid
+  vector<int> nPtsRecv;         //! Number of points incoming from each grid (across interComm)
+  vector<int> nPtsSend;         //! Number of points outgoing to each grid (across interComm)
+  vector<vector<int>> recvPts;  //! Point IDs which will be received from each grid (across interComm) (counter to foundPts)
+
+  matrix<double> U_in;          //! Data received from other grid(s)
+  vector<matrix<double>> U_out; //! Interpolated data being sent to other grid(s)
+};
 
 class solver
 {
@@ -62,6 +81,9 @@ public:
 
   //! Vector of all MPI faces handled by this solver
   vector<shared_ptr<overFace>> overFaces;
+
+  //! Local supermesh of donor elements for each cell needing to be unblanked
+  vector<superMesh> donors;
 
 #ifndef _NO_MPI
   //! Pointer to Tioga object for processing overset grids
@@ -284,16 +306,19 @@ private:
   vector<double> U_spts; //! Global solution vector for solver (over all elements)
 
   // Outgoing (interpolated) data
-  vector<int> interpProc;       //! Processor ID for all interpolation points
-  vector<int> interpCell;       //! For each interpolation point, cell which it lies within
-  matrix<double> interpPtsPhys; //! Physical positions of fringe points on other grids to interpolate to
-  matrix<double> interpPtsRef;  //! Reference position (within interpCell) of fringe points on other grids to interpolate to
-  vector<matrix<double>> U_ipts; //! Interpolated solution vector at each interpolation point for each grid
+//  vector<int> interpProc;       //! Processor ID for all interpolation points
+//  vector<int> interpCell;       //! For each interpolation point, cell which it lies within
+//  matrix<double> interpPtsPhys; //! Physical positions of fringe points on other grids to interpolate to
+//  matrix<double> interpPtsRef;  //! Reference position (within interpCell) of fringe points on other grids to interpolate to
+//  vector<matrix<double>> U_ipts; //! Interpolated solution vector at each interpolation point for each grid
 
-  // Incoming (overset) data
-  vector<int> overProc;         //! Donor-processor ID for each fringe point
-  matrix<double> overPtsPhys;   //! Physical positions of each fringe point
-  matrix<double> U_opts;        //! Solution vector at each fringe point
-  vector<point> overPts;        //! Physical positions of fringe points
-  int nOverPts;                 //! Number of overset flux points on this grid rank
+//  // Incoming (overset) data
+//  vector<int> overProc;         //! Donor-processor ID for each fringe point
+//  matrix<double> overPtsPhys;   //! Physical positions of each fringe point
+//  matrix<double> U_opts;        //! Solution vector at each fringe point
+//  vector<point> overPts;        //! Physical positions of fringe points
+//  int nOverPts;                 //! Number of overset flux points on this grid rank
+
+  // Arrays needed for data transfer across grids
+  struct dataExchange exchange;
 };

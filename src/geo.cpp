@@ -2289,7 +2289,7 @@ void geo::partitionMesh(void)
 
 void geo::moveMesh(void)
 {
-//#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2)
   for (int iv=0; iv<nVerts; iv++) {
     for (int dim=0; dim<nDims; dim++) {
       xv(iv,dim) = xv_new[iv][dim];

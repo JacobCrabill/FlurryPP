@@ -176,20 +176,9 @@ void geo::writeOversetConnectivity(void)
 #endif
 }
 
-void geo::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &overFacesVec)
+void geo::matchOversetPoints(vector<ele> &eles, struct dataExchange &exchange)
 {
 #ifndef _NO_MPI
-  // Get all of the fringe points on this grid
-  overPts.resize(0);
-  for (auto &oface: overFacesVec) {
-    oface->fptOffset = overPts.size();
-    auto pts = oface->getPosFpts();
-    overPts.insert(overPts.end(),pts.begin(),pts.end());
-  }
-
-  overPtsPhys = createMatrix(overPts);
-  int nInterpPts = overPts.size();
-
   /* ---- Gather all interpolation point data on each grid ---- */
 
   // Create a new communicator to communicate across grids
@@ -197,16 +186,16 @@ void geo::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &ov
   MPI_Comm_split(MPI_COMM_WORLD, gridID, params->rank, &gridComm);
 
   // Get the number of interp points for each process on this grid
-  nPts_rank.resize(nprocPerGrid);
-  MPI_Allgather(&nInterpPts, 1, MPI_INT, nPts_rank.data(), 1, MPI_INT, gridComm);
+  exchange.nPts_rank.resize(nprocPerGrid);
+  MPI_Allgather(&exchange.nOverPts, 1, MPI_INT, exchange.nPts_rank.data(), 1, MPI_INT, gridComm);
 
   // Accumulate all interpolation points on this grid into single matrix
   int nPtsGrid = 0;
   vector<int> recvCnts(nprocPerGrid);
   vector<int> recvDisp(nprocPerGrid);
   for (int i=0; i<nprocPerGrid; i++) {
-    nPtsGrid += nPts_rank[i];
-    recvCnts[i] = nPts_rank[i]*3;
+    nPtsGrid += exchange.nPts_rank[i];
+    recvCnts[i] = exchange.nPts_rank[i]*3;
     if (i>0)
       recvDisp[i] = recvDisp[i-1] + recvCnts[i-1];
   }
@@ -215,11 +204,11 @@ void geo::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &ov
     cout << "Geo: Grid " << gridID << ": # of Overset Points = " << nPtsGrid << endl;
 
   matrix<double> overPts_rank(nPtsGrid,3);
-  MPI_Allgatherv(overPtsPhys.getData(), overPtsPhys.getSize(), MPI_DOUBLE, overPts_rank.getData(), recvCnts.data(), recvDisp.data(), MPI_DOUBLE, gridComm);
+  MPI_Allgatherv(exchange.overPts.getData(), exchange.overPts.getSize(), MPI_DOUBLE, overPts_rank.getData(), recvCnts.data(), recvDisp.data(), MPI_DOUBLE, gridComm);
 
   // Send this rank's data to all other grids
   vector<int> nPts_grid(nGrids);
-  MPI_Allgather(&nInterpPts, 1, MPI_INT, nPts_grid.data(), 1, MPI_INT, interComm);
+  MPI_Allgather(&exchange.nOverPts, 1, MPI_INT, nPts_grid.data(), 1, MPI_INT, interComm);
 
   // Reduce across each grid
   vector<int> nPts_tmp = nPts_grid;
@@ -241,9 +230,9 @@ void geo::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &ov
 
   /* ---- Check Every Fringe Point for Donor Cell on This Grid ---- */
 
-  foundPts.resize(nGrids);
-  foundEles.resize(nGrids);
-  foundLocs.resize(nGrids);
+  exchange.foundPts.resize(nGrids);
+  exchange.foundEles.resize(nGrids);
+  exchange.foundLocs.resize(nGrids);
   int offset = 0;
   for (int g=0; g<nGrids; g++) {
     if (g>0) offset += nPts_grid[g-1];
@@ -261,9 +250,9 @@ void geo::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &ov
         bool isInEle = e.getRefLocNelderMeade(pt,refLoc);
 
         if (isInEle) {
-          foundPts[g].push_back(i);
-          foundEles[g].push_back(e.ID); // Local ele id for this grid
-          foundLocs[g].push_back(refLoc);
+          exchange.foundPts[g].push_back(i);
+          exchange.foundEles[g].push_back(e.ID); // Local ele id for this grid
+          exchange.foundLocs[g].push_back(refLoc);
           break;
         }
       }
@@ -273,15 +262,15 @@ void geo::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &ov
   /* ---- Send/Receive the the donor info across grids ---- */
 
   // Send/Receive the number of matched points on each grid
-  nPtsRecv.resize(nGrids);
-  nPtsSend.resize(nGrids);
+  exchange.nPtsRecv.resize(nGrids);
+  exchange.nPtsSend.resize(nGrids);
   vector<MPI_Request> reqs(nGrids);
   vector<MPI_Request> sends(nGrids);
   for (int g=0; g<nGrids; g++) {
     if (g == gridID) continue;
-    nPtsSend[g] = foundPts[g].size();
-    MPI_Irecv(&nPtsRecv[g], 1, MPI_INT, g, gridID, interComm, &reqs[g]);
-    MPI_Isend(&nPtsSend[g], 1, MPI_INT, g, g, interComm, &sends[g]);
+    exchange.nPtsSend[g] = exchange.foundPts[g].size();
+    MPI_Irecv(&exchange.nPtsRecv[g], 1, MPI_INT, g, gridID, interComm, &reqs[g]);
+    MPI_Isend(&exchange.nPtsSend[g], 1, MPI_INT, g, g, interComm, &sends[g]);
   }
 
   MPI_Status status;
@@ -294,7 +283,7 @@ void geo::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &ov
 }
 
 
-void geo::exchangeOversetData(vector<matrix<double>> &U_ipts, matrix<double> &U_opts)
+void geo::exchangeOversetData(struct dataExchange &exchange)
 {
 #ifndef _NO_MPI
   /* ---- Send/Receive the the interpolated data across grids using interComm ---- */
@@ -309,35 +298,35 @@ void geo::exchangeOversetData(vector<matrix<double>> &U_ipts, matrix<double> &U_
   vector<vector<int>> recvPts(nGrids);
   for (int g=0; g<nGrids; g++) {
     if (g == gridID) continue;
-    recvPts[g].resize(nPtsRecv[g]);
+    recvPts[g].resize(exchange.nPtsRecv[g]);
   }
 
   vector<matrix<double>> recvU(nGrids);
   for (uint g=0; g<nGrids; g++) {
     if (g == gridID) continue;
-    recvU[g].setup(nPtsRecv[g],nFields);
+    recvU[g].setup(exchange.nPtsRecv[g],nFields);
   }
 
   for (int g=0; g<nGrids; g++) {
     if (g == gridID) continue;
-    if (nPtsRecv[g] > 0) {
-      MPI_Irecv(recvPts[g].data(),  nPtsRecv[g],        MPI_INT,    g, gridID, interComm, &recvsPts[g]);
-      MPI_Irecv(recvU[g].getData(), recvU[g].getSize(), MPI_DOUBLE, g, gridID, interComm, &recvsVals[g]);
+    if (exchange.nPtsRecv[g] > 0) {
+      MPI_Irecv(recvPts[g].data(),  exchange.nPtsRecv[g], MPI_INT,    g, gridID, interComm, &recvsPts[g]);
+      MPI_Irecv(recvU[g].getData(), recvU[g].getSize(),   MPI_DOUBLE, g, gridID, interComm, &recvsVals[g]);
     }
-    if (nPtsSend[g] > 0) {
-      MPI_Isend(foundPts[g].data(),  nPtsSend[g],         MPI_INT,    g, g, interComm, &sendsPts[g]);
-      MPI_Isend(U_ipts[g].getData(), U_ipts[g].getSize(), MPI_DOUBLE, g, g, interComm, &sendsVals[g]);
+    if (exchange.nPtsSend[g] > 0) {
+      MPI_Isend(exchange.foundPts[g].data(), exchange.nPtsSend[g],        MPI_INT,    g, g, interComm, &sendsPts[g]);
+      MPI_Isend(exchange.U_out[g].getData(), exchange.U_out[g].getSize(), MPI_DOUBLE, g, g, interComm, &sendsVals[g]);
     }
   }
 
   MPI_Status status;
   for (int g=0; g<nGrids; g++) {
     if (g == gridID) continue;
-    if (nPtsRecv[g] > 0) {
+    if (exchange.nPtsRecv[g] > 0) {
       MPI_Wait(&recvsPts[g],&status);
       MPI_Wait(&recvsVals[g],&status);
     }
-    if (nPtsSend[g] > 0) {
+    if (exchange.nPtsSend[g] > 0) {
       MPI_Wait(&sendsPts[g],&status);
       MPI_Wait(&sendsVals[g],&status);
     }
@@ -355,15 +344,15 @@ void geo::exchangeOversetData(vector<matrix<double>> &U_ipts, matrix<double> &U_
   vector<matrix<double>> gridUSend(nprocPerGrid);
   for (int g=0; g<nGrids; g++) {
     if (g == gridID) continue;
-    for (int i=0; i<nPtsRecv[g]; i++) {
+    for (int i=0; i<exchange.nPtsRecv[g]; i++) {
       int iv = recvPts[g][i];
-      int nv = nPts_rank[0];
+      int nv = exchange.nPts_rank[0];
       int p = 0;
       int offset = 0;
       while (nv<=iv && p<nprocPerGrid) {
-        offset += nPts_rank[p];
+        offset += exchange.nPts_rank[p];
         p++;
-        nv += nPts_rank[p];
+        nv += exchange.nPts_rank[p];
       }
       iv -= offset; // Make iv be the process-local point ID
       gridPtIdsSend[p].push_back(iv);
@@ -415,7 +404,7 @@ void geo::exchangeOversetData(vector<matrix<double>> &U_ipts, matrix<double> &U_
     for (int i=0; i<nGPtsRecv[p]; i++) {
       int iv = gridPtIdsRecv[p][i];
       for (int k=0; k<nFields; k++) {
-        U_opts(iv,k) = gridURecv[p](i,k);
+        exchange.U_in(iv,k) = gridURecv[p](i,k);
       }
     }
   }

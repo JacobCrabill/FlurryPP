@@ -25,32 +25,39 @@
 
 void solver::oversetInterp(void)
 {
-  U_ipts.resize(Geo->nGrids);
+  exchange.U_out.resize(Geo->nGrids);
   for (int g=0; g<Geo->nGrids; g++) {
-    U_ipts[g].setup(Geo->foundPts[g].size(),params->nFields);
+    exchange.U_out[g].setup(exchange.foundPts[g].size(),params->nFields);
     if (g == Geo->gridID) continue;
-    for (int i=0; i<Geo->foundPts[g].size(); i++) {
-      point refPos = Geo->foundLocs[g][i];
-      int ic = Geo->foundEles[g][i];
-      vector<double> U_ipt(params->nFields);
-      opers[eles[ic].eType][eles[ic].order].interpolateToPoint(eles[ic].U_spts, U_ipts[g][i], refPos);
+    for (int i=0; i<exchange.foundPts[g].size(); i++) {
+      point refPos = exchange.foundLocs[g][i];
+      int ic = exchange.foundEles[g][i];
+      opers[eles[ic].eType][eles[ic].order].interpolateToPoint(eles[ic].U_spts, exchange.U_out[g][i], refPos);
     }
   }
 
-  Geo->exchangeOversetData(U_ipts, U_opts);
+  Geo->exchangeOversetData(exchange);
 }
 
 void solver::setupOverset(void)
 {
   if (gridRank == 0) cout << "Solver: Grid " << gridID << ": Setting up overset connectivity" << endl;
 
-  for (auto &oface: overFaces) oface->Solver = this;
+  // Get all of the fringe points on this grid
+  exchange.overPts.setup(0,0);
+  for (auto &oface: overFaces) {
+    oface->Solver = this;
+    oface->fptOffset = exchange.overPts.getDim0();
+    auto pts = oface->getPosFpts();
+    for (auto &pt:pts)
+      exchange.overPts.insertRow({pt.x, pt.y, pt.z});
+  }
 
-  Geo->matchOversetPoints(eles, overFaces);
+  exchange.nOverPts = exchange.overPts.getDim0();
 
-  nOverPts = Geo->overPts.size();
-  overPts = Geo->overPts;
-  U_opts.setup(nOverPts,params->nFields);
+  Geo->matchOversetPoints(eles, exchange);
+
+  exchange.U_in.setup(exchange.nOverPts,params->nFields);
 }
 
 void solver::updateOversetConnectivity(void)
