@@ -53,7 +53,7 @@ void solver::updateOversetConnectivity(void)
 {
   Geo->updateOversetConnectivity();
 
-  Geo->setupUnblankCells(eles);
+  Geo->setupUnblankElesFaces(eles,faces,mpiFaces,overFaces);
 
   //Geo->update
 }

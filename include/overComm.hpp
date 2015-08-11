@@ -114,7 +114,12 @@ public:
 
 
   //! Experimental: One function to gather data across all grids / ranks
-  void gatherData(int nPieces, int stride, vector<int> &values, vector<int> &values_all);
-  void gatherData(int nPieces, int stride, vector<double> &values, vector<double> &values_all);
+//  void gatherData(int nPieces, int stride, int* values, vector<int>& nPieces_grid, vector<int> &values_all);
+//  void gatherData(int nPieces, int stride, double* values, vector<int>& nPieces_grid, vector<double> &values_all);
 
+  template<typename T>
+  void gatherData(int nPieces, int stride, T *values, vector<int> &nPieces_rank, vector<int> &nPieces_grid, vector<T> &values_all);
+
+private:
+  template<typename T> MPI_Datatype getMpiDatatype(void);
 };

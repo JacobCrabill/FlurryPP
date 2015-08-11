@@ -48,48 +48,10 @@ void overComm::matchOversetPoints(vector<ele> &eles)
 
   nOverPts = overPts.getDim0();
 
-  // Get the number of interp points for each process on this grid
-  nPts_rank.resize(nprocPerGrid);
-  MPI_Allgather(&nOverPts, 1, MPI_INT, nPts_rank.data(), 1, MPI_INT, gridComm);
-
-  // Accumulate all interpolation points on this grid into single matrix
-  int nPtsGrid = 0;
-  vector<int> recvCnts(nprocPerGrid);
-  vector<int> recvDisp(nprocPerGrid);
-  for (int i=0; i<nprocPerGrid; i++) {
-    nPtsGrid += nPts_rank[i];
-    recvCnts[i] = nPts_rank[i]*3;
-    if (i>0)
-      recvDisp[i] = recvDisp[i-1] + recvCnts[i-1];
-  }
-
-  if (gridRank == 0)
-    cout << "Geo: Grid " << gridID << ": # of Overset Points = " << nPtsGrid << endl;
-
-  matrix<double> overPts_rank(nPtsGrid,3);
-  MPI_Allgatherv(overPts.getData(), overPts.getSize(), MPI_DOUBLE, overPts_rank.getData(), recvCnts.data(), recvDisp.data(), MPI_DOUBLE, gridComm);
-
-  // Send this rank's data to all other grids
   vector<int> nPts_grid(nGrids);
-  MPI_Allgather(&nOverPts, 1, MPI_INT, nPts_grid.data(), 1, MPI_INT, interComm);
+  vector<double> interpPtsPhys;
 
-  // Reduce across each grid
-  vector<int> nPts_tmp = nPts_grid;
-  MPI_Allreduce(nPts_tmp.data(), nPts_grid.data(), nGrids, MPI_INT, MPI_SUM, gridComm);
-
-  // Setup storage for all interpolation points in simulation
-  int nPtsTotal = getSum(nPts_grid);
-  matrix<double> interpPtsPhys(nPtsTotal,3);
-
-  recvCnts.resize(nGrids);
-  recvDisp.assign(nGrids,0);
-  for (int i=0; i<nGrids; i++) {
-    recvCnts[i] = nPts_grid[i]*3;
-    if (i>0)
-      recvDisp[i] = recvDisp[i-1] + recvCnts[i-1];
-  }
-  // Send this grid's points to each grid along gridRank
-  MPI_Allgatherv(overPts_rank.getData(), overPts_rank.getSize(), MPI_DOUBLE, interpPtsPhys.getData(), recvCnts.data(), recvDisp.data(), MPI_DOUBLE, interComm);
+  gatherData(nOverPts, 3, overPts.getData(), nPts_rank, nPts_grid, interpPtsPhys);
 
   /* ---- Check Every Fringe Point for Donor Cell on This Grid ---- */
 
@@ -104,7 +66,8 @@ void overComm::matchOversetPoints(vector<ele> &eles)
 
     for (int i=0; i<nPts_grid[g]; i++) {
       // Get requested interpolation point
-      point pt = point(interpPtsPhys[offset+i]);
+      point pt = point(&interpPtsPhys[3*(offset+i)]);
+      //point pt = point(interpPtsPhys[offset+i]);
       // Check for containment in all eles on this rank of this grid
       for (auto &e:eles) {
         /* !! THIS IS HORRIBLY INEFFICIENT !! - should use c2c to march from an
@@ -155,23 +118,9 @@ void overComm::matchOversetUnblanks(vector<ele> &eles, set<int> &unblankCells)
 
   nUnblanks = unblankCells.size();
 
-  // Send this rank's data to all other grids
-  vector<int> nCells_grid(nGrids);
-  MPI_Allgather(&nUnblanks, 1, MPI_INT, nCells_grid.data(), 1, MPI_INT, interComm);
-
-  // Reduce across each grid
-  vector<int> nCells_tmp = nCells_grid;
-  MPI_Allreduce(nCells_tmp.data(), nCells_grid.data(), nGrids, MPI_INT, MPI_SUM, gridComm);
-
-  // Setup storage for all interpolation points in simulation
-  int nCellsTotal = getSum(nCells_grid);
-
-  // If no processes need to unblank cells, return
-  if (nCellsTotal == 0) return;
-
   /* ---- Gather all cell bounding-box data on each grid ---- */
 
-  // Gather bounding boxes for all unblanked cells on this grid
+  // Gather bounding boxes for all unblanked cells on this rank
   matrix<double> bBoxes;
   for (auto &e:eles) {
     if (unblankCells.count(e.ID)) {
@@ -179,38 +128,9 @@ void overComm::matchOversetUnblanks(vector<ele> &eles, set<int> &unblankCells)
     }
   }
 
-  // Get the number of interp points for each process on this grid
-  nCells_rank.resize(nprocPerGrid);
-  MPI_Allgather(&nUnblanks, 1, MPI_INT, nCells_rank.data(), 1, MPI_INT, gridComm);
-
-  // Accumulate all bounding boxes on this grid into single matrix
-  int nCellsGrid = 0;
-  vector<int> recvCnts(nprocPerGrid);
-  vector<int> recvDisp(nprocPerGrid);
-  for (int p=0; p<nprocPerGrid; p++) {
-    nCellsGrid += nCells_rank[p];
-    recvCnts[p] = nCells_rank[p]*6;
-    if (p>0)
-      recvDisp[p] = recvDisp[p-1] + recvCnts[p-1];
-  }
-
-  if (gridRank == 0)
-    cout << "Geo: Grid " << gridID << ": # of Unblanked Cells = " << nCellsGrid << endl;
-
-  matrix<double> boxes_rank(nCellsGrid,6);
-  MPI_Allgatherv(bBoxes.getData(), bBoxes.getSize(), MPI_DOUBLE, boxes_rank.getData(), recvCnts.data(), recvDisp.data(), MPI_DOUBLE, gridComm);
-
-  matrix<double> boundingBoxes(nCellsTotal,6);
-
-  recvCnts.resize(nGrids);
-  recvDisp.assign(nGrids,0);
-  for (int i=0; i<nGrids; i++) {
-    recvCnts[i] = nCells_grid[i]*6;
-    if (i>0)
-      recvDisp[i] = recvDisp[i-1] + recvCnts[i-1];
-  }
-  // Send this grid's points to each grid along gridRank
-  MPI_Allgatherv(boxes_rank.getData(), boxes_rank.getSize(), MPI_DOUBLE, boundingBoxes.getData(), recvCnts.data(), recvDisp.data(), MPI_DOUBLE, interComm);
+  vector<int> nCells_rank, nCells_grid;
+  vector<double> bBoxes_grid;
+  gatherData(nUnblanks, 1, bBoxes.getData(), nCells_rank, nCells_grid, bBoxes_grid);
 
   /* ---- Check Every Fringe Point for Donor Cell on This Grid ---- */
 
@@ -225,8 +145,8 @@ void overComm::matchOversetUnblanks(vector<ele> &eles, set<int> &unblankCells)
 
     for (int i=0; i<nCells_grid[g]; i++) {
       // Get requested cell's bounding box
-      point cent = point(boundingBoxes[offset+i]);
-      point dx = point(boundingBoxes[offset+i+3]);
+      point cent = point(&bBoxes_grid[offset+i]);
+      point dx = point(&bBoxes_grid[offset+i+3]);
 
       // Check for overlap in all eles on this rank of this grid
       bool found = false;
@@ -327,64 +247,34 @@ void overComm::matchOversetUnblanks(vector<ele> &eles, set<int> &unblankCells)
 #endif
 }
 
-void overComm::gatherData(int nPieces, int stride, vector<int> &values, vector<int> &values_all)
+template<typename T>
+MPI_Datatype overComm::getMpiDatatype(void)
 {
-#ifndef _NO_MPI
-  /* ---- Gather all interpolation point data on each grid ---- */
-
-  // Get the number of interp points for each process on this grid
-  vector<int> nPieces_rank(nprocPerGrid);
-  MPI_Allgather(&nPieces, 1, MPI_INT, nPieces_rank.data(), 1, MPI_INT, gridComm);
-
-  // Accumulate all interpolation points on this grid into single matrix
-  int nPiecesGrid = 0;
-  vector<int> recvCnts(nprocPerGrid);
-  vector<int> recvDisp(nprocPerGrid);
-  for (int p=0; p<nprocPerGrid; p++) {
-    nPiecesGrid += nPieces_rank[p];
-    recvCnts[p] = nPieces_rank[p]*stride;
-    if (p>0)
-      recvDisp[p] = recvDisp[p-1] + recvCnts[p-1];
-  }
-
-  vector<int> values_rank(nPiecesGrid);
-  MPI_Allgatherv(values.data(), values.size(), MPI_INT, values_rank.data(), recvCnts.data(), recvDisp.data(), MPI_INT, gridComm);
-
-  // Send this rank's data to all other grids
-  vector<int> nPieces_grid(nGrids);
-  MPI_Allgather(&nPieces, 1, MPI_INT, nPieces_grid.data(), 1, MPI_INT, interComm);
-
-  // Reduce across each grid
-  vector<int> nPieces_tmp = nPieces_grid;
-  MPI_Allreduce(nPieces_tmp.data(), nPieces_grid.data(), nGrids, MPI_INT, MPI_SUM, gridComm);
-
-  // Setup storage for all interpolation points in simulation
-  int nPiecesTotal = getSum(nPieces_grid);
-
-  values_all.resize(nPiecesTotal*stride);
-
-  // If no processes have any data to send, return
-  if (nPiecesTotal == 0) return;
-
-  recvCnts.resize(nGrids);
-  recvDisp.assign(nGrids,0);
-  for (int i=0; i<nGrids; i++) {
-    recvCnts[i] = nPieces_grid[i]*stride;
-    if (i>0)
-      recvDisp[i] = recvDisp[i-1] + recvCnts[i-1];
-  }
-  // Send this grid's points to each grid along gridRank
-  MPI_Allgatherv(values_rank.data(), values_rank.size(), MPI_INT, values_all.data(), recvCnts.data(), recvDisp.data(), MPI_INT, interComm);
-#endif
+  FatalError("MPI Datatype not implemented here");
 }
 
-void overComm::gatherData(int nPieces, int stride, vector<double> &values, vector<double> &values_all)
+template<>
+MPI_Datatype overComm::getMpiDatatype<int>(void)
+{
+  return MPI_INT;
+}
+
+template<>
+MPI_Datatype overComm::getMpiDatatype<double>(void)
+{
+  return MPI_DOUBLE;
+}
+
+template<typename T>
+void overComm::gatherData(int nPieces, int stride, T *values, vector<int>& nPieces_rank, vector<int> &nPieces_grid, vector<T> &values_all)
 {
 #ifndef _NO_MPI
   /* ---- Gather all interpolation point data on each grid ---- */
 
+  MPI_Datatype T_Type = getMpiDatatype<T>();
+
   // Get the number of interp points for each process on this grid
-  vector<int> nPieces_rank(nprocPerGrid);
+  nPieces_rank.resize(nprocPerGrid);
   MPI_Allgather(&nPieces, 1, MPI_INT, nPieces_rank.data(), 1, MPI_INT, gridComm);
 
   // Accumulate all interpolation points on this grid into single matrix
@@ -398,11 +288,11 @@ void overComm::gatherData(int nPieces, int stride, vector<double> &values, vecto
       recvDisp[p] = recvDisp[p-1] + recvCnts[p-1];
   }
 
-  vector<int> values_rank(nPiecesGrid);
-  MPI_Allgatherv(values.data(), values.size(), MPI_DOUBLE, values_rank.data(), recvCnts.data(), recvDisp.data(), MPI_DOUBLE, gridComm);
+  vector<T> values_rank(nPiecesGrid*stride);
+  MPI_Allgatherv(values, nPieces*stride, T_Type, values_rank.data(), recvCnts.data(), recvDisp.data(), T_Type, gridComm);
 
   // Send this rank's data to all other grids
-  vector<int> nPieces_grid(nGrids);
+  nPieces_grid.resize(nGrids);
   MPI_Allgather(&nPieces, 1, MPI_INT, nPieces_grid.data(), 1, MPI_INT, interComm);
 
   // Reduce across each grid
@@ -419,13 +309,13 @@ void overComm::gatherData(int nPieces, int stride, vector<double> &values, vecto
 
   recvCnts.resize(nGrids);
   recvDisp.assign(nGrids,0);
-  for (int i=0; i<nGrids; i++) {
-    recvCnts[i] = nPieces_grid[i]*stride;
-    if (i>0)
-      recvDisp[i] = recvDisp[i-1] + recvCnts[i-1];
+  for (int g=0; g<nGrids; g++) {
+    recvCnts[g] = nPieces_grid[g]*stride;
+    if (g>0)
+      recvDisp[g] = recvDisp[g-1] + recvCnts[g-1];
   }
   // Send this grid's points to each grid along gridRank
-  MPI_Allgatherv(values_rank.data(), values_rank.size(), MPI_DOUBLE, values_all.data(), recvCnts.data(), recvDisp.data(), MPI_DOUBLE, interComm);
+  MPI_Allgatherv(values_rank.data(), values_rank.size(), T_Type, values_all.data(), recvCnts.data(), recvDisp.data(), T_Type, interComm);
 #endif
 }
 
