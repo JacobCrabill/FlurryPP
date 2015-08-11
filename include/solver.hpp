@@ -71,7 +71,7 @@ public:
 
 #ifndef _NO_MPI
   //! Pointer to Tioga object for processing overset grids
-  tioga* tg;
+  shared_ptr<tioga> tg;
 #endif
 
   /* ==== Misc. Commonly-Used Variables ==== */
@@ -289,5 +289,5 @@ private:
 
   vector<double> U_spts; //! Global solution vector for solver (over all elements)
 
-  overComm *OComm;
+  shared_ptr<overComm> OComm;
 };

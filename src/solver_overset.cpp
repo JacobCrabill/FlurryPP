@@ -32,7 +32,7 @@ void solver::setupOverset(void)
 {
   if (gridRank == 0) cout << "Solver: Grid " << gridID << ": Setting up overset connectivity" << endl;
 
-  OComm = new overComm;
+  OComm = make_shared<overComm>();
 
   OComm->setup(params,nGrids,gridID,gridRank,nprocPerGrid);
 

@@ -42,7 +42,7 @@ void geo::registerGridDataTIOGA(void)
     cout << "Geo: Grid " << gridID << ": Setting up TIOGA interface" << endl;
 
   // Allocate TIOGA grid processor
-  tg = new tioga();
+  tg = make_shared<tioga>();
 
   tg->setCommunicator(MPI_COMM_WORLD,params->rank,params->nproc);
 

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <array>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -163,7 +164,7 @@ public:
 //  vector<point> overPts;        //! Physical positions of fringe points
 
 #ifndef _NO_MPI
-  tioga* tg;           //! Pointer to Tioga object for processing overset grids
+  shared_ptr<tioga> tg;  //! Pointer to Tioga object for processing overset grids
 #endif
   int* nodesPerCell;   //! Pointer for Tioga to know # of nodes for each element type
   array<int*,1> conn;  //! Pointer to c2v for each element type [but only 1, so will be size(1)]

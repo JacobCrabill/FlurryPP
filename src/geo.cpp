@@ -37,10 +37,6 @@
 
 geo::geo()
 {
-#ifndef _NO_MPI
-  tg = NULL;
-#endif
-
   nodesPerCell = NULL;
 }
 

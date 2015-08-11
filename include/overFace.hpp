@@ -27,7 +27,7 @@ class overFace : public face
 {
 public:
   //! Solver object to which this face belongs
-  overComm* OComm;
+  shared_ptr<overComm> OComm;
 
   //! Setup arrays to handle getting/setting data from Solver
   void setupRightState(void);

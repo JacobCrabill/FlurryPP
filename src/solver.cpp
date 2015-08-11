@@ -28,21 +28,12 @@ class boundFace;
 
 solver::solver()
 {
-#ifndef _NO_MPI
-  tg = NULL;
-#endif
+
 }
 
 solver::~solver()
 {
-#ifndef _NO_MPI
-  if (tg != NULL) {
-    delete tg;
-  }
-  if (OComm != NULL) {
-    delete OComm;
-  }
-#endif
+
 }
 
 void solver::setup(input *params, geo *Geo)
