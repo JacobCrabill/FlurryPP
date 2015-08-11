@@ -637,7 +637,7 @@ void geo::matchMPIFaces(void)
 #endif
 }
 
-void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec, vector<shared_ptr<overFace>> &overFacesVec, solver *Solver)
+void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec, vector<shared_ptr<overFace>> &overFacesVec)
 {
   if (nEles<=0) FatalError("Cannot setup elements array - nEles = 0");
 
@@ -653,7 +653,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
   }
 
   // Setup the elements
-  vector<int> eleMap; // For overset meshes where some cells are blanked, map from 'ic' to 'eles' index
+
   eleMap.assign(nEles,-1);
 
   int nc = 0;
@@ -718,6 +718,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       cout << "Geo: Setting up internal faces" << endl;
   }
 
+  faceMap.assign(nFaces,-1);
+
   // Internal Faces
   for (auto &ff: intFaces) {
     // Skip any hole faces
@@ -746,6 +748,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     }
 
     faces.push_back(iface);
+    faceMap[ff] = faces.size();
   }
   // New # of internal faces (after excluding blanked faces)
   nIntFaces = faces.size();
@@ -782,6 +785,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     }
 
     faces.push_back(bface);
+    faceMap[ff] = faces.size();
   }
   // New # of boundary faces (after excluding blanked faces)
   nBndFaces = faces.size() - nIntFaces;
@@ -833,6 +837,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       }
 
       mpiFacesVec.push_back(mface);
+      faceMap[ff] = mpiFacesVec.size();
     }
     // New # of boundary faces (after excluding blanked faces)
     nMpiFaces = mpiFacesVec.size();

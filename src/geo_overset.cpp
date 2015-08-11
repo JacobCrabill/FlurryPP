@@ -183,12 +183,12 @@ void geo::setCellFaceIblanks()
   }
 
   // Only needed for moving grids: Get faces which  must be 'un-blanked'
-  for (auto &ic:holeFaces) {
-    if (iblankFace[ic] == NORMAL) {
-      unblankFaces.insert(ic);
+  for (auto &ff:holeFaces) {
+    if (iblankFace[ff] == NORMAL) {
+      unblankFaces.insert(ff);
     }
-    else if (iblankFace[ic] == FRINGE) {
-      unblankOFaces.insert(ic);
+    else if (iblankFace[ff] == FRINGE) {
+      unblankOFaces.insert(ff);
     }
   }
 
@@ -209,16 +209,78 @@ void geo::matchOversetDonors(vector<ele> &eles, vector<superMesh> &donors)
 #endif
 }
 
-vector<ele> geo::setupUnblankCells()
+void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec, vector<shared_ptr<overFace>> &overFacesVec)
 {
-  vector<ele> unblankEles(unblankCells.size());
+  /* --- Remove Newly-Blanked Elements --- */
 
-  int i=0;
-  for (auto &ic:unblankCells) {
-    unblankEles[i].ID = ic;
-    // ...continue like with setupElesFaces()
-    i++;
+  for (auto &ic:blankCells) {
+    int ind = eleMap[ic];
+    eles.erase(eles.begin()+ind,eles.begin()+ind+1);
+    eleMap[ic] = -1;
+
+    // Update the map
+    for (int k=ic+1; k<nEles; k++)
+      eleMap[k]--;
   }
 
-  return unblankEles;
+  /* --- Setup & Insert Unblanked Elements --- */
+
+  for (auto &ic:unblankCells) {
+    // Find the next-lowest index
+    int ind = eleMap[ic];
+    int j = 0;
+    while (ind < 0) {
+      ind = eleMap[ic-j];
+    }
+    ind++;
+
+    ele e;
+    e.ID = ic;
+    if (nprocPerGrid>1)
+      e.IDg = ic2icg[ic];
+    else
+      e.IDg = ic;
+    e.eType = ctype[ic];
+    e.nNodes = c2nv[ic];
+    if (nDims == 2)
+      e.nMpts = 4;
+    else
+      e.nMpts = 8;
+
+    // Shape [mesh] nodes
+    e.nodeID.resize(c2nv[ic]);
+    e.nodes.resize(c2nv[ic]);
+    for (int iv=0; iv<c2nv[ic]; iv++) {
+      e.nodeID[iv] = c2v(ic,iv);
+      e.nodes[iv] = point(xv[c2v(ic,iv)]);
+    }
+
+    // Global face IDs for internal & boundary faces
+    e.faceID.resize(c2nf[ic]);
+    e.bndFace.resize(c2nf[ic]);
+    for (int k=0; k<c2nf[ic]; k++) {
+      e.bndFace[k] = c2b(ic,k);
+      e.faceID[k] = c2f(ic,k);
+    }
+
+    eles.insert(eles.begin()+ind,1,e);
+
+    // Update the map
+    eleMap[ic] = ind;
+    for (int k=ic+1; k<nEles; k++)
+      eleMap[k]++;
+  }
+
+  /* --- Remove Newly-Blanked Faces --- */
+
+  for (auto &ff:blankFaces) {
+    int ind = faceMap[ff];
+    faces.erase(faces.begin()+ind,faces.begin()+ind+1);
+    faceMap[ff] = -1;
+
+    // Update the map
+//    for (int k=ff+1; k<nIntFaces; k++)
+//      faceMap[intFaces[k]]--;
+  }
+
 }
