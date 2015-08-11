@@ -56,7 +56,7 @@ public:
   void processConnectivity();
 
   //! Create the elements and faces needed for the simulation
-  void setupElesFaces(vector<ele> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec, vector<shared_ptr<overFace> >& overFacesVec, solver* Solver);
+  void setupElesFaces(vector<ele> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec, vector<shared_ptr<overFace> >& overFacesVec);
 
   //! Update nodal positions and velocities for moving-grid cases
   void moveMesh(void);
@@ -93,7 +93,7 @@ public:
 
   void matchOversetDonors(vector<ele> &eles, vector<superMesh> &donors);
 
-  vector<ele> setupUnblankCells();
+  void setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec, vector<shared_ptr<overFace>> &overFacesVec);
 
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces, nOverFaces;
@@ -136,6 +136,12 @@ public:
   vector<int> iblankFace; //! Flag for whether a face is normal, blanked, or receptor
   vector<int> iwall;      //! List of nodes on wall boundaries
   vector<int> iover;      //! List of nodes on overset boundaries
+
+  vector<int> eleMap;     //! For overset meshes where some cells are blanked, map from 'ic' to 'eles' index
+  vector<int> faceMap;
+  //vector<int> bfaceMap;
+  //vector<int> mFaceMap;
+  //vector<int> oFaceMap;
 
 #ifndef _NO_MPI
   MPI_Comm gridComm;  //! Intra-grid communicator

@@ -53,25 +53,7 @@ void solver::updateOversetConnectivity(void)
 {
   Geo->updateOversetConnectivity();
 
-  auto unblankEles = Geo->setupUnblankCells();
-
-  int icurr = 0;
-  for (auto &ic:Geo->blankCells) {
-    while (eles[icurr].ID < ic) {
-      icurr++;
-      if (icurr >= eles.size())
-        icurr = 0;
-    }
-
-    if (eles[icurr].ID == ic) {
-      // Cell which must be removed
-      eles.erase(eles.begin()+icurr,eles.begin()+icurr+1);
-    }
-  }
-
-  for (auto &e:unblankEles) {
-    eles.push_back(e);
-  }
+  Geo->setupUnblankCells(eles);
 
   //Geo->update
 }
