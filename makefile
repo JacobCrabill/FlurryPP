@@ -64,7 +64,8 @@ OBJECTS = 	obj/global.o \
 		obj/flurry.o \
 		obj/solver.o \
 		obj/solver_overset.o \
-		obj/superMesh.o
+		obj/superMesh.o \
+		obj/overComm.o
 
 ifeq ($(mpi),n)
 # Don't compile TIOGA objects
@@ -271,12 +272,17 @@ obj/solver.o: src/solver.cpp include/solver.hpp \
 		include/input.hpp \
 		include/face.hpp \
 		include/operators.hpp \
+		include/overComm.hpp \
 		include/polynomials.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/solver.o src/solver.cpp
 
 obj/solver_overset.o: src/solver_overset.cpp include/solver.hpp \
+  		include/global.hpp \
+		include/input.hpp \
 		include/geo.hpp \
-		include/input.hpp
+		include/matrix.hpp \
+		include/overComm.hpp \
+		include/overFace.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/solver_overset.o src/solver_overset.cpp
 
 obj/superMesh.o: src/superMesh.cpp include/superMesh.hpp \
@@ -285,6 +291,15 @@ obj/superMesh.o: src/superMesh.cpp include/superMesh.hpp \
 	include/geo.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/superMesh.o src/superMesh.cpp
 	
+obj/overComm.o: src/overComm.cpp include/overComm.hpp \
+		include/global.hpp \
+		include/geo.hpp \
+		include/input.hpp \
+		include/matrix.hpp \
+		include/operators.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/overComm.o src/overComm.cpp
+
+
 obj/ADT.o: lib/tioga/src/ADT.C lib/tioga/src/ADT.h \
   	lib/tioga/src/codetypes.h \
 	lib/tioga/src/utils.h

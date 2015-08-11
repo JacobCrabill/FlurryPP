@@ -25,44 +25,53 @@
 
 void solver::oversetInterp(void)
 {
-  exchange.U_out.resize(Geo->nGrids);
-  for (int g=0; g<Geo->nGrids; g++) {
-    exchange.U_out[g].setup(exchange.foundPts[g].size(),params->nFields);
-    if (g == Geo->gridID) continue;
-    for (int i=0; i<exchange.foundPts[g].size(); i++) {
-      point refPos = exchange.foundLocs[g][i];
-      int ic = exchange.foundEles[g][i];
-      opers[eles[ic].eType][eles[ic].order].interpolateToPoint(eles[ic].U_spts, exchange.U_out[g][i], refPos);
-    }
-  }
-
-  Geo->exchangeOversetData(exchange);
+  OComm->exchangeOversetData(eles,opers);
 }
 
 void solver::setupOverset(void)
 {
   if (gridRank == 0) cout << "Solver: Grid " << gridID << ": Setting up overset connectivity" << endl;
 
+  OComm = new overComm;
+
+  OComm->setup(params,nGrids,gridID,gridRank,nprocPerGrid);
+
   // Get all of the fringe points on this grid
-  exchange.overPts.setup(0,0);
+  OComm->overPts.setup(0,0);
   for (auto &oface: overFaces) {
-    oface->Solver = this;
-    oface->fptOffset = exchange.overPts.getDim0();
+    oface->OComm = OComm;
+    oface->fptOffset = OComm->overPts.getDim0();
     auto pts = oface->getPosFpts();
     for (auto &pt:pts)
-      exchange.overPts.insertRow({pt.x, pt.y, pt.z});
+      OComm->overPts.insertRow({pt.x, pt.y, pt.z});
   }
 
-  exchange.nOverPts = exchange.overPts.getDim0();
-
-  Geo->matchOversetPoints(eles, exchange);
-
-  exchange.U_in.setup(exchange.nOverPts,params->nFields);
+  OComm->matchOversetPoints(eles);
 }
 
 void solver::updateOversetConnectivity(void)
 {
   Geo->updateOversetConnectivity();
+
+  auto unblankEles = Geo->setupUnblankCells();
+
+  int icurr = 0;
+  for (auto &ic:Geo->blankCells) {
+    while (eles[icurr].ID < ic) {
+      icurr++;
+      if (icurr >= eles.size())
+        icurr = 0;
+    }
+
+    if (eles[icurr].ID == ic) {
+      // Cell which must be removed
+      eles.erase(eles.begin()+icurr,eles.begin()+icurr+1);
+    }
+  }
+
+  for (auto &e:unblankEles) {
+    eles.push_back(e);
+  }
 
   //Geo->update
 }

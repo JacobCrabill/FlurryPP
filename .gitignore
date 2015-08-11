@@ -19,6 +19,9 @@ Makefile
 # External Libraries Folder (in order to compile in place)
 lib/
 
+# Bin directory
+bin/
+
 # Compiled Dynamic libraries
 *.so
 *.dylib
@@ -53,6 +56,12 @@ lib/
 *.dat
 *.csv
 *.csv.*
+*.out
+*.hist
+
+# Mesh files
+*.geo
+*.msh
 
 # Binary / run directory
 build/

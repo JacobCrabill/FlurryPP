@@ -26,7 +26,6 @@ class tioga;
 
 #include "ele.hpp"
 #include "input.hpp"
-#include "solver.hpp"
 #include "face.hpp"
 #include "mpiFace.hpp"
 #include "overFace.hpp"
@@ -94,6 +93,8 @@ public:
 
   void matchOversetDonors(vector<ele> &eles, vector<superMesh> &donors);
 
+  vector<ele> setupUnblankCells();
+
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces, nOverFaces;
   int nBounds;  //! Number of boundaries
@@ -136,10 +137,19 @@ public:
   vector<int> iwall;      //! List of nodes on wall boundaries
   vector<int> iover;      //! List of nodes on overset boundaries
 
+#ifndef _NO_MPI
+  MPI_Comm gridComm;  //! Intra-grid communicator
+  MPI_Comm interComm; //! Inter-grid communicator (matched by gridRank)
+#endif
+
   /* --- Moving-Overset-Grid-Related Variables --- */
-  set<int> holeCells;  //! List of cells in mesh which are currently blanked
-  set<int> unblanks;   //! List of non-existing cells which, due to motion, must be un-blanked
-  set<int> blanks;     //! List of existing cells which, due to motion, must be blanked
+  set<int> holeCells;     //! List of cells in mesh which are currently blanked
+  set<int> holeFaces;     //! List of cells in mesh which are currently blanked
+  set<int> unblankCells;  //! List of non-existing cells which, due to motion, must be un-blanked
+  set<int> unblankFaces;  //! List of non-existing faces which, due to motion, must be un-blanked
+  set<int> unblankOFaces; //! List of non-existing faces which, due to motion, must be un-blanked as overset faces
+  set<int> blankCells;    //! List of existing cells which, due to motion, must be blanked
+  set<int> blankFaces;    //! List of existing faces which, due to motion, must be blanked
 
   // Outgoing (interpolated) data
   vector<int> interpProc;       //! Processor ID for all interpolation points
@@ -184,11 +194,6 @@ private:
   vector<int> nBndPts_g; //! Global number of points on each boundary
   map<int,int> bcIdMap;  //! Map from Gmsh boundary ID to Flurry BC ID
   int nEles_g, nVerts_g;
-
-#ifndef _NO_MPI
-  MPI_Comm gridComm;  //! Intra-grid communicator
-  MPI_Comm interComm; //! Inter-grid communicator (matched by gridRank)
-#endif
 
   void processConn2D(void);
   void processConn3D(void);

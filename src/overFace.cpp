@@ -17,6 +17,7 @@
 
 #include "flux.hpp"
 #include "ele.hpp"
+#include "overComm.hpp"
 
 void overFace::setupRightState(void)
 {
@@ -31,7 +32,7 @@ void overFace::getRightState(void)
   // Note: fptOffset must be set by Solver during overset setup
   for (int i=0; i<nFptsL; i++) {
     for (int k=0; k<nFields; k++) {
-      UR(i,k) = Solver->exchange.U_in(fptOffset+i,k);
+      UR(i,k) = OComm->U_in(fptOffset+i,k);
     }
   }
 }

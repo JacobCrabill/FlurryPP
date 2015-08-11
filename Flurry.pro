@@ -35,7 +35,8 @@ SOURCES += src/global.cpp \
     src/overFace.cpp \
     src/geo_overset.cpp \
     src/points.cpp \
-    src/superMesh.cpp
+    src/superMesh.cpp \
+    src/overComm.cpp
 		   
 HEADERS += include/global.hpp \
     include/matrix.hpp \
@@ -64,7 +65,8 @@ HEADERS += include/global.hpp \
     include/funcs.hpp \
     include/overFace.hpp \
     include/points.hpp \
-    include/superMesh.hpp
+    include/superMesh.hpp \
+    include/overComm.hpp
 
 DISTFILES += \
     README.md \

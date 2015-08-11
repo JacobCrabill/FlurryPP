@@ -527,6 +527,26 @@ point ele::calcPos(const point &loc)
   return pt;
 }
 
+vector<double> ele::getBoundingBox(void)
+{
+  point minPt(INFINITY,INFINITY,INFINITY);
+  point maxPt(-INFINITY,-INFINITY,-INFINITY);
+  for (auto &pt:nodesRK[0]) {
+    for (int dim=0; dim<nDims; dim++) {
+      minPt[dim] = min(minPt[dim],pt[dim]);
+      maxPt[dim] = max(maxPt[dim],pt[dim]);
+    }
+  }
+
+  vector<double> bbox(6);
+  for (int dim=0; dim<nDims; dim++) {
+    bbox[dim] = (minPt[dim]+maxPt[dim])*0.5;
+    bbox[dim+3] = maxPt[dim] - minPt[dim];
+  }
+
+  return bbox;
+}
+
 point ele::getRefLoc(const point &pos)
 {
   // --- NOTE: Need a better method for high-aspect-ratio elements!! ---

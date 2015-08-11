@@ -711,20 +711,6 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     std::sort(overFaces.begin(),overFaces.end());
     auto it = std::unique(overFaces.begin(),overFaces.end());
     overFaces.resize( std::distance(overFaces.begin(),it) );
-
-//    cout << "Grid " << gridID << ": nFaces = " << nFaces << ", nOverFaces = " << overFaces.size() << endl;
-//    for (auto &ff: overFaces) cout << f2c(ff,0) << endl;
-//    MPI_Barrier(MPI_COMM_WORLD);
-
-    /*for (auto &ff: intFaces) if (iblankFace[ff] != NORMAL) ff = -1;
-    for (auto &ff: bndFaces) if (iblankFace[ff] != NORMAL) ff = -1;
-    for (auto &ff: mpiFaces) if (iblankFace[ff] != NORMAL) ff = -1;
-    intFaces.erase(std::remove(intFaces.begin(), intFaces.end(), -1), intFaces.end());
-    bndFaces.erase(std::remove(bndFaces.begin(), bndFaces.end(), -1), bndFaces.end());
-    mpiFaces.erase(std::remove(mpiFaces.begin(), mpiFaces.end(), -1), mpiFaces.end());
-    nIntFaces = intFaces.size();
-    nBndFaces = bndFaces.size();
-    nMpiFaces = mpiFaces.size();*/
   }
 
   vector<int> cellFaces;
@@ -881,7 +867,6 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
       struct faceInfo info;
       ic = eleMap[ic];
-      oface->Solver = Solver;
       oface->initialize(&eles[ic],NULL,ff,fid,info,params);
 
       overFacesVec.push_back(oface);

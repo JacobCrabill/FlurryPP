@@ -144,6 +144,9 @@ public:
 
   void getPosSpts(double* posSpts);
 
+  //! Get a bounding box for the element defined by a center point, width, length, and height
+  vector<double> getBoundingBox(void);
+
   /*! Find the reference location of a point inside an element given its
    *  physical position */
   point getRefLoc(const point &pos);
@@ -182,8 +185,6 @@ public:
   bool checkDensity();
   void checkEntropy();
   void checkEntropyPlot();
-
-private:
 
   /* --- Simulation/Mesh Parameters --- */
   geo* Geo;      //! Geometry (mesh) to which element belongs
@@ -256,6 +257,8 @@ private:
   /* --- Temporary Variables --- */
   matrix<double> tempF;
   vector<double> tempU;
+
+private:
 
   /*! Get the values of the nodal shape bases at a solution point */
   void getShape(point loc, vector<double> &shape);

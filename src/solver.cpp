@@ -39,6 +39,9 @@ solver::~solver()
   if (tg != NULL) {
     delete tg;
   }
+  if (OComm != NULL) {
+    delete OComm;
+  }
 #endif
 }
 
@@ -55,6 +58,7 @@ void solver::setup(input *params, geo *Geo)
   /* Setup the FR elements & faces which will be computed on */
   Geo->setupElesFaces(eles,faces,mpiFaces,overFaces,this); // REMOVE this LATER
 
+  nGrids = Geo->nGrids;
   gridID = Geo->gridID;
   gridRank = Geo->gridRank;
   nprocPerGrid = Geo->nprocPerGrid;

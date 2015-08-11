@@ -109,6 +109,12 @@ struct point
     z = 0;
   }
 
+  point (double _x, double _y, double _z) {
+    x = _x;
+    y = _y;
+    z = _z;
+  }
+
   point(double* pt) {
     x = pt[0];
     y = pt[1];
