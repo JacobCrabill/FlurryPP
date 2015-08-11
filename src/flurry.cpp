@@ -84,10 +84,6 @@ int main(int argc, char *argv[]) {
   /* Setup the solver, all elements and faces, and all FR operators for computation */
   Solver.setup(&params,&Geo);
 
-  /* Stat timer for simulation (ignoring pre-processing) */
-  simTimer runTime;
-  runTime.startTimer();
-
   /* Apply the initial condition */
   Solver.initializeSolution();
 
@@ -98,6 +94,10 @@ int main(int argc, char *argv[]) {
   // Allow all processes to finish initial file writing before starting computation
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
+
+  /* Stat timer for simulation (ignoring pre-processing) */
+  simTimer runTime;
+  runTime.startTimer();
 
   /* --- Calculation Loop --- */
   for (params.iter=params.initIter+1; params.iter<=params.iterMax; params.iter++) {

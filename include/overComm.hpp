@@ -112,13 +112,32 @@ public:
   //! Perform the interpolation and communicate data across all grids
   void exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &opers);
 
-
-  //! Experimental: One function to gather data across all grids / ranks
-//  void gatherData(int nPieces, int stride, int* values, vector<int>& nPieces_grid, vector<int> &values_all);
-//  void gatherData(int nPieces, int stride, double* values, vector<int>& nPieces_grid, vector<double> &values_all);
-
+  /*!
+   * \brief Gather a distributed dataset so that every rank has the full, organized dataset
+   *
+   * @param[in] nPieces      : Number of pieces of data contributed by current rank
+   * @param[in] stride       : Number of [typename T] values for each piece of data
+   * @param[in] values       : Values being contributed from current rank
+   * @param[out] nPieces_rank: Number of pieces of data for each rank on current grid
+   * @param[out] nPieces_grid: Number of pieces of data for each grid
+   * @param[out] values_alll : The collected and organized values for all grids/ranks
+   */
   template<typename T>
   void gatherData(int nPieces, int stride, T *values, vector<int> &nPieces_rank, vector<int> &nPieces_grid, vector<T> &values_all);
+
+  /*!
+   * \brief Distribute a scattered dataset to the proper grid/rank
+   *
+   * @param[in] nPiecesSend : Number of pieces of data this rank is sending to each grid
+   * @param[in] nPiecesRecv : Number of pieces of data this rank will be receiving from each grid
+   * @param[in] sendInds    : Destination indices on receiving grid for data being sent (range 0:nPieces_grid-1)
+   * @param[in] nPieces_rank: Number of pieces of data for each rank on current grid
+   * @param[in] values_send : Dataset being sent to each grid (size nPiecesSend x stride)
+   * @param[out] values_recv: Dataset received from all other grids
+   * @param[in] stride      : Number of [typename T] values for each piece of data
+   */
+  template<typename T>
+  void distributeData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<vector<int>> &sendInds, vector<int> &nPieces_rank, vector<matrix<T>> &values_send, matrix<T> &values_recv, int stride);
 
 private:
   template<typename T> MPI_Datatype getMpiDatatype(void);
