@@ -36,17 +36,7 @@ void solver::setupOverset(void)
 
   OComm->setup(params,nGrids,gridID,gridRank,nprocPerGrid);
 
-  // Get all of the fringe points on this grid
-  OComm->overPts.setup(0,0);
-  for (auto &oface: overFaces) {
-    oface->OComm = OComm;
-    oface->fptOffset = OComm->overPts.getDim0();
-    auto pts = oface->getPosFpts();
-    for (auto &pt:pts)
-      OComm->overPts.insertRow({pt.x, pt.y, pt.z});
-  }
-
-  OComm->matchOversetPoints(eles);
+  OComm->matchOversetPoints(eles,overFaces);
 }
 
 void solver::updateOversetConnectivity(void)

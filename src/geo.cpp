@@ -164,7 +164,7 @@ void geo::processConn2D(void)
 
   /* Flag for whether global face ID corresponds to interior or boundary face
      (note that, at this stage, MPI faces will be considered boundary faces) */
-  isBnd.assign(nFaces,0);
+  faceType.assign(nFaces,INTERNAL);
 
   nIntFaces = 0;
   nBndFaces = 0;
@@ -186,7 +186,7 @@ void geo::processConn2D(void)
       else if (ie.size()==1) {
         // Boundary or MPI Edge
         bndFaces.push_back(iE[i]);
-        isBnd[iE[i]] = true;
+        faceType[iE[i]] = BOUNDARY;
         nBndFaces++;
       }
 
@@ -246,7 +246,7 @@ void geo::processConn2D(void)
       int ie0 = ie1[ie2];
 
       // Find ID of face within type-specific array
-      if (isBnd[ie0]) {
+      if (faceType[ie0]>0) {
         c2f(ic,j) = ie0;
         c2b(ic,j) = 1;
       }else{
@@ -325,7 +325,7 @@ void geo::processConn3D(void)
 
   // Flag for whether global face ID corresponds to interior or boundary face
   // (note that, at this stage, MPI faces will be considered boundary faces)
-  isBnd.assign(nFaces,0);
+  faceType.assign(nFaces,INTERNAL);
 
   nIntFaces = 0;
   nBndFaces = 0;
@@ -347,7 +347,7 @@ void geo::processConn3D(void)
       else if (ff.size()==1) {
         // Boundary or MPI Edge
         bndFaces.push_back(iF[i]);
-        isBnd[iF[i]] = true;
+        faceType[iF[i]] = BOUNDARY;
         nBndFaces++;
       }
 
@@ -426,7 +426,7 @@ void geo::processConn3D(void)
       int ff = c2f(ic,j);
 
       // Find ID of face within type-specific array
-      if (isBnd[ff])
+      if (faceType[ff]>0)
         c2b(ic,j) = 1;
       else
         c2b(ic,j) = 0;
@@ -467,14 +467,16 @@ void geo::matchMPIFaces(void)
   mpiPeriodic.resize(0);
   for (int i=0; i<nBndFaces; i++) {
     if (bcType[i] <= 0) {
-      mpiFaces.push_back(bndFaces[i]);
+      int ff = bndFaces[i];
+      mpiFaces.push_back(ff);
+      faceType[ff] = MPI_FACE;
       int periodic = (bcType[i]==PERIODIC) ? 1 : 0;
       mpiPeriodic.push_back(periodic);
       if (nDims == 3) {
         // Get cell ID & cell-local face ID for face-rotation mapping
-        mpiCells.push_back(ic2icg[f2c(bndFaces[i],0)]);
-        auto cellFaces = c2f.getRow(f2c(bndFaces[i],0));
-        int fid = findFirst(cellFaces,bndFaces[i]);
+        mpiCells.push_back(ic2icg[f2c(ff,0)]);
+        auto cellFaces = c2f.getRow(f2c(ff,0));
+        int fid = findFirst(cellFaces,ff);
         mpiLocF.push_back(fid);
       }
       bndFaces[i] = -1;
@@ -599,6 +601,7 @@ void geo::matchMPIFaces(void)
 
   // For overset grids: Now that we have iblank info for both sides, we can remove
   // any faces which should actually be overset faces
+  nMpiFaces = mpiFaces.size();
   if (meshType == OVERSET_MESH) {
     for (int F=0; F<nMpiFaces; F++) {
       if (mpiIblank[F] != NORMAL || mpiIblankR[F] != NORMAL) {
@@ -607,29 +610,32 @@ void geo::matchMPIFaces(void)
           iblankFace[mpiFaces[F]] = HOLE;
         else
           iblankFace[mpiFaces[F]] = FRINGE;
+
         if (mpiCells[F]<0 || mpiLocF[F]<0 || procR[F]<0 || faceID_R[F]<0 || gIC_R[F]<0 || mpiLocF_R[F]<0)
           FatalError("AAAAAHHHH!!");
-        mpiFaces[F] = -1;
-        mpiCells[F] = -1;
-        mpiLocF[F] = -1;
-        procR[F] = -1;
-        faceID_R[F] = -1;
-        if (nDims == 3) {
-          gIC_R[F] = -1;
-          mpiLocF_R[F] = -1;
-        }
+
+        nMpiFaces--;
+//        mpiFaces[F] = -1;
+//        mpiCells[F] = -1;
+//        mpiLocF[F] = -1;
+//        procR[F] = -1;
+//        faceID_R[F] = -1;
+//        if (nDims == 3) {
+//          gIC_R[F] = -1;
+//          mpiLocF_R[F] = -1;
+//        }
       }
     }
-    mpiFaces.erase(std::remove(mpiFaces.begin(), mpiFaces.end(), -1), mpiFaces.end());
-    mpiCells.erase(std::remove(mpiCells.begin(), mpiCells.end(), -1), mpiCells.end());
-    mpiLocF.erase(std::remove(mpiLocF.begin(), mpiLocF.end(), -1), mpiLocF.end());
-    procR.erase(std::remove(procR.begin(), procR.end(), -1), procR.end());
-    faceID_R.erase(std::remove(faceID_R.begin(), faceID_R.end(), -1), faceID_R.end());
-    if (nDims == 3) {
-      gIC_R.erase(std::remove(gIC_R.begin(), gIC_R.end(), -1), gIC_R.end());
-      mpiLocF_R.erase(std::remove(mpiLocF_R.begin(), mpiLocF_R.end(), -1), mpiLocF_R.end());
-    }
-    nMpiFaces = mpiFaces.size();
+//    mpiFaces.erase(std::remove(mpiFaces.begin(), mpiFaces.end(), -1), mpiFaces.end());
+//    mpiCells.erase(std::remove(mpiCells.begin(), mpiCells.end(), -1), mpiCells.end());
+//    mpiLocF.erase(std::remove(mpiLocF.begin(), mpiLocF.end(), -1), mpiLocF.end());
+//    procR.erase(std::remove(procR.begin(), procR.end(), -1), procR.end());
+//    faceID_R.erase(std::remove(faceID_R.begin(), faceID_R.end(), -1), faceID_R.end());
+//    if (nDims == 3) {
+//      gIC_R.erase(std::remove(gIC_R.begin(), gIC_R.end(), -1), gIC_R.end());
+//      mpiLocF_R.erase(std::remove(mpiLocF_R.begin(), mpiLocF_R.end(), -1), mpiLocF_R.end());
+//    }
+//    nMpiFaces = mpiFaces.size();
   }
 
   if (gridRank == 0)
@@ -719,6 +725,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
   }
 
   faceMap.assign(nFaces,-1);
+  faceType.assign(nFaces,HOLE_FACE);
 
   // Internal Faces
   for (auto &ff: intFaces) {
@@ -749,6 +756,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
     faces.push_back(iface);
     faceMap[ff] = faces.size();
+    //faceType[ff] = INTERNAL;
   }
   // New # of internal faces (after excluding blanked faces)
   nIntFaces = faces.size();
@@ -786,6 +794,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
     faces.push_back(bface);
     faceMap[ff] = faces.size();
+    //faceType[ff] = BOUNDARY;
   }
   // New # of boundary faces (after excluding blanked faces)
   nBndFaces = faces.size() - nIntFaces;
@@ -804,6 +813,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     for (int i=0; i<nMpiFaces; i++) {
       // Find global face ID of current boundary face
       int ff = mpiFaces[i];
+
+      if (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) continue;
 
       shared_ptr<mpiFace> mface = make_shared<mpiFace>();
 
@@ -838,6 +849,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
       mpiFacesVec.push_back(mface);
       faceMap[ff] = mpiFacesVec.size();
+      //faceType[ff] = MPI_FACE;
     }
     // New # of boundary faces (after excluding blanked faces)
     nMpiFaces = mpiFacesVec.size();
@@ -871,6 +883,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       oface->initialize(&eles[ic],NULL,ff,fid,info,params);
 
       overFacesVec.push_back(oface);
+      //faceType[ff] = OVER_FACE;
     }
   }
   overFaces.erase(std::remove(overFaces.begin(), overFaces.end(), -1), overFaces.end());
@@ -1554,8 +1567,8 @@ void geo::processPeriodicBoundaries(void)
         intFaces.push_back(bi);
 
         // Flag global edge IDs as internal faces
-        isBnd[bi] = false;
-        isBnd[bj] = false;
+        faceType[bi] = INTERNAL;
+        faceType[bj] = INTERNAL;
 
         // Fix f2c - add right cell to combined face, make left cell = -1 in 'deleted' face
         f2c(bi,1) = f2c(bj,0);

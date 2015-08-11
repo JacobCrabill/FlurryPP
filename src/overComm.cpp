@@ -1,6 +1,6 @@
 /*!
- * \file overComm.hpp
- * \brief Header file for overComm class
+ * \file overComm.cpp
+ * \brief Source file for overComm (Overset Communicator) class
  *
  * Handles communication of data across multiple MPI-partitioned overset grids
  *
@@ -41,10 +41,20 @@ void overComm::setup(input* _params, int _nGrids, int _gridID, int _gridRank, in
 #endif
 }
 
-void overComm::matchOversetPoints(vector<ele> &eles)
+void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &overFaces)
 {
 #ifndef _NO_MPI
   /* ---- Gather all interpolation point data on each grid ---- */
+
+  // Get all of the fringe points on this grid
+  overPts.setup(0,0);
+  for (auto &oface: overFaces) {
+    oface->OComm = this;
+    oface->fptOffset = overPts.getDim0();
+    auto pts = oface->getPosFpts();
+    for (auto &pt:pts)
+      overPts.insertRow({pt.x, pt.y, pt.z});
+  }
 
   nOverPts = overPts.getDim0();
 
@@ -85,25 +95,13 @@ void overComm::matchOversetPoints(vector<ele> &eles)
     }
   }
 
-  /* ---- Send/Receive the the donor info across grids ---- */
+  /* ---- Prepare for Data Communication ---- */
 
-  // Send/Receive the number of matched points on each grid
-  nPtsRecv.resize(nGrids);
+  // Get the number of matched points for each grid
   nPtsSend.resize(nGrids);
-  vector<MPI_Request> reqs(nGrids);
-  vector<MPI_Request> sends(nGrids);
   for (int g=0; g<nGrids; g++) {
     if (g == gridID) continue;
     nPtsSend[g] = foundPts[g].size();
-    MPI_Irecv(&nPtsRecv[g], 1, MPI_INT, g, gridID, interComm, &reqs[g]);
-    MPI_Isend(&nPtsSend[g], 1, MPI_INT, g, g, interComm, &sends[g]);
-  }
-
-  MPI_Status status;
-  for (int g=0; g<nGrids; g++) {
-    if (g == gridID) continue;
-    MPI_Wait(&reqs[g],&status);
-    MPI_Wait(&sends[g],&status);
   }
 
   U_in.setup(nOverPts,nFields);
@@ -223,30 +221,36 @@ void overComm::matchOversetUnblanks(vector<ele> &eles, set<int> &unblankCells)
       foundCellDonors[g].insertRowUnsized(donors);
     }
   }
-
-//  /* ---- Send/Receive the the donor info across grids ---- */
-
-//  // Send/Receive the number of matched points on each grid
-//  nCellsRecv.resize(nGrids);
-//  nCellsSend.resize(nGrids);
-//  vector<MPI_Request> reqs(nGrids);
-//  vector<MPI_Request> sends(nGrids);
-//  for (int g=0; g<nGrids; g++) {
-//    if (g == gridID) continue;
-//    nCellsSend[g] = foundCells[g].size();
-//    MPI_Irecv(&nCellsRecv[g], 1, MPI_INT, g, gridID, interComm, &reqs[g]);
-//    MPI_Isend(&nCellsSend[g], 1, MPI_INT, g, g, interComm, &sends[g]);
-//  }
-
-//  MPI_Status status;
-//  for (int g=0; g<nGrids; g++) {
-//    if (g == gridID) continue;
-//    MPI_Wait(&reqs[g],&status);
-//    MPI_Wait(&sends[g],&status);
-//  }
 #endif
 }
 
+void overComm::exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &opers)
+{
+#ifndef _NO_MPI
+
+  U_out.resize(nGrids);
+  for (int g=0; g<nGrids; g++) {
+    U_out[g].setup(foundPts[g].size(),nFields);
+    if (g == gridID) continue;
+    for (int i=0; i<foundPts[g].size(); i++) {
+      point refPos = foundLocs[g][i];
+      int ic = foundEles[g][i];
+      opers[eles[ic].eType][eles[ic].order].interpolateToPoint(eles[ic].U_spts, U_out[g][i], refPos);
+    }
+  }
+
+  /* ---- Send/Receive the the interpolated data across grids using interComm ---- */
+  nPtsSend.resize(nGrids);
+  for (int g=0; g<nGrids; g++) {
+    if (g == gridID) continue;
+    nPtsSend[g] = foundPts[g].size();
+  }
+
+  distributeData(nPtsSend,nPtsRecv,foundPts,nPts_rank,U_out,U_in,nFields);
+#endif
+}
+
+#ifndef _NO_MPI
 template<typename T>
 MPI_Datatype overComm::getMpiDatatype(void)
 {
@@ -266,6 +270,7 @@ template<> MPI_Datatype overComm::getMpiDatatype<long>(void){ return MPI_LONG; }
 template<> MPI_Datatype overComm::getMpiDatatype<short>(void){ return MPI_SHORT; }
 
 template<> MPI_Datatype overComm::getMpiDatatype<char>(void){ return MPI_CHAR; }
+#endif
 
 template<typename T>
 void overComm::gatherData(int nPieces, int stride, T *values, vector<int>& nPieces_rank, vector<int> &nPieces_grid, vector<T> &values_all)
@@ -322,35 +327,10 @@ void overComm::gatherData(int nPieces, int stride, T *values, vector<int>& nPiec
 #endif
 }
 
-void overComm::exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &opers)
-{
-#ifndef _NO_MPI
-
-  U_out.resize(nGrids);
-  for (int g=0; g<nGrids; g++) {
-    U_out[g].setup(foundPts[g].size(),nFields);
-    if (g == gridID) continue;
-    for (int i=0; i<foundPts[g].size(); i++) {
-      point refPos = foundLocs[g][i];
-      int ic = foundEles[g][i];
-      opers[eles[ic].eType][eles[ic].order].interpolateToPoint(eles[ic].U_spts, U_out[g][i], refPos);
-    }
-  }
-
-  /* ---- Send/Receive the the interpolated data across grids using interComm ---- */
-  nPtsSend.resize(nGrids);
-  for (int g=0; g<nGrids; g++) {
-    if (g == gridID) continue;
-    nPtsSend[g] = foundPts[g].size();
-  }
-
-  distributeData(nPtsSend,nPtsRecv,foundPts,nPts_rank,U_out,U_in,nFields);
-#endif
-}
-
 template<typename T>
 void overComm::distributeData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<vector<int>> &sendInds, vector<int> &nPieces_rank, vector<matrix<T>> &values_send, matrix<T> &values_recv, int stride)
 {
+#ifndef _NO_MPI
   MPI_Datatype T_TYPE = getMpiDatatype<T>();
 
   MPI_Status status;
@@ -491,5 +471,6 @@ void overComm::distributeData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv
       }
     }
   }
+#endif
 }
 

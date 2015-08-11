@@ -94,7 +94,7 @@ public:
 
   void matchOversetDonors(vector<ele> &eles, vector<superMesh> &donors);
 
-  void setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec, vector<shared_ptr<overFace>> &overFacesVec);
+  void setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
 
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces, nOverFaces;
@@ -104,6 +104,8 @@ public:
   // Basic [essential] Connectivity Data
   matrix<int> c2v;
   matrix<double> xv;      //! Current physical position of vertices [static or moving grids]
+
+  // Basic Moving-Grid Variables
   vector<point> xv_new;   //! Physical position of vertices for next time step [moving grids]
   vector<point> xv0;      //! Initial position of vertices [moving grids]
   matrix<double> gridVel; //! Grid velocity of vertices
@@ -125,7 +127,7 @@ public:
   vector<int> mpiLocF;           //! Element-local face ID of MPI Face in left cell
   vector<int> mpiLocF_R;         //! Element-local face ID of MPI Face in right cell
   vector<int> mpiPeriodic;       //! Flag for whether an MPI face is also a periodic face
-  vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
+  vector<int> faceType;          //! Type for each face: hole, internal, boundary, MPI, overset [-1,0,1,2,3]
 
   /* --- Overset-Related Variables --- */
   int nGrids;             //! Number of distinct overset grids
@@ -139,7 +141,7 @@ public:
   vector<int> iover;      //! List of nodes on overset boundaries
 
   vector<int> eleMap;     //! For overset meshes where some cells are blanked, map from 'ic' to 'eles' index
-  vector<int> faceMap;
+  vector<int> faceMap;    //! For overset meshes where some faces are blanked, map from 'ff' to faceType-vector index
   //vector<int> bfaceMap;
   //vector<int> mFaceMap;
   //vector<int> oFaceMap;
@@ -151,23 +153,14 @@ public:
 
   /* --- Moving-Overset-Grid-Related Variables --- */
   set<int> holeCells;     //! List of cells in mesh which are currently blanked
-  set<int> holeFaces;     //! List of cells in mesh which are currently blanked
+  set<int> holeFaces;     //! List of faces in mesh which are currently blanked
+  set<int> fringeFaces;   //! List of faces in mesh which are currently fringe faces
   set<int> unblankCells;  //! List of non-existing cells which, due to motion, must be un-blanked
   set<int> unblankFaces;  //! List of non-existing faces which, due to motion, must be un-blanked
   set<int> unblankOFaces; //! List of non-existing faces which, due to motion, must be un-blanked as overset faces
   set<int> blankCells;    //! List of existing cells which, due to motion, must be blanked
   set<int> blankFaces;    //! List of existing faces which, due to motion, must be blanked
-
-  // Outgoing (interpolated) data
-  vector<int> interpProc;       //! Processor ID for all interpolation points
-  vector<int> interpCell;       //! For each interpolation point, cell which it lies within
-  matrix<double> interpPtsPhys; //! Physical positions of fringe points on other grids to interpolate to
-  matrix<double> interpPtsRef;  //! Reference position (within interpCell) of fringe points on other grids to interpolate to
-
-  // Incoming (overset) data
-//  vector<int> overProc;         //! Donor-processor ID for each fringe point
-//  matrix<double> overPtsPhys;   //! Physical positions of each fringe point
-//  vector<point> overPts;        //! Physical positions of fringe points
+  set<int> blankOFaces;   //! List of existing overset faces which, due to motion, must be blanked
 
 #ifndef _NO_MPI
   shared_ptr<tioga> tg;  //! Pointer to Tioga object for processing overset grids
@@ -175,17 +168,6 @@ public:
   int* nodesPerCell;   //! Pointer for Tioga to know # of nodes for each element type
   array<int*,1> conn;  //! Pointer to c2v for each element type [but only 1, so will be size(1)]
   matrix<int> tg_c2v;  //! 'Cleaned' c2v for Tioga (when quadratic elements present, normal c2v won't work)
-
-  // Data for communication between grids
-//  vector<int> nPts_rank;           //! Number of fringe points for each rank of current grid
-//  vector<vector<int>> foundPts;    //! IDs of receptor points from each grid which were found to lie within current grid
-//  vector<vector<int>> foundRank;   //! gridRank of this process for each found point (for benefit of other processes; probably not needed)
-//  vector<vector<int>> foundEles;   //! Ele ID which each matched point was found to lie within
-//  vector<vector<point>> foundLocs; //! Reference location within ele of each matched receptor point
-
-//  vector<int> nPtsRecv; //! Number of points incoming from each grid (across interComm)
-//  vector<int> nPtsSend; //! Number of points outgoing to each grid (across interComm)
-//  vector<vector<int>> recvPts; //! Point IDs which will be received from each grid (across interComm) (counter to foundPts)
 
 private:
 

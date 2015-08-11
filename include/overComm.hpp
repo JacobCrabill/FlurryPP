@@ -23,10 +23,12 @@
 #include <vector>
 
 class oper;
+class overFace;
 
 #include "ele.hpp"
 #include "input.hpp"
 #include "operators.hpp"
+#include "overFace.hpp"
 
 #ifndef _NO_MPI
 #include "mpi.h"
@@ -104,7 +106,7 @@ public:
   void setup(input *_params, int _nGrids, int _gridID, int _gridRank, int _nprocPerGrid);
 
   //! Match up each overset-face flux point to its donor grid and element
-  void matchOversetPoints(vector<ele>& eles);
+  void matchOversetPoints(vector<ele>& eles, vector<shared_ptr<overFace> >& overFaces);
 
   //! Match up each unblanked cell to all possible donor elements in other grids
   void matchOversetUnblanks(vector<ele> &eles, set<int>& unblankCells);
@@ -140,5 +142,7 @@ public:
   void distributeData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<vector<int>> &sendInds, vector<int> &nPieces_rank, vector<matrix<T>> &values_send, matrix<T> &values_recv, int stride);
 
 private:
+#ifndef _NO_MPI
   template<typename T> MPI_Datatype getMpiDatatype(void);
+#endif
 };
