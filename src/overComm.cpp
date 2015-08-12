@@ -108,7 +108,8 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
 #endif
 }
 
-void overComm::matchOversetUnblanks(vector<ele> &eles, set<int> &unblankCells)
+void overComm::matchOversetUnblanks(vector<ele> &eles, vector<shared_ptr<overFace>> &overFaces, set<int> &unblankCells, set<int>& blankedOFaces,
+                                    set<int> &unblankOFaces, vector<int> &eleMap, vector<int> &faceMap, int quadOrder)
 {
 #ifndef _NO_MPI
 
@@ -116,21 +117,36 @@ void overComm::matchOversetUnblanks(vector<ele> &eles, set<int> &unblankCells)
 
   nUnblanks = unblankCells.size();
 
+  /* ---- Send Unblanked-Cell Nodes to All Grids ---- */
+
+  Array<double,3> ubCellNodes(nUnblanks,8,3);
+  int i = 0;
+  for (auto &ic:unblankCells) {
+    int ie = eleMap[ic];
+    // Constraining this to just linear hexahedrons for the time being
+    for (int j=0; j<8; j++) {
+      for (int k=0; k<3; k++) {
+        ubCellNodes(i,j,k) = eles[ie].nodesRK[0][j][k];
+      }
+    }
+    i++;
+  }
+
   /* ---- Gather all cell bounding-box data on each grid ---- */
 
   // Gather bounding boxes for all unblanked cells on this rank
   matrix<double> bBoxes;
-  for (auto &e:eles) {
-    if (unblankCells.count(e.ID)) {
-      bBoxes.insertRow(e.getBoundingBox());
-    }
+  for (auto &ic:unblankCells) {
+    int ie = eleMap[ic];
+    bBoxes.insertRow(eles[ie].getBoundingBox());
   }
 
+  int stride = 24;
   vector<int> nCells_rank, nCells_grid;
-  vector<double> bBoxes_grid;
-  gatherData(nUnblanks, 1, bBoxes.getData(), nCells_rank, nCells_grid, bBoxes_grid);
+  vector<double> ubNodes_grid;
+  gatherData(nUnblanks, stride, ubCellNodes.getData(), nCells_rank, nCells_grid, ubNodes_grid);
 
-  /* ---- Check Every Fringe Point for Donor Cell on This Grid ---- */
+  /* ---- Check Every Unblanked Cell for Donor Cells on This Grid ---- */
 
   foundCells.resize(nGrids);
   foundCellDonors.resize(nGrids);
@@ -143,13 +159,20 @@ void overComm::matchOversetUnblanks(vector<ele> &eles, set<int> &unblankCells)
 
     for (int i=0; i<nCells_grid[g]; i++) {
       // Get requested cell's bounding box
-      point cent = point(&bBoxes_grid[offset+i]);
-      point dx = point(&bBoxes_grid[offset+i+3]);
+      vector<point> targetNodes(8);
+      for (int j=0; j<8; j++) {
+        targetNodes[j] = point(&ubNodes_grid[(offset+i)*stride+3*j]);
+      }
+      point cent, dx;
+      getBoundingBox(targetNodes,cent,dx);
+      //point cent = point(&bBoxes_grid[offset+i]);
+      //point dx = point(&bBoxes_grid[offset+i+3]);
 
       // Check for overlap in all eles on this rank of this grid
       bool found = false;
       int ind = -1;
-      vector<int> donors;
+      vector<int> donorsIDs;
+      Array2D<point> donorPts;
       for (auto &e:eles) {
         /* !! THIS IS HORRIBLY INEFFICIENT !! - should use c2c to march from an
          * initial guess to the neighboring cell nearest the point in question */
@@ -215,12 +238,30 @@ void overComm::matchOversetUnblanks(vector<ele> &eles, set<int> &unblankCells)
             found = true;
           }
           foundCellNDonors[g][ind]++;
-          donors.push_back(e.ID); // Local ele id for this grid
+          donorsIDs.push_back(e.ID); // Local ele id for this grid
         }
       }
-      foundCellDonors[g].insertRowUnsized(donors);
+      if (found) {
+        // Setup the donor cells [on this grid] for the unblanked cell [on other grid]
+        foundCellDonors[g].insertRowUnsized(donorsIDs);
+        for (int k=0; k<donorsIDs.size(); k++) {
+          donorPts.insertRow(eles[donorsIDs[k]].nodesRK[0]);
+        }
+        superMesh mesh(targetNodes,donorPts,quadOrder);
+        donors.push_back(mesh);
+      }
     }
   }
+
+  /* ---- Now that we have the local superMesh for each target, setup points for
+   *      use with Galerkin projection ---- */
+
+  for (auto &mesh:donors)
+    mesh.setupQuadrature();
+
+  // Next Up: Match the new overset-face points in a separate set of data arrays,
+  // remove the 'blanked' overset face points from the original data arrays, then
+  // interlace the new data into the original data
 #endif
 }
 

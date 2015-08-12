@@ -41,6 +41,8 @@ public:
   superMesh();
   ~superMesh();
 
+  superMesh(vector<point> &_target, Array2D<point> &_donors, int _order);
+
   /* ---- Member Variables ---- */
 
   vector<point> target;     //! Target cell's node positions for which to create local supermesh

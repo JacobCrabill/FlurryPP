@@ -615,27 +615,8 @@ void geo::matchMPIFaces(void)
           FatalError("AAAAAHHHH!!");
 
         nMpiFaces--;
-//        mpiFaces[F] = -1;
-//        mpiCells[F] = -1;
-//        mpiLocF[F] = -1;
-//        procR[F] = -1;
-//        faceID_R[F] = -1;
-//        if (nDims == 3) {
-//          gIC_R[F] = -1;
-//          mpiLocF_R[F] = -1;
-//        }
       }
     }
-//    mpiFaces.erase(std::remove(mpiFaces.begin(), mpiFaces.end(), -1), mpiFaces.end());
-//    mpiCells.erase(std::remove(mpiCells.begin(), mpiCells.end(), -1), mpiCells.end());
-//    mpiLocF.erase(std::remove(mpiLocF.begin(), mpiLocF.end(), -1), mpiLocF.end());
-//    procR.erase(std::remove(procR.begin(), procR.end(), -1), procR.end());
-//    faceID_R.erase(std::remove(faceID_R.begin(), faceID_R.end(), -1), faceID_R.end());
-//    if (nDims == 3) {
-//      gIC_R.erase(std::remove(gIC_R.begin(), gIC_R.end(), -1), gIC_R.end());
-//      mpiLocF_R.erase(std::remove(mpiLocF_R.begin(), mpiLocF_R.end(), -1), mpiLocF_R.end());
-//    }
-//    nMpiFaces = mpiFaces.size();
   }
 
   if (gridRank == 0)
@@ -646,10 +627,6 @@ void geo::matchMPIFaces(void)
 void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec, vector<shared_ptr<overFace>> &overFacesVec)
 {
   if (nEles<=0) FatalError("Cannot setup elements array - nEles = 0");
-
-  //eles.resize(nEles);
-  //faces.resize(nIntFaces+nBndFaces);
-  //mpiFacesVec.resize(nMpiFaces);
 
   if (gridRank==0) {
     if (meshType == OVERSET_MESH)
@@ -756,7 +733,6 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
     faces.push_back(iface);
     faceMap[ff] = faces.size();
-    //faceType[ff] = INTERNAL;
   }
   // New # of internal faces (after excluding blanked faces)
   nIntFaces = faces.size();
@@ -794,7 +770,6 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
     faces.push_back(bface);
     faceMap[ff] = faces.size();
-    //faceType[ff] = BOUNDARY;
   }
   // New # of boundary faces (after excluding blanked faces)
   nBndFaces = faces.size() - nIntFaces;
@@ -849,7 +824,6 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
       mpiFacesVec.push_back(mface);
       faceMap[ff] = mpiFacesVec.size();
-      //faceType[ff] = MPI_FACE;
     }
     // New # of boundary faces (after excluding blanked faces)
     nMpiFaces = mpiFacesVec.size();
@@ -861,6 +835,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
   // Internal Faces
   if (meshType == OVERSET_MESH) {
     for (auto &ff: overFaces) {
+      iblankFace[ff] = FRINGE; // To ensure consistency
+
       shared_ptr<overFace> oface = make_shared<overFace>();
 
       int ic = f2c(ff,0);
@@ -883,7 +859,6 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       oface->initialize(&eles[ic],NULL,ff,fid,info,params);
 
       overFacesVec.push_back(oface);
-      //faceType[ff] = OVER_FACE;
     }
   }
   overFaces.erase(std::remove(overFaces.begin(), overFaces.end(), -1), overFaces.end());

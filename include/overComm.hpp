@@ -29,6 +29,7 @@ class overFace;
 #include "input.hpp"
 #include "operators.hpp"
 #include "overFace.hpp"
+#include "superMesh.hpp"
 
 #ifndef _NO_MPI
 #include "mpi.h"
@@ -101,6 +102,9 @@ public:
   vector<int> nCellsSend;         //! Number of points outgoing to each grid (across interComm)
   vector<vector<int>> recvCells;  //! Cell IDs which will be received from each grid (across interComm) (counter to foundPts)
 
+  //! Local supermesh of donor elements for each cell needing to be unblanked
+  vector<superMesh> donors;
+
   /* --- Member Functions --- */
 
   void setup(input *_params, int _nGrids, int _gridID, int _gridRank, int _nprocPerGrid);
@@ -108,8 +112,17 @@ public:
   //! Match up each overset-face flux point to its donor grid and element
   void matchOversetPoints(vector<ele>& eles, vector<shared_ptr<overFace> >& overFaces);
 
-  //! Match up each unblanked cell to all possible donor elements in other grids
-  void matchOversetUnblanks(vector<ele> &eles, set<int>& unblankCells);
+  /*!
+   * \brief Setup all communication for unblanked cells and faces
+   *
+   * For each unblanked cell, setup a superMesh from donor elements on this grid
+   * --The quadrature order used on the superMesh will be order quadOrder
+   * For each blanked face, remove its points from the communicator
+   * For each unblanked face, add its points to the communicator
+   *
+   */
+  void matchOversetUnblanks(vector<ele> &eles, vector<shared_ptr<overFace> >& overFaces, set<int>& unblankCells,
+                            set<int> &blankedOFaces, set<int>& unblankOFaces, vector<int>& eleMap, vector<int>& faceMap, int quadOrder);
 
   //! Perform the interpolation and communicate data across all grids
   void exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &opers);

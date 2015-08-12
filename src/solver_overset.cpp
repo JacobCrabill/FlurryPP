@@ -45,7 +45,8 @@ void solver::updateOversetConnectivity(void)
 
   Geo->setupUnblankElesFaces(eles,faces,mpiFaces,overFaces);
 
-  //Geo->update
+  OComm->matchOversetUnblanks(eles,overFaces,Geo->unblankCells,Geo->unblankFaces,Geo->unblankOFaces,Geo->eleMap,Geo->faceMap,params->order);
+
 }
 
 /* ---- Basic Tioga-Based Overset-Grid Functions ---- */

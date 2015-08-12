@@ -367,3 +367,19 @@ Vec3 getFaceNormalQuad(vector<point> &facePts, point &xc)
 
   return norm;
 }
+
+
+void getBoundingBox(vector<point>& pts, point &cent, point &dx)
+{
+  point minPt( INFINITY, INFINITY, INFINITY);
+  point maxPt(-INFINITY,-INFINITY,-INFINITY);
+  for (auto &pt:pts) {
+    for (int dim=0; dim<3; dim++) {
+      minPt[dim] = min(minPt[dim],pt[dim]);
+      maxPt[dim] = max(maxPt[dim],pt[dim]);
+    }
+  }
+
+  cent = (minPt + maxPt)*0.5;
+  dx = maxPt - minPt;
+}

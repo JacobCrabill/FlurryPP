@@ -58,3 +58,6 @@ Vec3 getFaceNormalTri(vector<point> &facePts, point &xc);
 
 //! Given points for a cell's face and a point inside the cell, get the outward unit normal
 Vec3 getFaceNormalQuad(vector<point> &facePts, point &xc);
+
+//! Given a list of points, get an axis-aligned bounding box defined by its centriod and dimensions
+void getBoundingBox(vector<point>& pts, point &cent, point &dx);

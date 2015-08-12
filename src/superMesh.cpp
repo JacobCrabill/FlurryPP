@@ -47,6 +47,11 @@ superMesh::superMesh()
 
 }
 
+superMesh::superMesh(vector<point> &_target, Array2D<point> &_donors, int _order)
+{
+  setup(_target,_donors,_order);
+}
+
 superMesh::~superMesh()
 {
 
