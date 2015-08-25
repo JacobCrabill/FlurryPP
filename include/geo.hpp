@@ -131,9 +131,13 @@ public:
 
   /* --- Overset-Related Variables --- */
   int nGrids;             //! Number of distinct overset grids
-  int nprocPerGrid;       //! Number of MPI processes assigned to each (overset) grid block
+  int nProcGrid;       //! Number of MPI processes assigned to current (overset) grid block
   int gridID;             //! Which (overset) grid block is this process handling
   int gridRank;           //! MPI rank of process *within* the grid block [0 to nprocPerGrid-1]
+  int rank;
+  int nproc;
+  vector<int> nProcsGrid; //! Number of processes for each (overset) grid block
+  vector<int> gridIdList; //! gridID for each MPI rank
   vector<int> iblank;     //! Output of TIOGA: flag for whether vertex is normal, blanked, or receptor
   vector<int> iblankCell; //! Output? of TIOGA: flag for whether cell is normal, blanked, or receptor
   vector<int> iblankFace; //! Flag for whether a face is normal, blanked, or receptor
@@ -203,6 +207,9 @@ private:
 
   //! Compare the orientation (rotation in ref. space) betwen the local faces of 2 elements across MPI boundary
   int compareOrientationMPI(int ic1, int ic2, int f1, int f2, int isPeriodic);
+
+  //! For overset cases, balance MPI processes across grids by # of elements
+  void splitGridProcs(void);
 
   //! For MPI runs, partition the mesh across all processors
   void partitionMesh(void);

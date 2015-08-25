@@ -24,7 +24,7 @@ overComm::overComm()
 
 }
 
-void overComm::setup(input* _params, int _nGrids, int _gridID, int _gridRank, int _nprocPerGrid)
+void overComm::setup(input* _params, int _nGrids, int _gridID, int _gridRank, int _nprocPerGrid, vector<int>& _gridIdList)
 {
   params = _params;
 
@@ -32,11 +32,13 @@ void overComm::setup(input* _params, int _nGrids, int _gridID, int _gridRank, in
   gridID = _gridID;
   gridRank = _gridRank;
   nprocPerGrid = _nprocPerGrid;
+  gridIdList = _gridIdList;
 
+  rank = params->rank;
+  nproc = params->nproc;
   nFields = params->nFields;
 
 #ifndef _NO_MPI
-  MPI_Comm_split(MPI_COMM_WORLD, gridRank, gridID, &interComm);
   MPI_Comm_split(MPI_COMM_WORLD, gridID, params->rank, &gridComm);
 #endif
 }
@@ -58,23 +60,22 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
 
   nOverPts = overPts.getDim0();
 
-  vector<int> nPts_grid(nGrids);
   vector<double> interpPtsPhys;
 
-  gatherData(nOverPts, 3, overPts.getData(), nPts_rank, nPts_grid, interpPtsPhys);
+  gatherData(nOverPts, 3, overPts.getData(), nPts_rank, interpPtsPhys);
 
   /* ---- Check Every Fringe Point for Donor Cell on This Grid ---- */
 
-  foundPts.resize(nGrids);
-  foundEles.resize(nGrids);
-  foundLocs.resize(nGrids);
+  foundPts.resize(nproc);
+  foundEles.resize(nproc);
+  foundLocs.resize(nproc);
   int offset = 0;
-  for (int g=0; g<nGrids; g++) {
-    if (g>0) offset += nPts_grid[g-1];
+  for (int p=0; p<nproc; p++) {
+    if (p>0) offset += nPts_rank[p-1];
 
-    if (g == gridID) continue;
+    if (gridIdList[p] == gridID) continue;
 
-    for (int i=0; i<nPts_grid[g]; i++) {
+    for (int i=0; i<nPts_rank[p]; i++) {
       // Get requested interpolation point
       point pt = point(&interpPtsPhys[3*(offset+i)]);
       //point pt = point(interpPtsPhys[offset+i]);
@@ -86,9 +87,9 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
         bool isInEle = e.getRefLocNelderMeade(pt,refLoc);
 
         if (isInEle) {
-          foundPts[g].push_back(i);
-          foundEles[g].push_back(e.ID); // Local ele id for this grid
-          foundLocs[g].push_back(refLoc);
+          foundPts[p].push_back(i);
+          foundEles[p].push_back(e.ID); // Local ele id for this grid
+          foundLocs[p].push_back(refLoc);
           break;
         }
       }
@@ -98,18 +99,17 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
   /* ---- Prepare for Data Communication ---- */
 
   // Get the number of matched points for each grid
-  nPtsSend.resize(nGrids);
-  for (int g=0; g<nGrids; g++) {
-    if (g == gridID) continue;
-    nPtsSend[g] = foundPts[g].size();
+  nPtsSend.resize(nproc);
+  for (int p=0; p<nproc; p++) {
+    if (gridIdList[p] == gridID) continue;
+    nPtsSend[p] = foundPts[p].size();
   }
 
   U_in.setup(nOverPts,nFields);
 #endif
 }
 
-void overComm::matchOversetUnblanks(vector<ele> &eles, vector<shared_ptr<overFace>> &overFaces, set<int> &unblankCells, set<int>& blankedOFaces,
-                                    set<int> &unblankOFaces, vector<int> &eleMap, vector<int> &faceMap, int quadOrder)
+void overComm::matchUnblankCells(vector<ele> &eles, set<int> &unblankCells, vector<int> &eleMap, int quadOrder)
 {
 #ifndef _NO_MPI
 
@@ -134,34 +134,27 @@ void overComm::matchOversetUnblanks(vector<ele> &eles, vector<shared_ptr<overFac
 
   /* ---- Gather all cell bounding-box data on each grid ---- */
 
-  // Gather bounding boxes for all unblanked cells on this rank
-  matrix<double> bBoxes;
-  for (auto &ic:unblankCells) {
-    int ie = eleMap[ic];
-    bBoxes.insertRow(eles[ie].getBoundingBox());
-  }
-
   int stride = 24;
-  vector<int> nCells_rank, nCells_grid;
-  vector<double> ubNodes_grid;
-  gatherData(nUnblanks, stride, ubCellNodes.getData(), nCells_rank, nCells_grid, ubNodes_grid);
+  vector<int> nCells_rank;
+  vector<double> ubNodes_rank;
+  gatherData(nUnblanks, stride, ubCellNodes.getData(), nCells_rank, ubNodes_rank);
 
   /* ---- Check Every Unblanked Cell for Donor Cells on This Grid ---- */
 
-  foundCells.resize(nGrids);
-  foundCellDonors.resize(nGrids);
-  foundCellNDonors.resize(nGrids);
+  foundCells.resize(nproc);
+  foundCellDonors.resize(nproc);
+  foundCellNDonors.resize(nproc);
   int offset = 0;
-  for (int g=0; g<nGrids; g++) {
-    if (g>0) offset += nCells_grid[g-1];
+  for (int p=0; p<nproc; p++) {
+    if (p>0) offset += nCells_rank[p-1];
 
-    if (g == gridID) continue;
+    if (gridIdList[p] == gridID) continue;
 
-    for (int i=0; i<nCells_grid[g]; i++) {
+    for (int i=0; i<nCells_rank[p]; i++) {
       // Get requested cell's bounding box
       vector<point> targetNodes(8);
       for (int j=0; j<8; j++) {
-        targetNodes[j] = point(&ubNodes_grid[(offset+i)*stride+3*j]);
+        targetNodes[j] = point(&ubNodes_rank[(offset+i)*stride+3*j]);
       }
       point cent, dx;
       getBoundingBox(targetNodes,cent,dx);
@@ -233,17 +226,17 @@ void overComm::matchOversetUnblanks(vector<ele> &eles, vector<shared_ptr<overFac
         if (intersect) {
           if (!found) {
             ind = foundCells.size();
-            foundCellNDonors[g].push_back(0);
-            foundCells[g].push_back(i);
+            foundCellNDonors[p].push_back(0);
+            foundCells[p].push_back(i);
             found = true;
           }
-          foundCellNDonors[g][ind]++;
+          foundCellNDonors[p][ind]++;
           donorsIDs.push_back(e.ID); // Local ele id for this grid
         }
       }
       if (found) {
         // Setup the donor cells [on this grid] for the unblanked cell [on other grid]
-        foundCellDonors[g].insertRowUnsized(donorsIDs);
+        foundCellDonors[p].insertRowUnsized(donorsIDs);
         for (int k=0; k<donorsIDs.size(); k++) {
           donorPts.insertRow(eles[donorsIDs[k]].nodesRK[0]);
         }
@@ -269,25 +262,33 @@ void overComm::exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &
 {
 #ifndef _NO_MPI
 
-  U_out.resize(nGrids);
-  for (int g=0; g<nGrids; g++) {
-    U_out[g].setup(foundPts[g].size(),nFields);
-    if (g == gridID) continue;
-    for (int i=0; i<foundPts[g].size(); i++) {
-      point refPos = foundLocs[g][i];
-      int ic = foundEles[g][i];
-      opers[eles[ic].eType][eles[ic].order].interpolateToPoint(eles[ic].U_spts, U_out[g][i], refPos);
+  U_out.resize(nproc);
+  for (int p=0; p<nproc; p++) {
+    U_out[p].setup(foundPts[p].size(),nFields);
+    if (gridIdList[p] == gridID) continue;
+    for (int i=0; i<foundPts[p].size(); i++) {
+      point refPos = foundLocs[p][i];
+      int ic = foundEles[p][i];
+      opers[eles[ic].eType][eles[ic].order].interpolateToPoint(eles[ic].U_spts, U_out[p][i], refPos);
     }
   }
 
   /* ---- Send/Receive the the interpolated data across grids using interComm ---- */
-  nPtsSend.resize(nGrids);
-  for (int g=0; g<nGrids; g++) {
-    if (g == gridID) continue;
-    nPtsSend[g] = foundPts[g].size();
+  nPtsSend.resize(nproc);
+  for (int p=0; p<nproc; p++) {
+    if (gridIdList[p] == gridID) continue;
+    nPtsSend[p] = foundPts[p].size();
   }
 
-  distributeData(nPtsSend,nPtsRecv,foundPts,nPts_rank,U_out,U_in,nFields);
+  setupNPieces(nPtsSend,nPtsRecv);
+
+  recvPts.resize(nproc);
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    recvPts[p].resize(nPtsRecv[p]);
+  }
+
+  sendRecvData(nPtsSend,nPtsRecv,foundPts,recvPts,U_out,U_in,nFields,1);
 #endif
 }
 
@@ -314,7 +315,7 @@ template<> MPI_Datatype overComm::getMpiDatatype<char>(void){ return MPI_CHAR; }
 #endif
 
 template<typename T>
-void overComm::gatherData(int nPieces, int stride, T *values, vector<int>& nPieces_rank, vector<int> &nPieces_grid, vector<T> &values_all)
+void overComm::gatherData(int nPieces, int stride, T *values, vector<int>& nPieces_rank, vector<T> &values_all)
 {
 #ifndef _NO_MPI
 
@@ -323,195 +324,103 @@ void overComm::gatherData(int nPieces, int stride, T *values, vector<int>& nPiec
   MPI_Datatype T_TYPE = getMpiDatatype<T>();
 
   // Get the number of data pieces for each process on this grid
-  nPieces_rank.resize(nprocPerGrid);
-  MPI_Allgather(&nPieces, 1, MPI_INT, nPieces_rank.data(), 1, MPI_INT, gridComm);
+  nPieces_rank.resize(nproc);
+  MPI_Allgather(&nPieces, 1, MPI_INT, nPieces_rank.data(), 1, MPI_INT, MPI_COMM_WORLD);
 
-  // Accumulate all data pieces on this grid into single matrix
-  int nPiecesGrid = 0;
-  vector<int> recvCnts(nprocPerGrid);
-  vector<int> recvDisp(nprocPerGrid);
-  for (int p=0; p<nprocPerGrid; p++) {
-    nPiecesGrid += nPieces_rank[p];
+  int nPiecesTotal = 0;
+  vector<int> recvCnts(nproc);
+  vector<int> recvDisp(nproc);
+  for (int p=0; p<nproc; p++) {
+    nPiecesTotal += nPieces_rank[p];
     recvCnts[p] = nPieces_rank[p]*stride;
     if (p>0)
       recvDisp[p] = recvDisp[p-1] + recvCnts[p-1];
   }
 
-  vector<T> values_rank(nPiecesGrid*stride);
-  MPI_Allgatherv(values, nPieces*stride, T_TYPE, values_rank.data(), recvCnts.data(), recvDisp.data(), T_TYPE, gridComm);
-
-  // Send this rank's data to all other grids
-  nPieces_grid.resize(nGrids);
-  MPI_Allgather(&nPieces, 1, MPI_INT, nPieces_grid.data(), 1, MPI_INT, interComm);
-
-  // Reduce across each grid
-  vector<int> nPieces_tmp = nPieces_grid;
-  MPI_Allreduce(nPieces_tmp.data(), nPieces_grid.data(), nGrids, MPI_INT, MPI_SUM, gridComm);
-
-  // Setup storage for all data pieces across all grids/ranks
-  int nPiecesTotal = getSum(nPieces_grid);
-
   values_all.resize(nPiecesTotal*stride);
-
-  // If no processes have any data to send, return
-  if (nPiecesTotal == 0) return;
-
-  recvCnts.resize(nGrids);
-  recvDisp.assign(nGrids,0);
-  for (int g=0; g<nGrids; g++) {
-    recvCnts[g] = nPieces_grid[g]*stride;
-    if (g>0)
-      recvDisp[g] = recvDisp[g-1] + recvCnts[g-1];
-  }
-  // Send this grid's data to each grid along gridRank
-  MPI_Allgatherv(values_rank.data(), values_rank.size(), T_TYPE, values_all.data(), recvCnts.data(), recvDisp.data(), T_TYPE, interComm);
+  MPI_Allgatherv(values, nPieces*stride, T_TYPE, values_all.data(), recvCnts.data(), recvDisp.data(), T_TYPE, MPI_COMM_WORLD);
 #endif
 }
 
+void overComm::setupNPieces(vector<int> &nPiecesIn, vector<int> &nPiecesOut)
+{
+  nPiecesOut.resize(nproc);
+
+  vector<MPI_Request> sends(nproc);
+  vector<MPI_Request> recvs(nproc);
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    MPI_Irecv(&nPiecesOut[p], 1, MPI_INT, p, p,    MPI_COMM_WORLD, &recvs[p]);
+    MPI_Isend(&nPiecesIn[p], 1, MPI_INT, p, rank, MPI_COMM_WORLD, &sends[p]);
+
+  }
+
+  MPI_Status status;
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    MPI_Wait(&recvs[p], &status);
+    MPI_Wait(&sends[p], &status);
+  }
+}
+
 template<typename T>
-void overComm::distributeData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<vector<int>> &sendInds, vector<int> &nPieces_rank, vector<matrix<T>> &values_send, matrix<T> &values_recv, int stride)
+void overComm::sendRecvData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<vector<int>> &sendInds, vector<vector<int>> &recvInds,
+                            vector<matrix<T>> &sendVals, matrix<T> &recvVals, int stride, int matchInds=0)
 {
 #ifndef _NO_MPI
   MPI_Datatype T_TYPE = getMpiDatatype<T>();
 
   MPI_Status status;
 
-  // Send/Receive the number of data pieces on each grid
-  nPiecesRecv.resize(nGrids);
-  vector<MPI_Request> reqs(nGrids);
-  vector<MPI_Request> sends(nGrids);
-  for (int g=0; g<nGrids; g++) {
-    if (g == gridID) continue;
-    MPI_Irecv(&nPiecesRecv[g], 1, MPI_INT, g, gridID, interComm, &reqs[g]);
-    MPI_Isend(&nPiecesSend[g], 1, MPI_INT, g, g, interComm, &sends[g]);
+  vector<matrix<T>> tmpRecvVals(nproc);
+
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    tmpRecvVals[p].setup(nPtsRecv[p],stride);
   }
 
-  for (int g=0; g<nGrids; g++) {
-    if (g == gridID) continue;
-    MPI_Wait(&reqs[g],&status);
-    MPI_Wait(&sends[g],&status);
-  }
-
-  // Send/Receive the accompanying piece destination indices
-
-  vector<MPI_Request> recvsInds(nGrids);
-  vector<MPI_Request> sendsInds(nGrids);
-  vector<MPI_Request> recvsVals(nGrids);
-  vector<MPI_Request> sendsVals(nGrids);
-
-  vector<vector<int>> recvInds(nGrids);
-  for (int g=0; g<nGrids; g++) {
-    if (g == gridID) continue;
-    recvInds[g].resize(nPiecesRecv[g]);
-  }
-
-  vector<matrix<T>> recvU(nGrids);
-  for (uint g=0; g<nGrids; g++) {
-    if (g == gridID) continue;
-    recvU[g].setup(nPiecesRecv[g],stride);
-  }
-
-  for (int g=0; g<nGrids; g++) {
-    if (g == gridID) continue;
-    if (nPiecesRecv[g] > 0) {
-      MPI_Irecv(recvInds[g].data(), nPiecesRecv[g],     MPI_INT, g, gridID, interComm, &recvsInds[g]);
-      MPI_Irecv(recvU[g].getData(), recvU[g].getSize(), T_TYPE,  g, gridID, interComm, &recvsVals[g]);
-    }
-    if (nPiecesSend[g] > 0) {
-      MPI_Isend(sendInds[g].data(),       nPiecesSend[g],           MPI_INT, g, g, interComm, &sendsInds[g]);
-      MPI_Isend(values_send[g].getData(), values_send[g].getSize(), T_TYPE,  g, g, interComm, &sendsVals[g]);
-    }
-  }
-
-  for (int g=0; g<nGrids; g++) {
-    if (g == gridID) continue;
-    if (nPiecesRecv[g] > 0) {
-      MPI_Wait(&recvsInds[g],&status);
-      MPI_Wait(&recvsVals[g],&status);
-    }
-    if (nPiecesSend[g] > 0) {
-      MPI_Wait(&sendsInds[g],&status);
-      MPI_Wait(&sendsVals[g],&status);
-    }
-  }
-
-  /* ---- Distribute the data within each grid ---- */
-
-  // Now that each grid has the data and destination info distributed among its
-  // processes, send to proper gridRank
-  vector<int> nGPcsSend(nprocPerGrid);
-  vector<int> nGPcsRecv(nprocPerGrid);
-  vector<vector<int>> gridIndsSend(nprocPerGrid);
-  vector<vector<int>> gridIndsRecv(nprocPerGrid);
-  vector<matrix<T>> gridValsRecv(nprocPerGrid);
-  vector<matrix<T>> gridValsSend(nprocPerGrid);
-  for (int g=0; g<nGrids; g++) {
-    if (g == gridID) continue;
-    for (int i=0; i<nPiecesRecv[g]; i++) {
-      int ind = recvInds[g][i];
-      int nv = nPieces_rank[0];
-      int p = 0;
-      int offset = 0;
-      while (nv<=ind && p<nprocPerGrid) {
-        offset += nPieces_rank[p];
-        p++;
-        nv += nPieces_rank[p];
+  vector<MPI_Request> IndsRecvs(nproc);
+  vector<MPI_Request> IndsSends(nproc);
+  vector<MPI_Request> ValsRecvs(nproc);
+  vector<MPI_Request> ValsSends(nproc);
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    if (nPiecesRecv[p]>0) {
+      if (matchInds) {
+        // If needed, receive the local array indices which the data is matched with
+        MPI_Irecv(recvInds[p].data(),nPiecesRecv[p],MPI_INT,p,p,MPI_COMM_WORLD,&IndsRecvs[p]);
       }
-      ind -= offset; // Make ind be the process-local value ID
-      gridIndsSend[p].push_back(ind);
-      auto U = recvU[g].getRow(i);
-      gridValsSend[p].insertRow(U);
-      nGPcsSend[p]++;
+      MPI_Irecv(tmpRecvVals[p].getData(),nPiecesRecv[p]*stride,T_TYPE,p,p,MPI_COMM_WORLD,&ValsRecvs[p]);
+    }
+    if (nPiecesSend[p]>0) {
+      if (matchInds) {
+        // If needed, send the destination indices which the data is matched with
+        MPI_Isend(sendInds[p].data(),nPiecesSend[p],MPI_INT,p,rank,MPI_COMM_WORLD,&IndsSends[p]);
+      }
+      MPI_Isend(sendVals[p].getData(),nPiecesSend[p]*stride,T_TYPE,p,rank,MPI_COMM_WORLD,&ValsSends[p]);
     }
   }
 
-  vector<MPI_Request> recvsGrid(nprocPerGrid);
-  vector<MPI_Request> sendsGrid(nprocPerGrid);
-  for (int p=0; p<nprocPerGrid; p++) {
-    MPI_Irecv(&nGPcsRecv[p], 1, MPI_INT, p, gridRank, gridComm, &recvsGrid[p]);
-    MPI_Isend(&nGPcsSend[p], 1, MPI_INT, p, p,        gridComm, &sendsGrid[p]);
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    if (nPiecesRecv[p]>0) {
+      MPI_Wait(&IndsRecvs[p], &status);
+      MPI_Wait(&ValsRecvs[p], &status);
+    }
+    if (nPiecesSend[p]>0) {
+      MPI_Wait(&IndsSends[p], &status);
+      MPI_Wait(&ValsSends[p], &status);
+    }
   }
 
-  for (int p=0; p<nprocPerGrid; p++) {
-    MPI_Wait(&recvsGrid[p],&status);
-    MPI_Wait(&sendsGrid[p],&status);
-  }
-
-  // Send/Receive the accompanying point IDs and gridIDs which were matched
-  for (int p=0; p<nprocPerGrid; p++) {
-    gridIndsRecv[p].resize(nGPcsRecv[p]);
-    gridValsRecv[p].setup(nGPcsRecv[p],stride);
-  }
-
-  recvsInds.resize(nprocPerGrid);
-  sendsInds.resize(nprocPerGrid);
-  recvsVals.resize(nprocPerGrid);
-  sendsVals.resize(nprocPerGrid);
-  for (int p=0; p<nprocPerGrid; p++) {
-    MPI_Irecv(gridIndsRecv[p].data(),    nGPcsRecv[p],              MPI_INT, p, gridRank, gridComm, &recvsInds[p]);
-    MPI_Irecv(gridValsRecv[p].getData(), gridValsRecv[p].getSize(), T_TYPE,  p, gridRank, gridComm, &recvsVals[p]);
-    MPI_Isend(gridIndsSend[p].data(),    nGPcsSend[p],              MPI_INT, p, p, gridComm, &sendsInds[p]);
-    MPI_Isend(gridValsSend[p].getData(), gridValsSend[p].getSize(), T_TYPE,  p, p, gridComm, &sendsVals[p]);
-  }
-
-  for (int p=0; p<nprocPerGrid; p++) {
-    MPI_Wait(&recvsInds[p],&status);
-    MPI_Wait(&recvsVals[p],&status);
-    MPI_Wait(&sendsInds[p],&status);
-    MPI_Wait(&sendsVals[p],&status);
-  }
-
-  /* ---- Gather all data together into output data storage
-   *      (Note that values_recv should be pre-sized correctly) ---- */
-
-  for (int p=0; p<nprocPerGrid; p++) {
-    for (int i=0; i<nGPcsRecv[p]; i++) {
-      int iv = gridIndsRecv[p][i];
+  // Rearrange data into final storage matrix  [NOTE: U_in must be pre-sized]
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    for (int i=0; i<nPtsRecv[p]; i++) {
       for (int k=0; k<stride; k++) {
-        values_recv(iv,k) = gridValsRecv[p](i,k);
+        recvVals(recvInds[p][i],k) = tmpRecvVals[p](i,k);
       }
     }
   }
 #endif
 }
-

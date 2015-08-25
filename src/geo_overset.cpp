@@ -33,6 +33,69 @@
 #include "metis.h"
 #endif
 
+void geo::splitGridProcs(void)
+{
+  // Split the processes among the overset grids such that they are roughly balanced
+
+  /* --- Read Number of Elements in Each Grid --- */
+
+  vector<int> nElesGrid(nGrids);
+  int nElesTotal = 0;
+
+  for (int i=0; i<nGrids; i++) {
+    ifstream meshFile;
+    string str;
+    string fileName = params->oversetGrids[i];
+
+    meshFile.open(fileName.c_str());
+    if (!meshFile.is_open())
+      FatalError("Unable to open mesh file.");
+
+    // Move cursor to $Elements
+    meshFile.clear();
+    meshFile.seekg(0, ios::beg);
+    while(1) {
+      getline(meshFile,str);
+      if (str.find("$Elements")!=string::npos) break;
+      if(meshFile.eof()) FatalError("$Elements tag not found in Gmsh file!");
+    }
+
+    // Read total number of interior + boundary elements
+    meshFile >> nElesGrid[i];
+    meshFile.close();
+
+    nElesTotal += nElesGrid[i];
+  }
+
+  /* --- Balance the processes across the grids --- */
+
+  nProcsGrid.resize(nGrids);
+  for (int i=0; i<nGrids; i++) {
+    double eleRatio = (double)nElesGrid[i]/nElesTotal;
+    nProcsGrid[i] = round(eleRatio*nproc);
+  }
+
+  /* --- Get the final gridID for this rank --- */
+
+  int g = 0;
+  int procSum = nProcsGrid[0];
+  while (procSum < rank+1 && g<nGrids-1) {
+    g++;
+    procSum += nProcsGrid[g];
+  }
+  gridID = g;
+
+  /* --- Split MPI Processes Based Upon gridID: Create MPI_Comm for each grid --- */
+
+  MPI_Comm_split(MPI_COMM_WORLD, gridID, params->rank, &gridComm);
+
+  MPI_Comm_rank(gridComm,&gridRank);
+  MPI_Comm_size(gridComm,&nProcGrid);
+
+  gridIdList.resize(nproc);
+  MPI_Allgather(&gridID,1,MPI_INT,gridIdList.data(),1,MPI_INT,MPI_COMM_WORLD);
+}
+
 void geo::registerGridDataTIOGA(void)
 {
 #ifndef _NO_MPI
@@ -261,7 +324,7 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
 
     ele e;
     e.ID = ic;
-    if (nprocPerGrid>1)
+    if (nProcGrid>1)
       e.IDg = ic2icg[ic];
     else
       e.IDg = ic;
@@ -297,6 +360,9 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
   }
 
   /* --- Remove Newly-Blanked Faces --- */
+
+  // NOTE: faceType refers to the original face type as read from mesh file
+  //       (Before overset connectivity processing)
 
   for (auto &ff:blankFaces) {
     int ind = faceMap[ff];

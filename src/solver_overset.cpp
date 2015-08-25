@@ -34,7 +34,7 @@ void solver::setupOverset(void)
 
   OComm = make_shared<overComm>();
 
-  OComm->setup(params,nGrids,gridID,gridRank,nprocPerGrid);
+  OComm->setup(params,nGrids,gridID,gridRank,nprocPerGrid,Geo->gridIdList);
 
   OComm->matchOversetPoints(eles,overFaces);
 }
@@ -45,8 +45,9 @@ void solver::updateOversetConnectivity(void)
 
   Geo->setupUnblankElesFaces(eles,faces,mpiFaces,overFaces);
 
-  OComm->matchOversetUnblanks(eles,overFaces,Geo->unblankCells,Geo->unblankFaces,Geo->unblankOFaces,Geo->eleMap,Geo->faceMap,params->order);
+  OComm->matchOversetPoints(eles,overFaces);
 
+  OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->order);
 }
 
 /* ---- Basic Tioga-Based Overset-Grid Functions ---- */

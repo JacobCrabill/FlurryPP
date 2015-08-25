@@ -7,8 +7,8 @@ timeType      0    (0: Forward Euler, 4: RK44)
 dtType        1    (0: Fixed, 1: CFL-based)
 CFL           .2
 dt            .02
-iterMax       100
-restart       1
+iterMax       1000
+restart       0
 restartIter   50
 
 viscous       0   (0: Inviscid, 1: Viscous)
@@ -37,8 +37,8 @@ icType       0
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        10   (Frequency to write plot files)
-monitorResFreq  10    (Frequency to print residual to terminal)
+plotFreq        100   (Frequency to write plot files)
+monitorResFreq  100    (Frequency to print residual to terminal)
 resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    Box    (Filename prefix for output files)
 entropySensor   0      (Calculate & plot entropy-error sensor)

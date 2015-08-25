@@ -52,7 +52,7 @@ void solver::setup(input *params, geo *Geo)
   nGrids = Geo->nGrids;
   gridID = Geo->gridID;
   gridRank = Geo->gridRank;
-  nprocPerGrid = Geo->nprocPerGrid;
+  nprocPerGrid = Geo->nProcGrid;
 
   if (params->restart)
     readRestartFile();

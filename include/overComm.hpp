@@ -62,6 +62,10 @@ public:
   int nprocPerGrid;
   int gridID;
   int gridRank;
+  int rank;
+  int nproc;
+
+  vector<int> gridIdList;  //! Grid ID for each MPI rank
 
   int nFields;
 
@@ -69,7 +73,6 @@ public:
 
 #ifndef _NO_MPI
   MPI_Comm gridComm;
-  MPI_Comm interComm;
 #endif
 
   /* --- Variables for Exchanging Data at Overset Faces --- */
@@ -107,7 +110,7 @@ public:
 
   /* --- Member Functions --- */
 
-  void setup(input *_params, int _nGrids, int _gridID, int _gridRank, int _nprocPerGrid);
+  void setup(input *_params, int _nGrids, int _gridID, int _gridRank, int _nprocPerGrid, vector<int> &_gridIdList);
 
   //! Match up each overset-face flux point to its donor grid and element
   void matchOversetPoints(vector<ele>& eles, vector<shared_ptr<overFace> >& overFaces);
@@ -121,8 +124,7 @@ public:
    * For each unblanked face, add its points to the communicator
    *
    */
-  void matchOversetUnblanks(vector<ele> &eles, vector<shared_ptr<overFace> >& overFaces, set<int>& unblankCells,
-                            set<int> &blankedOFaces, set<int>& unblankOFaces, vector<int>& eleMap, vector<int>& faceMap, int quadOrder);
+  void matchUnblankCells(vector<ele> &eles, set<int>& unblankCells, vector<int>& eleMap, int quadOrder);
 
   //! Perform the interpolation and communicate data across all grids
   void exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &opers);
@@ -133,26 +135,30 @@ public:
    * @param[in] nPieces      : Number of pieces of data contributed by current rank
    * @param[in] stride       : Number of [typename T] values for each piece of data
    * @param[in] values       : Values being contributed from current rank
-   * @param[out] nPieces_rank: Number of pieces of data for each rank on current grid
-   * @param[out] nPieces_grid: Number of pieces of data for each grid
-   * @param[out] values_alll : The collected and organized values for all grids/ranks
+   * @param[out] nPieces_rank: Number of pieces of data for each rank
+   * @param[out] values_all  : The collected and organized values for all grids/ranks
    */
   template<typename T>
-  void gatherData(int nPieces, int stride, T *values, vector<int> &nPieces_rank, vector<int> &nPieces_grid, vector<T> &values_all);
+  void gatherData(int nPieces, int stride, T *values, vector<int>& nPieces_rank, vector<T> &values_all);
 
   /*!
    * \brief Distribute a scattered dataset to the proper grid/rank
    *
    * @param[in] nPiecesSend : Number of pieces of data this rank is sending to each grid
    * @param[in] nPiecesRecv : Number of pieces of data this rank will be receiving from each grid
-   * @param[in] sendInds    : Destination indices on receiving grid for data being sent (range 0:nPieces_grid-1)
+   * @param[in] sendInds    : Destination indices on receiving rank for data being sent (range 0:nPieces_rank-1)
+   * @param[in/out] recvInds: Destination indices on current grid for data being received (range 0:nPieces-1)
    * @param[in] nPieces_rank: Number of pieces of data for each rank on current grid
    * @param[in] values_send : Dataset being sent to each grid (size nPiecesSend x stride)
    * @param[out] values_recv: Dataset received from all other grids
    * @param[in] stride      : Number of [typename T] values for each piece of data
+   * @param[in] matchInds   : Whether each rank needs to receive recvInds for its data or not
    */
   template<typename T>
-  void distributeData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<vector<int>> &sendInds, vector<int> &nPieces_rank, vector<matrix<T>> &values_send, matrix<T> &values_recv, int stride);
+  void sendRecvData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<vector<int>> &sendInds, vector<vector<int>> &recvInds, vector<matrix<T>> &sendVals, matrix<T> &recvVals, int stride, int matchInds);
+
+  //! Using nPiecesIn, resize nPiecesOut for each rank
+  void setupNPieces(vector<int> &nPiecesIn, vector<int> &nPiecesOut);
 
 private:
 #ifndef _NO_MPI
