@@ -153,6 +153,13 @@ void geo::registerGridDataTIOGA(void)
   tg->registerGridData(gridID,nVerts,xv.getData(),iblank.data(),nwall,nover,iwall.data(),
                        iover.data(),ntypes,nodesPerCell,&nEles,&conn[0]);
 
+  // Get a list of all cells which have an overset-boundary face (for later use with blanking)
+  for (int i=0; i<nBndFaces; i++) {
+    if (bcType[i]==OVERSET) {
+      overCells.insert(f2c(bndFaces[i],0));
+    }
+  }
+
   // Create a new communicator to communicate across grids
   MPI_Comm_split(MPI_COMM_WORLD, gridRank, gridID, &interComm);
   MPI_Comm_split(MPI_COMM_WORLD, gridID, params->rank, &gridComm);
@@ -207,6 +214,8 @@ void geo::setCellFaceIblanks()
       }
     }
   }
+
+  // Now find any 'fringe' cells
 
   // Only needed for moving grids: Get cells which  must be 'un-blanked'
   for (auto &ic:holeCells)

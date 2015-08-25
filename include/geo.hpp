@@ -115,6 +115,7 @@ public:
   matrix<int> c2f, f2v, f2c;
   vector<int> v2nv, v2nc, c2nv, c2nf, f2nv, ctype;
   vector<int> intFaces, bndFaces, mpiFaces, overFaces, mpiCells;
+  set<int> overCells;            //! List of all cells which have an overset-boundary-condition face
   vector<int> bcList;            //! List of boundary conditions for each boundary
   vector<int> bcType;            //! Boundary condition for each boundary edge
   matrix<int> bndPts;            //! List of node IDs on each boundary
