@@ -531,10 +531,20 @@ vector<double> ele::getBoundingBox(void)
 {
   point minPt(INFINITY,INFINITY,INFINITY);
   point maxPt(-INFINITY,-INFINITY,-INFINITY);
-  for (auto &pt:nodesRK[0]) {
-    for (int dim=0; dim<nDims; dim++) {
-      minPt[dim] = min(minPt[dim],pt[dim]);
-      maxPt[dim] = max(maxPt[dim],pt[dim]);
+  if (params->motion == 0) {
+    for (auto &pt:nodes) {
+      for (int dim=0; dim<nDims; dim++) {
+        minPt[dim] = min(minPt[dim],pt[dim]);
+        maxPt[dim] = max(maxPt[dim],pt[dim]);
+      }
+    }
+  }
+  else {
+    for (auto &pt:nodesRK[0]) {
+      for (int dim=0; dim<nDims; dim++) {
+        minPt[dim] = min(minPt[dim],pt[dim]);
+        maxPt[dim] = max(maxPt[dim],pt[dim]);
+      }
     }
   }
 

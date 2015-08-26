@@ -28,7 +28,7 @@ TIOGA_LIB   = #./lib/tioga/src/libtioga.a
 CXX_BASE    = -pipe -Wunused-parameter -Wuninitialized -std=c++11 -I./include -I$(TIOGA_INC) $(DEFINES)
 CXX_STD     = -g -02
 CXX_DEBUG   = -g -pg -O0 #-rdynamic -fsanitize=address -fno-omit-frame-pointer
-CXX_RELEASE = -Ofast
+CXX_RELEASE = -Ofast -fno-finite-math-only
 
 CXXFLAGS_RELEASE = $(CXX_BASE) $(CXX_RELEASE) -Wno-unknown-pragmas -D_NO_MPI $(DEFINES)
 CXXFLAGS_DEBUG   = $(CXX_BASE) $(CXX_DEBUG) -Wno-unknown-pragmas -D_NO_MPI $(DEFINES)

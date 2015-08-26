@@ -405,6 +405,15 @@ void matrix<T>::print()
 }
 
 template<typename T>
+bool matrix<T>::checkNan(void)
+{
+  for (auto& i:this->data)
+    if (std::isnan(i)) return true;
+
+  return false;
+}
+
+template<typename T>
 void matrix<T>::unique(matrix<T>& out, vector<int> &iRow)
 {
   out.setup(0,0);

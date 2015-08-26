@@ -182,8 +182,6 @@ void solver::calcResidual(int step)
 
     oversetInterp();
 
-    //sendRecvOversetData();
-
     calcInviscidFlux_overset();
 
   }

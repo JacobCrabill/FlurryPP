@@ -449,7 +449,7 @@ void geo::matchMPIFaces(void)
 
   if (gridRank == 0) {
     if (meshType == OVERSET_MESH)
-      cout << "Geo: Grid block " << gridID << ": Matching MPI faces" << endl;
+      cout << "Geo: Grid " << gridID << ": Matching MPI faces" << endl;
     else
       cout << "Geo: Matching MPI faces" << endl;
   }
@@ -604,11 +604,6 @@ void geo::matchMPIFaces(void)
           iblankFace[mpiFaces[F]] = HOLE;
         else
           iblankFace[mpiFaces[F]] = FRINGE;
-
-        if (mpiCells[F]<0 || mpiLocF[F]<0 || procR[F]<0 || faceID_R[F]<0 || gIC_R[F]<0 || mpiLocF_R[F]<0)
-          FatalError("AAAAAHHHH!!");
-
-        nMpiFaces--;
       }
     }
   }
@@ -2244,7 +2239,7 @@ void geo::partitionMesh(void)
   std::transform(c2v.getData(),c2v.getData()+c2v.getSize(),c2v.getData(), [=](int ivg){return ivg2iv[ivg];});
 
   if (meshType == OVERSET_MESH)
-    cout << "Geo:   Grid block " << gridID << " on rank " << rank << ": nEles = " << nEles << endl;
+    cout << "Geo:   Grid " << gridID << " on rank " << rank << ": nEles = " << nEles << endl;
   else
     cout << "Geo:   On rank " << rank << ": nEles = " << nEles << endl;
 

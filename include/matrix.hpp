@@ -172,6 +172,9 @@ public:
   /*! Prints the contents of the Array to the console */
   void print(void);
 
+  /*! Check the matrix for NaN values */
+  bool checkNan(void);
+
   /* --- Search Operations --- */
 
   /*! Find all unique 'rows' in a Array */

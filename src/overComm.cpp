@@ -64,6 +64,8 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
 
   gatherData(nOverPts, 3, overPts.getData(), nPts_rank, interpPtsPhys);
 
+  //cout << "Grid,Rank = " << gridID << "," << rank << ": nOverPts = " << nOverPts << endl;
+
   /* ---- Check Every Fringe Point for Donor Cell on This Grid ---- */
 
   foundPts.resize(nproc);
@@ -80,6 +82,7 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
       point pt = point(&interpPtsPhys[3*(offset+i)]);
       //point pt = point(interpPtsPhys[offset+i]);
       // Check for containment in all eles on this rank of this grid
+      int ic = 0;
       for (auto &e:eles) {
         /* !! THIS IS HORRIBLY INEFFICIENT !! - should use c2c to march from an
          * initial guess to the neighboring cell nearest the point in question */
@@ -88,12 +91,14 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
 
         if (isInEle) {
           foundPts[p].push_back(i);
-          foundEles[p].push_back(e.ID); // Local ele id for this grid
+          foundEles[p].push_back(ic); // Local ele id for this grid
           foundLocs[p].push_back(refLoc);
           break;
         }
+        ic++;
       }
     }
+    //cout << "Grid,Rank = " << gridID << "," << rank << ": nFoundPts for rank" << p << " = " << foundPts[p].size() << endl;
   }
 
   /* ---- Prepare for Data Communication ---- */
@@ -282,6 +287,17 @@ void overComm::exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &
 
   setupNPieces(nPtsSend,nPtsRecv);
 
+//  int sum=0;
+//  for (int p=0; p<nproc; p++) {
+//    if (gridIdList[p] == gridID) continue;
+//    sum += nPtsRecv[p];
+//  }
+//  if (sum != nOverPts) {
+//  //if (getSum(nPtsRecv) != nOverPts) {
+//    cout << "rank = " << rank << ": diff = " << nOverPts-getSum(nPtsRecv) << ": ";
+//    FatalError("Did not get all overset points matched!");
+//  }
+
   recvPts.resize(nproc);
   for (int p=0; p<nproc; p++) {
     if (p==rank) continue;
@@ -289,6 +305,9 @@ void overComm::exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &
   }
 
   sendRecvData(nPtsSend,nPtsRecv,foundPts,recvPts,U_out,U_in,nFields,1);
+
+//  if (U_in.checkNan()) cout << "rank " << rank << ": NaN in U_in" << endl;
+
 #endif
 }
 
@@ -351,8 +370,7 @@ void overComm::setupNPieces(vector<int> &nPiecesIn, vector<int> &nPiecesOut)
   for (int p=0; p<nproc; p++) {
     if (p==rank) continue;
     MPI_Irecv(&nPiecesOut[p], 1, MPI_INT, p, p,    MPI_COMM_WORLD, &recvs[p]);
-    MPI_Isend(&nPiecesIn[p], 1, MPI_INT, p, rank, MPI_COMM_WORLD, &sends[p]);
-
+    MPI_Isend(&nPiecesIn[p],  1, MPI_INT, p, rank, MPI_COMM_WORLD, &sends[p]);
   }
 
   MPI_Status status;

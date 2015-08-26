@@ -472,7 +472,12 @@ void writeResidual(solver *Solver, input *params)
     // Infinity Norm
     for (uint e=0; e<Solver->eles.size(); e++) {
       auto resTmp = Solver->eles[e].getNormResidual(params->resType);
-      if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
+      if(checkNaN(resTmp)) {
+        cout << "rank " << params->rank << ", ele " << e << ": ";
+        auto box = Solver->eles[e].getBoundingBox();
+        cout << " centriod = " << box[0] << "," << box[1] << "," << box[2] << endl;
+        FatalError("NaN Encountered in Solution Residual!");
+      }
 
       for (int i=0; i<params->nFields; i++)
         res[i] = max(res[i],resTmp[i]);
@@ -482,7 +487,12 @@ void writeResidual(solver *Solver, input *params)
     // 1-Norm or 2-Norm
     for (uint e=0; e<Solver->eles.size(); e++) {
       auto resTmp = Solver->eles[e].getNormResidual(params->resType);
-      if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
+      if(checkNaN(resTmp)) {
+        cout << "rank " << params->rank << ", ele " << e << ": " << flush;
+        auto box = Solver->eles[e].getBoundingBox();
+        cout << " centriod = " << box[0] << "," << box[1] << "," << box[2] << endl;
+        FatalError("NaN Encountered in Solution Residual!");
+      }
 
       for (int i=0; i<params->nFields; i++)
         res[i] += resTmp[i];
@@ -525,7 +535,7 @@ void writeResidual(solver *Solver, input *params)
     int colW = 16;
     cout.precision(6);
     cout.setf(ios::scientific, ios::floatfield);
-    if (iter==1 || (iter/params->monitorResFreq)%25==0) {
+    if (iter==params->initIter+1 || (iter/params->monitorResFreq)%25==0) {
       cout << endl;
       cout << setw(8) << left << "Iter";
       if (params->equation == ADVECTION_DIFFUSION) {
