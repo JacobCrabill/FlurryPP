@@ -287,17 +287,6 @@ void overComm::exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &
 
   setupNPieces(nPtsSend,nPtsRecv);
 
-//  int sum=0;
-//  for (int p=0; p<nproc; p++) {
-//    if (gridIdList[p] == gridID) continue;
-//    sum += nPtsRecv[p];
-//  }
-//  if (sum != nOverPts) {
-//  //if (getSum(nPtsRecv) != nOverPts) {
-//    cout << "rank = " << rank << ": diff = " << nOverPts-getSum(nPtsRecv) << ": ";
-//    FatalError("Did not get all overset points matched!");
-//  }
-
   recvPts.resize(nproc);
   for (int p=0; p<nproc; p++) {
     if (p==rank) continue;
@@ -305,6 +294,29 @@ void overComm::exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &
   }
 
   sendRecvData(nPtsSend,nPtsRecv,foundPts,recvPts,U_out,U_in,nFields,1);
+
+//  if (getSum(nPtsRecv) < nOverPts) {
+//    cout << "rank = " << rank << ": diff = " << nOverPts-getSum(nPtsRecv) << ": ";
+//    set<int> myFndPts;
+//    for (int p=0; p<nproc; p++) {
+//      for (int i=0; i<nPtsRecv[p]; i++) {
+//        myFndPts.insert(recvPts[p][i]);
+//      }
+//    }
+
+//    set<int> unmatchedPts;
+//    for (int i=0; i<nOverPts; i++) {
+//      if (myFndPts.count(i)==0) {
+//        unmatchedPts.insert(i);
+//      }
+//    }
+
+//    for (auto &i: unmatchedPts) {
+//      cout << "rank " << rank << ": unmatched point (" << overPts(i,0) << ", " << overPts(i,1) << ", " << overPts(i,2) << ")" << endl;
+//    }
+
+//    FatalError("Did not get all overset points matched!");
+//  }
 
 //  if (U_in.checkNan()) cout << "rank " << rank << ": NaN in U_in" << endl;
 

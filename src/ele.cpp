@@ -690,9 +690,9 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   for (int i=0; i<nPts; i++)
     F[i] = getDxNelderMeade(point(X[i]),pos);
 
-  double tol = 1e-10;
+  double tol = 1e-13;
   int iter = 0;
-  while (iter < 200 && getMin(F)>tol) {
+  while (iter < 300 && getMin(F)>tol) {
     auto ind = getOrder(F);
     point Xn = point(X[ind[nPts-1]]);  // Point with the highest value of F
     point X0;                          // Centroid of all other points
@@ -770,7 +770,7 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   loc = point(X[ind[nPts-1]]);
 
   // Check to see if final location lies within element or not
-  double eps = 1e-14;
+  double eps = 1e-12;
   if (std::abs(loc.x)-eps<=1 && std::abs(loc.y)-eps<=1 && std::abs(loc.z)-eps<=1 && !std::isnan(loc.norm()))
     return true;
   else
