@@ -251,6 +251,8 @@ struct point
 point operator/(point a, double b);
 point operator*(point a, double b);
 
+double getDist(point a, point b);
+
 //! For clearer notation when a vector is implied, rather than a point
 typedef struct point Vec3;
 
@@ -417,6 +419,6 @@ private:
 public:
   void startTimer();
   void stopTimer();
-  void showTime();
+  void showTime(int precision=3);
 
 };

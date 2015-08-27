@@ -43,7 +43,8 @@ void overComm::setup(input* _params, int _nGrids, int _gridID, int _gridRank, in
 #endif
 }
 
-void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &overFaces)
+void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &overFaces, const matrix<int> &c2ac,
+                                  const vector<int> &eleMap, const point &centroid, const point &extents)
 {
 #ifndef _NO_MPI
   /* ---- Gather all interpolation point data on each grid ---- */
@@ -64,41 +65,102 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
 
   gatherData(nOverPts, 3, overPts.getData(), nPts_rank, interpPtsPhys);
 
-  //cout << "Grid,Rank = " << gridID << "," << rank << ": nOverPts = " << nOverPts << endl;
-
   /* ---- Check Every Fringe Point for Donor Cell on This Grid ---- */
 
   foundPts.resize(nproc);
   foundEles.resize(nproc);
   foundLocs.resize(nproc);
   int offset = 0;
+
+  point minPt, maxPt;
+  minPt.x = centroid.x - extents.x/2.;
+  minPt.y = centroid.y - extents.y/2.;
+  minPt.z = centroid.z - extents.z/2.;
+
+  maxPt.x = centroid.x + extents.x/2.;
+  maxPt.y = centroid.y + extents.y/2.;
+  maxPt.z = centroid.z + extents.z/2.;
+
   for (int p=0; p<nproc; p++) {
     if (p>0) offset += nPts_rank[p-1];
 
     if (gridIdList[p] == gridID) continue;
 
+    int currCell = 0;  // Global ele ID
+    int ic = eleMap[currCell];        // Corresponding index in 'eles' vector
     for (int i=0; i<nPts_rank[p]; i++) {
-      // Get requested interpolation point
+      // Get current interpolation point
       point pt = point(&interpPtsPhys[3*(offset+i)]);
-      //point pt = point(interpPtsPhys[offset+i]);
-      // Check for containment in all eles on this rank of this grid
-      int ic = 0;
-      for (auto &e:eles) {
-        /* !! THIS IS HORRIBLY INEFFICIENT !! - should use c2c to march from an
-         * initial guess to the neighboring cell nearest the point in question */
-        point refLoc;
-        bool isInEle = e.getRefLocNelderMeade(pt,refLoc);
 
-        if (isInEle) {
-          foundPts[p].push_back(i);
-          foundEles[p].push_back(ic); // Local ele id for this grid
-          foundLocs[p].push_back(refLoc);
-          break;
+      // First, check that point even lies within bounding box of grid
+      if ( (pt.x<minPt.x) || (pt.y<minPt.y) || (pt.z<minPt.z) ||
+           (pt.x>maxPt.x) || (pt.y>maxPt.y) || (pt.z>maxPt.z) )
+        continue;
+
+      // Find the next valid, non-blanked element to start with
+      while (ic<0) {
+        currCell++;
+        if (currCell>=c2ac.getDim0()) currCell = 0;
+        ic = eleMap[currCell];
+      }
+
+      point refLoc;
+      bool isInEle = eles[ic].getRefLocNelderMeade(pt,refLoc);
+
+      set<int> triedCells;
+      triedCells.insert(ic);
+
+      // Setup first layer of cells to search
+      set<int> nextCells;
+      for (int j=0; j<c2ac.getDim1(); j++) {
+        int ic0 = c2ac(currCell,j);
+        if (ic0>0 && eleMap[ic0]>0)
+          nextCells.insert(ic0);
+      }
+
+      // Use c2c to march towards interpolation point
+      while (!isInEle && nextCells.size()>0) {
+        double minDist = 1e15;
+        int nextCell = -1;
+        for (auto &icNext:nextCells) {
+          int icn = eleMap[icNext];
+          isInEle = eles[icn].getRefLocNelderMeade(pt,refLoc);
+          triedCells.insert(icn);
+
+          if (isInEle) {
+            currCell = icNext;
+            ic = icn;
+            break;
+          }
+          else {
+            auto box = eles[icn].getBoundingBox();
+            point xc_next = point(&box[0]);
+            double dist = getDist(pt,xc_next);
+            if (dist < minDist) {
+              minDist = dist;
+              nextCell = icNext;
+              currCell = icNext;
+            }
+          }
         }
-        ic++;
+
+        if (isInEle || nextCell<0) break;
+
+        // Setup the next layer of cells to search based on the best cell from the previous layer
+        nextCells.clear();
+        for (int j=0; j<c2ac.getDim1(); j++) {
+          int icn = c2ac(nextCell,j);
+          if (icn>0 && eleMap[icn]>0 && !triedCells.count(eleMap[icn]))
+            nextCells.insert(icn);
+        }
+      }
+
+      if (isInEle) {
+        foundPts[p].push_back(i);
+        foundEles[p].push_back(ic); // Local ele id for this grid
+        foundLocs[p].push_back(refLoc);
       }
     }
-    //cout << "Grid,Rank = " << gridID << "," << rank << ": nFoundPts for rank" << p << " = " << foundPts[p].size() << endl;
   }
 
   /* ---- Prepare for Data Communication ---- */
@@ -114,15 +176,13 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
 #endif
 }
 
-void overComm::matchUnblankCells(vector<ele> &eles, set<int> &unblankCells, vector<int> &eleMap, int quadOrder)
+void overComm::matchUnblankCells(vector<ele> &eles, set<int> &unblankCells, matrix<int> &c2c, vector<int> &eleMap, int quadOrder)
 {
 #ifndef _NO_MPI
 
-  /* --- Find amount of data to be sent around --- */
+  /* ---- Send Unblanked-Cell Nodes to All Grids ---- */
 
   nUnblanks = unblankCells.size();
-
-  /* ---- Send Unblanked-Cell Nodes to All Grids ---- */
 
   Array<double,3> ubCellNodes(nUnblanks,8,3);
   int i = 0;
@@ -172,10 +232,7 @@ void overComm::matchUnblankCells(vector<ele> &eles, set<int> &unblankCells, vect
       vector<int> donorsIDs;
       Array2D<point> donorPts;
       for (auto &e:eles) {
-        /* !! THIS IS HORRIBLY INEFFICIENT !! - should use c2c to march from an
-         * initial guess to the neighboring cell nearest the point in question */
-/*     !! Sketch for using c2c: !!
-        set<int> triedCells;
+      /*set<int> triedCells;
         int currCell = 0;
         for (int i=0; i<nCells_grid[g]; i++) {
           bool matched = false;
@@ -219,8 +276,7 @@ void overComm::matchUnblankCells(vector<ele> &eles, set<int> &unblankCells, vect
               currCell = c2c(currCell,nextCell);
             }
           }
-        }
-*/
+        }*/
 
         auto eBox = e.getBoundingBox();
 
@@ -287,6 +343,11 @@ void overComm::exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &
 
   setupNPieces(nPtsSend,nPtsRecv);
 
+  if (nOverPts > getSum(nPtsRecv)) {
+    cout << "rank " << rank << ", # Unmatched Points = " << nOverPts - getSum(nPtsRecv) << " out of " << nOverPts << endl;
+    FatalError("Unmatched points remaining!");
+  }
+
   recvPts.resize(nproc);
   for (int p=0; p<nproc; p++) {
     if (p==rank) continue;
@@ -294,31 +355,6 @@ void overComm::exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &
   }
 
   sendRecvData(nPtsSend,nPtsRecv,foundPts,recvPts,U_out,U_in,nFields,1);
-
-//  if (getSum(nPtsRecv) < nOverPts) {
-//    cout << "rank = " << rank << ": diff = " << nOverPts-getSum(nPtsRecv) << ": ";
-//    set<int> myFndPts;
-//    for (int p=0; p<nproc; p++) {
-//      for (int i=0; i<nPtsRecv[p]; i++) {
-//        myFndPts.insert(recvPts[p][i]);
-//      }
-//    }
-
-//    set<int> unmatchedPts;
-//    for (int i=0; i<nOverPts; i++) {
-//      if (myFndPts.count(i)==0) {
-//        unmatchedPts.insert(i);
-//      }
-//    }
-
-//    for (auto &i: unmatchedPts) {
-//      cout << "rank " << rank << ": unmatched point (" << overPts(i,0) << ", " << overPts(i,1) << ", " << overPts(i,2) << ")" << endl;
-//    }
-
-//    FatalError("Did not get all overset points matched!");
-//  }
-
-//  if (U_in.checkNan()) cout << "rank " << rank << ": NaN in U_in" << endl;
 
 #endif
 }

@@ -383,3 +383,19 @@ void getBoundingBox(vector<point>& pts, point &cent, point &dx)
   cent = (minPt + maxPt)*0.5;
   dx = maxPt - minPt;
 }
+
+void getBoundingBox(matrix<double>& pts, point &cent, point &dx)
+{
+  point minPt( INFINITY, INFINITY, INFINITY);
+  point maxPt(-INFINITY,-INFINITY,-INFINITY);
+  for (int i=0; i<pts.getDim0(); i++) {
+    point pt = point(pts[i]);
+    for (int dim=0; dim<3; dim++) {
+      minPt[dim] = min(minPt[dim],pt[dim]);
+      maxPt[dim] = max(maxPt[dim],pt[dim]);
+    }
+  }
+
+  cent = (minPt + maxPt)*0.5;
+  dx = maxPt - minPt;
+}

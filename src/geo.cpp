@@ -384,8 +384,10 @@ void geo::processConn3D(void)
 
   c2f.setup(nEles,getMax(c2nf));
   c2b.setup(nEles,getMax(c2nf));
+  c2c.setup(nEles,getMax(c2nf));
   c2f.initializeToValue(-1);
   c2b.initializeToZero();
+  c2c.initializeToValue(-1);
   f2c.setup(nFaces,2);
   f2c.initializeToValue(-1);
 
@@ -437,9 +439,41 @@ void geo::processConn3D(void)
       }else{
         // Put cell on right
         f2c(ff,1) = ic;
+        // Update c2c for both cells
+        int ic2 = f2c(ff,0);
+        vector<int> cellFaces(c2f[ic2],c2f[ic2]+c2nf[ic2]);
+        int fid2 = findFirst(cellFaces,ff);
+        c2c(ic,j)     = ic2;
+        c2c(ic2,fid2) = ic;
       }
     }
   }
+
+  c2ac.setup(nEles,26); // ALL cell surrounding each cell (all cells sharing at least 1 vertex)
+  c2ac.initializeToValue(-1);
+  for (int ic=0; ic<nEles; ic++) {
+    set<int> tmpIC;
+    for (int j=0; j<c2nv[ic]; j++) {
+      int iv = c2v(ic,j);
+      for (int ic2=0; ic2<nEles; ic2++) {
+        if (ic2 == ic) continue;
+        for (int k=0; k<c2nv[ic2]; k++) {
+          if (c2v(ic2,k)==iv) {
+            tmpIC.insert(ic2);
+          }
+        }
+      }
+    }
+
+    int nc = 0;
+    for (auto &ic2:tmpIC) {
+      c2ac(ic,nc) = ic2;
+      nc++;
+    }
+  }
+
+  getBoundingBox(xv,centroid,extents);
+
 }
 
 void geo::matchMPIFaces(void)
@@ -608,8 +642,11 @@ void geo::matchMPIFaces(void)
     }
   }
 
+  int nFacesTotalGrid;
+  MPI_Allreduce(&nMpiFaces,&nFacesTotalGrid,1,MPI_INT,MPI_SUM,gridComm);
+
   if (gridRank == 0)
-    cout << "Geo: Grid " << gridID << ": All MPI faces matched!  nMpiFaces = " << nMpiFaces << endl;
+    cout << "Geo: Grid " << gridID << ": All MPI faces matched!  nMpiFaces = " << nFacesTotalGrid/2 << endl;
 #endif
 }
 
@@ -2153,9 +2190,10 @@ void geo::partitionMesh(void)
   idx_t options[METIS_NOPTIONS];
   METIS_SetDefaultOptions(options);
   options[METIS_OPTION_NUMBERING] = 0;
-  options[METIS_OPTION_IPTYPE] = METIS_IPTYPE_NODE; // needed?
-  options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+  options[METIS_OPTION_IPTYPE] = METIS_IPTYPE_NODE;
+  options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT; // Reduces # of final MPI faces
   options[METIS_OPTION_PTYPE] = METIS_PTYPE_KWAY;
+  options[METIS_OPTION_NCUTS] = 5;  // Allows better partitioning (less cuts) to be found [at negligible expense for CFD grids]
 
   METIS_PartMeshDual(&nEles,&nVerts,eptr.data(),eind.data(),NULL,NULL,
                      &ncommon,&nproc,NULL,options,&objval,epart.data(),npart.data());

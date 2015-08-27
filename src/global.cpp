@@ -149,6 +149,12 @@ Vec3 operator*(matrix<double>& mat, Vec3 &vec)
 point operator/(point a, double b) { return a/=b; }
 point operator*(point a, double b) { return a*=b; }
 
+double getDist(point a, point b)
+{
+  Vec3 dx = a - b;
+  return dx.norm();
+}
+
 matrix<double> createMatrix(vector<point> &pts)
 {
   matrix<double> out(pts.size(),3);
@@ -172,7 +178,7 @@ void simTimer::stopTimer(void)
   finalTime = std::chrono::high_resolution_clock::now();
 }
 
-void simTimer::showTime(void)
+void simTimer::showTime(int precision)
 {
   int rank = 0;
 #ifndef _NO_MPI
@@ -186,10 +192,10 @@ void simTimer::showTime(void)
     if (execTime > 60) {
       int minutes = floor(execTime/60);
       double seconds = execTime-(minutes*60);
-      cout << "Execution time = " << minutes << "min " << setprecision(3) << seconds << "s" << endl;
+      cout << "Execution time = " << minutes << "min " << setprecision(precision) << seconds << "s" << endl;
     }
     else {
-      cout << setprecision(3) << "Execution time = " << execTime << "s" << endl;
+      cout << setprecision(precision) << "Execution time = " << execTime << "s" << endl;
     }
   }
 }

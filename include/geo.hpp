@@ -110,9 +110,12 @@ public:
   vector<point> xv0;      //! Initial position of vertices [moving grids]
   matrix<double> gridVel; //! Grid velocity of vertices
 
+  point centroid;   //! Centroid of all vertices on grid partition
+  point extents;     //! Overall x,y,z extents (max-min) of grid partition
+
   // Additional Connectivity Data
   matrix<int> c2e, c2b, e2c, e2v, v2e, v2v, v2c;
-  matrix<int> c2f, f2v, f2c;
+  matrix<int> c2f, f2v, f2c, c2c, c2ac;
   vector<int> v2nv, v2nc, c2nv, c2nf, f2nv, ctype;
   vector<int> intFaces, bndFaces, mpiFaces, overFaces, mpiCells;
   set<int> overCells;            //! List of all cells which have an overset-boundary-condition face

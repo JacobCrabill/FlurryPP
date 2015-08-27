@@ -36,7 +36,14 @@ void solver::setupOverset(void)
 
   OComm->setup(params,nGrids,gridID,gridRank,nprocPerGrid,Geo->gridIdList);
 
-  OComm->matchOversetPoints(eles,overFaces);
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  simTimer Timer;
+  Timer.startTimer();
+  OComm->matchOversetPoints(eles,overFaces,Geo->c2ac,Geo->eleMap,Geo->centroid,Geo->extents);
+  MPI_Barrier(MPI_COMM_WORLD);
+  Timer.stopTimer();
+  Timer.showTime(6);
 }
 
 void solver::updateOversetConnectivity(void)
@@ -45,9 +52,9 @@ void solver::updateOversetConnectivity(void)
 
   Geo->setupUnblankElesFaces(eles,faces,mpiFaces,overFaces);
 
-  OComm->matchOversetPoints(eles,overFaces);
+  OComm->matchOversetPoints(eles,overFaces,Geo->c2ac,Geo->eleMap,Geo->centroid,Geo->extents);
 
-  OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->order);
+  OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->c2c,Geo->eleMap,params->order);
 }
 
 /* ---- Basic Tioga-Based Overset-Grid Functions ---- */
