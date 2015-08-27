@@ -22,7 +22,7 @@ static bool abs_compare(int a, int b)
 {
   return (std::abs(a) < std::abs(b));
 }
- 
+
 void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
 {
   // Get access to basic data
@@ -35,8 +35,13 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
   this->eType = eType;
   this->order = order;
 
-  vector<point> loc_spts = Geo->getLocSpts(eType,order);
-  vector<point> loc_fpts = Geo->getLocFpts(eType,order);
+  if (eType == QUAD || eType == HEX)
+    sptsType = params->sptsTypeQuad;
+  else
+    FatalError("Only quads and hexes implemented.");
+
+  vector<point> loc_spts = getLocSpts(eType,order,sptsType);
+  vector<point> loc_fpts = getLocFpts(eType,order,sptsType);
 
   nSpts = loc_spts.size();
   nFpts = loc_fpts.size();
@@ -76,7 +81,7 @@ void oper::setupExtrapolateSptsFpts(vector<point> &loc_fpts)
           opp_spts_to_fpts(fpt,spt) = eval_dubiner_basis_2d(loc_fpts[fpt],spt,order);
           break;
         case QUAD: {
-          vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+          vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
           // First, get the i an j ID of the spt
           ispt = spt%(nSpts/(order+1));
           jspt = floor(spt/(order+1));
@@ -84,7 +89,7 @@ void oper::setupExtrapolateSptsFpts(vector<point> &loc_fpts)
           break;
         }
         case HEX: {
-          vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+          vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
           // First, get the i an j ID of the spt
           kspt = spt/((order+1)*(order+1));
           jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
@@ -120,7 +125,7 @@ void oper::setupExtrapolateSptsMpts(vector<point> &loc_spts)
     case QUAD: {
       uint ispt, jspt;
       opp_spts_to_mpts.setup(4,nSpts);
-      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
         // First, get the i an j ID of the spt
         ispt = spt%(nSpts/(order+1));
@@ -138,7 +143,7 @@ void oper::setupExtrapolateSptsMpts(vector<point> &loc_spts)
       int nv = 8, ne = 12;
       // Have to put extra points on the edges to connect fpts & spts to mpts
       opp_spts_to_mpts.setup(nv+ne*(order+1),nSpts);
-      vector<double> locSpts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
         // First, get the i an j ID of the spt
         kspt = spt/((order+1)*(order+1));
@@ -184,48 +189,262 @@ void oper::setupExtrapolateSptsMpts(vector<point> &loc_spts)
   }
 }
 
-void oper::setupInterpolate(vector<point> &pts_from, vector<point> &pts_to, matrix<double> &opp_interp)
+matrix<double> oper::setupInterpolateSptsIpts(matrix<double> &loc_ipts)
 {
-  uint ptA, ptB, nPtsFrom, nPtsTo, pt, iptA, jptA;
-  nPtsFrom = pts_from.size();
-  nPtsTo = pts_to.size();
+  uint nIpts = loc_ipts.dims[0];
+  matrix<double> opp_interp(nIpts,nSpts);
 
-  opp_interp.setup(nPtsFrom,nPtsTo);
+  switch(eType) {
+    case TRI: {
+      for (uint ipt=0; ipt<nIpts; ipt++) {
+        // Location of the current interpolation point
+        point pt = point(loc_ipts[ipt]);
 
-  // Get 1D locations of points for arbitrary, potentially anisotropic tensor-product elements
-  vector<double> locPts1Dx, locPts1Dy;
-  if (eType==QUAD) {
-    locPts1Dx.resize(order+1);
-    locPts1Dy.resize(order+1);
-    for (pt=0; pt<(uint)order+1; pt++) {
-      locPts1Dx[pt] = pts_from[pt].x;
-      locPts1Dy[pt] = pts_from[pt*(order+1)].y;
+        // Use the orthogonal 2D Dubiner basis for triangular elements
+        for (uint spt=0; spt<nSpts; spt++)
+          opp_interp(ipt,spt) = eval_dubiner_basis_2d(pt,spt,order);
+      }
+      break;
     }
+    case QUAD: {
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+      for (uint ipt=0; ipt<nIpts; ipt++) {
+        // Location of the current interpolation point
+        point pt = point(loc_ipts[ipt]);
+        for (uint spt=0; spt<nSpts; spt++) {
+          // Structured I,J indices of current solution point
+          uint ispt = spt%(nSpts/(order+1));
+          uint jspt = floor(spt/(order+1));
+          // 3D Tensor-Product Lagrange Interpolation
+          opp_interp(ipt,spt) =  Lagrange(locSpts1D,pt.x,ispt) * Lagrange(locSpts1D,pt.y,jspt);
+        }
+      }
+      break;
+    }
+    case HEX: {
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+      for (uint ipt = 0; ipt < nIpts; ipt++) {
+        // Location of the current interpolation point
+        point pt = point(loc_ipts[ipt]);
+        for (uint spt=0; spt<nSpts; spt++) {
+          // Structured I,J,K indices of current solution point
+          uint kspt = spt/((order+1)*(order+1));
+          uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+          uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+          // 3D Tensor-Product Lagrange Interpolation
+          opp_interp(ipt,spt) =  Lagrange(locSpts1D,pt.x,ispt) * Lagrange(locSpts1D,pt.y,jspt) * Lagrange(locSpts1D,pt.z,kspt);
+        }
+      }
+      break;
+    }
+    default:
+      FatalError("Element type not yet supported.");
   }
 
-  for (ptB=0; ptB<nPtsTo; ptB++) {
-    for (ptA=0; ptA<nPtsFrom; ptA++) {
-      switch(eType) {
-        case TRI:
-          opp_interp[ptB][ptA] = eval_dubiner_basis_2d(pts_to[ptB],ptA,order);
-          break;
-        case QUAD:
-          // First, get the i and j ID of the pt [tensor-product element]
-          iptA = ptA%(nPtsFrom/(order+1));
-          jptA = floor(ptA/(order+1));
-          opp_interp[ptB][ptA] = Lagrange(locPts1Dx,pts_to[ptB].x,iptA) * Lagrange(locPts1Dy,pts_to[ptB].y,jptA);
-          break;
-//        case HEX:
-//          // First, get the i and j ID of the pt [tensor-product element]
-//          iptA = ptA%(nPtsFrom/(order+1));
-//          jptA = floor(ptA/(order+1));
-//          kptA = floor(ptA/((order+1)*(order+1)));
-//          opp_interp[ptB][ptA] = Lagrange(locPts1Dx,pts_to[ptB].x,iptA) * Lagrange(locPts1Dy,pts_to[ptB].y,jptA);
-//          break;
-        default:
-          FatalError("Element type not yet supported.");
-      }
+  return opp_interp;
+}
+
+void oper::getInterpWeights(double* loc_ipt, double* weights)
+{
+  // loc_ipt contains [x,y,z] in reference coordinates
+  point pt = point(loc_ipt);
+
+  // Note: 'weights' should be pre-size to nSpts
+
+  switch(eType) {
+    case TRI: {
+      // Use the orthogonal 2D Dubiner basis for triangular elements
+      for (uint spt=0; spt<nSpts; spt++)
+        weights[spt] = eval_dubiner_basis_2d(pt,spt,order);
+      break;
     }
+    case QUAD: {
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+      for (uint spt=0; spt<nSpts; spt++) {
+        // Structured I,J indices of current solution point
+        uint ispt = spt%(nSpts/(order+1));
+        uint jspt = floor(spt/(order+1));
+        // 3D Tensor-Product Lagrange Interpolation
+        weights[spt] =  Lagrange(locSpts1D,pt.x,ispt) * Lagrange(locSpts1D,pt.y,jspt);
+      }
+      break;
+    }
+    case HEX: {
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+      for (uint spt=0; spt<nSpts; spt++) {
+        // Structured I,J,K indices of current solution point
+        uint kspt = spt/((order+1)*(order+1));
+        uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+        uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+        // 3D Tensor-Product Lagrange Interpolation
+        weights[spt] =  Lagrange(locSpts1D,pt.x,ispt) * Lagrange(locSpts1D,pt.y,jspt) * Lagrange(locSpts1D,pt.z,kspt);
+      }
+      break;
+    }
+    default:
+      FatalError("Element type not yet supported.");
+  }
+}
+
+void oper::interpolateSptsToPoints(matrix<double> &Q_spts,matrix<double> &Q_ipts, matrix<double> &loc_ipts)
+{
+  uint nIpts = loc_ipts.dims[0];
+  uint nFields = Q_spts.dims[1];
+
+  Q_ipts.setup(nIpts,nFields);
+  Q_ipts.initializeToZero();
+
+  switch(eType) {
+    case TRI: {
+      for (uint ipt=0; ipt<nIpts; ipt++) {
+        // Location of the current interpolation point
+        point pt = point(loc_ipts[ipt]);
+
+        // Use the orthogonal 2D Dubiner basis for triangular elements
+        for (uint spt=0; spt<nSpts; spt++)
+          for (uint field=0; field<Q_spts.dims[1]; field++)
+            Q_ipts(ipt,field) += Q_spts(spt,field) * eval_dubiner_basis_2d(pt,spt,order);
+      }
+      break;
+    }
+    case QUAD: {
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+      for (uint ipt=0; ipt<nIpts; ipt++) {
+        // Location of the current interpolation point
+        point pt = point(loc_ipts[ipt]);
+        for (uint spt=0; spt<nSpts; spt++) {
+          // Structured I,J indices of current solution point
+          uint ispt = spt%(nSpts/(order+1));
+          uint jspt = floor(spt/(order+1));
+
+          // 3D Tensor-Product Lagrange Interpolation
+          for (uint field=0; field<nFields; field++)
+            Q_ipts(ipt,field) += Q_spts(spt,field) * Lagrange(locSpts1D,pt.x,ispt) * Lagrange(locSpts1D,pt.y,jspt);
+        }
+      }
+      break;
+    }
+
+    case HEX: {
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+      for (uint ipt = 0; ipt < nIpts; ipt++) {
+        // Location of the current interpolation point
+        point pt = point(loc_ipts[ipt]);
+        for (uint spt=0; spt<nSpts; spt++) {
+          // Structured I,J,K indices of current solution point
+          uint kspt = spt/((order+1)*(order+1));
+          uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+          uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+
+          // 3D Tensor-Product Lagrange Interpolation
+          for (uint field=0; field<nFields; field++)
+            Q_ipts(ipt,field) += Q_spts(spt,field) * Lagrange(locSpts1D,pt.x,ispt) * Lagrange(locSpts1D,pt.y,jspt) * Lagrange(locSpts1D,pt.z,kspt);
+        }
+      }
+      break;
+    }
+    default:
+      FatalError("Element type not yet supported.");
+  }
+}
+
+void oper::interpolateToPoint(matrix<double> &Q_spts, double* Q_ipts, point &loc_ipt)
+{
+  uint nFields = Q_spts.dims[1];
+
+  for (int k=0; k<nFields; k++)
+    Q_ipts[k] = 0;
+
+  switch(eType) {
+    case TRI: {
+      // Use the orthogonal 2D Dubiner basis for triangular elements
+      for (uint spt=0; spt<nSpts; spt++)
+        for (uint field=0; field<Q_spts.dims[1]; field++)
+          Q_ipts[field] += Q_spts(spt,field) * eval_dubiner_basis_2d(loc_ipt,spt,order);
+      break;
+    }
+    case QUAD: {
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+      for (uint spt=0; spt<nSpts; spt++) {
+        // Structured I,J indices of current solution point
+        uint ispt = spt%(nSpts/(order+1));
+        uint jspt = floor(spt/(order+1));
+
+        // 3D Tensor-Product Lagrange Interpolation
+        for (uint field=0; field<nFields; field++)
+          Q_ipts[field] += Q_spts(spt,field) * Lagrange(locSpts1D,loc_ipt.x,ispt) * Lagrange(locSpts1D,loc_ipt.y,jspt);
+      }
+      break;
+    }
+
+    case HEX: {
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+      for (uint spt=0; spt<nSpts; spt++) {
+        // Structured I,J,K indices of current solution point
+        uint kspt = spt/((order+1)*(order+1));
+        uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+        uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+
+        // 3D Tensor-Product Lagrange Interpolation
+        for (uint field=0; field<nFields; field++)
+          Q_ipts[field] += Q_spts(spt,field) * Lagrange(locSpts1D,loc_ipt.x,ispt) * Lagrange(locSpts1D,loc_ipt.y,jspt) * Lagrange(locSpts1D,loc_ipt.z,kspt);
+      }
+      break;
+    }
+    default:
+      FatalError("Element type not yet supported.");
+  }
+}
+
+void oper::interpolateFluxToPoint(vector<matrix<double>> &F_spts, matrix<double> &F_ipt, point &loc_ipt)
+{
+  uint nDims   = F_spts[0].dims[0];
+  uint nFields = F_spts[0].dims[1];
+
+  F_ipt.setup(nDims,nFields);
+  F_ipt.initializeToZero();
+
+  switch(eType) {
+    case TRI: {
+      // Use the orthogonal 2D Dubiner basis for triangular elements
+      for (uint spt=0; spt<nSpts; spt++)
+        for (uint dim=0; dim<nDims; dim++)
+          for (uint field=0; field<nFields; field++)
+            F_ipt(dim,field) += F_spts[spt](dim,field) * eval_dubiner_basis_2d(loc_ipt,spt,order);
+      break;
+    }
+    case QUAD: {
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+      for (uint spt=0; spt<nSpts; spt++) {
+        // Structured I,J indices of current solution point
+        uint ispt = spt%(nSpts/(order+1));
+        uint jspt = floor(spt/(order+1));
+
+        // 3D Tensor-Product Lagrange Interpolation
+        for (uint dim=0; dim<nDims; dim++)
+          for (uint field=0; field<nFields; field++)
+            F_ipt(dim,field) += F_spts[spt](dim,field) * Lagrange(locSpts1D,loc_ipt.x,ispt) * Lagrange(locSpts1D,loc_ipt.y,jspt);
+      }
+      break;
+    }
+
+    case HEX: {
+      vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+      for (uint spt=0; spt<nSpts; spt++) {
+        // Structured I,J,K indices of current solution point
+        uint kspt = spt/((order+1)*(order+1));
+        uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+        uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+
+        // 3D Tensor-Product Lagrange Interpolation
+        for (uint dim=0; dim<nDims; dim++)
+          for (uint field=0; field<nFields; field++)
+            F_ipt(dim,field) += F_spts[spt](dim,field) * Lagrange(locSpts1D,loc_ipt.x,ispt) * Lagrange(locSpts1D,loc_ipt.y,jspt) * Lagrange(locSpts1D,loc_ipt.z,kspt);
+      }
+      break;
+    }
+    default:
+      FatalError("Element type not yet supported.");
   }
 }
 
@@ -247,7 +466,7 @@ void oper::setupGradSpts(vector<point> &loc_spts)
     }
   }
   else if (eType == QUAD) {
-    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
     for (dim=0; dim<nDims; dim++) {
       for (spt1=0; spt1<nSpts; spt1++) {
         ispt1 = spt1%(nSpts/(order+1));      // col index - also = to (spt1 - (order+1)*row)
@@ -265,7 +484,7 @@ void oper::setupGradSpts(vector<point> &loc_spts)
     }
   }
   else if (eType == HEX) {
-    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
     for (dim=0; dim<nDims; dim++) {
       for (spt1=0; spt1<nSpts; spt1++) {
         kspt1 = spt1/((order+1)*(order+1));                         // col index - also = to (spt1 - (order+1)*row)
@@ -308,7 +527,7 @@ void oper::setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
     // Not yet implemented
   }
   else if (eType == QUAD) {
-    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
     for(uint spt=0; spt<nSpts; spt++) {
       for(uint fpt=0; fpt<nFpts; fpt++) {
         opp_correction(spt,fpt) = divVCJH_quad(fpt,loc_spts[spt],loc_spts_1D,params->vcjhSchemeQuad,order);
@@ -316,7 +535,7 @@ void oper::setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
     }
   }
   else if (eType == HEX) {
-    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
     for(uint spt=0; spt<nSpts; spt++) {
       for(uint fpt=0; fpt<nFpts; fpt++) {
         opp_correction(spt,fpt) = divVCJH_hex(fpt,loc_spts[spt],loc_spts_1D,params->vcjhSchemeQuad,order);
@@ -427,7 +646,7 @@ void oper::setupVandermonde(vector<point> &loc_spts)
   else if (eType == QUAD) {
     vandermonde1D.setup(order+1,order+1);
     vandermonde2D.setup(nSpts,nSpts);
-    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
     vector<double> loc(nDims);
 
     // Create 1D Vandermonde matrix
@@ -465,7 +684,7 @@ void oper::setupSensingMatrix(void)
     grad_vandermonde.setup(order+1,order+1);
     matrix<double> concentrationMatrix(order+1,order+1);
 
-    vector<double> loc_spts_1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
 
     // create the vandermonde matrix
     for(uint i=0; i<order+1; i++)
@@ -526,12 +745,12 @@ void oper::applyGradSpts(matrix<double> &U_spts, vector<matrix<double> > &dU_spt
     opp_grad_spts[dim].timesMatrix(U_spts,dU_spts[dim]);
 }
 
-void oper::applyGradFSpts(vector<matrix<double>> &F_spts, vector<vector<matrix<double>>> &dF_spts)
+void oper::applyGradFSpts(vector<matrix<double>> &F_spts, Array<matrix<double>,2> &dF_spts)
 {
   // Note: dim1 is flux direction, dim2 is derivative direction
   for (uint dim1=0; dim1<nDims; dim1++)
-    for (uint dim2=0; dim2<dF_spts.size(); dim2++)
-      opp_grad_spts[dim2].timesMatrix(F_spts[dim1],dF_spts[dim2][dim1]);
+    for (uint dim2=0; dim2<dF_spts.dims[0]; dim2++)
+      opp_grad_spts[dim2].timesMatrix(F_spts[dim1],dF_spts(dim2,dim1));
 }
 
 
@@ -588,10 +807,66 @@ void oper::applyCorrectDivF(matrix<double> &dFn_fpts, matrix<double> &divF_spts)
   opp_correction.timesMatrixPlus(dFn_fpts,divF_spts);
 }
 
-void oper::applyCorrectGradU(matrix<double> &dUc_fpts, vector<matrix<double>> &dU_spts)
+void oper::applyCorrectGradU(matrix<double> &dUc_fpts, vector<matrix<double>> &dU_spts, vector<matrix<double>> &JGinv_spts, vector<double> &detJac_spts)
 {
+  // Calculate the gradient in the parent domain
   for (uint dim=0; dim<nDims; dim++)
     opp_correctU[dim].timesMatrixPlus(dUc_fpts,dU_spts[dim]);
+
+  // Transform the gradient back to physical space
+  if (nDims == 2) {
+    for (uint spt=0; spt<nSpts; spt++) {
+      double invDet = 1./detJac_spts[spt];
+      double rx = JGinv_spts[spt](0,0)/invDet;
+      double ry = JGinv_spts[spt](0,1)/invDet;
+      double sx = JGinv_spts[spt](1,0)/invDet;
+      double sy = JGinv_spts[spt](1,1)/invDet;
+      for (uint k=0; k<nFields; k++) {
+        double ur = dU_spts[0](spt,k);
+        double us = dU_spts[1](spt,k);
+        dU_spts[0](spt,k) = ur*rx + us*sx;
+        dU_spts[1](spt,k) = ur*ry + us*sy;
+      }
+    }
+  }
+  else {
+    for (uint spt=0; spt<nSpts; spt++) {
+      double invDet = 1./detJac_spts[spt];
+      double rx = JGinv_spts[spt](0,0)/invDet;
+      double ry = JGinv_spts[spt](0,1)/invDet;
+      double rz = JGinv_spts[spt](0,2)/invDet;
+      double sx = JGinv_spts[spt](1,0)/invDet;
+      double sy = JGinv_spts[spt](1,1)/invDet;
+      double sz = JGinv_spts[spt](1,2)/invDet;
+      double tx = JGinv_spts[spt](2,0)/invDet;
+      double ty = JGinv_spts[spt](2,1)/invDet;
+      double tz = JGinv_spts[spt](2,2)/invDet;
+      for (uint k=0; k<nFields; k++) {
+        double ur = dU_spts[0](spt,k);
+        double us = dU_spts[1](spt,k);
+        double ut = dU_spts[2](spt,k);
+        dU_spts[0](spt,k) = ur*rx + us*sx + ut*tx;
+        dU_spts[1](spt,k) = ur*ry + us*sy + ut*ty;
+        dU_spts[2](spt,k) = ur*rz + us*sz + ut*tz;
+      }
+    }
+  }
+}
+
+void oper::calcAvgU(matrix<double> &U_spts, vector<double> &detJ_spts, vector<double> &Uavg)
+{
+  auto weights = getQptWeights(order,nDims);
+
+  Uavg.assign(nFields,0);
+  double vol = 0;
+  for (uint spt=0; spt<nSpts; spt++) {
+    for (uint i=0; i<nFields; i++) {
+      Uavg[i] += U_spts(spt,i)*weights[spt]*detJ_spts[spt];
+    }
+    vol += weights[spt]*detJ_spts[spt];
+  }
+
+  for (auto &i:Uavg) i/= vol;
 }
 
 

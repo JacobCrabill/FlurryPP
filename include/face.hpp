@@ -18,6 +18,10 @@
 
 #include <vector>
 
+#ifndef _NO_MPI
+#include "mpi.h"
+#endif
+
 #include "global.hpp"
 
 class ele;
@@ -25,12 +29,33 @@ class ele;
 #include "matrix.hpp"
 #include "input.hpp"
 
+//! Struct to pass into each face; values assigned as needed based on face type
+struct faceInfo {
+  int isMPI = 0;  //! Flag for whether face is an MPI-boundary face
+  int isBnd = 0;  //! Flag for whether face is a boundary-condition face
+  int IDR;
+
+  //! Relative orientation between 3D faces
+  int relRot;
+
+  //! boundFace parameters
+  int bcType;
+
+  //! mpiFace parameters  
+  int procL;
+  int procR;
+
+#ifndef _NO_MPI
+  MPI_Comm gridComm; //! MPI communicator for this grid
+#endif
+};
+
 class face
 {
 public:
 
   /*! Assign basic parameters to boundary */
-  void initialize(ele *eL, ele *eR, int locF_L, const vector<int> &rightParams, int gID, input* params);
+  void initialize(ele *eL, ele *eR, int gID, int locF_L, struct faceInfo myInfo, input* params);
 
   /*! Setup access to the left elements' data */
   void setupFace(void);
@@ -51,6 +76,9 @@ public:
   /*! Viscous cases: For all internal faces, put the common solution into the right ele
    *  Either put directly into ele's memory, or send across MPI boundary */
   virtual void setRightStateSolution(void) =0;
+
+  /*! Compute the force on any wall boundary conditions */
+  virtual vector<double> computeWallForce(void) =0;
 
   /*! Calculate the common inviscid flux on the face */
   void calcInviscidFlux(void);
@@ -74,13 +102,14 @@ public:
 
   input *params; //! Input parameters for simulation
 
-protected:
   int nFptsL, nFptsR;
   int nDims, nFields;
   int locF_L;
   int fptStartL, fptEndL;
   vector<int> rightParams;
+  struct faceInfo myInfo;
 
+protected:
   ele* eL;
   ele* eR;
 
@@ -107,4 +136,5 @@ protected:
   vector<point> posFpts;
 
   int isMPI;  //! Flag for MPI faces to separate communication from flux calculation
+  int isBnd;  //! Flag for boundary faces for use in LDG routines
 };

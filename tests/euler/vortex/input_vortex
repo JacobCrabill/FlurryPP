@@ -3,7 +3,8 @@ order         3    # Polynomial order to use
 dt            .0000125  # Time step size
 timeType      4
 
-riemann_type  0    # Advection: use 0; N-S: 0: Rusanov, 1: Roe
+riemannType  0    # Advection: use 0; N-S: 0: Rusanov, 1: Roe
+nDims         2
 
 advectVx      1    # Advection wave speed, x-component
 advectVy      1    # Advection wave speed, y-component
@@ -13,17 +14,17 @@ motion        2    # 0: Static, 1: Kui test case, 2: Liang test case
 # Initial Condition
 #   Advection: 0-Gaussian, 1-u=x+y test case
 #   N-S: 0-Uniform flow, 1-Vortex (Kui), 2-Vortex (Liang)
-ic_type       2
+icType       2
 iterMax       1788855
 
 # Plotting/Output Parameters
-plot_freq         10000  # Frequency to write plot files
-monitor_res_freq  500  # Frequency to print residual to terminal
+plotFreq         100  # Frequency to write plot files
+monitorResFreq  10  # Frequency to print residual to terminal
 resType           2    # 1: 1-norm, 2: 2-norm, 3: Inf-norm
 dataFileName      DeformVortex  # Prefix for all output files
 
 # mesh_type - 0: Read mesh, 1: Create mesh
-mesh_type     1
+meshType     1
 
 # Boundary conditions
 create_bcTop     periodic
@@ -32,9 +33,8 @@ create_bcLeft    periodic
 create_bcRight   periodic
 
 # Parameters used when creating the mesh:
-nDims         2
-nx            40
-ny            40
+nx            20
+ny            20
 xmin          -5
 xmax          5
 ymin          -5

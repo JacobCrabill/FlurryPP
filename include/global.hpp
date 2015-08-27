@@ -31,6 +31,9 @@
 #include <omp.h>
 
 #include "error.hpp"
+
+template<typename T> class matrix;
+
 #include "matrix.hpp"
 
 // Forward declarations of basic Flurry classes
@@ -57,8 +60,24 @@ enum ETYPE {
   PYRAMID = 5
 };
 
+/*! Enumeration for original, mesh-file-defined face type */
+enum FACE_TYPE {
+  HOLE_FACE = -1,
+  INTERNAL  = 0,
+  BOUNDARY  = 1,
+  MPI_FACE  = 2,
+  OVER_FACE = 3
+};
+
+/*! Enumeration for original, mesh-file-defined node type */
+enum NODE_TYPE {
+  NORMAL_NODE = 0,
+  OVERSET_NODE = 1,
+  BOUNDARY_NODE = 2
+};
+
 /*! Enumeration for mesh (either create cartesian mesh or read from file) */
-enum MESH_TYPE {
+enum meshType {
   READ_MESH   = 0,
   CREATE_MESH = 1,
   OVERSET_MESH = 2
@@ -106,6 +125,12 @@ struct point
     z = 0;
   }
 
+  point (double _x, double _y, double _z) {
+    x = _x;
+    y = _y;
+    z = _z;
+  }
+
   point(double* pt) {
     x = pt[0];
     y = pt[1];
@@ -127,6 +152,7 @@ struct point
       case 2:
         return z;
       default:
+        cout << "ind = " << ind << ": " << flush;
         FatalError("Invalid index for point struct.");
     }
   }
@@ -155,6 +181,14 @@ struct point
     return c;
   }
 
+  point operator/(point b) {
+    struct point c;
+    c.x = x / b.x;
+    c.y = y / b.y;
+    c.z = z / b.z;
+    return c;
+  }
+
   point& operator+=(point b) {
     x += b.x;
     y += b.y;
@@ -162,31 +196,38 @@ struct point
     return *this;
   }
 
-    point& operator-=(point b) {
+  point& operator-=(point b) {
     x -= b.x;
     y -= b.y;
     z -= b.z;
     return *this;
   }
 
-    point& operator+=(double* b) {
-      x += b[0];
-      y += b[1];
-      z += b[2];
-      return *this;
-    }
+  point& operator+=(double* b) {
+    x += b[0];
+    y += b[1];
+    z += b[2];
+    return *this;
+  }
 
-      point& operator-=(double* b) {
-      x -= b[0];
-      y -= b[1];
-      z -= b[2];
-      return *this;
-    }
+  point& operator-=(double* b) {
+    x -= b[0];
+    y -= b[1];
+    z -= b[2];
+    return *this;
+  }
 
   point& operator/=(double a) {
     x /= a;
     y /= a;
     z /= a;
+    return *this;
+  }
+
+  point& operator*=(double a) {
+    x *= a;
+    y *= a;
+    z *= a;
     return *this;
   }
 
@@ -200,10 +241,29 @@ struct point
     z = std::abs(z);
   }
 
+  double norm(void) {
+    return std::sqrt(x*x+y*y+z*z);
+  }
+
+  point cross(point b) {
+    point v;
+    v.z = x*b.y - y*b.x;
+    v.y = x*b.z - z*b.x;
+    v.x = y*b.z - z*b.y;
+    return v;
+  }
+
 };
+
+point operator/(point a, double b);
+point operator*(point a, double b);
+
+double getDist(point a, point b);
 
 //! For clearer notation when a vector is implied, rather than a point
 typedef struct point Vec3;
+
+matrix<double> createMatrix(vector<point> &pts);
 
 int factorial(int n);
 
@@ -215,6 +275,9 @@ bool checkNaN(double* vec, int size);
 
 /*! Get polynomial-order-based CFL limit.  Borrowed from Josh's zefr code. */
 double getCFLLimit(int order);
+
+/*! Get the Gaussian quadrature weights for the given polynomial order */
+vector<double> getQuadratureWeights1D(int order);
 
 //double randRange(double xMin, double xMax);
 
@@ -265,7 +328,7 @@ void vecAssign(vector<T> &vec, vector<int> &ind, T val)
   for (auto& i:ind) vec[i] = val;
 }
 
-// Good for numeric types
+// Good for numeric types - meant for ints or uints though
 template<typename T>
 T getMax(vector<T> &vec)
 {
@@ -275,6 +338,30 @@ T getMax(vector<T> &vec)
   }
 
   return max;
+}
+
+// Good for numeric types
+template<typename T>
+T getMin(vector<T> &vec)
+{
+  T min = 1e15;
+  for (auto& i:vec) {
+    if (i<min) min = i;
+  }
+
+  return min;
+}
+
+template<typename T>
+T getSum(vector<T> &vec)
+{
+  T sum = 0;
+#pragma omp parallel for
+  for (uint i=0; i<vec.size(); i++) {
+    sum += vec[i];
+  }
+
+  return sum;
 }
 
 template<typename T>
@@ -315,6 +402,8 @@ vector<T> operator*(const vector<T>& lhs, double rhs)
   return out;
 }
 
+Vec3 operator*(matrix<double>& mat, Vec3 &vec);
+
 //----------Performance boost mod----------------------
 /*template<typename T>
 void std::vector<T>::operator*()*/
@@ -337,6 +426,6 @@ private:
 public:
   void startTimer();
   void stopTimer();
-  void showTime();
+  void showTime(int precision=3);
 
 };

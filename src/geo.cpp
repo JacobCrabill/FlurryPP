@@ -13,7 +13,7 @@
  *
  */
 
-#include "../include/geo.hpp"
+#include "geo.hpp"
 
 #include <algorithm>
 #include <array>
@@ -24,11 +24,11 @@
 #include <sstream>
 #include <unordered_set>
 
-#include "../include/face.hpp"
-#include "../include/intFace.hpp"
-#include "../include/boundFace.hpp"
-#include "../include/mpiFace.hpp"
-#include "../lib/tioga/src/tiogaInterface.h"
+#include "face.hpp"
+#include "intFace.hpp"
+#include "boundFace.hpp"
+#include "mpiFace.hpp"
+#include "overFace.hpp"
 
 #ifndef _NO_MPI
 #include "mpi.h"
@@ -37,16 +37,29 @@
 
 geo::geo()
 {
+  nodesPerCell = NULL;
+}
 
+geo::~geo()
+{
+  if (nodesPerCell != NULL) {
+    delete[] nodesPerCell;
+    //nodesPerCell = NULL;
+  }
 }
 
 void geo::setup(input* params)
 {
   this->params = params;
 
-  meshType = params->mesh_type;
+  nDims = params->nDims;
+  nFields = params->nFields;
+  meshType = params->meshType;
+  gridID = 0;
   gridRank = params->rank;
-  nprocPerGrid = params->nproc;
+  nProcGrid = params->nproc;
+  rank = params->rank;
+  nproc = params->nproc;
 
   switch(meshType) {
     case READ_MESH:
@@ -57,15 +70,14 @@ void geo::setup(input* params)
       createMesh();
       break;
 
+#ifndef _NO_MPI
     case OVERSET_MESH:
-      int ierr;
-      tioga_init_(&ierr);
       // Find out which grid this process will be handling
-      nprocPerGrid = params->nproc/params->nGrids;
-      gridID = params->rank / nprocPerGrid;
-      gridRank = params->rank % nprocPerGrid;
+      nGrids = params->nGrids;
+      splitGridProcs();
       readGmsh(params->oversetGrids[gridID]);
       break;
+#endif
 
     default:
       FatalError("Mesh type not recognized.");
@@ -76,12 +88,6 @@ void geo::setup(input* params)
 #endif
 
   processConnectivity();
-
-  processPeriodicBoundaries();
-
-  if (meshType == OVERSET_MESH) {
-    setOversetConnectivity();
-  }
 }
 
 
@@ -93,6 +99,28 @@ void geo::processConnectivity()
     processConn2D();
   else if (nDims == 3)
     processConn3D();
+
+  processPeriodicBoundaries();
+
+#ifndef _NO_MPI
+  /* --- Use TIOGA to find all hole nodes, then setup overset-face connectivity --- */
+  if (meshType == OVERSET_MESH) {
+    registerGridDataTIOGA();
+
+    updateOversetConnectivity();
+  }
+
+  /* --- Setup MPI Processor Boundary Faces --- */
+  matchMPIFaces();
+
+  /* --- Additional setup for moving grids --- */
+  if (params->motion) {
+    xv0.resize(nVerts);
+    for (int i=0; i<nVerts; i++) xv0[i] = point(xv[i]);
+    xv_new.resize(nVerts);
+    gridVel.setup(nVerts,nDims);
+  }
+#endif
 }
 
 void geo::processConn2D(void)
@@ -136,7 +164,7 @@ void geo::processConn2D(void)
 
   /* Flag for whether global face ID corresponds to interior or boundary face
      (note that, at this stage, MPI faces will be considered boundary faces) */
-  isBnd.assign(nFaces,0);
+  faceType.assign(nFaces,INTERNAL);
 
   nIntFaces = 0;
   nBndFaces = 0;
@@ -158,7 +186,7 @@ void geo::processConn2D(void)
       else if (ie.size()==1) {
         // Boundary or MPI Edge
         bndFaces.push_back(iE[i]);
-        isBnd[iE[i]] = true;
+        faceType[iE[i]] = BOUNDARY;
         nBndFaces++;
       }
 
@@ -175,23 +203,14 @@ void geo::processConn2D(void)
     int iv1 = f2v(bndFaces[i],0);
     int iv2 = f2v(bndFaces[i],1);
     for (int bnd=0; bnd<nBounds; bnd++) {
-      if (findFirst(bndPts[bnd],iv1,bndPts.dim1)!=-1 && findFirst(bndPts[bnd],iv2,bndPts.dim1)!=-1) {
+      if (findFirst(bndPts[bnd],iv1,bndPts.dims[1])!=-1 && findFirst(bndPts[bnd],iv2,bndPts.dims[1])!=-1) {
         // The edge lies on this boundary
         bcType[i] = bcList[bnd];
-        bcFaces[bnd].insertRow(f2v[bndFaces[i]],INSERT_AT_END,f2v.dim1);
+        bcFaces[bnd].insertRow(f2v[bndFaces[i]],INSERT_AT_END,f2v.dims[1]);
         break;
       }
     }
   }
-
-  /* --- Setup MPI Processor Boundary Faces --- */
-#ifndef _NO_MPI
-  if (params->nproc > 1) {
-
-    matchMPIFaces();
-
-  } // nproc > 1
-#endif
 
   /* --- Setup Cell-To-Edge, Edge-To-Cell --- */
 
@@ -227,7 +246,7 @@ void geo::processConn2D(void)
       int ie0 = ie1[ie2];
 
       // Find ID of face within type-specific array
-      if (isBnd[ie0]) {
+      if (faceType[ie0]>0) {
         c2f(ic,j) = ie0;
         c2b(ic,j) = 1;
       }else{
@@ -250,7 +269,7 @@ void geo::processConn3D(void)
 {
   /* --- Setup Single List of All Faces (sorted vertex lists) --- */
 
-  matrix<int> f2v1;
+  matrix<int> f2v1, e2v1;
   vector<int> f2nv1;
 
   // Handy map to store local face-vertex lists for each ele type
@@ -274,13 +293,20 @@ void geo::processConn3D(void)
 
       // Get global vertex list for face
       vector<int> facev(ct2fnv[ctype[e]][f]);
-      for (int i=0; i<ct2fnv[ctype[e]][f]; i++)
+      for (int i=0; i<ct2fnv[ctype[e]][f]; i++) {
         facev[i] = c2v(e,iface[i]);
+        if (i>0 && facev[i] == facev[i-1]) facev[i] = -1;
+      }
 
       // Sort the vertices for easier comparison later
       std::sort(facev.begin(),facev.end());
       f2v1.insertRowUnsized(facev);
       f2nv1.push_back(ct2fnv[ctype[e]][f]);
+
+      e2v1.insertRow({facev[0],facev[1]});
+      e2v1.insertRow({facev[1],facev[2]});
+      e2v1.insertRow({facev[2],facev[3]});
+      e2v1.insertRow({facev[0],facev[3]});
     }
   }
 
@@ -291,9 +317,11 @@ void geo::processConn3D(void)
   // iE is of length [original f2v1] with range [final f2v]
   // The number of times a face appears in iF is equal to
   // the number of cells that face touches
-  vector<int> iF;
+  vector<int> iF, iE;
   f2v1.unique(f2v,iF);
+  e2v1.unique(e2v,iE);
   nFaces = f2v.getDim0();
+  nEdges = e2v.getDim0();
 
   f2nv.resize(nFaces);
   for (uint i=0; i<f2nv1.size(); i++)
@@ -304,7 +332,7 @@ void geo::processConn3D(void)
 
   // Flag for whether global face ID corresponds to interior or boundary face
   // (note that, at this stage, MPI faces will be considered boundary faces)
-  isBnd.assign(nFaces,0);
+  faceType.assign(nFaces,INTERNAL);
 
   nIntFaces = 0;
   nBndFaces = 0;
@@ -326,7 +354,7 @@ void geo::processConn3D(void)
       else if (ff.size()==1) {
         // Boundary or MPI Edge
         bndFaces.push_back(iF[i]);
-        isBnd[iF[i]] = true;
+        faceType[iF[i]] = BOUNDARY;
         nBndFaces++;
       }
 
@@ -338,12 +366,12 @@ void geo::processConn3D(void)
   /* --- Match Boundary Faces to Boundary Conditions --- */
 
   bcFaces.resize(nBounds);
-  bcType.assign(nBndFaces,-1);
+  bcType.assign(nBndFaces,NONE);
   for (int i=0; i<nBndFaces; i++) {
     for (int bnd=0; bnd<nBounds; bnd++) {
       bool isOnBound = true;
       for (int j=0; j<f2nv[bndFaces[i]]; j++) {
-        if (findFirst(bndPts[bnd],f2v(bndFaces[i],j),bndPts.dim1) == -1) {
+        if (findFirst(bndPts[bnd],f2v(bndFaces[i],j),bndPts.dims[1]) == -1) {
           isOnBound = false;
           break;
         }
@@ -353,7 +381,7 @@ void geo::processConn3D(void)
         //cout << "bndFace matched to bc " << bcList[bnd] << endl;
         // The edge lies on this boundary
         bcType[i] = bcList[bnd];
-        bcFaces[bnd].insertRow(f2v[bndFaces[i]],INSERT_AT_END,f2v.dim1);
+        bcFaces[bnd].insertRow(f2v[bndFaces[i]],INSERT_AT_END,f2v.dims[1]);
         break;
       }
     }
@@ -363,7 +391,10 @@ void geo::processConn3D(void)
 
   c2f.setup(nEles,getMax(c2nf));
   c2b.setup(nEles,getMax(c2nf));
+  c2c.setup(nEles,getMax(c2nf));
+  c2f.initializeToValue(-1);
   c2b.initializeToZero();
+  c2c.initializeToValue(-1);
   f2c.setup(nFaces,2);
   f2c.initializeToValue(-1);
 
@@ -382,6 +413,15 @@ void geo::processConn3D(void)
       std::sort(facev.begin(),facev.end());
 
       bool found = false;
+
+      // Check if face is actually collapsed (nonexistant) (all nodes identical)
+      bool collapsed = true;
+      for (int i=1; i<fnv; i++)
+        collapsed = ( collapsed && (facev[0]==facev[i]) );
+
+      if (collapsed)
+        continue;
+
       for (int f=0; f<nFaces; f++) {
         if (std::equal(f2v[f],f2v[f]+fnv,facev.begin())) {
           found = true;
@@ -395,7 +435,7 @@ void geo::processConn3D(void)
       int ff = c2f(ic,j);
 
       // Find ID of face within type-specific array
-      if (isBnd[ff])
+      if (faceType[ff]>0)
         c2b(ic,j) = 1;
       else
         c2b(ic,j) = 0;
@@ -406,84 +446,105 @@ void geo::processConn3D(void)
       }else{
         // Put cell on right
         f2c(ff,1) = ic;
+        // Update c2c for both cells
+        int ic2 = f2c(ff,0);
+        vector<int> cellFaces(c2f[ic2],c2f[ic2]+c2nf[ic2]);
+        int fid2 = findFirst(cellFaces,ff);
+        c2c(ic,j)     = ic2;
+        c2c(ic2,fid2) = ic;
       }
     }
   }
 
-  /* --- Setup MPI Processor Boundary Faces --- */
-#ifndef _NO_MPI
-  matchMPIFaces();
-#endif
-
-}
-
-void geo::setOversetConnectivity(void)
-{
-  // Setup iwall, iover (nodes on wall & overset boundaries)
-  iover.resize(0);
-  iwall.resize(0);
-  for (int ib=0; ib<nBounds; ib++) {
-    if (bcList[ib] == OVERSET) {
-      for (int iv=0; iv<nBndPts[ib]; iv++) {
-        iover.push_back(bndPts(ib,iv));
+  c2ac.setup(nEles,26); // ALL cell surrounding each cell (all cells sharing at least 1 vertex)
+  c2ac.initializeToValue(-1);
+  for (int ic=0; ic<nEles; ic++) {
+    set<int> tmpIC;
+    for (int j=0; j<c2nv[ic]; j++) {
+      int iv = c2v(ic,j);
+      for (int ic2=0; ic2<nEles; ic2++) {
+        if (ic2 == ic) continue;
+        for (int k=0; k<c2nv[ic2]; k++) {
+          if (c2v(ic2,k)==iv) {
+            tmpIC.insert(ic2);
+          }
+        }
       }
     }
-    else if (bcList[ib] == SLIP_WALL || bcList[ib] == ADIABATIC_NOSLIP || bcList[ib] == ISOTHERMAL_NOSLIP) {
-      for (int iv=0; iv<nBndPts[ib]; iv++) {
-        iwall.push_back(bndPts(ib,iv));
-      }
+
+    int nc = 0;
+    for (auto &ic2:tmpIC) {
+      c2ac(ic,nc) = ic2;
+      nc++;
     }
   }
 
-  int nwall = iwall.size();
-  int nover = iover.size();
-  int ntypes = 1;           //! Number of element types in grid block
-  int nodesPerCell = 6;     //! Number of nodes per element for first element type
-  iblank.resize(nVerts);
+  getBoundingBox(xv,centroid,extents);
 
-  cout << "Grid " << gridID << ", rank " << gridRank << ": nwall = " << nwall << ", nover = " << nover << endl;
+  // Get vertex to vertex/edge connectivity
+  vector<set<int>> v2v_tmp(nVerts);
+  vector<set<int>> v2e_tmp(nVerts);
+  for (int ie=0; ie<nEdges; ie++) {
+    int iv1 = e2v(ie,0);
+    int iv2 = e2v(ie,1);
+    v2v_tmp[iv1].insert(iv2);
+    v2v_tmp[iv2].insert(iv1);
+    v2e_tmp[iv1].insert(ie);
+    v2e_tmp[iv2].insert(ie);
+  }
 
-  tioga_registergrid_data_(&gridID,&nVerts,xv.getData(),iblank.data(),&nwall,&nover,iwall.data(),iover.data(),&ntypes,&nodesPerCell,&nEles,c2v.getData());
+  v2nv.resize(nVerts);
+  for (int iv=0; iv<nVerts; iv++) {
+    v2nv[iv] = v2v_tmp[iv].size();
+  }
 
-  MPI_Finalize();
-  exit(0);
+  v2v.setup(nVerts,getMax(v2nv));
+  v2e.setup(nVerts,getMax(v2nv));
+  for (int iv=0; iv<nVerts; iv++) {
+    int j = 0;
+    for (auto &iv2:v2v_tmp[iv]) {
+      v2v(iv,j) = iv2;
+      j++;
+    }
 
-  tioga_preprocess_grids_();
+    j = 0;
+    for (auto &ie:v2e_tmp[iv]) {
+      v2e(iv,j) = ie;
+      j++;
+    }
+  }
 
-  tioga_performconnectivity_();
-
-  double* dummyU;
-  int nVars = 0;
-  int itype = 0;
-  tioga_writeoutputfiles_(dummyU,&nVars,&itype);
 }
 
 void geo::matchMPIFaces(void)
 {
 #ifndef _NO_MPI
-  if (params->nproc <= 1) return;
+  if (nProcGrid <= 1) return;
 
-  if (params->rank == 0) {
+  if (gridRank == 0) {
     if (meshType == OVERSET_MESH)
-      cout << "Geo: Grid block " << gridID << ": Matching MPI faces" << endl;
+      cout << "Geo: Grid " << gridID << ": Matching MPI faces" << endl;
     else
       cout << "Geo: Matching MPI faces" << endl;
   }
 
-  /* --- Split MPI Processes Based Upon gridID: Create MPI_Comm for each grid --- */
-  MPI_Comm gridComm;
-  MPI_Comm_split(MPI_COMM_WORLD, gridID, params->rank, &gridComm);
-
   // 1) Get a list of all the MPI faces on the processor
-  // These will be all unassigned boundary faces (bcType == -1) - copy over to mpiEdges
+  // These will be all unassigned boundary faces (bcType == NONE, or the
+  // remaining unmatched bcType == PERIODIC faces)
+  // - Copy over to mpiFaces
+  mpiPeriodic.resize(0);
   for (int i=0; i<nBndFaces; i++) {
-    if (bcType[i] < 0) {
-      mpiFaces.push_back(bndFaces[i]);
+    if (bcType[i] <= 0) {
+      int ff = bndFaces[i];
+      mpiFaces.push_back(ff);
+      faceType[ff] = MPI_FACE;
+      int periodic = (bcType[i]==PERIODIC) ? 1 : 0;
+      mpiPeriodic.push_back(periodic);
       if (nDims == 3) {
         // Get cell ID & cell-local face ID for face-rotation mapping
-        mpiCells.push_back(ic2icg[f2c(bndFaces[i],0)]);
-        auto cellFaces = c2f.getRow(f2c(bndFaces[i],0));
-        int fid = findFirst(cellFaces,bndFaces[i]);
+        mpiCells.push_back(ic2icg[f2c(ff,0)]);
+        auto cellFaces = c2f.getRow(f2c(ff,0));
+        int fid = findFirst(cellFaces,ff);
         mpiLocF.push_back(fid);
       }
       bndFaces[i] = -1;
@@ -498,43 +559,61 @@ void geo::matchMPIFaces(void)
 
   // For future compatibility with 3D mixed meshes: allow faces with different #'s nodes
   // mpi_fptr is like csr matrix ptr (or like eptr from METIS, but for faces instead of eles)
-  matrix<int> mpiFaceNodes;
+  vector<int> mpiFaceNodes;
   vector<int> mpiFptr(nMpiFaces+1);
   for (int i=0; i<nMpiFaces; i++) {
-    mpiFaceNodes.insertRow(f2v[mpiFaces[i]],INSERT_AT_END,f2nv[mpiFaces[i]]);
-    mpiFptr[i+1] = mpiFptr[i]+f2nv[mpiFaces[i]];
+    int ff = mpiFaces[i];
+    mpiFaceNodes.insert(mpiFaceNodes.end(),f2v[ff],f2v[ff]+f2nv[ff]);
+    mpiFptr[i+1] = mpiFptr[i]+f2nv[ff];
   }
 
   // Convert local node ID's to global
-  std::transform(mpiFaceNodes.getData(),mpiFaceNodes.getData()+mpiFaceNodes.getSize(),mpiFaceNodes.getData(), [=](int iv){return iv2ivg[iv];} );
+  std::transform(mpiFaceNodes.begin(),mpiFaceNodes.end(),mpiFaceNodes.begin(), [=](int iv){return iv2ivg[iv];} );
 
   // Get the number of mpiFaces on each processor (for later communication)
-  vector<int> nMpiFaces_proc(nprocPerGrid);
+  vector<int> nMpiFaces_proc(nProcGrid);
   MPI_Allgather(&nMpiFaces,1,MPI_INT,nMpiFaces_proc.data(),1,MPI_INT,gridComm);
 
   // 2 for 2D, 4 for 3D; recall that we're treating all elements as being linear, as
   // the extra nodes for quadratic edges or faces are unimportant for determining connectivity
   int maxNodesPerFace = (nDims==2) ? 2 : 4;
   int maxNMpiFaces = getMax(nMpiFaces_proc);
-  matrix<int> mpiFaceNodes_proc(nprocPerGrid,maxNMpiFaces*maxNodesPerFace);
-  matrix<int> mpiFptr_proc(nprocPerGrid,maxNMpiFaces+1);
-  MPI_Allgather(mpiFaceNodes.getData(),mpiFaceNodes.getSize(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,gridComm);
+  matrix<int> mpiFaceNodes_proc(nProcGrid,maxNMpiFaces*maxNodesPerFace);
+  matrix<int> mpiFptr_proc(nProcGrid,maxNMpiFaces+1);
+  matrix<int> mpiFid_proc(nProcGrid,maxNMpiFaces);
+  MPI_Allgather(mpiFaceNodes.data(),mpiFaceNodes.size(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,gridComm);
   MPI_Allgather(mpiFptr.data(),mpiFptr.size(),MPI_INT,mpiFptr_proc.getData(),maxNMpiFaces+1,MPI_INT,gridComm);
+  MPI_Allgather(mpiFaces.data(),nMpiFaces,MPI_INT,mpiFid_proc.getData(),maxNMpiFaces,MPI_INT,gridComm);
 
   matrix<int> mpiCells_proc, mpiLocF_proc;
   if (nDims == 3) {
     // Needed for 3D face-matching (to find relRot)
-    mpiCells_proc.setup(nprocPerGrid,maxNMpiFaces);
-    mpiLocF_proc.setup(nprocPerGrid,maxNMpiFaces);
+    mpiCells_proc.setup(nProcGrid,maxNMpiFaces);
+    mpiLocF_proc.setup(nProcGrid,maxNMpiFaces);
     MPI_Allgather(mpiCells.data(),mpiCells.size(),MPI_INT,mpiCells_proc.getData(),maxNMpiFaces,MPI_INT,gridComm);
     MPI_Allgather(mpiLocF.data(),mpiLocF.size(),MPI_INT,mpiLocF_proc.getData(),maxNMpiFaces,MPI_INT,gridComm);
+  }
+
+  // For overset meshes, can have an overset face *also* be an MPI face known only to one of the processes
+  // So, exchange face Iblank info
+  vector<int> mpiIblank;
+  vector<int> mpiIblankR;
+  matrix<int> mpiIblank_proc;
+  if (meshType == OVERSET_MESH) {
+    mpiIblank.resize(nMpiFaces);
+    mpiIblankR.resize(nMpiFaces);
+    mpiIblank_proc.setup(nProcGrid,maxNMpiFaces);
+    for (int i=0; i<nMpiFaces; i++)
+      mpiIblank[i] = iblankFace[mpiFaces[i]];
+
+    MPI_Allgather(mpiIblank.data(), nMpiFaces, MPI_INT, mpiIblank_proc.getData(), maxNMpiFaces, MPI_INT, gridComm);
   }
 
   // Now that we have each processor's boundary nodes, start matching faces
   // Again, note that this is written for to be entirely general instead of 2D-specific
   // Find out what processor each face is adjacent to
   procR.resize(nMpiFaces);
-  locF_R.resize(nMpiFaces);
+  faceID_R.resize(nMpiFaces);
   if (nDims == 3) {
     gIC_R.resize(nMpiFaces);
     mpiLocF_R.resize(nMpiFaces);
@@ -543,7 +622,7 @@ void geo::matchMPIFaces(void)
 
   vector<int> tmpFace(maxNodesPerFace);
   vector<int> myFace(maxNodesPerFace);
-  for (int p=0; p<nprocPerGrid; p++) {
+  for (int p=0; p<nProcGrid; p++) {
     if (p == gridRank) continue;
 
     // Check all of the processor's faces to see if any match our faces
@@ -561,15 +640,24 @@ void geo::matchMPIFaces(void)
         if (procR[F] != -1) continue; // Face already matched
 
         for (int j=0; j<f2nv[mpiFaces[F]]; j++) {
-          myFace[j] = mpiFaceNodes(F,j);
+          myFace[j] = mpiFaceNodes[mpiFptr[F]+j];
         }
-        if (compareFaces(myFace,tmpFace)) {
+
+        bool match;
+        if (mpiPeriodic[F])
+          match = comparePeriodicMPI(myFace,tmpFace);
+        else
+          match = compareFaces(myFace,tmpFace);
+
+        if (match) {
           procR[F] = p;
-          locF_R[F] = i;
+          faceID_R[F] = mpiFid_proc(p,i);
           if (nDims == 3) {
             gIC_R[F] = mpiCells_proc(p,i);
             mpiLocF_R[F] = mpiLocF_proc(p,i);
           }
+          if (meshType == OVERSET_MESH)
+            mpiIblankR[F] = mpiIblank_proc(p,i);
           break;
         }
       }
@@ -579,35 +667,68 @@ void geo::matchMPIFaces(void)
   for (auto &P:procR)
     if (P==-1) FatalError("MPI face left unmatched!");
 
-  if (params->rank == 0) cout << "Geo: All MPI faces matched!  nMpiFaces = " << nMpiFaces << endl;
+  // For overset grids: Now that we have iblank info for both sides, we can remove
+  // any faces which should actually be overset faces
+  nMpiFaces = mpiFaces.size();
+  if (meshType == OVERSET_MESH) {
+    for (int F=0; F<nMpiFaces; F++) {
+      if (mpiIblank[F] != NORMAL || mpiIblankR[F] != NORMAL) {
+        // Not a normal face; figure out if hole or fringe
+        if (mpiIblank[F] == HOLE || mpiIblankR[F] == HOLE)
+          iblankFace[mpiFaces[F]] = HOLE;
+        else
+          iblankFace[mpiFaces[F]] = FRINGE;
+      }
+    }
+  }
 
-  MPI_Comm_free(&gridComm);
+  int nFacesTotalGrid;
+  MPI_Allreduce(&nMpiFaces,&nFacesTotalGrid,1,MPI_INT,MPI_SUM,gridComm);
+
+  if (gridRank == 0)
+    cout << "Geo: Grid " << gridID << ": All MPI faces matched!  nMpiFaces = " << nFacesTotalGrid/2 << endl;
 #endif
 }
 
-void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec)
+void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec, vector<shared_ptr<overFace>> &overFacesVec)
 {
   if (nEles<=0) FatalError("Cannot setup elements array - nEles = 0");
 
-  eles.resize(nEles);
-  faces.resize(nIntFaces+nBndFaces);
-  mpiFacesVec.resize(nMpiFaces);
-
-  if (params->rank==0) cout << "Geo: Setting up elements" << endl;
+  if (gridRank==0) {
+    if (meshType == OVERSET_MESH)
+      cout << "Geo: Grid " << gridID << ": Setting up elements" << endl;
+    else
+      cout << "Geo: Setting up elements" << endl;
+  }
 
   // Setup the elements
-  int ic = 0;
-  for (auto& e:eles) {
+
+  eleMap.assign(nEles,-1);
+
+  int nc = 0;
+  for (int ic=0; ic<nEles; ic++) {
+    // Skip any hole cells
+    if (meshType == OVERSET_MESH && iblankCell[ic] != NORMAL) continue;
+
+    ele e;
     e.ID = ic;
+    if (nProcGrid>1)
+      e.IDg = ic2icg[ic];
+    else
+      e.IDg = ic;
     e.eType = ctype[ic];
     e.nNodes = c2nv[ic];
+    if (nDims == 2)
+      e.nMpts = 4;
+    else
+      e.nMpts = 8;
 
     // Shape [mesh] nodes
     e.nodeID.resize(c2nv[ic]);
     e.nodes.resize(c2nv[ic]);
     for (int iv=0; iv<c2nv[ic]; iv++) {
       e.nodeID[iv] = c2v(ic,iv);
-      e.nodes[iv] = xv[c2v(ic,iv)];
+      e.nodes[iv] = point(xv[c2v(ic,iv)]);
     }
 
     // Global face IDs for internal & boundary faces
@@ -618,20 +739,44 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       e.faceID[k] = c2f(ic,k);
     }
 
-    ic++;
+    eles.push_back(e);
+    eleMap[ic] = nc;
+    nc++;
   }
 
   /* --- Setup the faces --- */
 
+  if (meshType == OVERSET_MESH ) {
+    /* --- Get a unique, sorted list of all overset faces (either from Gmsh
+     * boundary condition, or from TIOGA-based cell blanking) --- */
+
+    for (int ff=0; ff<nFaces; ff++) if (iblankFace[ff] == FRINGE) overFaces.push_back(ff);
+    for (int ff=0; ff<nBndFaces; ff++) if (bcType[ff] == OVERSET) overFaces.push_back(bndFaces[ff]);
+
+    std::sort(overFaces.begin(),overFaces.end());
+    auto it = std::unique(overFaces.begin(),overFaces.end());
+    overFaces.resize( std::distance(overFaces.begin(),it) );
+  }
+
   vector<int> cellFaces;
 
-  if (params->rank==0) cout << "Geo: Setting up internal faces" << endl;
+  if (gridRank==0) {
+    if (meshType == OVERSET_MESH)
+      cout << "Geo: Grid " << gridID << ": Setting up internal faces" << endl;
+    else
+      cout << "Geo: Setting up internal faces" << endl;
+  }
+
+  faceMap.assign(nFaces,-1);
+  faceType.assign(nFaces,HOLE_FACE);
 
   // Internal Faces
-  for (int i=0; i<nIntFaces; i++) {
-    faces[i] = make_shared<intFace>();
-    // Find global face ID of current interior face
-    int ff = intFaces[i];
+  for (auto &ff: intFaces) {
+    // Skip any hole faces
+    if (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) continue;
+
+    shared_ptr<face> iface = make_shared<intFace>();
+
     int ic1 = f2c(ff,0);
     // Find local face ID of global face within first element [on left]
     cellFaces.assign(c2f[ic1],c2f[ic1]+c2nf[ic1]);
@@ -644,56 +789,147 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       cellFaces.assign(c2f[ic2], c2f[ic2]+c2nf[ic2]);  // List of cell's faces
       int fid2 = findFirst(cellFaces,ff);           // Which one is this face
       int relRot = compareOrientation(ic1,fid1,ic2,fid2);
-      faces[i]->initialize(&eles[f2c(ff,0)],&eles[f2c(ff,1)],fid1,{fid2,relRot},ff,params);
+      struct faceInfo info;
+      info.IDR = fid2;
+      info.relRot = relRot;
+      ic1 = eleMap[ic1];
+      ic2 = eleMap[ic2];
+      iface->initialize(&eles[ic1],&eles[ic2],ff,fid1,info,params);
     }
-  }
 
-  if (params->rank==0) cout << "Geo: Setting up boundary faces" << endl;
+    faces.push_back(iface);
+    faceMap[ff] = faces.size();
+  }
+  // New # of internal faces (after excluding blanked faces)
+  nIntFaces = faces.size();
+
+  if (gridRank==0) {
+    if (meshType == OVERSET_MESH)
+      cout << "Geo: Grid " << gridID << ": Setting up boundary faces" << endl;
+    else
+      cout << "Geo: Setting up boundary faces" << endl;
+  }
 
   // Boundary Faces
   for (int i=0; i<nBndFaces; i++) {
-    faces[nIntFaces+i] = make_shared<boundFace>();
     // Find global face ID of current boundary face
     int ff = bndFaces[i];
-    ic = f2c(ff,0);
+
+    if ( (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) || bcType[i] == OVERSET)
+      continue;
+
+    shared_ptr<face> bface = make_shared<boundFace>();
+
+    int ic = f2c(ff,0);
     // Find local face ID of global face within element
     cellFaces.assign(c2f[ic],c2f[ic]+c2nf[ic]);
     int fid1 = findFirst(cellFaces,ff);
     if (f2c(ff,1) != -1) {
       FatalError("Boundary face has a right element assigned.");
     }else{
-      faces[nIntFaces+i]->initialize(&eles[f2c(ff,0)],NULL,fid1,{bcType[i]},ff,params);
+      struct faceInfo info;
+      info.bcType = bcType[i];
+      info.isBnd = 1;
+      ic = eleMap[ic];
+      bface->initialize(&eles[ic],NULL,ff,fid1,info,params);
     }
+
+    faces.push_back(bface);
+    faceMap[ff] = faces.size();
   }
+  // New # of boundary faces (after excluding blanked faces)
+  nBndFaces = faces.size() - nIntFaces;
 
 #ifndef _NO_MPI
   // MPI Faces
   if (params->nproc > 1) {
 
-    if (params->rank==0) cout << "Geo: Setting up MPI faces" << endl;
+    if (gridRank==0) {
+      if (meshType == OVERSET_MESH)
+        cout << "Geo: Grid " << gridID << ": Setting up MPI faces" << endl;
+      else
+        cout << "Geo: Setting up MPI faces" << endl;
+    }
 
     for (int i=0; i<nMpiFaces; i++) {
-      //mpiFace *F = new mpiFace();
-      mpiFacesVec[i] = make_shared<mpiFace>();
       // Find global face ID of current boundary face
       int ff = mpiFaces[i];
-      ic = f2c(ff,0);
+
+      if (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) continue;
+
+      shared_ptr<mpiFace> mface = make_shared<mpiFace>();
+
+      int ic = f2c(ff,0);
       // Find local face ID of global face within element
-      int fid1 = mpiLocF[i];
+      int fid1;
+      if (nDims == 2) {
+        cellFaces.assign(c2f[ic],c2f[ic]+c2nf[ic]);
+        fid1 = findFirst(cellFaces,ff);
+      }
+      else {
+        fid1 = mpiLocF[i];
+      }
       if (f2c(ff,1) != -1) {
         FatalError("MPI face has a right element assigned.");
       }else{
         int relRot = 0;
         if (nDims == 3) {
           // Find the relative orientation (rotation) between left & right faces
-          int fid2 = mpiLocF_R[i];
-          relRot = compareOrientationMPI(ic,fid1,gIC_R[i],fid2);
+          relRot = compareOrientationMPI(ic,fid1,gIC_R[i],mpiLocF_R[i],mpiPeriodic[i]);
         }
-        mpiFacesVec[i]->initialize(&eles[f2c(ff,0)],NULL,fid1,{locF_R[i],relRot,params->rank,procR[i]},i,params);
+        struct faceInfo info;
+        info.IDR = faceID_R[i];
+        info.relRot = relRot;
+        info.procL = gridRank;
+        info.procR = procR[i];
+        info.isMPI = 1;
+        info.gridComm = gridComm;  // Note that this is equivalent to MPI_COMM_WORLD if non-overset (ngrids = 1)
+        ic = eleMap[ic];
+        mface->initialize(&eles[ic],NULL,ff,fid1,info,params);
       }
+
+      mpiFacesVec.push_back(mface);
+      faceMap[ff] = mpiFacesVec.size();
     }
+    // New # of boundary faces (after excluding blanked faces)
+    nMpiFaces = mpiFacesVec.size();
+
   }
 #endif
+
+  // Overset Faces
+  // Internal Faces
+  if (meshType == OVERSET_MESH) {
+    for (auto &ff: overFaces) {
+      iblankFace[ff] = FRINGE; // To ensure consistency
+
+      shared_ptr<overFace> oface = make_shared<overFace>();
+
+      int ic = f2c(ff,0);
+      if (ic == -1 || iblankCell[f2c(ff,0)] == HOLE) {
+        if (f2c(ff,1) == -1 || iblankCell[f2c(ff,1)] == HOLE) {
+          // This happens when a fringe face is ALSO an MPI-boundary face
+          // Since the other processor has the non-blanked cell, just ignore the face here
+          ff = -1; // to remove from vector later
+          continue;
+        }
+        ic = f2c(ff,1);
+      }
+
+      // Find local face ID of global face within first element [on left]
+      cellFaces.assign(c2f[ic],c2f[ic]+c2nf[ic]);
+      int fid = findFirst(cellFaces,ff);
+
+      struct faceInfo info;
+      ic = eleMap[ic];
+      oface->initialize(&eles[ic],NULL,ff,fid,info,params);
+
+      overFacesVec.push_back(oface);
+    }
+  }
+  overFaces.erase(std::remove(overFaces.begin(), overFaces.end(), -1), overFaces.end());
+  // Final # of overset faces
+  nOverFaces = overFacesVec.size();
 }
 
 void geo::readGmsh(string fileName)
@@ -791,7 +1027,9 @@ void geo::readGmsh(string fileName)
   getline(meshFile,str); // Clear end of line, just in case
 
   for (int i=0; i<nVerts; i++) {
-    meshFile >> iv >> xv(i,0) >> xv(i,1) >> xv(i,2);
+    meshFile >> iv >> xv(i,0) >> xv(i,1);
+    if (nDims == 3) meshFile >> xv(i,2);
+    getline(meshFile,str);
   }
 
   /* --- Read Element Connectivity --- */
@@ -806,7 +1044,7 @@ void geo::readGmsh(string fileName)
   }
 
   int nElesGmsh;
-  vector<int> c2v_tmp(9,0);  // Maximum number of nodes/element possible
+  vector<int> c2v_tmp(27,0);  // Maximum number of nodes/element possible
   vector<set<int>> boundPoints(nBounds);
   map<int,int> eType2nv;
   eType2nv[3] = 4;  // Linear quad
@@ -835,61 +1073,108 @@ void geo::readGmsh(string fileName)
     if (bcid == -1) {
       // NOTE: Currently, only quads are supported
       switch(eType) {
-      case 2:
-        // linear triangle -> linear quad
-        c2nv.push_back(4);
-        c2nf.push_back(4);
-        ctype.push_back(QUAD);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2];
-        c2v_tmp[3] = c2v_tmp[2];
-        break;
+        case 2:
+          // linear triangle -> linear quad
+          c2nv.push_back(4);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2];
+          c2v_tmp[3] = c2v_tmp[2];
+          break;
 
-      case 9:
-        // quadratic triangle -> quadratic quad  [corner nodes, then edge-center nodes]
-        c2nv.push_back(8);
-        c2nf.push_back(4);
-        ctype.push_back(QUAD);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[7];
-        c2v_tmp[3] = c2v_tmp[2];
-        c2v_tmp[6] = c2v_tmp[2];
-        break;
+        case 9:
+          // quadratic triangle -> quadratic quad  [corner nodes, then edge-center nodes]
+          c2nv.push_back(8);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[7];
+          c2v_tmp[3] = c2v_tmp[2];
+          c2v_tmp[6] = c2v_tmp[2];
+          break;
 
-      case 3:
-        // linear quadrangle
-        c2nv.push_back(4);
-        c2nf.push_back(4);
-        ctype.push_back(QUAD);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3];
-        break;
+        case 3:
+          // linear quadrangle
+          c2nv.push_back(4);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3];
+          break;
 
-      case 16:
-        // quadratic 8-node (serendipity) quadrangle
-        c2nv.push_back(8);
-        c2nf.push_back(4);
-        ctype.push_back(QUAD);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
-        break;
+        case 16:
+          // quadratic 8-node (serendipity) quadrangle
+          c2nv.push_back(8);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+          break;
 
-      case 10:
-        // quadratic (9-node Lagrange) quadrangle (read as 8-node serendipity)
-        c2nv.push_back(8);
-        c2nf.push_back(4);
-        ctype.push_back(QUAD);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
-        break;
+        case 10:
+          // quadratic (9-node Lagrange) quadrangle (read as 8-node serendipity)
+          c2nv.push_back(8);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+          break;
 
-      case 5:
-        // Linear hexahedron
-        c2nv.push_back(8);
-        c2nf.push_back(6);
-        ctype.push_back(HEX);
-        meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
-        break;
+        case 5:
+          // Linear hexahedron
+          c2nv.push_back(8);
+          c2nf.push_back(6);
+          ctype.push_back(HEX);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+          break;
 
-      default:
-        cout << "Gmsh element ID " << k << ", Gmsh Element Type = " << eType << endl;
-        FatalError("element type not recognized");
-        break;
+        case 17:
+          // Quadratic (20-Node Serendipity) Hexahedron
+          c2nv.push_back(20);
+          c2nf.push_back(6);
+          ctype.push_back(HEX);
+          // Corner Nodes
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+          // Edge Nodes
+          meshFile >> c2v_tmp[8] >> c2v_tmp[11] >> c2v_tmp[12] >> c2v_tmp[9] >> c2v_tmp[13] >> c2v_tmp[10];
+          meshFile >> c2v_tmp[14] >> c2v_tmp[15] >> c2v_tmp[16] >> c2v_tmp[19] >> c2v_tmp[17] >> c2v_tmp[18];
+          break;
+
+        case 12:
+          // Quadratic (27-Node Lagrange) Hexahedron (read as 20-node serendipity)
+          c2nv.push_back(20);
+          c2nf.push_back(6);
+          ctype.push_back(HEX);
+          c2v_tmp.resize(20);
+          // Corner Nodes
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+          // Edge Nodes
+          meshFile >> c2v_tmp[8] >> c2v_tmp[11] >> c2v_tmp[12] >> c2v_tmp[9] >> c2v_tmp[13] >> c2v_tmp[10];
+          meshFile >> c2v_tmp[14] >> c2v_tmp[15] >> c2v_tmp[16] >> c2v_tmp[19] >> c2v_tmp[17] >> c2v_tmp[18];
+          break;
+
+        case 4:
+          // Linear tetrahedron; read as collapsed-face hex
+          c2nv.push_back(4);
+          c2nf.push_back(4);
+          ctype.push_back(HEX);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[4];
+          c2v_tmp[3] = 2;
+          c2v_tmp[5] = c2v_tmp[4];
+          c2v_tmp[6] = c2v_tmp[4];
+          c2v_tmp[6] = c2v_tmp[4];
+          break;
+
+        case 6:
+          // Linear prism; read as collapsed-face hex
+          c2nv.push_back(8);
+          c2nf.push_back(6);
+          ctype.push_back(HEX);
+          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6];
+          c2v_tmp[3] = c2v_tmp[2];
+          c2v_tmp[7] = c2v_tmp[6];
+          break;
+
+        default:
+          cout << "Gmsh element ID " << k << ", Gmsh Element Type = " << eType << endl;
+          FatalError("element type not recognized");
+          break;
       }
 
       // Increase the size of c2v (max # of vertices per cell) if needed
@@ -916,31 +1201,43 @@ void geo::readGmsh(string fileName)
       // Boundary cell; put vertices into bndPts
       int nPtsFace = 0;
       switch(eType) {
-      case 1: // Linear edge
-        nPtsFace = 2;
-        break;
+        case 1: // Linear edge
+          nPtsFace = 2;
+          break;
 
-      case 3: // Linear quad
-        nPtsFace = 4;
-        break;
+        case 2: // Linear triangle
+          nPtsFace = 3;
+          break;
 
-      case 8: // Quadratic edge
-        nPtsFace = 3;
-        break;
+        case 3: // Linear quad
+          nPtsFace = 4;
+          break;
 
-      case 26: // Cubic Edge
-        nPtsFace = 4;
-        break;
+        case 10: // Quadratic (Lagrange) quad
+          nPtsFace = 4;
+          break;
 
-      case 27: // Quartic Edge
-        nPtsFace = 5;
-        break;
+        case 16: // Quadratic (Serendipity) quad
+          nPtsFace = 4;
+          break;
 
-      case 28: // Quintic Edge
-        nPtsFace = 6;
-        break;
+        case 8: // Quadratic edge
+          nPtsFace = 3;
+          break;
 
-      default:
+        case 26: // Cubic Edge
+          nPtsFace = 4;
+          break;
+
+        case 27: // Quartic Edge
+          nPtsFace = 5;
+          break;
+
+        case 28: // Quintic Edge
+          nPtsFace = 6;
+          break;
+
+        default:
           cout << "Gmsh element ID " << k << ", Gmsh Element Type = " << eType << endl;
           FatalError("Boundary Element (Face) Type Not Recognized!");
       }
@@ -1253,12 +1550,12 @@ void geo::createMesh()
 
   // Remove duplicates in bndPts
   for (int i=0; i<nBounds; i++) {
-    std::sort(bndPts[i], bndPts[i]+bndPts.dim1);
-    int* it = std::unique(bndPts[i], bndPts[i]+bndPts.dim1);
+    std::sort(bndPts[i], bndPts[i]+bndPts.dims[1]);
+    int* it = std::unique(bndPts[i], bndPts[i]+bndPts.dims[1]);
     nBndPts[i] = std::distance(bndPts[i],it);
   }
   int maxNBndPts = getMax(nBndPts);
-  bndPts.removeCols(bndPts.dim1-maxNBndPts);
+  bndPts.removeCols(bndPts.dims[1]-maxNBndPts);
 }
 
 void geo::processPeriodicBoundaries(void)
@@ -1275,23 +1572,25 @@ void geo::processPeriodicBoundaries(void)
   nPeriodic = iPeriodic.size();
 
 #ifndef _NO_MPI
-  if (nPeriodic > 0)
-    FatalError("Periodic boundaries not implemented yet with MPI! Recompile for serial.");
+  /*if (nPeriodic > 0)
+    FatalError("Periodic boundaries not implemented yet with MPI! Recompile for serial.");*/
 #endif
 
   if (nPeriodic == 0) return;
-  if (nPeriodic%2 != 0) FatalError("Expecting even number of periodic faces; have odd number.");
+  if (nPeriodic%2 != 0 && nProcGrid==1) FatalError("Expecting even number of periodic faces; have odd number.");
   if (params->rank==0) cout << "Geo: Processing periodic boundaries" << endl;
 
+  int nUnmatched = 0;
+
   for (auto& i:iPeriodic) {
-    if (bndFaces[i]==-1) continue;
+    if (bndFaces[i]==-10) continue;
+    bool match = false;
     for (auto& j:iPeriodic) {
-      if (i==j || bndFaces[i]==-1 || bndFaces[j]==-1) continue;
-      bool match;
+      if (i==j || bndFaces[i]==-10 || bndFaces[j]==-10) continue;
       if (nDims == 2) {
         match = checkPeriodicFaces(f2v[bndFaces[i]],f2v[bndFaces[j]]);
       }
-      else if (nDims == 3) {
+      else {
         auto face1 = f2v.getRow(bndFaces[i]);
         auto face2 = f2v.getRow(bndFaces[j]);
         match = checkPeriodicFaces3D(face1, face2);
@@ -1309,11 +1608,11 @@ void geo::processPeriodicBoundaries(void)
         intFaces.push_back(bi);
 
         // Flag global edge IDs as internal faces
-        isBnd[bi] = false;
-        isBnd[bj] = false;
+        faceType[bi] = INTERNAL;
+        faceType[bj] = INTERNAL;
 
         // Fix f2c - add right cell to combined face, make left cell = -1 in 'deleted' face
-        f2c(bi,1) = f2c[bj][0];
+        f2c(bi,1) = f2c(bj,0);
         f2c(bj,0) = -1;
 
         // Fix c2f - replace 'deleted' edge from right cell with combined face
@@ -1325,16 +1624,29 @@ void geo::processPeriodicBoundaries(void)
         c2b(f2c(bi,1),fID) = false;
 
         // Flag edges as gone in boundary edges list
-        bndFaces[i] = -1;
-        bndFaces[j] = -1;
+        bndFaces[i] = -10;
+        bndFaces[j] = -10;
+        bcType[i] = -10;
+        bcType[j] = -10;
+
+        break;
       }
     }
+
+    if (!match)
+      nUnmatched++;
   }
 
-  // Remove no-longer-existing periodic boundary edges and update nBndEdges
-  bndFaces.erase(std::remove(bndFaces.begin(), bndFaces.end(), -1), bndFaces.end());
+  // Remove no-longer-existing periodic boundary faces and update nBndFaces
+  bndFaces.erase(std::remove(bndFaces.begin(), bndFaces.end(), -10), bndFaces.end());
+  bcType.erase(std::remove(bcType.begin(), bcType.end(), -10), bcType.end());
   nBndFaces = bndFaces.size();
   nIntFaces = intFaces.size();
+
+#ifdef _NO_MPI
+  if (nUnmatched>0)
+    FatalError("Unmatched periodic faces exist.");
+#endif
 }
 
 bool geo::compareFaces(vector<int> &face1, vector<int> &face2)
@@ -1455,6 +1767,110 @@ bool geo::checkPeriodicFaces3D(vector<int> &face1, vector<int> &face2)
 
   // The faces are aligned across a periodic direction
   return true;
+}
+
+bool geo::comparePeriodicMPI(vector<int> &face1, vector<int> &face2)
+{
+  if (nDims == 2) {
+    double x11, x12, y11, y12, x21, x22, y21, y22;
+    x11 = xv_g(face1[0],0);  y11 = xv_g(face1[0],1);
+    x12 = xv_g(face1[1],0);  y12 = xv_g(face1[1],1);
+    x21 = xv_g(face2[0],0);  y21 = xv_g(face2[0],1);
+    x22 = xv_g(face2[1],0);  y22 = xv_g(face2[1],1);
+
+    double tol = params->periodicTol;
+    double dx = params->periodicDX;
+    double dy = params->periodicDY;
+
+    if ( abs(abs(x21-x11)-dx)<tol && abs(abs(x22-x12)-dx)<tol && abs(y21-y11)<tol && abs(y22-y12)<tol ) {
+      // Faces match up across x-direction, with [0]->[0] and [1]->[1] in each edge
+      return true;
+    }
+    else if ( abs(abs(x22-x11)-dx)<tol && abs(abs(x21-x12)-dx)<tol && abs(y22-y11)<tol && abs(y21-y12)<tol ) {
+      // Faces match up across x-direction, with [0]->[1] and [1]->[0] in each edge
+      return true;
+    }
+    else if ( abs(abs(y21-y11)-dy)<tol && abs(abs(y22-y12)-dy)<tol && abs(x21-x11)<tol && abs(x22-x12)<tol ) {
+      // Faces match up across y-direction, with [0]->[0] and [1]->[1] in each edge
+      return true;
+    }
+    else if ( abs(abs(y22-y11)-dy)<tol && abs(abs(y21-y12)-dy)<tol && abs(x22-x11)<tol && abs(x21-x12)<tol ) {
+      // Faces match up across y-direction, with [0]->[1] and [1]->[0] in each edge
+      return true;
+    }
+
+    // None of the above
+    return false;
+  }
+  else {
+    if (face1.size() != face2.size())
+      return false;
+
+    double tol = params->periodicTol;
+    double dx = params->periodicDX;
+    double dy = params->periodicDY;
+    double dz = params->periodicDZ;
+
+    /* --- Compare faces using normal vectors: normals should be aligned
+     * and offset by norm .dot. {dx,dy,dz} --- */
+
+    Vec3 vec1, vec2;
+
+    // Calculate face normal & centriod for face 1
+    Vec3 norm1;
+    point c1;
+    vec1 = point(xv_g[face1[1]]) - point(xv_g[face1[0]]);
+    vec2 = point(xv_g[face1[2]]) - point(xv_g[face1[0]]);
+    for (uint j=0; j<face1.size(); j++)
+      c1 += xv_g[face1[j]];
+    c1 /= face1.size();
+
+    norm1[0] = vec1[1]*vec2[2] - vec1[2]*vec2[1];
+    norm1[1] = vec1[2]*vec2[0] - vec1[0]*vec2[2];
+    norm1[2] = vec1[0]*vec2[1] - vec1[1]*vec2[0];
+    // Normalize
+    double magNorm1 = sqrt(norm1[0]*norm1[0]+norm1[1]*norm1[1]+norm1[2]*norm1[2]);
+    norm1 /= magNorm1;
+
+    // Calculate face normal & centroid for face 2
+    Vec3 norm2;
+    point c2;
+    vec1 = point(xv_g[face2[1]]) - point(xv_g[face2[0]]);
+    vec2 = point(xv_g[face2[2]]) - point(xv_g[face2[0]]);
+    for (uint j=0; j<face2.size(); j++)
+      c2 += point(xv_g[face2[j]]);
+    c2 /= face2.size();
+    norm2[0] = vec1[1]*vec2[2] - vec1[2]*vec2[1];
+    norm2[1] = vec1[2]*vec2[0] - vec1[0]*vec2[2];
+    norm2[2] = vec1[0]*vec2[1] - vec1[1]*vec2[0];
+    // Normalize
+    double magNorm2 = sqrt(norm2[0]*norm2[0]+norm2[1]*norm2[1]+norm2[2]*norm2[2]);
+    norm2 /= magNorm2;
+
+    // Check for same orientation - norm1 .dot. norm2 should be +/- 1
+    double dot = norm1*norm2;
+    if (abs(1-abs(dot))>tol) return false;
+
+    // Check offset distance - norm .times. {dx,dy,dz} should equal centroid2 - centriod1
+    Vec3 nDXYZ;
+    nDXYZ.x = norm1[0]*dx;
+    nDXYZ.y = norm1[1]*dy;
+    nDXYZ.z = norm1[2]*dz;
+    nDXYZ.abs();
+
+    Vec3 Offset = c2 - c1;
+    Offset.abs();
+
+    Vec3 Diff = Offset - nDXYZ;
+    Diff.abs();
+
+    for (int i=0; i<3; i++) {
+      if (Diff[i]>tol) return false;
+    }
+
+    // The faces are aligned across a periodic direction
+    return true;
+  }
 }
 
 int geo::compareOrientation(int ic1, int f1, int ic2, int f2)
@@ -1606,7 +2022,7 @@ int geo::compareOrientation(int ic1, int f1, int ic2, int f2)
 
 }
 
-int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2)
+int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2, int isPeriodic=0)
 {
   if (nDims == 2) return 1;
 
@@ -1614,6 +2030,7 @@ int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2)
 
   vector<int> tmpFace1(nv), tmpFace2(nv);
 
+  int icg = ic2icg[ic1];
   switch (ctype[ic1]) {
     case HEX:
       // Flux points arranged in 2D grid on each face oriented with each
@@ -1622,45 +2039,45 @@ int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2)
       switch (f1) {
         case 0:
           // Bottom face  (z = -1)
-          tmpFace1[0] = c2v(ic1,0);
-          tmpFace1[1] = c2v(ic1,1);
-          tmpFace1[2] = c2v(ic1,2);
-          tmpFace1[3] = c2v(ic1,3);
+          tmpFace1[0] = c2v_g(icg,0);
+          tmpFace1[1] = c2v_g(icg,1);
+          tmpFace1[2] = c2v_g(icg,2);
+          tmpFace1[3] = c2v_g(icg,3);
           break;
         case 1:
           // Top face  (z = +1)
-          tmpFace1[0] = c2v(ic1,5);
-          tmpFace1[1] = c2v(ic1,4);
-          tmpFace1[2] = c2v(ic1,7);
-          tmpFace1[3] = c2v(ic1,6);
+          tmpFace1[0] = c2v_g(icg,5);
+          tmpFace1[1] = c2v_g(icg,4);
+          tmpFace1[2] = c2v_g(icg,7);
+          tmpFace1[3] = c2v_g(icg,6);
           break;
         case 2:
           // Left face  (x = -1)
-          tmpFace1[0] = c2v(ic1,0);
-          tmpFace1[1] = c2v(ic1,3);
-          tmpFace1[2] = c2v(ic1,7);
-          tmpFace1[3] = c2v(ic1,4);
+          tmpFace1[0] = c2v_g(icg,0);
+          tmpFace1[1] = c2v_g(icg,3);
+          tmpFace1[2] = c2v_g(icg,7);
+          tmpFace1[3] = c2v_g(icg,4);
           break;
         case 3:
           // Right face  (x = +1)
-          tmpFace1[0] = c2v(ic1,2);
-          tmpFace1[1] = c2v(ic1,1);
-          tmpFace1[2] = c2v(ic1,5);
-          tmpFace1[3] = c2v(ic1,6);
+          tmpFace1[0] = c2v_g(icg,2);
+          tmpFace1[1] = c2v_g(icg,1);
+          tmpFace1[2] = c2v_g(icg,5);
+          tmpFace1[3] = c2v_g(icg,6);
           break;
         case 4:
           // Front face  (y = -1)
-          tmpFace1[0] = c2v(ic1,1);
-          tmpFace1[1] = c2v(ic1,0);
-          tmpFace1[2] = c2v(ic1,4);
-          tmpFace1[3] = c2v(ic1,5);
+          tmpFace1[0] = c2v_g(icg,1);
+          tmpFace1[1] = c2v_g(icg,0);
+          tmpFace1[2] = c2v_g(icg,4);
+          tmpFace1[3] = c2v_g(icg,5);
           break;
         case 5:
           // Back face  (y = +1)
-          tmpFace1[0] = c2v(ic1,3);
-          tmpFace1[1] = c2v(ic1,2);
-          tmpFace1[2] = c2v(ic1,6);
-          tmpFace1[3] = c2v(ic1,7);
+          tmpFace1[0] = c2v_g(icg,3);
+          tmpFace1[1] = c2v_g(icg,2);
+          tmpFace1[2] = c2v_g(icg,6);
+          tmpFace1[3] = c2v_g(icg,7);
           break;
       }
       break;
@@ -1724,14 +2141,39 @@ int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2)
   }
 
   // Now, compare the two faces to see the relative orientation [rotation]
-  if      (iv2ivg[tmpFace1[0]] == tmpFace2[0]) return 0;
-  else if (iv2ivg[tmpFace1[1]] == tmpFace2[0]) return 1;
-  else if (iv2ivg[tmpFace1[2]] == tmpFace2[0]) return 2;
-  else if (iv2ivg[tmpFace1[3]] == tmpFace2[0]) return 3;
+  if      (tmpFace1[0] == tmpFace2[0]) return 0;
+  else if (tmpFace1[1] == tmpFace2[0]) return 1;
+  else if (tmpFace1[2] == tmpFace2[0]) return 2;
+  else if (tmpFace1[3] == tmpFace2[0]) return 3;
+  else if (isPeriodic) {
+    if (!comparePeriodicMPI(tmpFace1,tmpFace2))
+      FatalError("Periodic MPI faces improperly matched.");
+
+    point c1, c2;
+    for (auto iv:tmpFace1) c1 += point(xv_g[iv]);
+    for (auto iv:tmpFace2) c2 += point(xv_g[iv]);
+    c1 /= tmpFace1.size();
+    c2 /= tmpFace2.size();
+    Vec3 fDist = c2 - c1;
+    fDist /= sqrt(fDist*fDist); // Normalize
+
+    point pt1;
+    point pt2 = point(xv_g[tmpFace2[0]]);
+
+    for (int i=0; i<4; i++) {
+      pt1 = point(xv_g[tmpFace1[i]]);
+      Vec3 ptDist = pt2 - pt1;        // Vector between points
+      ptDist /= sqrt(ptDist*ptDist); // Normalize
+
+      double dot = fDist*ptDist;
+      if (abs(1-abs(dot))<params->periodicTol) return i; // These points align
+    }
+    // Matching points not found
+    FatalError("Unable to orient periodic MPI faces using simple algorithm.");
+  }
   else FatalError("MPI faces improperly matched.");
 
 }
-
 
 void geo::partitionMesh(void)
 {
@@ -1743,15 +2185,13 @@ void geo::partitionMesh(void)
   if (nproc <= 1) return;
 
   if (meshType == OVERSET_MESH) {
-    if (nproc % params->nGrids != 0) FatalError("Expcting # of processes to be evenly divisible by # of grids.");
     // Partitioning each grid independantly; local 'grid rank' is the important rank
-    gridRank = rank % nprocPerGrid;
     rank = gridRank;
-    nproc = nprocPerGrid;
+    nproc = nProcGrid;
 
     if (nproc <= 1) return; // No additional partitioning needed
 
-    if (rank == 0) cout << "Geo: Partitioning mesh block " << gridID << " across " << nprocPerGrid << " processes" << endl;
+    if (rank == 0) cout << "Geo: Partitioning mesh block " << gridID << " across " << nProcGrid << " processes" << endl;
     if (rank == 0) cout << "Geo:   Number of elements in block " << gridID << " : " << nEles << endl;
   }
   else {
@@ -1790,9 +2230,10 @@ void geo::partitionMesh(void)
   idx_t options[METIS_NOPTIONS];
   METIS_SetDefaultOptions(options);
   options[METIS_OPTION_NUMBERING] = 0;
-  options[METIS_OPTION_IPTYPE] = METIS_IPTYPE_NODE; // needed?
-  options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+  options[METIS_OPTION_IPTYPE] = METIS_IPTYPE_NODE;
+  options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT; // Reduces # of final MPI faces
   options[METIS_OPTION_PTYPE] = METIS_PTYPE_KWAY;
+  options[METIS_OPTION_NCUTS] = 5;  // Allows better partitioning (less cuts) to be found [at negligible expense for CFD grids]
 
   METIS_PartMeshDual(&nEles,&nVerts,eptr.data(),eind.data(),NULL,NULL,
                      &ncommon,&nproc,NULL,options,&objval,epart.data(),npart.data());
@@ -1876,13 +2317,74 @@ void geo::partitionMesh(void)
   std::transform(c2v.getData(),c2v.getData()+c2v.getSize(),c2v.getData(), [=](int ivg){return ivg2iv[ivg];});
 
   if (meshType == OVERSET_MESH)
-    cout << "Geo:   Grid block " << gridID << " on rank " << rank << ": nEles = " << nEles << endl;
+    cout << "Geo:   Grid " << gridID << " on rank " << rank << ": nEles = " << nEles << endl;
   else
     cout << "Geo:   On rank " << rank << ": nEles = " << nEles << endl;
 
   if (rank == 0) cout << "Geo: Done partitioning mesh" << endl;
-  MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
 
-#include "../include/geo.inl"
+void geo::moveMesh(void)
+{
+#pragma omp parallel for collapse(2)
+  for (int iv=0; iv<nVerts; iv++) {
+    for (int dim=0; dim<nDims; dim++) {
+      xv(iv,dim) = xv_new[iv][dim];
+    }
+  }
+
+  switch (params->motion) {
+    case 1: {
+      if (nDims == 2) {
+        #pragma omp parallel for
+        for (int iv=0; iv<nVerts; iv++) {
+          /// Taken from Kui, AIAA-2010-5031-661
+          xv_new[iv].x = xv0[iv].x + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+          xv_new[iv].y = xv0[iv].y + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+          gridVel(iv,0) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*params->rkTime/10.);
+          gridVel(iv,1) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*params->rkTime/10.);
+        }
+      }
+      else {
+        #pragma omp parallel for
+        for (int iv=0; iv<nVerts; iv++) {
+          /// Taken from Kui, AIAA-2010-5031-661
+          xv_new[iv].x = xv0[iv].x + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*sin(2*pi*params->rkTime/10.);
+          xv_new[iv].y = xv0[iv].y + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*sin(2*pi*params->rkTime/10.);
+          xv_new[iv].z = xv0[iv].z + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*sin(2*pi*params->rkTime/10.);
+          gridVel(iv,0) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*cos(2*pi*params->rkTime/10.);
+          gridVel(iv,1) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*cos(2*pi*params->rkTime/10.);
+          gridVel(iv,2) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*cos(2*pi*params->rkTime/10.);
+        }
+      }
+      break;
+    }
+    case 2: {
+      double t0 = 10.*sqrt(5.);
+      if (nDims == 2) {
+        #pragma omp parallel for
+        for (int iv=0; iv<nVerts; iv++) {
+          /// Taken from Liang-Miyaji
+          xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(4*pi*params->rkTime/t0);
+          xv_new[iv].y = xv0[iv].y + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(8*pi*params->rkTime/t0);
+          gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*cos(4*pi*params->rkTime/t0);
+          gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*cos(8*pi*params->rkTime/t0);
+        }
+      }
+      else {
+        #pragma omp parallel for
+        for (int iv=0; iv<nVerts; iv++) {
+          /// Taken from Liang-Miyaji
+          xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*params->rkTime/t0);
+          xv_new[iv].y = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*params->rkTime/t0);
+          xv_new[iv].z = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*params->rkTime/t0);
+          gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(4*pi*params->rkTime/t0);
+          gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(8*pi*params->rkTime/t0);
+          gridVel(iv,2) = 8.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(8*pi*params->rkTime/t0);
+        }
+      }
+      break;
+    }
+  }
+}

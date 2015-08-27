@@ -47,6 +47,9 @@ public:
   //! Do nothing [handled sparately via comminicate()]
   void setRightStateSolution(void);
 
+  //! Do nothing [not a wall boundary]
+  vector<double> computeWallForce(void);
+
   //! Send the right-state data across the processor boundary using MPI
   void communicate(void);
 
@@ -55,7 +58,7 @@ public:
   int IDR;                 //! Local face ID of face on right processor
 
 private:
-  int locF_R;              //! Right element's element-local face ID
+  int faceID_R;              //! Right element's element-local face ID
   int relRot;              //! Relative rotation of right element's face (for 3D)
   int fptStartR, fptEndR;
   vector<int> fptR;        //! Indices of flux points on right face
@@ -67,10 +70,12 @@ private:
   vector<double> detJacR; //! Determinant of transformation Jacobian
 
   matrix<double> bufUR;      //! Incoming buffer for receving UR
-  matrix<double> bufGradUR;  //! Incoming buffer for receving gradUR
-  matrix<double> bufGradUL;      //! !! TEMP HACK !! Outgoing buffer for sending UL
+  Array<double,3> bufGradUR;  //! Incoming buffer for receving gradUR
+  Array<double,3> bufGradUL;      //! !! TEMP HACK !! Outgoing buffer for sending UL
 
 #ifndef _NO_MPI
+  MPI_Comm myComm;
+
   MPI_Request UL_out;
   MPI_Request UR_in;
   MPI_Request gradUL_out;

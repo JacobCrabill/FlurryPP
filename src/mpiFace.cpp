@@ -31,17 +31,15 @@ void mpiFace::setupRightState(void)
 #endif
 
 #ifndef _NO_MPI
-  IDR = rightParams[0];
-  relRot = rightParams[1];
-  procL = rightParams[2];
-  procR = rightParams[3];
+  IDR = myInfo.IDR;
+  relRot = myInfo.relRot;
+  procL = myInfo.procL;
+  procR = myInfo.procR;
+  myComm = myInfo.gridComm;
 
   /* Send/Get # of flux points to/from right element */
-  MPI_Irecv(&nFptsR,1,MPI_INT,procR,ID,MPI_COMM_WORLD,&nFpts_in);
-  MPI_Isend(&nFptsL,1,MPI_INT,procR,IDR,MPI_COMM_WORLD,&nFpts_out);
-
-  // Sloppy, but necessary to breakup communication from computation more efficiently
-  isMPI = 1;
+  MPI_Irecv(&nFptsR,1,MPI_INT,procR,ID, myComm,&nFpts_in);
+  MPI_Isend(&nFptsL,1,MPI_INT,procR,IDR,myComm,&nFpts_out);
 #endif
 }
 
@@ -97,8 +95,8 @@ void mpiFace::finishRightSetup(void)
 
   UR.setup(nFptsR,nFields);
   bufUR.setup(nFptsR,nFields);
-  bufGradUR.setup(nFptsR,nDims*nFields); // !! TEMP HACK !!  need 3D matrix/array
-  bufGradUL.setup(nFptsR,nDims*nFields); // !! TEMP HACK !!
+  bufGradUR.setup(nFptsR,nDims,nFields); // !! TEMP HACK !!  need 3D matrix/array
+  bufGradUL.setup(nFptsR,nDims,nFields); // !! TEMP HACK !!
 #endif
 }
 
@@ -111,18 +109,18 @@ void mpiFace::communicate(void)
 
   // The send/receive pairs are tagged by the processor-local face ID of the
   // face on the receiving end of the call
-  MPI_Irecv(bufUR.getData(),UR.getSize(),MPI_DOUBLE,procR,ID,MPI_COMM_WORLD,&UR_in);
-  MPI_Isend(UL.getData(),UL.getSize(),MPI_DOUBLE,procR,IDR,MPI_COMM_WORLD,&UL_out);
+  MPI_Irecv(bufUR.getData(),UR.getSize(),MPI_DOUBLE,procR,ID,myComm,&UR_in);
+  MPI_Isend(UL.getData(),UL.getSize(),MPI_DOUBLE,procR,IDR,myComm,&UL_out);
 
   if (params->viscous) {
     // !!! TEMP HACK !!! Just until I update Matrix class to 3D+
     for (int i=0; i<nFptsL; i++)
       for (int j=0; j<nDims; j++)
         for (int k=0; k<nFields; k++)
-          bufGradUL(i,j+k*nDims) = gradUL[i](j,k);
+          bufGradUL(i,j,k) = gradUL[i](j,k);
 
-    MPI_Irecv(bufGradUR.getData(),bufGradUR.getSize(),MPI_DOUBLE,procR,ID,MPI_COMM_WORLD,&gradUR_in);
-    MPI_Isend(bufGradUL.getData(),bufGradUL.getSize(),MPI_DOUBLE,procR,IDR,MPI_COMM_WORLD,&gradUL_out);
+    MPI_Irecv(bufGradUR.getData(),bufGradUR.getSize(),MPI_DOUBLE,procR,ID,myComm,&gradUR_in);
+    MPI_Isend(bufGradUL.getData(),bufGradUL.getSize(),MPI_DOUBLE,procR,IDR,myComm,&gradUL_out);
   }
 #endif
 }
@@ -148,7 +146,7 @@ void mpiFace::getRightState(void)
     if (params->viscous) {
       for (int dim=0; dim<nDims; dim++)
         for (int j=0; j<nFields; j++)
-          gradUR[fpt](dim,j) = bufGradUR(fptR[i],dim+j*nDims);
+          gradUR[fpt](dim,j) = bufGradUR(fptR[i],dim,j);
     }
 
     fpt++;
@@ -168,4 +166,11 @@ void mpiFace::setRightStateSolution(void)
 #ifndef _NO_MPI
   // Right state handled by counterpart across boundary - do nothing.
 #endif
+}
+
+vector<double> mpiFace::computeWallForce()
+{
+  // Not a wall boundary - return 0
+  vector<double> force = {0,0,0};
+  return force;
 }

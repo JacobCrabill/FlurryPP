@@ -20,6 +20,7 @@
 #include <vector>
 
 class oper;
+class overFace;
 
 #include "global.hpp"
 
@@ -30,11 +31,20 @@ class oper;
 #include "intFace.hpp"
 #include "boundFace.hpp"
 #include "mpiFace.hpp"
+#include "overComm.hpp"
+#include "overFace.hpp"
 #include "operators.hpp"
+#include "superMesh.hpp"
+
+#ifndef _NO_MPI
+class tioga;
+#include "tioga.h"
+#endif
 
 class solver
 {
 friend class geo; // Probably only needed if I make eles, opers private?
+friend class overFace;
 
 public:
   /* === Member Variables === */
@@ -53,9 +63,30 @@ public:
   //! Vector of all MPI faces handled by this solver
   vector<shared_ptr<mpiFace>> mpiFaces;
 
+  //! Vector of all MPI faces handled by this solver
+  vector<shared_ptr<overFace>> overFaces;
+
+  //! Local supermesh of donor elements for each cell needing to be unblanked
+  vector<superMesh> donors;
+
+#ifndef _NO_MPI
+  //! Pointer to Tioga object for processing overset grids
+  shared_ptr<tioga> tg;
+#endif
+
+  /* ==== Misc. Commonly-Used Variables ==== */
+
+  int nRKSteps;
+
+  int nGrids, gridID, gridRank, nprocPerGrid;
+
+  vector<double> RKa, RKb;
+
   /* === Setup Functions === */
 
   solver();
+
+  ~solver();
 
   //! Setup the solver with the given simulation parameters & geometry
   void setup(input *params, geo *Geo);
@@ -115,8 +146,11 @@ public:
   //! Calculate the inviscid interface flux at all element faces
   void calcInviscidFlux_faces(void);
 
-  //! Calculate the inviscid interface flux at all element faces
+  //! Calculate the inviscid interface flux at all MPI-boundary faces
   void calcInviscidFlux_mpi(void);
+
+  //! Calculate the inviscid interface flux at all overset-boundary faces
+  void calcInviscidFlux_overset(void);
 
   //! Have all MPI faces begin their communication
   void doCommunication(void);
@@ -161,6 +195,7 @@ public:
   //! Apply mesh motion
   void moveMesh(int step);
 
+  vector<double> computeWallForce(void);
 
   /* === Functions for Shock Capturing & Filtering=== */
 
@@ -190,6 +225,52 @@ public:
 
   /* === Functions Related to Overset Grids === */
 
+  //! Do initial preprocessing for overset grids
+  void setupOverset();
+
+  //! For moving grids, update the overset connectivity (including adding/removing cells/faces)
+  void updateOversetConnectivity();
+
+  /*!
+   * \brief Initialize overset-related data storage
+   *
+   * Allocates global storage for overset data. Re-call if adding elements,
+   * changing polynomial orders, etc.
+   */
+  void setupOversetData();
+
+  //! Copy data from elements into global solution array
+  void setGlobalSolutionArray();
+
+  //! Copy data from global solution array back into elements
+  void updateElesSolutionArrays();
+
+  //! Perform the overset data interpolation using TIOGA high-order
+  void callDataUpdateTIOGA();
+
+  /* ---- Callback functions specifically for TIOGA ---- */
+
+  void getNodesPerCell(int* cellID, int* nNodes);
+
+  void getReceptorNodes(int* cellID, int* nNodes, double* posNodes);
+
+  void donorInclusionTest(int* cellID, double* xyz, int* passFlag, double* rst);
+
+  void donorWeights(int* cellID, double* xyz, int* nweights, int* iNode, double* weights, double* rst, int* fracSize);
+
+  void convertToModal(int* cellID, int* nPtsIn, double* uIn, int* nPtsOut, int* iStart, double* uOut);
+
+  /* ---- My Overset Functions ---- */
+
+  void oversetInterp();
+  void sendRecvOversetData();
+
+  /* ---- Stabilization Functions ---- */
+
+  void calcAvgSolution();
+  bool checkDensity();
+  void checkEntropy();
+  void checkEntropyPlot();
 
 private:
   //! Pointer to the parameters object for the current solution
@@ -204,7 +285,9 @@ private:
   //! Lists of cells to apply various adaptation methods to
   vector<int> r_adapt_cells, h_adapt_cells, p_adapt_cells;
 
-  int nRKSteps;
+  /* ---- Overset Grid Variables / Functions ---- */
 
-  vector<double> RKa, RKb;
+  vector<double> U_spts; //! Global solution vector for solver (over all elements)
+
+  shared_ptr<overComm> OComm;
 };

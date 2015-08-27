@@ -20,7 +20,10 @@
 void boundFace::setupRightState(void)
 {
   // This is kinda messy, but avoids separate initialize function
-  bcType = rightParams[0];
+  bcType = myInfo.bcType;
+
+  if (bcType == ADIABATIC_NOSLIP) // For LDG numerical fluxes
+    isBnd = 2;
 
   if (params->slipPenalty) {
     // For PID-controlled BC
@@ -277,6 +280,14 @@ void boundFace::applyBCs(void)
           ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
         }
       }
+//      else if (bcType == OVERSET) {
+//        // Temporary hack: Just set equal to left state.
+//        // Future versions will interpolate from other grid...?
+//        rhoR = rhoL;
+//        for (uint i=0; i<nDims; i++)
+//          vR[i] = vL[i];
+//        ER = eL;
+//      }
       else {
         cout << "Boundary Condition: " << bcType << endl;
         FatalError("Boundary condition not recognized.");
@@ -303,4 +314,50 @@ void boundFace::setRightStateFlux(void)
 void boundFace::setRightStateSolution(void)
 {
   // No right state; do nothing
+}
+
+vector<double> boundFace::computeWallForce(void)
+{
+  vector<double> force = {0,0,0};
+
+  if (bcType == SLIP_WALL) {
+    if (params->nDims == 2) {
+      auto weights = getQuadratureWeights1D(nFptsL-1);
+
+      for (int fpt=0; fpt<nFptsL; fpt++) {
+        double rho = UL(fpt,0);
+
+        double vMagSq = 0;
+        for (int dim=0; dim<nDims; dim++)
+          vMagSq += UL(fpt,dim+1)*UL(fpt,dim+1)/(rho*rho);
+
+        double p = (params->gamma-1)*(UL(fpt,nDims+1) - 0.5*rho*vMagSq);
+
+        for (int dim=0; dim<nDims; dim++)
+          force[dim] += p*normL(fpt,dim)*dAL[fpt]*weights[fpt];
+      }
+    }
+    else {
+      int order = sqrt(nFptsL)-1;
+      auto weights = getQuadratureWeights1D(order);
+
+      for (int fpt=0; fpt<nFptsL; fpt++) {
+        int ifpt = fpt%(order+1);
+        int jfpt = floor(fpt/(order+1));
+
+        double rho = UL(fpt,0);
+
+        double vMagSq = 0;
+        for (int dim=0; dim<nDims; dim++)
+          vMagSq += UL(fpt,dim+1)*UL(fpt,dim+1)/(rho*rho);
+
+        double p = (params->gamma-1)*(UL(fpt,nDims+1) - 0.5*rho*vMagSq);
+
+        for (int dim=0; dim<nDims; dim++)
+          force[dim] += p*normL(fpt,dim)*dAL[fpt]*weights[ifpt]*weights[jfpt];
+      }
+    }
+  }
+
+  return force;
 }

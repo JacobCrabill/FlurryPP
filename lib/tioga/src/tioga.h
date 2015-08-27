@@ -5,8 +5,13 @@
  *
  *  Jay Sitaraman 02/24/2014 
  */
-#include "MeshBlock.h"
+
+#pragma once
+
+class MeshBlock;
+
 #include "parallelComm.h"
+#include "solver.hpp"
 
 class tioga
 {
@@ -26,21 +31,14 @@ class tioga
   OBB *obblist;
   int iorphanPrint;
 
+  solver *Solver;
+
  public:
   int ihigh;
 
   /** basic constuctor */
-  tioga() {
-    mb = NULL;
-    holeMap=NULL;
-    pc=NULL;
-    sendCount=NULL;
-    recvCount=NULL;
-    obblist=NULL;
-    isym=2;
-    ihigh=0;
-  };
- 
+  tioga();
+
   /** basic destructor */
   ~tioga(); 
   
@@ -92,22 +90,18 @@ class tioga
   void setSymmetry(int syminput) { isym=syminput;}
 
   /** set resolutions for nodes and cells */
-  void setResolutions(double *nres,double *cres) { mb->setResolutions(nres,cres);}
+  void setResolutions(double *nres,double *cres);
 
-  void set_cell_iblank(int *iblank_cell)
-  {
-   mb->set_cell_iblank(iblank_cell);
-  }
+  void set_cell_iblank(int *iblank_cell);
 
+  //! Set callback functions for high-order processing. See MeshBlock.h for details
   void setcallback(void (*f1)(int*, int*),
 		    void (*f2)(int *,int *,double *),
 		    void (*f3)(int *,double *,int *,double *),
 		    void (*f4)(int *,double *,int *,int *,double *,double *,int *),
-		   void (*f5)(int *,int *,double *,int *,int*,double *))
-  {
-    mb->setcallback(f1,f2,f3,f4,f5);
-    ihigh=1;
-  }
+        void (*f5)(int *,int *,double *,int *,int*,double *));
+
+  void setcallback(solver* _solver);
 };
       
   

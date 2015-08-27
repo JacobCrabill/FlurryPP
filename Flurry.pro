@@ -4,7 +4,9 @@ CONFIG -= qt
 
 QMAKE_CXXFLAGS += -std=c++11
 
-INCLUDEPATH += $$PWD/include
+INCLUDEPATH += $$PWD/include \
+    lib/tioga/src \
+    /usr/lib/openmpi/include
 
 SOURCES += src/global.cpp \
     src/matrix.cpp \
@@ -18,31 +20,23 @@ SOURCES += src/global.cpp \
     src/flux.cpp \
     src/flurry.cpp \
     src/solver.cpp \
-    include/geo.inl \
     src/intFace.cpp \
     src/boundFace.cpp \
     src/mpiFace.cpp \
     lib/tioga/src/ADT.C \
-    lib/tioga/src/bookKeeping.C \
-    lib/tioga/src/checkContainment.C \
-    lib/tioga/src/dataUpdate.C \
-    lib/tioga/src/exchangeBoxes.C \
-    lib/tioga/src/exchangeDonors.C \
-    lib/tioga/src/exchangeSearchData.C \
-    lib/tioga/src/highOrder.C \
-    lib/tioga/src/holeMap.C \
     lib/tioga/src/MeshBlock.C \
     lib/tioga/src/parallelComm.C \
-    lib/tioga/src/search.C \
-    lib/tioga/src/searchADTrecursion.C \
     lib/tioga/src/tioga.C \
     lib/tioga/src/tiogaInterface.C \
-    lib/tioga/src/writeOutput.C \
-    lib/tioga/src/buildADTrecursion.c \
-    lib/tioga/src/computeCellVolume.c \
-    lib/tioga/src/linklist.c \
     lib/tioga/src/math.c \
-    lib/tioga/src/utils.c
+    lib/tioga/src/utils.c \
+    src/funcs.cpp \
+    src/solver_overset.cpp \
+    src/overFace.cpp \
+    src/geo_overset.cpp \
+    src/points.cpp \
+    src/superMesh.cpp \
+    src/overComm.cpp
 		   
 HEADERS += include/global.hpp \
     include/matrix.hpp \
@@ -66,7 +60,13 @@ HEADERS += include/global.hpp \
     lib/tioga/src/MeshBlock.h \
     lib/tioga/src/parallelComm.h \
     lib/tioga/src/tioga.h \
-    lib/tioga/src/tiogaInterface.h
+    lib/tioga/src/tiogaInterface.h \
+    lib/tioga/src/utils.h \
+    include/funcs.hpp \
+    include/overFace.hpp \
+    include/points.hpp \
+    include/superMesh.hpp \
+    include/overComm.hpp
 
 DISTFILES += \
     README.md \

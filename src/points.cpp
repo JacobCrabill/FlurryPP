@@ -1,7 +1,22 @@
-#include "global.hpp"
-#include "geo.hpp"
+/*!
+ * \file points.cpp
+ * \brief Functions related to solution, flux, and quadrature points
+ *
+ * \author - Jacob Crabill
+ *           Aerospace Computing Laboratory (ACL)
+ *           Aero/Astro Department. Stanford University
+ *
+ * \version 0.0.1
+ *
+ * Flux Reconstruction in C++ (Flurry++) Code
+ * Copyright (C) 2015 Jacob Crabill.
+ *
+ */
+#include "points.hpp"
 
-vector<point> geo::getLocSpts(int eType, int order)
+#include <sstream>
+
+vector<point> getLocSpts(int eType, int order, string sptsType)
 {
   vector<point> outPts;
 
@@ -366,7 +381,7 @@ vector<point> geo::getLocSpts(int eType, int order)
   }
   else if (eType == QUAD) {
     // Tensor-product element
-    vector<double> spts1D = getPts1D(params->sptsTypeQuad,order);
+    vector<double> spts1D = getPts1D(sptsType,order);
     outPts.resize((order+1)*(order+1));
     for (int i=0; i<order+1; i++) {
       for (int j=0; j<order+1; j++) {
@@ -377,7 +392,7 @@ vector<point> geo::getLocSpts(int eType, int order)
   }
   else if (eType == HEX) {
     // Tensor-product element
-    vector<double> spts1D = getPts1D(params->sptsTypeQuad,order);
+    vector<double> spts1D = getPts1D(sptsType,order);
     outPts.resize((order+1)*(order+1)*(order+1));
     for (int k=0; k<order+1; k++) {
       for (int j=0; j<order+1; j++) {
@@ -393,14 +408,14 @@ vector<point> geo::getLocSpts(int eType, int order)
   return outPts;
 }
 
-vector<point> geo::getLocFpts(int eType, int order)
+vector<point> getLocFpts(int eType, int order, string sptsType)
 {
   vector<point> outPts;
   vector<double> pts1D;
 
   if (eType == TRI) {
     outPts.resize(3*(order+1));
-    pts1D = getPts1D(params->sptsTypeTri,order);
+    pts1D = getPts1D(sptsType,order);
     for (int i=0; i<order+1; i++) {
       // Face 0
       outPts[i].x = pts1D[i];
@@ -415,7 +430,7 @@ vector<point> geo::getLocFpts(int eType, int order)
   }
   else if (eType == QUAD) {
     outPts.resize(4*(order+1));
-    pts1D = getPts1D(params->sptsTypeQuad,order);
+    pts1D = getPts1D(sptsType,order);
     for (int i=0; i<order+1; i++) {
       // Face 0
       outPts[i].x = pts1D[i];
@@ -434,7 +449,7 @@ vector<point> geo::getLocFpts(int eType, int order)
   else if (eType == HEX) {
     int P12 = (order+1)*(order+1);
     outPts.resize(6*P12);
-    pts1D = getPts1D(params->sptsTypeQuad,order);
+    pts1D = getPts1D(sptsType,order);
     // Flux points are ordered such that, as seen from inside the
     // element, the id's increase btm-left->top-right fashion on
     // each face, starting with lowest dimension first ('x' or 'y')
@@ -472,7 +487,7 @@ vector<point> geo::getLocFpts(int eType, int order)
   return outPts;
 }
 
-vector<double> geo::getPts1D(string ptsType, int order)
+vector<double> getPts1D(string ptsType, int order)
 {
   vector<double> outPts(order+1);
 
@@ -670,7 +685,7 @@ vector<double> geo::getPts1D(string ptsType, int order)
   return outPts;
 }
 
-vector<double> geo::getQptWeights(int order)
+vector<double> getQptWeights(int order, int nDims)
 {
   // Tensor-product elements
   vector<double> qwts1D = getQptWeights1D(order);
@@ -698,7 +713,7 @@ vector<double> geo::getQptWeights(int order)
 }
 
 
-vector<double> geo::getQptWeights1D(int order)
+vector<double> getQptWeights1D(int order)
 {
   // Order here refers to the order of a polynomial fit through
   // the Gauss points, not the order of accuracy of integration
@@ -727,9 +742,26 @@ vector<double> geo::getQptWeights1D(int order)
   else if(order == 4) {
     outWts[0] = 0.2369268850561891;
     outWts[1] = 0.4786286704993665;
-    outWts[2] = 0.000000000000000;
+    outWts[2] = 0.5688888888888889;
     outWts[3] = 0.4786286704993665;
     outWts[4] = 0.2369268850561891;
+  }
+  else if (order == 5) {
+    outWts[0] = 0.1713244923791704;
+    outWts[1] = 0.3607615730481386;
+    outWts[2] = 0.4679139345726910;
+    outWts[3] = 0.4679139345726910;
+    outWts[4] = 0.3607615730481386;
+    outWts[5] = 0.1713244923791704;
+  }
+  else if (order == 6) {
+    outWts[0] = 0.1294849661688697;
+    outWts[1] = 0.2797053914892766;
+    outWts[2] = 0.3818300505051189;
+    outWts[3] = 0.4719591836734694;
+    outWts[4] = 0.3818300505051189;
+    outWts[5] = 0.2797053914892766;
+    outWts[6] = 0.1294849661688697;
   }
   else {
     stringstream ss; ss << order;
@@ -738,4 +770,80 @@ vector<double> geo::getQptWeights1D(int order)
   }
 
   return outWts;
+}
+
+void getQuadRuleTet(int order, vector<point> &locQpts, vector<double> &weights)
+{
+  /* Linbo Zhang, Tau Cui and Hui Liu, "A Set of Symmetric Quadrature Rules on
+   * Triangles and Tetrahedra." J. Comp. Math., 2009.
+   * See also lsec.cc.ac.cn/phg to obtain source files containing explicit
+   * quadrature rules. */
+  switch (order) {
+    case 1:
+      locQpts.resize(1);
+      locQpts[0].x = .25; locQpts[0].y = .25; locQpts[0].z = .25;
+      weights = {1};
+      break;
+
+    case 2: {
+      locQpts.resize(4);
+      double loc1 = .138196601125011;
+      double loc2 = .585410196624969;
+      locQpts[0].x = loc1; locQpts[0].y = loc1; locQpts[0].z = loc1;
+      locQpts[1].x = loc2; locQpts[1].y = loc1; locQpts[1].z = loc1;
+      locQpts[2].x = loc1; locQpts[2].y = loc2; locQpts[2].z = loc1;
+      locQpts[3].x = loc1; locQpts[3].y = loc1; locQpts[3].z = loc2;
+      weights = {.25,.25,.25,.25};
+    }
+    case 3: {
+      locQpts.resize(8);
+      double loc1 = .328054696711427;
+      double loc2 = 1-3*loc1;
+      locQpts[0].x = loc1; locQpts[0].y = loc1; locQpts[0].z = loc1;
+      locQpts[1].x = loc2; locQpts[1].y = loc1; locQpts[1].z = loc1;
+      locQpts[2].x = loc1; locQpts[2].y = loc2; locQpts[2].z = loc1;
+      locQpts[3].x = loc1; locQpts[3].y = loc1; locQpts[3].z = loc2;
+      loc1 = .328054696711427;
+      loc2 = 1-3*loc1;
+      locQpts[4].x = loc1; locQpts[4].y = loc1; locQpts[4].z = loc1;
+      locQpts[5].x = loc2; locQpts[5].y = loc1; locQpts[5].z = loc1;
+      locQpts[6].x = loc1; locQpts[6].y = loc2; locQpts[6].z = loc1;
+      locQpts[7].x = loc1; locQpts[7].y = loc1; locQpts[7].z = loc2;
+      double wt1 = .138527966511862;
+      double wt2 = .111472033488138;
+      weights = {wt1,wt1,wt1,wt1,wt2,wt2,wt2,wt2};
+    }
+    case 4: {
+      locQpts.resize(11);
+      double loc1 = .0927352503108912;
+      double loc2 = 1-3*loc1;
+      locQpts[0].x = loc1; locQpts[0].y = loc1; locQpts[0].z = loc1;
+      locQpts[1].x = loc2; locQpts[1].y = loc1; locQpts[1].z = loc1;
+      locQpts[2].x = loc1; locQpts[2].y = loc2; locQpts[2].z = loc1;
+      locQpts[3].x = loc1; locQpts[3].y = loc1; locQpts[3].z = loc2;
+      loc1 = .3108859192633006;
+      loc2 = 1-3*loc1;
+      locQpts[4].x = loc1; locQpts[4].y = loc1; locQpts[4].z = loc1;
+      locQpts[5].x = loc2; locQpts[5].y = loc1; locQpts[5].z = loc1;
+      locQpts[6].x = loc1; locQpts[6].y = loc2; locQpts[6].z = loc1;
+      locQpts[7].x = loc1; locQpts[7].y = loc1; locQpts[7].z = loc2;
+      loc1 = .0455037041256497;
+      loc1 = 1-0.5*loc1;
+      locQpts[8].x  = loc1; locQpts[8].y  = loc1; locQpts[8].z = loc2;
+      locQpts[9].x  = loc1; locQpts[9].y  = loc1; locQpts[9].z = loc1;
+      locQpts[10].x = loc1; locQpts[10].y = loc2; locQpts[10].z = loc2;
+      locQpts[11].x = loc2; locQpts[11].y = loc1; locQpts[11].z = loc2;
+      locQpts[12].x = loc2; locQpts[12].y = loc1; locQpts[12].z = loc1;
+      locQpts[13].x = loc2; locQpts[13].y = loc2; locQpts[13].z = loc2;
+      double wt1 = .073493043116362;
+      double wt2 = .112687925718016;
+      double wt3 = .042546020777082;
+      weights = {wt1,wt1,wt1,wt1,wt2,wt2,wt2,wt2,wt3,wt3,wt3,wt3,wt3,wt3};
+    }
+    default:  {
+      stringstream ss; ss << order;
+      string errMsg = "Tetrahedron quadrature rules for order " + ss.str() + " not implemented.";
+      FatalError(errMsg.c_str());
+    }
+  }
 }

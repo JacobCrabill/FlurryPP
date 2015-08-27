@@ -1,0 +1,51 @@
+equation      1    # 0: Advection-Diffusion;  1: Euler/Navier-Stokes
+order         4    # Polynomial order to use
+dt            .0002  # Time step size
+dtType        1    # 0: Constant dt, 1: CFL-based
+CFL           .6   # CFL number to use for dt calculation
+timeType      4    # 0:Forward Euler, 4:RK44
+
+viscous       0
+motion        0
+riemannType  0    # Advection: use 0; N-S: 0: Rusanov, 1: Roe
+
+# Initial Condition
+#   Advection: 0-Gaussian, 1-u=x+y test case
+#   N-S: 0-Uniform flow, 1-Uniform+Vortex
+ic_type       0    
+testCase     0
+iterMax       30000
+restart       0
+restartIter   0
+
+# Plotting/Output Parameters
+plotFreq     2000
+monitorResFreq  200
+resType       2
+dataFileName   NACA_trans
+
+# Optional Output Variables
+entropySensor   0
+
+# mesh_type - 0: Read mesh, 1: Create mesh
+meshType     0
+meshFileName   naca0012_structured_coarse.msh
+
+# Boundary Conditions for Gmsh File
+# (first column is physical name in Gmsh file; 2nd column is the Flurry boundary condition)
+mesh_bound    char     sup_in
+mesh_bound    slip_wall  slip_wall
+mesh_bound    fluid   fluid
+
+# Boundary & Initial Conditions [IC's = BC's by default]
+# In order to set a = 1: use rho=1, p=.7142857143
+# Note: u,v below set M=.8, 4deg angle of attack
+rhoBound 1
+pBound .7142857143
+uBound .79805124
+vBound .0558052
+
+# Shock Capturing / Filtering / Stabilization Parameters
+shockCapture 0
+threshold    .1
+squeeze      1

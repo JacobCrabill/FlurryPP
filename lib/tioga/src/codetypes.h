@@ -1,8 +1,16 @@
+#ifndef _CODETYPES_H
+#define _CODETYPES_H
+
 #define MPICH_SKIP_MPICXX
-#include<stdio.h>
-#include<stdlib.h>
-#include<math.h>
+#include<cstdio>
+#include<cstdlib>
+#include<cmath>
+#include "math.h"
 #include "mpi.h"
+
+using std::min;
+using std::max;
+using std::abs;
 
 /*====================================================================*/
 /*  Floating point definition                                         */
@@ -12,7 +20,14 @@
 /*====================================================================*/
 /*  Base for indexing (0 or 1)
 /*====================================================================*/
-# define BASE 1
+# define BASE 0
+
+/*====================================================================*/
+/*  Define TIOGA conventions for node/cell blanking
+/*====================================================================*/
+#define NORMAL 1
+#define HOLE 0
+#define FRINGE -1
 
 /*====================================================================*/
 /*  Define arithmetic constants                                       */
@@ -39,8 +54,8 @@
 /*==================================================================*/
 # define tracei(x)  printf("#tioga:\t"#x" =%d\n",x);
 # define traced(x)  printf("#tioga:\t"#x" =%.16e\n",x);
-# define min(x,y)  (x) < (y) ? (x) : (y)
-# define max(x,y)  (x) > (y) ? (x) : (y)
+//# define min(x,y)  (x) < (y) ? (x) : (y)
+//# define max(x,y)  (x) > (y) ? (x) : (y)
 # define debug(x,y)  printf("#tioga:\t"#x"=%d,"#y"=%d\n",x,y);
 # define stdwrite(x) if (myid==0) printf("#tioga:\t"#x"\n");
 # define dstr(x) printf("#tioga:\t"#x"\n");
@@ -59,7 +74,7 @@
         (((aa) >= 0)? (aa): -(aa))
 #define Round(aa)\
         (int) ((fabs((aa) - floor(aa)) >= HALF)? ceil(aa): floor(aa))
-#define swap(a,b) { a=a+b;b=a-b;a=a-b;}
+//#define swap(a,b) { a=a+b;b=a-b;a=a-b;}
 
 /*********************************************************************/
 /* Code specific types
@@ -110,3 +125,5 @@ typedef struct INTEGERLIST
   int inode;
   struct INTEGERLIST *next;
 } INTEGERLIST;
+
+#endif // _CODETYPES_H

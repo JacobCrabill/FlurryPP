@@ -5,12 +5,152 @@
 #include <stdlib.h>
 #include "codetypes.h"
 #include "ADT.h"
-extern "C"{
-void buildADTrecursion(double *coord,double *adtReals,double *adtWork,int *adtIntegers,
-		       int *elementsAvailable,int *adtCount,int side,int parent,
-		       int level,int ndim,int nelem, int nav);}
 
-extern void median_(int *,double *,int *,double *);
+#include "utils.h"
+
+void searchIntersections(MeshBlock *mb,int *cellIndex,int *adtIntegers,double *adtReals,
+       double *coord,int level,int node,double *xsearch,int nelem,int ndim)
+{
+  int i;
+  int d,nodeChild,dimcut;
+  double element[ndim];
+  bool flag;
+
+  for(i=0;i<ndim;i++)
+    element[i]=coord[ndim*(adtIntegers[4*node])+i];
+
+  flag=1;
+  for(i=0;i<ndim/2;i++)
+    flag = (flag && (xsearch[i] >=element[i]-TOL));
+  for(i=ndim/2;i<ndim;i++)
+    flag = (flag && (xsearch[i-ndim/2] <=element[i]+TOL));
+
+  if (flag)
+    {
+      mb->checkContainment(cellIndex,adtIntegers[4*node],xsearch);
+      if (*cellIndex > -1) return;
+    }
+
+  // check the left and right children
+  // now
+  for(d=1;d<3;d++)
+  {
+    nodeChild=adtIntegers[4*node+d];
+    if (nodeChild > -1) {
+      nodeChild=adtIntegers[4*nodeChild+3];
+      for(i=0;i<ndim;i++)
+      {
+        element[i]=adtReals[ndim*nodeChild+i];
+      }
+      flag=1;
+      for(i=0;i<ndim/2;i++)
+        flag = (flag && (xsearch[i] >=element[i]-TOL));
+      for(i=ndim/2;i<ndim;i++)
+        flag = (flag && (xsearch[i-ndim/2] <=element[i]+TOL));
+      if (flag)
+      {
+        searchIntersections(mb,cellIndex,adtIntegers,adtReals,coord,level+1,
+                            nodeChild,xsearch,nelem,ndim);
+        if (*cellIndex > -1) return;
+      }
+    }
+  }
+  return;
+}
+
+void buildADTrecursion(double *coord,double *adtReals,double *adtWork,int *adtIntegers,
+           int *elementsAvailable,int *adtCount,int side,int parent,
+           int level,int ndim,int nelem, int nav)
+{
+
+  int nd=ndim/2;
+  double coordmid;
+  int i,j;
+  int dimcut;
+  int nleft;
+  int ii,iip,jj,jjp;
+  int parentToChild;
+
+  if (nav > 1) {
+
+    // find the dimension to create the cut
+
+    dimcut=(level%ndim);
+
+    // collect coordinates along the dimension dimcut
+
+    for(i=0;i<nav;i++)
+      adtWork[i]=coord[ndim*elementsAvailable[i]+dimcut];
+
+    // reorder elements with nleft elements to
+    // the left of median of adtWork
+
+    median_(elementsAvailable,adtWork,&nav,&coordmid);
+    nleft=(nav+1)/2;
+    (*adtCount)++;
+    ii=(*adtCount)*4;
+    adtIntegers[ii]=elementsAvailable[nleft-1];
+    adtIntegers[ii+1]=-1;
+    adtIntegers[ii+2]=-1;
+    adtIntegers[ii+3]=-1;
+
+    // find minimum and maximum bounds of the elements
+    // contained in this leaf
+
+    for(i=0;i<nd;i++)
+    {
+      adtReals[ndim*(*adtCount)+i]=BIGVALUE;
+      adtReals[ndim*(*adtCount)+i+nd]=-BIGVALUE;
+    }
+
+    for(i=0;i<nav;i++)
+      for(j=0;j<nd;j++)
+      {
+        ii=ndim*(*adtCount)+j;
+        iip=ii+nd;
+        jj=ndim*elementsAvailable[i]+j;
+        jjp=jj+nd;
+
+        adtReals[ii]=min(adtReals[ii],coord[jj]);
+        adtReals[iip]=max(adtReals[iip],coord[jjp]);
+      }
+
+    // specify that the new element is the child of parent
+    // unless root
+
+    if (side > 0)
+    {
+      adtIntegers[4*parent+side]=elementsAvailable[nleft-1];
+    }
+    parentToChild=*adtCount;
+
+    // build the left side of the tree
+
+    if (nleft > 1) {
+      buildADTrecursion(coord,adtReals,adtWork,adtIntegers,elementsAvailable,
+                        adtCount,1,parentToChild,level+1,ndim,nelem,nleft-1);
+    }
+
+    // build the right side of the tree
+
+    buildADTrecursion(coord,adtReals,adtWork,adtIntegers,&(elementsAvailable[nleft]),
+                      adtCount,2,parentToChild,level+1,ndim,nelem,nav-nleft);
+  }
+  else if (nav==1) {
+    (*adtCount)++;
+    ii=4*(*adtCount);
+    jj=ndim*(*adtCount);
+    adtIntegers[ii]=elementsAvailable[0];
+    adtIntegers[ii+1]=-1;
+    adtIntegers[ii+2]=-1;
+    adtIntegers[ii+3]=-1;
+    for(j=0;j<ndim;j++)
+      adtReals[jj+j]=coord[ndim*elementsAvailable[0]+j];
+    if (side > 0) {
+      adtIntegers[4*parent+side]=elementsAvailable[0];
+    }
+  }
+}
 
 void ADT::buildADT(int d, int nelements,double *elementBbox)
 {
@@ -123,3 +263,30 @@ void ADT::buildADT(int d, int nelements,double *elementBbox)
   free(elementsAvailable);
   free(adtWork);
 }
+
+
+void ADT::searchADT(MeshBlock *mb, int *cellIndex,double *xsearch)
+{
+  int i;
+  int flag;
+  int rootNode;
+  //
+  // check if the given point is in the bounds of
+  // the ADT
+  //
+  rootNode=0;
+  *cellIndex=-1;
+  //
+  flag=1;
+  for(i=0;i<ndim/2;i++)
+    flag = (flag && (xsearch[i] >= adtExtents[2*i]-TOL));
+  for(i=0;i<ndim/2;i++)
+    flag= (flag && (xsearch[i] <= adtExtents[2*i+1]+TOL));
+  //
+  // call recursive routine to check intersections with
+  // ADT nodes
+  //
+  if (flag) searchIntersections(mb,cellIndex,adtIntegers,adtReals,
+        coord,0,rootNode,xsearch,nelem,ndim);
+}
+

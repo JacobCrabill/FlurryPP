@@ -242,7 +242,8 @@ void input::readInputFile(char *filename)
   /* --- Read input file & store all simulation parameters --- */
 
   opts.getScalarValue("equation",equation,1);
-  opts.getScalarValue("ic_type",ic_type,0);
+  opts.getScalarValue("icType",icType,0);
+  opts.getScalarValue("nDims",nDims);
   if (equation==ADVECTION_DIFFUSION) {
     opts.getScalarValue("advectVx",advectVx,1.);
     opts.getScalarValue("advectVy",advectVy,1.);
@@ -253,14 +254,11 @@ void input::readInputFile(char *filename)
   }
   else if (equation==NAVIER_STOKES) {
     opts.getScalarValue("gamma",gamma,1.4);
-    opts.getScalarValue("RGas",RGas,286.9);
     opts.getScalarValue("rhoBound",rhoBound,1.);
     opts.getScalarValue("uBound",uBound,.2);
     opts.getScalarValue("vBound",vBound,0.);
     opts.getScalarValue("wBound",wBound,0.);
     opts.getScalarValue("pBound",pBound,.7142857143);
-    opts.getScalarValue("TBound",TBound,300.);
-    opts.getScalarValue("TWall",TWall,300.);
     opts.getScalarValue("entropySensor",calcEntropySensor,false);
     opts.getScalarValue("slipPenalty",slipPenalty,false);
     if (slipPenalty) {
@@ -268,13 +266,17 @@ void input::readInputFile(char *filename)
      opts.getScalarValue("Kd",Kd);
      opts.getScalarValue("Ki",Ki);
     }
-    if (ic_type == 0) {
+    if (icType == 0) {
       opts.getScalarValue("rhoIC",rhoIC,rhoBound);
       opts.getScalarValue("vxIC",vxIC,uBound);
       opts.getScalarValue("vyIC",vyIC,vBound);
       opts.getScalarValue("vzIC",vzIC,wBound);
       opts.getScalarValue("pIC",pIC,pBound);
     }
+    if (nDims == 2)
+      nFields = 4;
+    else
+      nFields = 5;
   }
 
   opts.getScalarValue("timeType",timeType,4);
@@ -287,8 +289,8 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("viscous",viscous,0);
   opts.getScalarValue("motion",motion,0);
   opts.getScalarValue("order",order,3);
-  opts.getScalarValue("riemann_type",riemann_type,0);
-  opts.getScalarValue("test_case",test_case,0);
+  opts.getScalarValue("riemannType",riemannType,0);
+  opts.getScalarValue("testCase",test_case,0);
   opts.getScalarValue("iterMax",iterMax);
 
   if (viscous && equation == NAVIER_STOKES) {
@@ -298,7 +300,10 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("prandtl",prandtl,.72);
     opts.getScalarValue("SGas",SGas,120.);
     opts.getScalarValue("TGas",TGas,291.15);
+    opts.getScalarValue("RGas",RGas,286.9);
 
+    opts.getScalarValue("TWall",TWall,300.);
+    opts.getScalarValue("TBound",TBound,300.);
     opts.getScalarValue("MachBound",MachBound,1.);
     opts.getScalarValue("nxBound",nxBound,1.);
     opts.getScalarValue("nyBound",nyBound,0.);
@@ -306,7 +311,7 @@ void input::readInputFile(char *filename)
 
     /* --- LDG Flux Parameters --- */
     opts.getScalarValue("LDG_penFact",penFact,0.5);
-    opts.getScalarValue("LDG_tau",tau,1.0);
+    opts.getScalarValue("LDG_tau",tau,.0);
   }
 
   opts.getScalarValue("restart",restart,0);
@@ -314,10 +319,9 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("restartIter",restartIter);
   }
 
-  opts.getScalarValue("mesh_type",mesh_type,1); // CREATE_MESH by default
+  opts.getScalarValue("meshType",meshType);
 
-  if (mesh_type == CREATE_MESH) {
-    opts.getScalarValue("nDims",nDims,2);
+  if (meshType == CREATE_MESH) {
     opts.getScalarValue("nx",nx,10);
     opts.getScalarValue("ny",ny,10);
     opts.getScalarValue("nz",nz,10);
@@ -336,11 +340,12 @@ void input::readInputFile(char *filename)
   }
   else {
     // Reading in the mesh in one form or another
-    if (mesh_type == READ_MESH) {
-      opts.getScalarValue("mesh_file_name",meshFileName);
+    if (meshType == READ_MESH) {
+      opts.getScalarValue("meshFileName",meshFileName);
     }
-    else if (mesh_type == OVERSET_MESH) {
+    else if (meshType == OVERSET_MESH) {
       opts.getVectorValue("oversetGrids",oversetGrids);
+      opts.getScalarValue("writeIBLANK",writeIBLANK,0);
       nGrids = oversetGrids.size();
     }
 
@@ -361,10 +366,10 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("periodicDZ",periodicDZ,(double)INFINITY);
   opts.getScalarValue("periodicTol",periodicTol,1e-6);
 
-  opts.getScalarValue("monitor_res_freq",monitor_res_freq,10);
+  opts.getScalarValue("monitorResFreq",monitorResFreq,10);
   opts.getScalarValue("resType",resType,2);
-  opts.getScalarValue("plot_freq",plot_freq,100);
-  opts.getScalarValue("plot_type",plot_type,1);
+  opts.getScalarValue("plotFreq",plotFreq,100);
+  opts.getScalarValue("plotType",plotType,1);
   opts.getScalarValue("restart_freq",restart_freq,100);
   opts.getScalarValue("dataFileName",dataFileName,string("simData"));
 
@@ -378,6 +383,8 @@ void input::readInputFile(char *filename)
   if(scFlag == 1)
     opts.getScalarValue("threshold",threshold,1.0);
 
+  opts.getScalarValue("squeeze",squeeze,0);
+
   /* --- Cleanup ---- */
   opts.closeFile();
 
@@ -388,7 +395,16 @@ void input::readInputFile(char *filename)
     initIter = 0;
   }
 
+  if (squeeze) {
+    // Entropy bound for polynomial squeezing
+    exps0 = 0.0*pBound/(pow(rhoBound,gamma));
+  }
+
   iter = initIter;
+
+  // Calculate U_infinity for force-coefficient normalization
+  if (nDims==2) wBound = 0;
+  Uinf = sqrt(uBound*uBound+vBound*vBound+wBound*wBound);
 
   if (viscous) nonDimensionalize();
 }

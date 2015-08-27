@@ -26,10 +26,10 @@
 
 void writeData(solver *Solver, input *params)
 {
-  if (params->plot_type == 0) {
+  if (params->plotType == 0) {
     writeCSV(Solver,params);
   }
-  else if (params->plot_type == 1) {
+  else if (params->plotType == 1) {
     writeParaview(Solver,params);
   }
 
@@ -40,7 +40,7 @@ void writeCSV(solver *Solver, input *params)
   ofstream dataFile;
   int iter = params->iter;
 
-  char fileNameC[100];
+  char fileNameC[256];
   string fileName = params->dataFileName;
   sprintf(fileNameC,"%s.csv.%.09d",&fileName[0],iter);
 
@@ -117,26 +117,35 @@ void writeParaview(solver *Solver, input *params)
   ofstream dataFile;
   int iter = params->iter;
 
-  char fileNameC[100];
+  char fileNameC[256];
   string fileName = params->dataFileName;
 
 #ifndef _NO_MPI
   /* --- All processors write their solution to their own .vtu file --- */
-  sprintf(fileNameC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,params->rank);
+  if (params->meshType == OVERSET_MESH)
+    sprintf(fileNameC,"%s_%.09d/%s%d_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],Solver->gridID,iter,Solver->gridRank);
+  else
+    sprintf(fileNameC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,params->rank);
 #else
   /* --- Filename to write to --- */
   sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],iter);
 #endif
 
+  char Iter[10];
+  sprintf(Iter,"%.09d",iter);
+
   if (params->rank == 0)
-    cout << "Writing ParaView file " << string(fileNameC) << "...  " << flush;
+    cout << "Writing ParaView file " << params->dataFileName << "_" << string(Iter) << ".vtu...  " << flush;
 
 #ifndef _NO_MPI
-  /* --- Write 'master' .pvtu file --- */
-  if (params->rank == 0) {
+  /* --- Write 'master' .pvtu file (for each grid, if overset) --- */
+  if (Solver->gridRank == 0) {
     ofstream pVTU;
-    char pvtuC[100];
-    sprintf(pvtuC,"%s_%.09d.pvtu",&fileName[0],iter);
+    char pvtuC[256];
+    if (params->meshType == OVERSET_MESH)
+      sprintf(pvtuC,"%s%d_%.09d.pvtu",&fileName[0],Solver->gridID,iter);
+    else
+      sprintf(pvtuC,"%s_%.09d.pvtu",&fileName[0],iter);
 
     pVTU.open(pvtuC);
 
@@ -149,11 +158,17 @@ void writeParaview(solver *Solver, input *params)
     if (params->equation == NAVIER_STOKES) {
       pVTU << "      <PDataArray type=\"Float32\" Name=\"Velocity\" NumberOfComponents=\"3\" />" << endl;
       pVTU << "      <PDataArray type=\"Float32\" Name=\"Pressure\" />" << endl;
+      if (params->motion) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"GridVelocity\" NumberOfComponents=\"3\" />" << endl;
+      }
+      if (params->scFlag == 1) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"Sensor\" />" << endl;
+      }
       if (params->calcEntropySensor) {
         pVTU << "      <PDataArray type=\"Float32\" Name=\"EntropyErr\" />" << endl;
       }
-      if (params->motion) {
-        pVTU << "      <PDataArray type=\"Float32\" Name=\"GridVelocity\" NumberOfComponents=\"3\" />" << endl;
+      if (params->meshType == OVERSET_MESH && params->writeIBLANK) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"IBLANK\" />" << endl;
       }
     }
     pVTU << "    </PPointData>" << endl;
@@ -161,9 +176,12 @@ void writeParaview(solver *Solver, input *params)
     pVTU << "      <PDataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\" />" << endl;
     pVTU << "    </PPoints>" << endl;
 
-    char filnameTmpC[100];
-    for (int p=0; p<params->nproc; p++) {
-      sprintf(filnameTmpC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,p);
+    char filnameTmpC[256];
+    for (int p=0; p<Solver->nprocPerGrid; p++) {
+      if (params->meshType == OVERSET_MESH)
+        sprintf(filnameTmpC,"%s_%.09d/%s%d_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],Solver->gridID,iter,p);
+      else
+        sprintf(filnameTmpC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,p);
       pVTU << "    <Piece Source=\"" << string(filnameTmpC) << "\" />" << endl;
     }
     pVTU << "  </PUnstructuredGrid>" << endl;
@@ -171,7 +189,7 @@ void writeParaview(solver *Solver, input *params)
 
     pVTU.close();
 
-    char datadirC[100];
+    char datadirC[256];
     char *datadir = &datadirC[0];
     sprintf(datadirC,"%s_%.09d",&fileName[0],iter);
 
@@ -203,8 +221,14 @@ void writeParaview(solver *Solver, input *params)
   Solver->extrapolateUMpts();
 
   if (params->equation == NAVIER_STOKES) {
+    if (params->squeeze) {
+      Solver->calcAvgSolution();
+      Solver->checkEntropyPlot();
+    }
+
     if (params->calcEntropySensor)
       Solver->calcEntropyErr_spts();
+
     Solver->extrapolateSFpts();
     Solver->extrapolateSMpts();
   }
@@ -261,17 +285,6 @@ void writeParaview(solver *Solver, input *params)
     dataFile << endl;
     dataFile << "				</DataArray>" << endl;
 
-    if(params->scFlag == 1){
-      /* --- Shock Sensor --- */
-      dataFile << "				<DataArray type=\"Float32\" Name=\"Sensor\" format=\"ascii\">" << endl;
-      for(int k=0; k<nPpts; k++) {
-        dataFile << sensor << " ";
-      }
-      dataFile << endl;
-      dataFile << "				</DataArray>" << endl;
-    }
-
-
     if (params->equation == NAVIER_STOKES) {
       /* --- Velocity --- */
       dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" Name=\"Velocity\" format=\"ascii\">" << endl;
@@ -317,11 +330,32 @@ void writeParaview(solver *Solver, input *params)
       }
     }
 
+    if(params->scFlag == 1){
+      /* --- Shock Sensor --- */
+      dataFile << "				<DataArray type=\"Float32\" Name=\"Sensor\" format=\"ascii\">" << endl;
+      for(int k=0; k<nPpts; k++) {
+        dataFile << sensor << " ";
+      }
+      dataFile << endl;
+      dataFile << "				</DataArray>" << endl;
+    }
+
     if (params->equation == NAVIER_STOKES && params->calcEntropySensor) {
       /* --- Entropy Error Estimate --- */
       dataFile << "				<DataArray type=\"Float32\" Name=\"EntropyErr\" format=\"ascii\">" << endl;
       for(int k=0; k<nPpts; k++) {
         dataFile << std::abs(errPpts(k)) << " ";
+      }
+      dataFile << endl;
+      dataFile << "				</DataArray>" << endl;
+    }
+
+    if (params->meshType == OVERSET_MESH && params->writeIBLANK) {
+      /* --- TIOGA iBlank value --- */
+      dataFile << "				<DataArray type=\"Float32\" Name=\"IBLANK\" format=\"ascii\">" << endl;
+
+      for(int k=0; k<nPpts; k++) {
+        dataFile << Solver->Geo->iblankCell[e.ID] << " ";
       }
       dataFile << endl;
       dataFile << "				</DataArray>" << endl;
@@ -436,10 +470,14 @@ void writeResidual(solver *Solver, input *params)
 
   if (params->resType == 3) {
     // Infinity Norm
-#pragma omp parallel for
     for (uint e=0; e<Solver->eles.size(); e++) {
       auto resTmp = Solver->eles[e].getNormResidual(params->resType);
-      if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
+      if(checkNaN(resTmp)) {
+        cout << "rank " << params->rank << ", ele " << e << ": ";
+        auto box = Solver->eles[e].getBoundingBox();
+        cout << " centriod = " << box[0] << "," << box[1] << "," << box[2] << endl;
+        FatalError("NaN Encountered in Solution Residual!");
+      }
 
       for (int i=0; i<params->nFields; i++)
         res[i] = max(res[i],resTmp[i]);
@@ -447,14 +485,32 @@ void writeResidual(solver *Solver, input *params)
   }
   else if (params->resType == 1 || params->resType == 2) {
     // 1-Norm or 2-Norm
-#pragma omp parallel for
     for (uint e=0; e<Solver->eles.size(); e++) {
       auto resTmp = Solver->eles[e].getNormResidual(params->resType);
-      if(checkNaN(resTmp)) FatalError("NaN Encountered in Solution Residual!");
+      if(checkNaN(resTmp)) {
+        cout << "rank " << params->rank << ", ele " << e << ": " << flush;
+        auto box = Solver->eles[e].getBoundingBox();
+        cout << " centriod = " << box[0] << "," << box[1] << "," << box[2] << endl;
+        FatalError("NaN Encountered in Solution Residual!");
+      }
 
       for (int i=0; i<params->nFields; i++)
         res[i] += resTmp[i];
     }
+  }
+
+  vector<double> force(params->nDims);
+  if (params->equation == NAVIER_STOKES) {
+    auto fTmp = Solver->computeWallForce();
+#ifndef _NO_MPI
+    MPI_Reduce(fTmp.data(), force.data(), params->nDims, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+#endif
+    for (auto &f:force) f /= (0.5*params->rhoBound*params->Uinf*params->Uinf);
+
+    double alpha = std::atan(params->vBound/params->uBound);
+    fTmp = force;
+    force[0] = fTmp[0]*cos(alpha) + fTmp[1]*sin(alpha);  // Rotate to align with freestream
+    force[1] = fTmp[1]*cos(alpha) - fTmp[0]*sin(alpha);
   }
 
 #ifndef _NO_MPI
@@ -479,7 +535,7 @@ void writeResidual(solver *Solver, input *params)
     int colW = 16;
     cout.precision(6);
     cout.setf(ios::scientific, ios::floatfield);
-    if (iter==1 || (iter/params->monitor_res_freq)%25==0) {
+    if (iter==params->initIter+1 || (iter/params->monitorResFreq)%25==0) {
       cout << endl;
       cout << setw(8) << left << "Iter";
       if (params->equation == ADVECTION_DIFFUSION) {
@@ -493,19 +549,35 @@ void writeResidual(solver *Solver, input *params)
         cout << setw(colW) << left << "rhoE";
         if (params->dtType == 1)
           cout << setw(colW) << left << "deltaT";
+        cout << setw(colW) << left << "CD";
+        cout << setw(colW) << left << "CL";
+        if (params->nDims == 3)
+          cout << setw(colW) << left << "CN";
       }
       cout << endl;
     }
 
+    // Print residuals
     cout << setw(8) << left << iter;
     for (int i=0; i<params->nFields; i++) {
       cout << setw(colW) << left << res[i];
     }
+
+    // Print time step (for CFL time-stepping)
     if (params->dtType == 1)
       cout << setw(colW) << left << params->dt;
+
+    // Print wall forces
+    if (params->equation == NAVIER_STOKES) {
+      for (int dim=0; dim<params->nDims; dim++) {
+        cout << setw(colW) << left << force[dim];
+      }
+    }
+
     cout << endl;
   }
 }
+
 
 void writeMeshTecplot(solver* Solver, input* params)
 {
@@ -520,14 +592,15 @@ void writeMeshTecplot(solver* Solver, input* params)
 
 #ifndef _NO_MPI
   /* --- All processors write their solution to their own .vtu file --- */
-  sprintf(fileNameC,"%s_/%s_%d.plt",&fileName[0],&fileName[0],params->rank);
+  sprintf(fileNameC,"%s/%s_%d.plt",&fileName[0],&fileName[0],params->rank);
 #else
   /* --- Filename to write to --- */
-  sprintf(fileNameC,"%s_.plt",&fileName[0],iter);
+  sprintf(fileNameC,"%s.plt",&fileName[0]);
 #endif
 
-  if (params->rank == 0)
-    cout << "Writing Tecplot mesh file " << string(fileNameC) << "...  " << flush;
+  //if (params->rank == 0)
+  //  cout << "Writing Tecplot mesh file " << string(fileNameC) << "...  " << flush;
+  cout << "Writing Tecplot mesh file " << string(fileNameC) << "...  " << endl;
 
 #ifndef _NO_MPI
   /* --- Write folder for output mesh files --- */
@@ -551,69 +624,53 @@ void writeMeshTecplot(solver* Solver, input* params)
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
+  cout << "rank " << params->rank << ": Opening file for writing" << endl;
+
   dataFile.open(fileNameC);
   dataFile.precision(16);
 
   // Count wall-boundary nodes
-  int ib = 0;
-  int nNodesWall=0;
-  for (auto& bc:Geo->bcList) {
-    if (bc == SLIP_WALL || bc == ISOTHERMAL_NOSLIP || bc == ADIABATIC_NOSLIP)
-      nNodesWall += Geo->nBndPts[ib];
-    ib++;
-  }
-
+  int nNodesWall = Geo->iwall.size();
   // Count overset-boundary nodes
-  ib = 0;
-  int nNodesOver=0;
-  for (auto& bc:Geo->bcList) {
-    if (bc == OVERSET)
-      nNodesOver += Geo->nBndPts[ib];
-    ib++;
-  }
+  int nNodesOver = Geo->iover.size();
 
-  int gridID = 1;
+  int gridID = Geo->gridID;
+
+  cout << "nNodesWall = " << nNodesWall << ", nNodesOver = " << nNodesOver << ", gridID = " << gridID << endl;
 
   int nPrism = 0;
-  int nNodes = Solver->Geo->nVerts;
-  int nCells = Solver->Geo->nEles;
+  int nNodes = Geo->nVerts;
+  int nCells = Geo->nEles;
   int nHex = nCells;
+
+  cout << "nNodes = " << nNodes << ", nEles = " << nCells << endl;
 
   dataFile << "# " << nPrism << " " << nHex << " " << nNodes << " " << nCells << " " << nNodesWall << " " << nNodesOver << endl;
   dataFile << "TITLE = \"" << fileName << "\"" << endl;
-  dataFile << "VARIABLES = \"X\", \"Y\", \"Z\", \"bodyTag\"" << endl;
+  dataFile << "VARIABLES = \"X\", \"Y\", \"Z\", \"bodyTag\", \"IBLANK\"" << endl;
   dataFile << "ZONE T = \"VOL_MIXED\", N=" << nNodes << ", E=" << nCells << ", ET=BRICK, F=FEPOINT" << endl;
 
   for (int iv=0; iv<nNodes; iv++) {
-    dataFile << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " " << Geo->xv(iv,2) << " " << gridID << endl;
+    //cout << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " " << Geo->xv(iv,2) << " " << gridID << endl;
+    dataFile << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " " << Geo->xv(iv,2) << " " << gridID << " " << Geo->iblank[iv] << endl;
   }
 
   for (int ic=0; ic<nCells; ic++) {
     for (int j=0; j<8; j++) {
-      dataFile << Geo->c2v(ic,j) << " ";
+      dataFile << Geo->c2v(ic,j)+1 << " ";
     }
     dataFile << endl;
   }
 
   // output wall-boundary node IDs
-  ib = 0;
-  for (auto& bc:Geo->bcList) {
-    if (bc == SLIP_WALL || bc == ISOTHERMAL_NOSLIP || bc == ADIABATIC_NOSLIP) {
-      for (int iv=0; iv<Geo->nBndPts[ib]; iv++)
-        dataFile << Geo->bndPts(ib,iv) << endl;
-    }
-    ib++;
-  }
+  for (auto& iv:Geo->iwall)
+    dataFile << iv+1 << endl;
 
   // output overset-boundary node IDs
-  ib = 0;
-  for (auto& bc:Geo->bcList) {
-    if (bc == OVERSET) {
-      for (int iv=0; iv<Geo->nBndPts[ib]; iv++)
-        dataFile << Geo->bndPts(ib,iv) << endl;
-    }
-    ib++;
-  }
+  for (auto& iv:Geo->iover)
+    dataFile << iv+1 << endl;
 
   dataFile.close();
+
+  if (params->rank == 0) cout << "done." << endl;
 }

@@ -19,6 +19,11 @@ Makefile
 # External Libraries Folder (in order to compile in place)
 lib/
 
+# Misc. other commonly-used directoriess
+bin/
+run/
+tests/
+
 # Compiled Dynamic libraries
 *.so
 *.dylib
@@ -48,9 +53,18 @@ lib/
 
 # Visualization Output Files
 *.vtu
+*.pvtu
 *.plt
+*.dat
 *.csv
 *.csv.*
+*.out
+*.out.*
+*.hist
+
+# Mesh files
+*.geo
+*.msh
 
 # Binary / run directory
 build/

@@ -93,6 +93,80 @@ double getCFLLimit(int order)
   }
 }
 
+vector<double> getQuadratureWeights1D(int order)
+{
+  // Order here refers to the order of a polynomial fit through
+  // the Gauss points, not the order of accuracy of integration
+  // using the same number of points
+
+  vector<double> outWts(order+1);
+
+  if (order == 0) {
+    outWts[0] =  2.0;
+  }
+  else if(order == 1) {
+    outWts[0] = 1.0;
+    outWts[1] = 1.0;
+  }
+  else if(order == 2) {
+    outWts[0] = 0.5555555555555556;
+    outWts[1] = 0.8888888888888888;
+    outWts[2] = 0.5555555555555556;
+  }
+  else if(order == 3) {
+    outWts[0] = 0.3478548451374538;
+    outWts[1] = 0.6521451548625461;
+    outWts[2] = 0.6521451548625461;
+    outWts[3] = 0.3478548451374538;
+  }
+  else if(order == 4) {
+    outWts[0] = 0.2369268850561891;
+    outWts[1] = 0.4786286704993665;
+    outWts[2] = 0.000000000000000;
+    outWts[3] = 0.4786286704993665;
+    outWts[4] = 0.2369268850561891;
+  }
+  else {
+    cout << "Order = " << order << ": " << flush;
+    FatalError("Gauss quadrature weights for this order not implemented.");
+  }
+
+  return outWts;
+}
+
+Vec3 operator*(matrix<double>& mat, Vec3 &vec)
+{
+  Vec3 out;
+  int nDims = mat.getDim1();
+  for (int i=0; i<nDims; i++) {
+    for (int j=0; j<nDims; j++) {
+      out[i] += mat(i,j)*vec[j];
+    }
+  }
+  return out;
+}
+
+point operator/(point a, double b) { return a/=b; }
+point operator*(point a, double b) { return a*=b; }
+
+double getDist(point a, point b)
+{
+  Vec3 dx = a - b;
+  return dx.norm();
+}
+
+matrix<double> createMatrix(vector<point> &pts)
+{
+  matrix<double> out(pts.size(),3);
+
+  for (uint i=0; i<pts.size(); i++) {
+    for (uint j=0; j<3; j++) {
+      out(i,j) = pts[i][j];
+    }
+  }
+
+  return out;
+}
 
 void simTimer::startTimer(void)
 {
@@ -104,7 +178,7 @@ void simTimer::stopTimer(void)
   finalTime = std::chrono::high_resolution_clock::now();
 }
 
-void simTimer::showTime(void)
+void simTimer::showTime(int precision)
 {
   int rank = 0;
 #ifndef _NO_MPI
@@ -118,10 +192,10 @@ void simTimer::showTime(void)
     if (execTime > 60) {
       int minutes = floor(execTime/60);
       double seconds = execTime-(minutes*60);
-      cout << "Execution time = " << minutes << "min " << setprecision(3) << seconds << "s" << endl;
+      cout << "Execution time = " << minutes << "min " << setprecision(precision) << seconds << "s" << endl;
     }
     else {
-      cout << setprecision(3) << "Execution time = " << execTime << "s" << endl;
+      cout << setprecision(precision) << "Execution time = " << execTime << "s" << endl;
     }
   }
 }

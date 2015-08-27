@@ -8,6 +8,8 @@
 #include "tioga.h"
 #include "globals.h"
 
+#include "solver.hpp" // Include Flurry's 'solver' class for callback functions
+
 //
 // All the interfaces that are
 // accessible to third party f90 and C
@@ -76,26 +78,17 @@ extern "C" {
     tg->performConnectivityHighOrder();
   }
 
-  void tioga_dataupdate_(double* q,int* nvar,char* itype)
+  void tioga_dataupdate_(double* q,int* nvar,int* itype)
   {
-    char itypeC[4] = {itype[0],itype[1],itype[2],'\0'};
-    printf("itype = %s\n",itypeC);
-    //std::string itypes = string(itype);
-    //std::cout << itypes << std::endl;
-    int interptype;
-    if (strcmp(itypeC,"row")==0)
-    {
-      interptype=0;
-    }
-    else if (strcmp(itypeC,"col")==0)
-    {
-      interptype=1;
-    }
-    else
+    // 0: row, 1: column
+    interptype = itype;
+
+    if (itype != 0 && itype != 1)
     {
       printf("#tiogaInterface.C:dataupdate_:unknown data orientation\n");
       return;
     }
+
     if (tg->ihigh==0)
     {
       tg->dataUpdate(*nvar,q,interptype);
@@ -105,6 +98,7 @@ extern "C" {
       tg->dataUpdate_highorder(*nvar,q,interptype);
     }
   }
+
   void tioga_writeoutputfiles_old_(double* q,int* nvar,char* itype)
   {
     char itypeC[4] = {itype[0],itype[1],itype[2],'\0'};
@@ -168,11 +162,16 @@ extern "C" {
                                      void (*f5)(int *,int *,double *,int *,int *,double *))
   {
     tg->setcallback(f1,f2,f3,f4,f5);
-    //    get_nodes_per_cell=f1;
-    //get_receptor_nodes=f2;
-    //donor_inclusion_test=f3;
-    //donor_frac=f4;
+    //getNodesPerCell=f1;
+    //getReceptorNodes=f2;
+    //donorInclusionTest=f3;
+    //donorWeights=f4;
     //convert_to_modal=f5;
+  }
+
+  void tioga_set_solver_callback(solver* _solver)
+  {
+    tg->setcallback(_solver);
   }
 
 

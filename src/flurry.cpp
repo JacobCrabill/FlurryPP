@@ -21,6 +21,10 @@
 #include <mpi.h>
 #endif
 
+#ifdef _MPI_DEBUG
+#include <unistd.h>  // for getpid()
+#endif
+
 int main(int argc, char *argv[]) {
   input params;
   geo Geo;
@@ -38,21 +42,36 @@ int main(int argc, char *argv[]) {
 
   if (rank == 0) {
     cout << endl;
-    cout << "  ======================================================== " << endl;
-    cout << "   _______   _                                     /\\         " << endl;
-    cout << "  |   ____| | |                               __   \\/   __    " << endl;
-    cout << "  |  |___   | |  _   _   _     _     _    _   \\_\\_\\/\\/_/_/ " << endl;
-    cout << "  |   ___|  | | | | | | | |/| | |/| | |  | |    _\\_\\/_/_     " << endl;
-    cout << "  |  |      | | | |_| | |  /  |  /  \\  \\/  /   __/_/\\_\\__  " << endl;
-    cout << "  |__|      |_| \\_____/ |_|   |_|    \\    /   /_/  \\/  \\_\\" << endl;
-    cout << "                                      |  /         /\\         " << endl;
-    cout << "                                      /_/          \\/         " << endl;
-    cout << "  ---------      Flux Reconstruction in C++      --------- " << endl;
-    cout << "  ======================================================== " << endl;
+    cout << R"(  ========================================================  )" << endl;
+    cout << R"(   _______   _                                     /\       )" << endl;
+    cout << R"(  |   ____| | |                               __   \/   __  )" << endl;
+    cout << R"(  |  |___   | |  _   _   _     _     _    _   \_\_\/\/_/_/  )" << endl;
+    cout << R"(  |   ___|  | | | | | | | |/| | |/| | |  | |    _\_\/_/_    )" << endl;
+    cout << R"(  |  |      | | | |_| | |  /  |  /  \  \/  /   __/_/\_\__   )" << endl;
+    cout << R"(  |__|      |_| \_____/ |_|   |_|    \    /   /_/  \/  \_\  )" << endl;
+    cout << R"(                                      |  /         /\       )" << endl;
+    cout << R"(                                      /_/          \/       )" << endl;
+    cout << R"(  ---------      Flux Reconstruction in C++      ---------  )" << endl;
+    cout << R"(  ========================================================  )" << endl;
     cout << endl;
   }
 
   if (argc<2) FatalError("No input file specified.");
+
+#ifdef _MPI_DEBUG
+  {
+    // Useful for debugging in parallel with GDB or similar debugger
+    // Sleep until a debugger is attached to rank 0 (change 'blah' once attached to continue)
+    if (rank == 0) {
+      int blah = 0;
+      cout << "Process " << getpid() << " ready for GDB attach" << endl;
+      while (blah == 0)
+        sleep(5);
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+#endif
 
   setGlobalVariables();
 
@@ -65,23 +84,32 @@ int main(int argc, char *argv[]) {
   /* Setup the solver, all elements and faces, and all FR operators for computation */
   Solver.setup(&params,&Geo);
 
-  /* Stat timer for simulation (ignoring pre-processing) */
-  simTimer runTime;
-  runTime.startTimer();
-
   /* Apply the initial condition */
-  if (!params.restart)  Solver.initializeSolution();
+  Solver.initializeSolution();
 
   /* Write initial data file */
   writeData(&Solver,&params);
+
+  /* Write out mesh in Tecplot format, with IBLANK data */
+  if (params.writeIBLANK)
+    writeMeshTecplot(&Solver,&params);
+
+#ifndef _NO_MPI
+  // Allow all processes to finish initial file writing before starting computation
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+  /* Stat timer for simulation (ignoring pre-processing) */
+  simTimer runTime;
+  runTime.startTimer();
 
   /* --- Calculation Loop --- */
   for (params.iter=params.initIter+1; params.iter<=params.iterMax; params.iter++) {
 
     Solver.update();
 
-    if ((params.iter)%params.monitor_res_freq == 0 || params.iter==1) writeResidual(&Solver,&params);
-    if ((params.iter)%params.plot_freq == 0) writeData(&Solver,&params);
+    if ((params.iter)%params.monitorResFreq == 0 || params.iter==params.initIter+1) writeResidual(&Solver,&params);
+    if ((params.iter)%params.plotFreq == 0) writeData(&Solver,&params);
 
   }
 

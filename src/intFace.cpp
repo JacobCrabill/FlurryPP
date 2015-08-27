@@ -13,16 +13,16 @@
  *
  */
 
-#include "../include/intFace.hpp"
+#include "intFace.hpp"
 
-#include "../include/flux.hpp"
-#include "../include/ele.hpp"
+#include "flux.hpp"
+#include "ele.hpp"
 
 void intFace::setupRightState(void)
 {
   // This is kinda messy, but avoids separate initialize function
-  locF_R = rightParams[0];
-  relRot = rightParams[1];
+  faceID_R = myInfo.IDR;
+  relRot = myInfo.relRot;
 
   if (nDims == 2)
     nFptsR = eR->order+1;
@@ -40,8 +40,8 @@ void intFace::setupRightState(void)
   if (nDims == 2) {
     // For 1D faces [line segments] only - find first/last ID of fpts;
     // right element's are simply reversed
-    fptStartR = (locF_R*(nFptsR)) + nFptsR;
-    fptEndR = (locF_R*(nFptsR));
+    fptStartR = (faceID_R*(nFptsR)) + nFptsR;
+    fptEndR = (faceID_R*(nFptsR));
 
     int fpt = 0;
     for (int i=fptStartR-1; i>=fptEndR; i--) {
@@ -53,8 +53,8 @@ void intFace::setupRightState(void)
     // Only for quad tensor-product faces
     int order = sqrt(nFptsL)-1;
 
-    fptStartR = nFptsR*locF_R;
-    fptEndR = nFptsR*(locF_R+1);
+    fptStartR = nFptsR*faceID_R;
+    fptEndR = nFptsR*(faceID_R+1);
 
     for (int i=0; i<nFptsL; i++) {
       int ifpt = i%(order+1);
@@ -132,4 +132,11 @@ void intFace::setRightStateSolution(void)
   for (int i=0; i<nFptsR; i++)
     for (int j=0; j<nFields; j++)
       UcR[i][j] = UC(i,j);
+}
+
+vector<double> intFace::computeWallForce()
+{
+  // Not a wall boundary - return 0
+  vector<double> force = {0,0,0};
+  return force;
 }

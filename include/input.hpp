@@ -82,10 +82,10 @@ public:
   int equation;  //! {0 | Advection/diffusion} {1 | Euler/Navier-Stokes}
   int viscous;   //! {0 | No diffusion/Viscosity} {1 | Diffusion/Viscosity}
   int order;
-  int ic_type;
+  int icType;
   int motion;
   int test_case;
-  int riemann_type;
+  int riemannType;
 
 
   /* --- Viscous Solver Parameters --- */
@@ -124,9 +124,9 @@ public:
 
   string dataFileName;
   int resType;
-  int monitor_res_freq;
-  int plot_freq;
-  int plot_type;
+  int monitorResFreq;
+  int plotFreq;
+  int plotType;
 
   bool calcEntropySensor;
 
@@ -172,11 +172,12 @@ public:
   double lambda;   //! Lax-Friedrichs upwind coefficient (0: Central, 1: Upwind)
 
   /* --- Mesh Parameters --- */
-  string meshFileName;
-  vector<string> oversetGrids;
-  int mesh_type;
-  int nx, ny, nz;
-  int nGrids;
+  string meshFileName;          //! Gmsh file name for standard run
+  vector<string> oversetGrids;  //! Gmsh file names of all overset grids being used
+  int meshType;     //! Type of mesh being used: Single Gmsh, create a mesh, or read multiple overset grids
+  int nx, ny, nz;   //! For creating a structured mesh: Number of cells in each direction
+  int nGrids;       //! # of grids in overset calculation
+  int writeIBLANK;  //! Write IBLANK in ParaView output?
   double xmin, xmax, ymin, ymax, zmin, zmax;
   double periodicTol, periodicDX, periodicDY, periodicDZ;
   string create_bcTop, create_bcBottom, create_bcLeft;
@@ -189,9 +190,12 @@ public:
   int vcjhSchemeTri;
   int vcjhSchemeQuad;
 
-  /* --- Shock Capturing Parameters --- */
-  int scFlag;       // Shock Capturing Flag
-  double threshold; // Threshold for considering as shock -Set to 1.0 by default
+  /* --- Shock Capturing, Filtering & Stabilization Parameters --- */
+  int scFlag;       //! Shock Capturing Flag
+  double threshold; //! Threshold for considering as shock -Set to 1.0 by default
+
+  double exps0;     //! Minimum entropy bound for polynomial squeezing
+  int squeeze;      //! Flag to turn on polynomial squeezing or not
 
   /* --- PID Boundary Conditions --- */
   double Kp;

@@ -1,3 +1,7 @@
+#pragma once
+
+#include "codetypes.h"
+
 #include "mpi.h"
 /**
 * Parallel communication methods

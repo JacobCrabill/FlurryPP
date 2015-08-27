@@ -16,12 +16,13 @@
  *
  */
 
-#include "../include/ele.hpp"
+#include "ele.hpp"
 
 #include <sstream>
 
-#include "../include/polynomials.hpp"
-#include "../include/flux.hpp"
+#include "polynomials.hpp"
+#include "flux.hpp"
+#include "funcs.hpp"
 
 using namespace std;
 
@@ -57,8 +58,13 @@ void ele::setup(input *inParams, geo *inGeo)
   order = params->order;
   nDims = params->nDims;
 
-  loc_spts = Geo->getLocSpts(eType,order);
-  loc_fpts = Geo->getLocFpts(eType,order);
+  if (eType == QUAD || eType == HEX)
+    sptsType = params->sptsTypeQuad;
+  else
+    FatalError("Only quads and hexes implemented.");
+
+  loc_spts = getLocSpts(eType,order,sptsType);
+  loc_fpts = getLocFpts(eType,order,sptsType);
 
   nSpts = loc_spts.size();
   nFpts = loc_fpts.size();
@@ -85,7 +91,7 @@ void ele::setupArrays(void)
 
   U_spts.setup(nSpts,nFields);
   U_fpts.setup(nFpts,nFields);
-  U_mpts.setup(nNodes,nFields);
+  U_mpts.setup(nMpts,nFields);
   disFn_fpts.setup(nFpts,nFields);
   dFn_fpts.setup(nFpts,nFields);
   Fn_fpts.setup(nFpts,nFields);
@@ -117,15 +123,14 @@ void ele::setupArrays(void)
 
   F_spts.resize(nDims);
   F_fpts.resize(nDims);
-  dF_spts.resize(nDims);
+  dF_spts.setup(nDims,nDims);
   tdF_spts.resize(nDims);
   for (int i=0; i<nDims; i++) {
     F_spts[i].setup(nSpts,nFields);
     F_fpts[i].setup(nFpts,nFields);
-    dF_spts[i].resize(nDims);
     tdF_spts[i].setup(nSpts,nFields);
     for (int j=0; j<nDims; j++) {
-      dF_spts[i][j].setup(nSpts,nFields);
+      dF_spts(i,j).setup(nSpts,nFields);
     }
   }
 
@@ -145,7 +150,7 @@ void ele::setupArrays(void)
   dA_fpts.resize(nFpts);
   waveSp_fpts.resize(nFpts);
 
-  gridVel_nodes.setup(nNodes,nDims);
+  gridVel_nodes.setup(nMpts,nDims);
   gridVel_spts.setup(nSpts,nDims);
   gridVel_fpts.setup(nFpts,nDims);
   gridVel_nodes.initializeToZero();
@@ -170,7 +175,7 @@ void ele::setupArrays(void)
 
   S_spts.setup(nSpts,1);
   S_fpts.setup(nFpts,1);
-  S_mpts.setup(nNodes,1);
+  S_mpts.setup(nMpts,1);
 
   tempF.setup(nDims,nFields);
   tempU.assign(nFields,0);
@@ -191,68 +196,38 @@ void ele::setupAllGeometry(void) {
 
 void ele::move(int step=0)
 {
-  if (params->motion == 1 || params->motion == 2) {
-    perturb();
+  for (int i=0; i<nNodes; i++) {
+    nodesRK[0][i] = point(Geo->xv_new[Geo->c2v(ID,i)]);
   }
 
   calcTransforms(step+1);
   calcGridVelocity();
 }
 
-void ele::perturb(void)
-{
-  if (params->motion == 1) {
-    for (int iv=0; iv<nNodes; iv++) {
-      /// Taken from Kui, AIAA-2010-5031-661
-      nodesRK[0][iv].x = nodes[iv].x + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
-      nodesRK[0][iv].y = nodes[iv].y + 2*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*sin(2*pi*params->rkTime/10.);
-    }
-  }
-  else if (params->motion == 2) {
-    double t0 = 10.*sqrt(5.);
-    for (int iv=0; iv<nNodes; iv++) {
-      nodesRK[0][iv].x = nodes[iv].x + sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*sin(4*pi*params->rkTime/t0);
-      nodesRK[0][iv].y = nodes[iv].y + sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*sin(8*pi*params->rkTime/t0);
-    }
-  }
-}
-
 void ele::calcGridVelocity(void)
 {
-  if (params->motion == 1) {
-    for (int iv=0; iv<nNodes; iv++) {
-      gridVel_nodes(iv,0) = 4.*pi/10.*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*cos(2*pi*params->rkTime/10.); // from Kui
-      gridVel_nodes(iv,1) = 4.*pi/10.*sin(pi*nodes[iv].x/10.)*sin(pi*nodes[iv].y/10.)*cos(2*pi*params->rkTime/10.);
-    }
-  }
-  else if (params->motion == 2) {
-    double t0 = 10.*sqrt(5.);
-    for (int iv=0; iv<nNodes; iv++) {
-      gridVel_nodes(iv,0) = 4.*pi/t0*sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*cos(4*pi*params->rkTime/t0); // from Liang-Miyaji
-      gridVel_nodes(iv,1) = 8.*pi/t0*sin(pi*nodes[iv].x/5.)*sin(pi*nodes[iv].y/5.)*cos(8*pi*params->rkTime/t0);
+  for (int iv=0; iv<nNodes; iv++) {
+    for (int dim=0; dim<nDims; dim++) {
+      gridVel_nodes(iv,dim) = Geo->gridVel(Geo->c2v(ID,iv),dim);
     }
   }
 
-  if (params->motion != 0) {
-
-    gridVel_spts.initializeToZero();
-    for (int spt=0; spt<nSpts; spt++) {
-      for (int iv=0; iv<nNodes; iv++) {
-        for (int dim=0; dim<nDims; dim++) {
-          gridVel_spts(spt,dim) += shape_spts(spt,iv)*gridVel_nodes(iv,dim);
-        }
+  gridVel_spts.initializeToZero();
+  for (int spt=0; spt<nSpts; spt++) {
+    for (int iv=0; iv<nNodes; iv++) {
+      for (int dim=0; dim<nDims; dim++) {
+        gridVel_spts(spt,dim) += shape_spts(spt,iv)*gridVel_nodes(iv,dim);
       }
     }
+  }
 
-    gridVel_fpts.initializeToZero();
-    for (int fpt=0; fpt<nFpts; fpt++) {
-      for (int iv=0; iv<nNodes; iv++) {
-        for (int dim=0; dim<nDims; dim++) {
-          gridVel_fpts(fpt,dim) += shape_fpts(fpt,iv)*gridVel_nodes(iv,dim);
-        }
+  gridVel_fpts.initializeToZero();
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    for (int iv=0; iv<nNodes; iv++) {
+      for (int dim=0; dim<nDims; dim++) {
+        gridVel_fpts(fpt,dim) += shape_fpts(fpt,iv)*gridVel_nodes(iv,dim);
       }
     }
-    // replace with: calcGridVelocitySpts();
   }
 }
 
@@ -552,6 +527,256 @@ point ele::calcPos(const point &loc)
   return pt;
 }
 
+vector<double> ele::getBoundingBox(void)
+{
+  point minPt(INFINITY,INFINITY,INFINITY);
+  point maxPt(-INFINITY,-INFINITY,-INFINITY);
+  if (params->motion == 0) {
+    for (auto &pt:nodes) {
+      for (int dim=0; dim<nDims; dim++) {
+        minPt[dim] = min(minPt[dim],pt[dim]);
+        maxPt[dim] = max(maxPt[dim],pt[dim]);
+      }
+    }
+  }
+  else {
+    for (auto &pt:nodesRK[0]) {
+      for (int dim=0; dim<nDims; dim++) {
+        minPt[dim] = min(minPt[dim],pt[dim]);
+        maxPt[dim] = max(maxPt[dim],pt[dim]);
+      }
+    }
+  }
+
+  vector<double> bbox(6);
+  for (int dim=0; dim<nDims; dim++) {
+    bbox[dim] = (minPt[dim]+maxPt[dim])*0.5;
+    bbox[dim+3] = maxPt[dim] - minPt[dim];
+  }
+
+  return bbox;
+}
+
+point ele::getRefLoc(const point &pos)
+{
+  // --- NOTE: Need a better method for high-aspect-ratio elements!! ---
+  // Tested in Matlab; fails if element if too thin in one direction, even if
+  // point is within element
+  // What about using Nelder-Meade to minimiz norm(dx)?
+  point xin;  // Current iterate xi_n (in reference space)
+  point xn;   // Current iterate's physical position
+  Vec3 dx;    // Difference from current iterate to desired position
+
+  matrix<double> J(nDims,nDims);
+  matrix<double> Jinv(nDims,nDims);
+
+  double tol = 1e-6;  // Want to go to smaller tolerance once all working
+
+  // No direct inverse-isoparametric mapping, so must iterate (Newton's Method)
+  // Note: Initial guess is (0,0,0) by point()
+  xn = calcPos(xin);
+  dx = xn - pos;
+
+  int iter = 0;
+  while (dx.norm() > tol && iter < 200) {
+    xin -= Jinv*dx;
+    getInverseMapping(xin,J,Jinv);
+    xn = calcPos(xin);
+    dx = xn - pos;
+    iter++;
+  }
+
+  return xin;
+}
+
+void ele::getInverseMapping(const point xi, matrix<double> &J, matrix<double> &Jinv)
+{
+  matrix<double> dshape(nNodes,nDims);
+  J.setup(nDims,nDims);    J.initializeToZero();
+  Jinv.setup(nDims,nDims); Jinv.initializeToZero();
+  double detJ = 0;
+
+  // Get shape (isoparametric mapping) derivatives at mesh nodes
+  switch (eType) {
+  case QUAD:
+    dshape_quad(xi,dshape,nNodes);
+    break;
+
+  case HEX:
+    dshape_hex(xi,dshape,nNodes);
+    break;
+  }
+
+  // Calculate Jacobian matrix and its inverse
+  if (nDims == 2) {
+    for (int n=0; n<nNodes; n++)
+      for (int dim2=0; dim2<nDims; dim2++)
+        for (int dim1=0; dim1<nDims; dim1++)
+          J(dim2,dim1) += dshape(n,dim2)*nodes[n][dim1];
+
+    detJ = J(0,0)*J(1,1) - J(1,0)*J(0,1);
+    if (detJ <= 0) FatalError("Negative Jacobian in inverse-mapping calculation");
+
+    Jinv(0,0) = J(1,1)/detJ;  Jinv(0,1) =-J(0,1)/detJ;
+    Jinv(1,0) =-J(1,0)/detJ;  Jinv(1,1) = J(0,0)/detJ;
+  }
+  else {
+    for (int n=0; n<nNodes; n++)
+      for (int dim2=0; dim2<nDims; dim2++)
+        for (int dim1=0; dim1<nDims; dim1++)
+          J(dim2,dim1) += dshape(n,dim2)*nodes[n][dim1];
+
+    double xr = J(0,0);   double xs = J(0,1);   double xt = J(0,2);
+    double yr = J(1,0);   double ys = J(1,1);   double yt = J(1,2);
+    double zr = J(2,0);   double zs = J(2,1);   double zt = J(2,2);
+    detJ = xr*(ys*zt - yt*zs) - xs*(yr*zt - yt*zr) + xt*(yr*zs - ys*zr);
+    if (detJ <= 0) FatalError("Negative Jacobian in inverse-mapping calculation");
+
+        Jinv(0,0) = ys*zt - yt*zs;  Jinv(0,1) = xt*zs - xs*zt;  Jinv(0,2) = xs*yt - xt*ys;
+    Jinv(1,0) = yt*zr - yr*zt;  Jinv(1,1) = xr*zt - xt*zr;  Jinv(1,2) = xt*yr - xr*yt;
+    Jinv(2,0) = yr*zs - ys*zr;  Jinv(2,1) = xs*zr - xr*zs;  Jinv(2,2) = xr*ys - xs*yr;
+
+    for (int i=0; i<nDims; i++)
+      for (int j=0; j<nDims; j++)
+        Jinv(i,j) /= detJ;
+  }
+}
+
+double ele::getDxNelderMeade(point refLoc, point physPos)
+{
+  point pt = calcPos(refLoc);
+  Vec3 dx = physPos - pt;
+  return dx.norm();
+}
+
+bool ele::getRefLocNelderMeade(point pos, point& loc)
+{
+  // First, do a quick check to see if the point is even close to being in the element
+  double xmin, ymin, zmin;
+  double xmax, ymax, zmax;
+  xmin = ymin = zmin =  1e15;
+  xmax = ymax = zmax = -1e15;
+  for (int i=0; i<nNodes; i++) {
+    xmin = min(nodes[i].x, xmin);
+    ymin = min(nodes[i].y, ymin);
+    zmin = min(nodes[i].z, zmin);
+
+    xmax = max(nodes[i].x, xmax);
+    ymax = max(nodes[i].y, ymax);
+    zmax = max(nodes[i].z, zmax);
+  }
+  if (pos.x < xmin || pos.y < ymin || pos.z < zmin ||
+      pos.x > xmax || pos.y > ymax || pos.z > zmax) {
+    // Point does not lie within cell - return an obviously bad ref position
+    loc.x = 99; loc.y = 99; loc.z = 99;
+    return false;
+  }
+
+  // Use the simple Nelder-Meade algorithm to find the reference location which
+  // maps to the given physical position
+
+  int nPts = 4;
+  int nVars = 3;
+  vector<double> F(4);
+  matrix<double> X(4,3);
+
+  // Starting location for search
+  X(0,0) = 0;  X(0,1) = 0;   X(0,2) = 0;
+  X(1,0) = .2; X(1,1) = 0;   X(1,2) = 0;
+  X(2,0) = 0;  X(2,1) = .2;  X(2,2) = 0;
+  X(3,0) = 0;  X(3,1) = 0;   X(3,2) = .2;
+
+  // Evaluate the 'function' at the initial 'points'
+  for (int i=0; i<nPts; i++)
+    F[i] = getDxNelderMeade(point(X[i]),pos);
+
+  double tol = 1e-13;
+  int iter = 0;
+  while (iter < 300 && getMin(F)>tol) {
+    auto ind = getOrder(F);
+    point Xn = point(X[ind[nPts-1]]);  // Point with the highest value of F
+    point X0;                          // Centroid of all other points
+    point Xr;                          // Reflected point
+
+    // Take centroid of all points besides Xn
+    for (int j=0; j<nPts-1; j++)
+      X0 += point(X[ind[j]])/(nPts-1);
+    // Reflect Xn around X0
+    Xr = X0 + (X0-Xn);
+
+    double Fr = getDxNelderMeade(Xr,pos);
+
+    // Determine what to do with the new point
+    if (Fr < F[ind[nPts-2]]) {
+      // We will be keeping this point
+      if (Fr < F[ind[0]]) {
+        // This one's good; keep going! Expand from Xr
+        point Xe = Xr + (X0-Xn);
+        double Fe = getDxNelderMeade(Xe,pos);
+
+        if (Fe < Fr) {
+          // This one's even better; use it instead
+          for (int i=0; i<nVars; i++) {
+            X(ind[nPts-1],i) = Xe[i];
+            F[ind[nPts-1]] = Fe;
+          }
+        }
+        else {
+          // Xe/Fe was no better; stick with Fr, Xr
+          for (int i=0; i<nVars; i++) {
+            X(ind[nPts-1],i) = Xr[i];
+            F[ind[nPts-1]] = Fr;
+          }
+        }
+      }
+      else {
+        // This one's somewhere in the middle; replace Xn with Xr
+        for (int i=0; i<nVars; i++) {
+          X(ind[nPts-1],i) = Xr[i];
+          F[ind[nPts-1]] = Fr;
+        }
+      }
+    }
+    else {
+      // Try reducing the size of the simplex
+      point Xc = X0 - (X0-Xn)*.5;
+      double Fc = getDxNelderMeade(Xc,pos);
+      if (Fc < F[ind[nPts-1]]) {
+        // Bringing this point in is better; use it
+        for (int i=0; i<nVars; i++) {
+          X(ind[nPts-1],i) = Xc[i];
+          F[ind[nPts-1]] = Fc;
+        }
+      }
+      else {
+        // Bringing this point in didn't work; shrink the simplex onto
+        // the smallest-valued vertex
+        point X1 = point(X[ind[0]]);
+        for (int i=1; i<nPts; i++) {
+          for (int j=0; j<nVars; j++) {
+            X(ind[i],j) = X1[j] + 0.5*(X(ind[i],j)-X1[j]);
+          }
+          point xTmp = point(X[ind[i]]);
+          F[ind[i]] = getDxNelderMeade(xTmp,pos);
+        }
+      }
+    }
+
+    // Continue to iterate
+    iter++;
+  }
+
+  auto ind = getOrder(F);
+  loc = point(X[ind[nPts-1]]);
+
+  // Check to see if final location lies within element or not
+  double eps = 1e-12;
+  if (std::abs(loc.x)-eps<=1 && std::abs(loc.y)-eps<=1 && std::abs(loc.z)-eps<=1 && !std::isnan(loc.norm()))
+    return true;
+  else
+    return false;
+}
+
 void ele::calcPosSpts(void)
 {
   for (int spt=0; spt<nSpts; spt++) {
@@ -607,7 +832,7 @@ void ele::setInitialCondition()
     double rho, vx, vy, vz, p;
     double gamma = params->gamma;
 
-    if (params->ic_type == 0) {
+    if (params->icType == 0) {
       /* --- Uniform "Freestream" solution --- */
       rho = params->rhoIC;
       vx = params->vxIC;
@@ -626,16 +851,17 @@ void ele::setInitialCondition()
         U_spts(spt,nDims+1) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy + vz*vz));
       }
     }
-    else if (params->ic_type == 1) {
+    else if (params->icType == 1) {
       /* --- Isentropic Vortex of strength eps centered at (0,0) --- */
       double eps = 5.0;
-      for (int spt=0; spt<nSpts; spt++) {        
+      for (int spt=0; spt<nSpts; spt++) {
         double x = pos_spts[spt].x;
         double y = pos_spts[spt].y;
 
         double f = 1.0 - (x*x + y*y);
 
-        rho = pow(1. - eps*eps*(gamma-1.)/(8.*gamma*pi*pi)*exp(f), 1.0/(gamma-1.0));
+        // Limiting rho to 1e-3 to avoid negative density/pressure issues
+        rho = max(pow(1. - eps*eps*(gamma-1.)/(8.*gamma*pi*pi)*exp(f), 1.0/(gamma-1.0) + 1e-5), 1e-3);
         vx = 1. - eps*y / (2.*pi) * exp(f/2.);
         vy = 1. + eps*x / (2.*pi) * exp(f/2.);
         p = pow(rho,gamma);
@@ -647,7 +873,7 @@ void ele::setInitialCondition()
         U_spts(spt,nDims+1) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
       }
     }
-    else if (params->ic_type == 2) {
+    else if (params->icType == 2) {
       /* --- Isentropic Vortex of strength eps centered at (0,0) (Liang version) --- */
       double eps = 1.0;  // See paper by Liang and Miyaji, CPR Deforming Domains
       double rc  = 1.0;
@@ -679,20 +905,20 @@ void ele::setInitialCondition()
     }
   }
   else if (params->equation == ADVECTION_DIFFUSION) {
-    if (params->ic_type == 0) {
+    if (params->icType == 0) {
       /* --- Simple Gaussian bump centered at (0,0) --- */
       for (int spt=0; spt<nSpts; spt++) {
         double r2 = pos_spts[spt]*pos_spts[spt];
         U_spts(spt,0) = exp(-r2);
       }
     }
-    else if (params->ic_type == 1) {
+    else if (params->icType == 1) {
       /* --- Test case for debugging - linear solution x+y+z over domain --- */
       for (int spt=0; spt<nSpts; spt++) {
         U_spts(spt,0) = pos_spts[spt].x + pos_spts[spt].y + pos_spts[spt].z;
       }
     }
-    else if (params->ic_type == 2) {
+    else if (params->icType == 2) {
       /* --- Test case for debugging - cos(x)*cos(y)*cos(z) over domain --- */
       for (int spt=0; spt<nSpts; spt++)
         U_spts(spt,0) = cos(2*pi*pos_spts[spt].x/6.)*cos(2*pi*pos_spts[spt].y/6.)*cos(2*pi*pos_spts[spt].z/6.);
@@ -792,9 +1018,9 @@ void ele::transformGradF_spts(int step)
     double A = gridVel_spts(spt,1)*Jac_spts[spt](0,1) - gridVel_spts(spt,0)*Jac_spts[spt](1,1);
     double B = gridVel_spts(spt,0)*Jac_spts[spt](1,0) - gridVel_spts(spt,1)*Jac_spts[spt](0,0);
     for (int k=0; k<nFields; k++) {
-      dF_spts[0][0](spt,k) =  dF_spts[0][0](spt,k)*Jac_spts[spt](1,1) - dF_spts[0][1](spt,k)*Jac_spts[spt](0,1) + dU_spts[0](spt,k)*A;
-      dF_spts[1][1](spt,k) = -dF_spts[1][0](spt,k)*Jac_spts[spt](1,0) + dF_spts[1][1](spt,k)*Jac_spts[spt](0,0) + dU_spts[1](spt,k)*B;
-      divF_spts[step](spt,k) = dF_spts[0][0](spt,k)+dF_spts[1][1](spt,k);
+      dF_spts(0,0)(spt,k) =  dF_spts(0,0)(spt,k)*Jac_spts[spt](1,1) - dF_spts(0,1)(spt,k)*Jac_spts[spt](0,1) + dU_spts[0](spt,k)*A;
+      dF_spts(1,1)(spt,k) = -dF_spts(1,0)(spt,k)*Jac_spts[spt](1,0) + dF_spts(1,1)(spt,k)*Jac_spts[spt](0,0) + dU_spts[1](spt,k)*B;
+      divF_spts[step](spt,k) = dF_spts(0,0)(spt,k)+dF_spts(1,1)(spt,k);
     }
   }
 }
@@ -974,10 +1200,32 @@ vector<double> ele::getPrimitivesFpt(uint fpt)
   return V;
 }
 
+vector<double> ele::getPrimitivesMpt(uint mpt)
+{
+  vector<double> V(nFields);
+
+  if (params->equation == ADVECTION_DIFFUSION) {
+    V[0] = U_mpts[mpt][0];
+  }
+  else if (params->equation == NAVIER_STOKES) {
+    V[0] = U_mpts(mpt,0);
+    V[1] = U_mpts(mpt,1)/V[0];
+    V[2] = U_mpts(mpt,2)/V[0];
+    double vMagSq = V[1]*V[1]+V[2]*V[2];
+    if (nDims == 3) {
+      V[3] = U_mpts(mpt,3)/V[0];
+      vMagSq += V[3]*V[3];
+    }
+    V[nDims+1] = (params->gamma-1)*(U_mpts(mpt,nDims+1) - 0.5*V[0]*vMagSq);
+  }
+
+  return V;
+}
+
 void ele::getPrimitivesPlot(matrix<double> &V)
 {
   if (eType == QUAD) {
-    V.setup(nSpts+nFpts+nNodes,nFields);
+    V.setup(nSpts+nFpts+nMpts,nFields);
 
     // Get solution at corner points
     for (int k=0; k<nFields; k++) {
@@ -1129,7 +1377,7 @@ void ele::getGridVelPlot(matrix<double> &GV)
 {
   if (nDims == 3) FatalError("Motion not yet supported for 3D cases.");
 
-  GV.setup(nSpts+nFpts+nNodes,nDims);
+  GV.setup(nSpts+nFpts+nMpts,nDims);
 
   // Get solution at corner points
   for (int dim=0; dim<nDims; dim++) {
@@ -1153,7 +1401,7 @@ void ele::getGridVelPlot(matrix<double> &GV)
   for (int i=0; i<order+1; i++) {
     for (int j=0; j<order+1; j++) {
       int id = (i+1)*(order+3)+j+1;
-      for (int dim=0; dim<nDims; dim++) {        
+      for (int dim=0; dim<nDims; dim++) {
         GV(id,dim) = gridVel_spts(j+i*(order+1),dim);
       }
     }
@@ -1164,7 +1412,7 @@ void ele::getEntropyErrPlot(matrix<double> &S)
 {
   if (nDims == 3) FatalError("Entropy-error calculation not yet supported for 3D cases.");
 
-  S.setup(nSpts+nFpts+nNodes,1);
+  S.setup(nSpts+nFpts+nMpts,1);
 
   // Get solution at corner points
   S(0)                     = S_mpts(0);
@@ -1185,6 +1433,230 @@ void ele::getEntropyErrPlot(matrix<double> &S)
     for (int j=0; j<order+1; j++) {
       int id = (i+1)*(order+3)+j+1;
       S(id) = S_spts(j+i*(order+1));
+    }
+  }
+}
+
+bool ele::checkDensity()
+{
+  /* --- Fisrt, check if density is negative and squeeze if needed --- */
+  bool negRho = false;
+  double minRho = 1e15;
+  double tol = 1e-10;   // Tolerance for squeezing
+
+  for (int spt=0; spt<nSpts; spt++) {
+    if (U_spts(spt,0) < 0) {
+      negRho = true;
+      minRho = min(minRho,U_spts(spt,0));
+      break;
+    }
+  }
+
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    if (U_fpts(fpt,0) < 0) {
+      negRho = true;
+      minRho = min(minRho,U_fpts(fpt,0));
+      break;
+    }
+  }
+
+  // --- Do the squeezing on density (if needed) ---
+  if (negRho) {
+    double eps = abs(Uavg[0] - tol)/(Uavg[0] - minRho);
+    for (int spt=0; spt<nSpts; spt++) {
+      U_spts(spt,0) = (1-eps)*Uavg[0] + eps*U_spts(spt,0);
+    }
+
+    for (int fpt=0; fpt<nFpts; fpt++) {
+      U_fpts(fpt,0) = (1-eps)*Uavg[0] + eps*U_fpts(fpt,0);
+    }
+  }
+
+  return negRho;
+}
+
+void ele::checkEntropy()
+{
+  /* --- Fisrt, check if density is negative and squeeze if needed --- */
+  bool negRho = false;
+  double minRho = 1e15;
+  double tol = 1e-10;   // Tolerance for squeezing
+
+  for (int spt=0; spt<nSpts; spt++) {
+    if (U_spts(spt,0) < 0) {
+      negRho = true;
+      minRho = min(minRho,U_spts(spt,0));
+    }
+  }
+
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    if (U_fpts(fpt,0) < 0) {
+      negRho = true;
+      minRho = min(minRho,U_fpts(fpt,0));
+    }
+  }
+
+  // --- Do the squeezing on density (if needed) ---
+  if (negRho) {
+    double eps = abs(Uavg[0] - tol)/(Uavg[0] - minRho);
+    for (int spt=0; spt<nSpts; spt++) {
+      U_spts(spt,0) = (1-eps)*Uavg[0] + eps*U_spts(spt,0);
+    }
+
+    for (int fpt=0; fpt<nFpts; fpt++) {
+      U_fpts(fpt,0) = (1-eps)*Uavg[0] + eps*U_fpts(fpt,0);
+    }
+  }
+
+  /* --- Next, check for entropy loss and correct if needed --- */
+
+  double minTau = 1e15; // Entropy-bounding value
+  for (int spt=0; spt<nSpts; spt++) {
+    auto phi = getPrimitives(spt);
+    double rho = phi[0];
+    double p = phi[nDims+1];
+
+    // Get minimum 'tau' value
+    minTau = std::min(minTau, p - params->exps0*std::pow(rho,params->gamma));
+  }
+
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    auto phi = getPrimitivesFpt(fpt);
+    double rho = phi[0];
+    double p = phi[nDims+1];
+
+    // Get minimum 'tau' value
+    minTau = std::min(minTau, p - params->exps0*std::pow(rho,params->gamma));
+  }
+
+  if (minTau < 0) {
+    // Only apply squeezing if Tau < 0; otherwise, not needed
+    double rho = Uavg[0];
+    double u = Uavg[1]/rho;
+    double v = Uavg[2]/rho;
+    double w = 0;
+    if (nDims==3)
+      w = Uavg[3]/rho;
+    double vMagSq = u*u+v*v+w*w;
+    double p = (params->gamma-1)*(Uavg[nDims+1] - 0.5*rho*vMagSq);
+    double Eps = minTau / (minTau - p + params->exps0*std::pow(rho,params->gamma));
+
+    for (int spt=0; spt<nSpts; spt++) {
+      for (int i=0; i<nFields; i++) {
+        U_spts(spt,i) = Eps*Uavg[i] + (1-Eps)*U_spts(spt,i);
+      }
+    }
+
+    for (int fpt=0; fpt<nFpts; fpt++) {
+      for (int i=0; i<nFields; i++) {
+        U_fpts(fpt,i) = Eps*Uavg[i] + (1-Eps)*U_fpts(fpt,i);
+      }
+    }
+  }
+}
+
+void ele::checkEntropyPlot()
+{
+  /* --- Fisrt, check if density is negative and squeeze if needed --- */
+  bool negRho = false;
+  double minRho = 1e15;
+  double tol = 1e-10;   // Tolerance for squeezing
+
+  for (int spt=0; spt<nSpts; spt++) {
+    if (U_spts(spt,0) < 0) {
+      negRho = true;
+      minRho = min(minRho,U_spts(spt,0));
+    }
+  }
+
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    if (U_fpts(fpt,0) < 0) {
+      negRho = true;
+      minRho = min(minRho,U_fpts(fpt,0));
+    }
+  }
+
+  for (int mpt=0; mpt<nMpts; mpt++) {
+    if (U_mpts(mpt,0) < 0) {
+      negRho = true;
+      minRho = min(minRho,U_mpts(mpt,0));
+    }
+  }
+
+  // --- Do the squeezing on density (if needed) ---
+  if (negRho) {
+    double eps = abs(Uavg[0] - tol)/(Uavg[0] - minRho);
+    for (int spt=0; spt<nSpts; spt++) {
+      U_spts(spt,0) = (1-eps)*Uavg[0] + eps*U_spts(spt,0);
+    }
+
+    for (int fpt=0; fpt<nFpts; fpt++) {
+      U_fpts(fpt,0) = (1-eps)*Uavg[0] + eps*U_fpts(fpt,0);
+    }
+
+    for (int mpt=0; mpt<nMpts; mpt++) {
+      U_mpts(mpt,0) = (1-eps)*Uavg[0] + eps*U_mpts(mpt,0);
+    }
+  }
+
+  /* --- Next, check for entropy loss and correct if needed --- */
+
+  double minTau = 1e15; // Entropy-bounding value
+  for (int spt=0; spt<nSpts; spt++) {
+    auto phi = getPrimitives(spt);
+    double rho = phi[0];
+    double p = phi[nDims+1];
+
+    // Get minimum 'tau' value
+    minTau = std::min(minTau, p - params->exps0*std::pow(rho,params->gamma));
+  }
+
+  for (int fpt=0; fpt<nFpts; fpt++) {
+    auto phi = getPrimitivesFpt(fpt);
+    double rho = phi[0];
+    double p = phi[nDims+1];
+
+    // Get minimum 'tau' value
+    minTau = std::min(minTau, p - params->exps0*std::pow(rho,params->gamma));
+  }
+
+  for (int mpt=0; mpt<nMpts; mpt++) {
+    auto phi = getPrimitivesMpt(mpt);
+    double rho = phi[0];
+    double p = phi[nDims+1];
+
+    // Get minimum 'tau' value
+    minTau = std::min(minTau, p - params->exps0*std::pow(rho,params->gamma));
+  }
+
+  if (minTau < 0) {
+    // Only apply squeezing if Tau < 0; otherwise, not needed
+    double rho = Uavg[0];
+    double u = Uavg[1]/rho;
+    double v = Uavg[2]/rho;
+    double w = 0;
+    if (nDims==3)
+      w = Uavg[3]/rho;
+    double vMagSq = u*u+v*v+w*w;
+    double p = (params->gamma-1)*(Uavg[nDims+1] - 0.5*rho*vMagSq);
+    double Eps = minTau / (minTau - p + params->exps0*std::pow(rho,params->gamma));
+
+    for (int spt=0; spt<nSpts; spt++) {
+      for (int i=0; i<nFields; i++) {
+        U_spts(spt,i) = Eps*Uavg[i] + (1-Eps)*U_spts(spt,i);
+      }
+    }
+
+    for (int fpt=0; fpt<nFpts; fpt++) {
+      for (int i=0; i<nFields; i++) {
+        U_fpts(fpt,i) = Eps*Uavg[i] + (1-Eps)*U_fpts(fpt,i);
+      }
+    }
+
+    for (int mpt=0; mpt<nMpts; mpt++) {
+      for (int i=0; i<nFields; i++) {
+        U_mpts(mpt,i) = Eps*Uavg[i] + (1-Eps)*U_mpts(mpt,i);
+      }
     }
   }
 }
@@ -1261,7 +1733,7 @@ void ele::setPpts(void)
     }
 
     // Get edge points
-    auto locPts1D = Geo->getPts1D(params->sptsTypeQuad,order);
+    auto locPts1D = getPts1D(params->sptsTypeQuad,order);
     for (int i=0; i<order+1; i++) {
       double x1 = locPts1D[i];
       point pt, loc;
@@ -1403,8 +1875,13 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
     nFpts = 6*(order+1)*(order+1);
   }
 
-  loc_spts = Geo->getLocSpts(eType,order);
-  loc_fpts = Geo->getLocFpts(eType,order);
+  if (order != params->order) {
+    cout << "ele order = " << order << ", input order = " << params->order << endl;
+    FatalError("Cannot restart a simulation using a different polynomial order.");
+  }
+
+  loc_spts = getLocSpts(eType,order,sptsType);
+  loc_fpts = getLocFpts(eType,order,sptsType);
 
   pos_spts.resize(nSpts);
   pos_fpts.resize(nFpts);
@@ -1648,13 +2125,16 @@ vector<double> ele::getNormResidual(int normType)
 {
   vector<double> res(nFields,0);
 
+  // Integrating residual over element using Gaussian integration
+  auto weights = getQptWeights(order,nDims);
+
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
       if (normType == 1) {
-        res[i] += abs(divF_spts[0](spt,i)) / detJac_spts[spt];
+        res[i] += abs(divF_spts[0](spt,i)) * weights[spt];
       }
       else if (normType == 2) {
-        res[i] += divF_spts[0](spt,i)*divF_spts[0](spt,i) / (detJac_spts[spt]*detJac_spts[spt]);
+        res[i] += divF_spts[0](spt,i)*divF_spts[0](spt,i) / detJac_spts[spt] * weights[spt];
       }
       else if (normType == 3) {
         // Infinity norm
@@ -1674,6 +2154,13 @@ point ele::getPosSpt(uint spt)
 point ele::getPosFpt(uint fpt)
 {
   return pos_fpts[fpt];
+}
+
+void ele::getPosSpts(double* posSpts)
+{
+  for (int spt=0; spt<nSpts; spt++)
+    for (int dim=0; dim<nDims; dim++)
+      posSpts[spt*3+dim] = pos_spts[spt][dim];
 }
 
 uint ele::getNDims() const
@@ -1716,5 +2203,19 @@ void ele::setNFpts(int value)
 double ele::getSensor(void)
 {
    return sensor;
+}
+
+void ele::getUSpts(double* Uvec)
+{
+  for (int spt=0; spt<nSpts; spt++)
+    for (int field=0; field<nFields; field++)
+      Uvec[spt*nFields+field] = U_spts(spt,field);
+}
+
+void ele::setUSpts(double* Uvec)
+{
+  for (int spt=0; spt<nSpts; spt++)
+    for (int field=0; field<nFields; field++)
+      U_spts(spt,field) = Uvec[spt*nFields+field];
 }
 

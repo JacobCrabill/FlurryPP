@@ -25,7 +25,7 @@ extern "C" {
 
   void tioga_performconnectivity_highorder_(void);
 
-  void tioga_dataupdate_(double* q,int* nvar,char* itype);
+  void tioga_dataupdate_(double* q, int* nvar, int* itype);
 
   void tioga_writeoutputfiles_(double* q, int* nvar, int* itype);
 
@@ -41,11 +41,11 @@ extern "C" {
 
   /*!
    * Assign callback functions for high-order method processing
-   * f1: get_nodes_per_cell (cellID, nodesPerCell)
-   * f2: get_recepter_nodes (cellID, pointsPerCell, receptor_nodes_XYZ)
-   * f3: donor_inclusion_test (cellID, posXYZ, passFlag, rst[ipoint])
-   * f4: donor_frac (cellID, xsearch, nweights, inode, frac, rst, ndim)
-   * f5: convert_to_modal (cellID, pointsPerCell, nodalVals, nPts, indexOut, modalVals)
+   * f1: getNodesPerCell (cellID, nodesPerCell)
+   * f2: getRecepterNodes (cellID, pointsPerCell, receptor_nodes_XYZ)
+   * f3: donorInclusionTest (cellID, posXYZ, passFlag, rst[ipoint])
+   * f4: donorWeights (cellID, xsearch, nweights, inode, frac, rst, ndim)
+   * f5: convertToModal (cellID, pointsPerCell, nodalVals, nPts, indexOut, modalVals)
    */
   void tioga_set_highorder_callback_(void (*f1)(int*, int*),
                                      void (*f2)(int *,int *,double *),

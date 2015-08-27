@@ -18,23 +18,28 @@
 
 #include "global.hpp"
 
-//#include "face.hpp"
+#include "funcs.hpp"
 #include "geo.hpp"
 #include "input.hpp"
 #include "matrix.hpp"
+#include "points.hpp"
 
 class ele
 {
 friend class face;
 friend class boundFace;
 friend class intFace;
+friend class overFace;
 friend class solver;
 
 public:
-  int ID, IDg; //! IDg will be for MPI (if I ever get to that; for now, just a reminder!)
+  int ID, IDg; //! IDg is global ID in MPI cases
   int eType;
   int order;
-  int nNodes;
+  int nNodes; //! Number of nodes used to define element shape
+  int nMpts;  //! Number of nodes used for plotting (corners, not edge nodes for quadratic eles)
+
+  string sptsType;  //! Which set of point locations to use for solution and flux points
 
   vector<point> loc_spts; //! Location of solution points in parent domain
   vector<point> loc_fpts; //! Location of flux points in parent domain
@@ -117,6 +122,9 @@ public:
   /*! Get vector of primitive variables at a flux point */
   vector<double> getPrimitivesFpt(uint fpt);
 
+  /*! Get vector of primitive variables at a mesh point */
+  vector<double> getPrimitivesMpt(uint mpt);
+
   /*! Get the full matrix of solution values at spts + fpts combined */
   void getPrimitivesPlot(matrix<double> &V);
 
@@ -132,7 +140,23 @@ public:
   /*! Get position of solution point in physical space */
   point getPosSpt(uint spt);
 
-  point getPosFpt(uint spt);
+  point getPosFpt(uint fpt);
+
+  void getPosSpts(double* posSpts);
+
+  //! Get a bounding box for the element defined by a center point, width, length, and height
+  vector<double> getBoundingBox(void);
+
+  /*! Find the reference location of a point inside an element given its
+   *  physical position */
+  point getRefLoc(const point &pos);
+
+  /*! Find the reference location of a point inside an element given its
+   *  physical location, using the Nelder-Meade algorithm */
+  bool getRefLocNelderMeade(point pos, point &loc);
+
+  /*! Calculate Jacobian & Inverse Jacobian at a reference location in element */
+  void getInverseMapping(const point xi, matrix<double> &J, matrix<double> &Jinv);
 
   uint getNDims() const;
   void setNDims(int value);
@@ -155,7 +179,12 @@ public:
   void setupAllGeometry();
   void restart(ifstream &file, input *_params, geo *_Geo);
 
-private:
+  void getUSpts(double* Uvec);
+  void setUSpts(double* Uvec);
+
+  bool checkDensity();
+  void checkEntropy();
+  void checkEntropyPlot();
 
   /* --- Simulation/Mesh Parameters --- */
   geo* Geo;      //! Geometry (mesh) to which element belongs
@@ -183,12 +212,14 @@ private:
   matrix<double> dUc_fpts;         //! Common minus discontinuous solution at flux points
   vector<double> waveSp_fpts;      //! Maximum wave speed at each flux point
 
+  vector<double> Uavg;             //! Average solution over element
+
   // Gradients
   vector<matrix<double> > dU_spts;  //! Gradient of solution at solution points
   vector<matrix<double> > dU_fpts;  //! Gradient of solution at flux points
-  vector<vector<matrix<double>>> dF_spts;  //! Gradient of flux at solution points
-  vector<matrix<double>> divF_spts;         //! Divergence of flux at solution points
-  vector<matrix<double>> tdF_spts;          //! Transformed gradient of flux (dF_dxi and dG_deta) at solution points
+  Array<matrix<double>,2> dF_spts;  //! Gradient of flux at solution points
+  vector<matrix<double>> divF_spts; //! Divergence of flux at solution points
+  vector<matrix<double>> tdF_spts;  //! Transformed gradient of flux (dF_dxi and dG_deta) at solution points
 
   // Transform Variables
   vector<double> detJac_spts;  //! Determinant of transformation Jacobian at each solution point
@@ -197,7 +228,7 @@ private:
   vector<matrix<double> > Jac_fpts;  //! Transformation Jacobian [matrix] at each flux point
   vector<matrix<double> > JGinv_spts;  //! Inverse of transformation Jacobian [matrix] at each solution point
   vector<matrix<double> > JGinv_fpts;  //! Inverse of transformation Jacobian [matrix] at each flux point
-  
+
   matrix<double> shape_spts;
   matrix<double> shape_fpts;
   vector<matrix<double>> dShape_spts;  //! Derivative of shape basis at solution points
@@ -227,8 +258,10 @@ private:
   matrix<double> tempF;
   vector<double> tempU;
 
+private:
+
   /*! Get the values of the nodal shape bases at a solution point */
   void getShape(point loc, vector<double> &shape);
 
-  void perturb(void);
+  double getDxNelderMeade(point refLoc, point physPos);
 };

@@ -49,8 +49,8 @@ Line(13)  = {6, 8};
 Line(14) = {7, 9};
 Line(15) = {10,12};
 Line(16) = {11,13};
-Transfinite Line {5,6,7,8,9,10,11,12} = 20; // We want 40 points along each of these lines
-Transfinite Line {13,14,15,16} = 15 Using Progression 1.1;    // And 10 points along each of these lines
+Transfinite Line {5,6,7,8,9,10,11,12} = 10; // We want xx points along each of these lines
+Transfinite Line {13,14,15,16} = 8 Using Progression 1.1;    // And xx points along each of these lines
 
 // Exterior (bounding box) of mesh
 //Point(14) = {-30, -30, 0, cl1};
@@ -88,7 +88,7 @@ Recombine Surface {2,3,4,5};
 //Recombine Surface {1,6};
 
 // Extrude in Z-direction
-Extrude {0,0,1} {
+Extrude {0,0,.5} {
   Surface{2,3,4,5}; 
   Layers{2};  
   Recombine;

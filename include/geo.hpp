@@ -14,21 +14,39 @@
  */
 #pragma once
 
+#include <array>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "global.hpp"
 
+#ifndef _NO_MPI
+class tioga;
+#endif
+
 #include "ele.hpp"
 #include "input.hpp"
-#include "solver.hpp"
 #include "face.hpp"
 #include "mpiFace.hpp"
+#include "overFace.hpp"
+#include "solver.hpp"
+#include "superMesh.hpp"
+
+#ifndef _NO_MPI
+#include "tioga.h"
+#endif
+
+#define NORMAL  1
+#define HOLE    0
+#define FRINGE -1
 
 class geo
 {
 public:
   geo();
+
+  ~geo();
 
   /* === Primay setup routines === */
 
@@ -39,7 +57,10 @@ public:
   void processConnectivity();
 
   //! Create the elements and faces needed for the simulation
-  void setupElesFaces(vector<ele> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec);
+  void setupElesFaces(vector<ele> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec, vector<shared_ptr<overFace> >& overFacesVec);
+
+  //! Update nodal positions and velocities for moving-grid cases
+  void moveMesh(void);
 
   /* === Helper Routines === */
 
@@ -49,38 +70,55 @@ public:
   //! Create a simple Cartesian mesh from input parameters
   void createMesh();
 
-  //! Get the reference-domain location of the solution points for the given element & polynomial order
-  vector<point> getLocSpts(int eType, int order);
-
-  //! Get the reference-domain location of the flux points for the given element & polynomial order
-  vector<point> getLocFpts(int eType, int order);
-
-  //! Get the point locations of the requested type (i.e. Gauss, Lobatto) for the given order
-  vector<double> getPts1D(string ptsType, int order);
-
-  //! Get the Gauss quadrature weights for the Gauss points of the given order [2D]
-  vector<double> getQptWeights(int order);
-
-  //! Get the Gauss quadrature weights for the Gauss points of the given order [1D]
-  vector<double> getQptWeights1D(int order);
-
   //! Update connectivity / node-blanking for overset grids
-  void setOversetConnectivity();
+  void registerGridDataTIOGA();
+
+  /*!
+   * \brief Call TIOGA to re-process overset connectivity
+   *
+   * Called once during pre-processing by default; re-call each iteration
+   * for moving-mesh cases
+   */
+  void updateOversetConnectivity();
+
+  //! Have TIOGA output the mesh along with nodal IBLANK values
+  void writeOversetConnectivity();
+
+  /* ---- My Overset Functions ---- */
+
+  //! Setup the 'connectivity' between the overset interpolation points & donor grids/cells
+  void matchOversetPoints(vector<ele> &eles, struct dataExchange& exchange);
+
+  //! Send / Receive interpolated data to proper grid and rank
+  void exchangeOversetData(struct dataExchange &exchange);
+
+  void matchOversetDonors(vector<ele> &eles, vector<superMesh> &donors);
+
+  void setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
 
   int nDims, nFields;
-  int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces;
-  int nBounds;  //! Number of boundaries  
+  int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces, nOverFaces;
+  int nBounds;  //! Number of boundaries
   int meshType;
 
   // Basic [essential] Connectivity Data
   matrix<int> c2v;
-  matrix<double> xv;
+  matrix<double> xv;      //! Current physical position of vertices [static or moving grids]
+
+  // Basic Moving-Grid Variables
+  vector<point> xv_new;   //! Physical position of vertices for next time step [moving grids]
+  vector<point> xv0;      //! Initial position of vertices [moving grids]
+  matrix<double> gridVel; //! Grid velocity of vertices
+
+  point centroid;   //! Centroid of all vertices on grid partition
+  point extents;     //! Overall x,y,z extents (max-min) of grid partition
 
   // Additional Connectivity Data
   matrix<int> c2e, c2b, e2c, e2v, v2e, v2v, v2c;
-  matrix<int> c2f, f2v, f2c;
+  matrix<int> c2f, f2v, f2c, c2c, c2ac;
   vector<int> v2nv, v2nc, c2nv, c2nf, f2nv, ctype;
-  vector<int> intFaces, bndFaces, mpiFaces, mpiCells;
+  vector<int> intFaces, bndFaces, mpiFaces, overFaces, mpiCells;
+  set<int> overCells;            //! List of all cells which have an overset-boundary-condition face
   vector<int> bcList;            //! List of boundary conditions for each boundary
   vector<int> bcType;            //! Boundary condition for each boundary edge
   matrix<int> bndPts;            //! List of node IDs on each boundary
@@ -88,19 +126,57 @@ public:
   vector<matrix<int> > bcFaces;  //! List of nodes on each face (edge) for each boundary condition
   vector<int> nFacesPerBnd;      //! List of # of faces on each boundary
   vector<int> procR;             //! What processor lies to the 'right' of this face
-  vector<int> locF_R;            //! The local mpiFace ID of each mpiFace on the opposite processor
+  vector<int> faceID_R;            //! The local mpiFace ID of each mpiFace on the opposite processor
   vector<int> gIC_R;             //! The global cell ID of the right cell on the opposite processor
   vector<int> mpiLocF;           //! Element-local face ID of MPI Face in left cell
   vector<int> mpiLocF_R;         //! Element-local face ID of MPI Face in right cell
-  vector<bool> isBnd; // might want to change this to "int" and have it store WHICH boundary the face is on (-1 for internal)
+  vector<int> mpiPeriodic;       //! Flag for whether an MPI face is also a periodic face
+  vector<int> faceType;          //! Type for each face: hole, internal, boundary, MPI, overset [-1,0,1,2,3]
 
   /* --- Overset-Related Variables --- */
-  int nprocPerGrid;   //! Number of MPI processes assigned to each (overset) grid block
-  int gridID;         //! Which (overset) grid block is this process handling
-  int gridRank;       //! MPI rank of process *within* the grid block [0 to nprocPerGrid-1]
-  vector<int> iblank; //! Output of TIOGA: flag for whether vertex is normal, blanked, or receptor
-  vector<int> iwall;  //! List of nodes on wall boundaries
-  vector<int> iover;  //! List of nodes on overset boundaries
+  int nGrids;             //! Number of distinct overset grids
+  int nProcGrid;       //! Number of MPI processes assigned to current (overset) grid block
+  int gridID;             //! Which (overset) grid block is this process handling
+  int gridRank;           //! MPI rank of process *within* the grid block [0 to nprocPerGrid-1]
+  int rank;
+  int nproc;
+  vector<int> nProcsGrid; //! Number of processes for each (overset) grid block
+  vector<int> gridIdList; //! gridID for each MPI rank
+  vector<int> iblank;     //! Output of TIOGA: flag for whether vertex is normal, blanked, or receptor
+  vector<int> iblankCell; //! Output? of TIOGA: flag for whether cell is normal, blanked, or receptor
+  vector<int> iblankFace; //! Flag for whether a face is normal, blanked, or receptor
+  vector<int> iwall;      //! List of nodes on wall boundaries
+  vector<int> iover;      //! List of nodes on overset boundaries
+  vector<int> nodeType;   //! For each node: normal interior, normal boundary, or overset
+
+  vector<int> eleMap;     //! For overset meshes where some cells are blanked, map from 'ic' to 'eles' index
+  vector<int> faceMap;    //! For overset meshes where some faces are blanked, map from 'ff' to faceType-vector index
+  //vector<int> bfaceMap;
+  //vector<int> mFaceMap;
+  //vector<int> oFaceMap;
+
+#ifndef _NO_MPI
+  MPI_Comm gridComm;  //! Intra-grid communicator
+  MPI_Comm interComm; //! Inter-grid communicator (matched by gridRank)
+#endif
+
+  /* --- Moving-Overset-Grid-Related Variables --- */
+  set<int> holeCells;     //! List of cells in mesh which are currently blanked
+  set<int> holeFaces;     //! List of faces in mesh which are currently blanked
+  set<int> fringeFaces;   //! List of faces in mesh which are currently fringe faces
+  set<int> unblankCells;  //! List of non-existing cells which, due to motion, must be un-blanked
+  set<int> unblankFaces;  //! List of non-existing faces which, due to motion, must be un-blanked
+  set<int> unblankOFaces; //! List of non-existing faces which, due to motion, must be un-blanked as overset faces
+  set<int> blankCells;    //! List of existing cells which, due to motion, must be blanked
+  set<int> blankFaces;    //! List of existing faces which, due to motion, must be blanked
+  set<int> blankOFaces;   //! List of existing overset faces which, due to motion, must be blanked
+
+#ifndef _NO_MPI
+  shared_ptr<tioga> tg;  //! Pointer to Tioga object for processing overset grids
+#endif
+  int* nodesPerCell;   //! Pointer for Tioga to know # of nodes for each element type
+  array<int*,1> conn;  //! Pointer to c2v for each element type [but only 1, so will be size(1)]
+  matrix<int> tg_c2v;  //! 'Cleaned' c2v for Tioga (when quadratic elements present, normal c2v won't work)
 
 private:
 
@@ -120,18 +196,25 @@ private:
   void processConn2D(void);
   void processConn3D(void);
 
+  //! Using Tioga's nodal iblanks, set iblank values for all cells and faces
+  void setCellFaceIblanks();
+
   //! Match up pairs of periodic boundary faces
   void processPeriodicBoundaries(void);
 
   //! Check if two given periodic edges match up
   bool checkPeriodicFaces(int *edge1, int *edge2);
   bool checkPeriodicFaces3D(vector<int> &face1, vector<int> &face2);
+  bool comparePeriodicMPI(vector<int> &face1, vector<int> &face2);
 
   //! Compare the orientation (rotation in ref. space) betwen the local faces of 2 elements
   int compareOrientation(int ic1, int ic2, int f1, int f2);
 
   //! Compare the orientation (rotation in ref. space) betwen the local faces of 2 elements across MPI boundary
-  int compareOrientationMPI(int ic1, int ic2, int f1, int f2);
+  int compareOrientationMPI(int ic1, int ic2, int f1, int f2, int isPeriodic);
+
+  //! For overset cases, balance MPI processes across grids by # of elements
+  void splitGridProcs(void);
 
   //! For MPI runs, partition the mesh across all processors
   void partitionMesh(void);
@@ -141,4 +224,5 @@ private:
 
   //! Compare two faces [lists of nodes] to see if they match [used for MPI]
   bool compareFaces(vector<int> &face1, vector<int> &face2);
+
 };

@@ -14,67 +14,97 @@
  */
 #include "../include/matrix.hpp"
 
+#include <set>
+
+template<typename T, uint N>
+Array<T,N>::Array()
+{
+  data.resize(0);
+  dims = {{0,0,0,0}};
+}
+
+template<typename T, uint N>
+Array<T,N>::Array(uint inNDim0, uint inNDim1, uint inDim2, uint inDim3)
+{
+  data.resize(inNDim0*inNDim1*inDim2*inDim3);
+  dims = {{inNDim0,inNDim1,inDim2,inDim3}};
+}
+
+template<typename T>
+Array2D<T>::Array2D()
+{
+  this->data.resize(0);
+  this->dims[0] = 0;
+  this->dims[1] = 0;
+}
+
+template<typename T>
+Array2D<T>::Array2D(uint inNDim0, uint inNDim1)
+{
+  this->data.resize(inNDim0*inNDim1);
+  this->dims[0] = inNDim0;
+  this->dims[1] = inNDim1;
+}
+
 template<typename T>
 matrix<T>::matrix()
 {
-  data.resize(0);
-  dim0 = 0;
-  dim1 = 0;
+  this->data.resize(0);
+  this->dims[0] = 0;
+  this->dims[1] = 0;
 }
 
 template<typename T>
-matrix<T>::matrix(uint inDim0, uint inDim1)
+matrix<T>::matrix(uint inNDim0, uint inNDim1)
 {
-  data.resize(inDim0*inDim1);
-  dim0 = inDim0;
-  dim1 = inDim1;
+  this->data.resize(inNDim0*inNDim1);
+  this->dims[0] = inNDim0;
+  this->dims[1] = inNDim1;
 }
 
-template<typename T>
-matrix<T>::matrix(const matrix<T> &inMatrix)
-{
-  data = inMatrix.data;
-  dim0 = inMatrix.dim0;
-  dim1 = inMatrix.dim1;
-}
-
-template<typename T>
-matrix<T> matrix<T>::operator=(const matrix<T> &inMatrix)
+template<typename T,uint N>
+Array<T,N>::Array(const Array<T,N> &inMatrix)
 {
   data = inMatrix.data;
-  dim0 = inMatrix.dim0;
-  dim1 = inMatrix.dim1;
+  dims = inMatrix.dims;
+}
+
+template<typename T, uint N>
+Array<T,N> Array<T,N>::operator=(const Array<T,N> &inMatrix)
+{
+  data = inMatrix.data;
+  dims = inMatrix.dims;
   return *this;
 }
 
-template<typename T>
-void matrix<T>::setup(uint inDim0, uint inDim1)
+template<typename T, uint N>
+void Array<T,N>::setup(uint inDim0, uint inDim1, uint inDim2, uint inDim3)
 {
-  dim0 = inDim0;
-  dim1 = inDim1;
-  data.resize(inDim0*inDim1);
+  dims = {{inDim0,inDim1,inDim2,inDim3}};
+  data.resize(inDim0*inDim1*inDim2*inDim3);
 }
+
 
 template<typename T>
 void matrix<T>::addMatrix(matrix<T> &A, double a)
 {
-  if (A.dim0 != dim0 || A.dim1 != dim1)
+  if (A.dims[0] != this->dims[0] || A.dims[1] != this->dims[1])
     FatalError("Incompatible matrix sizes for addMatrix.");
 
-  for (uint i=0; i<dim0; i++)
-    for (uint j=0; j<dim1; j++)
-      data[i*dim1+j] += a*A(i,j);
+  for (uint i=0; i<this->dims[0]; i++)
+    for (uint j=0; j<this->dims[1]; j++)
+      this->data[i*this->dims[1]+j] += a*A(i,j);
 }
 
 template<>
 matrix<double>& matrix<double>::operator+=(matrix<double> &A)
 {
-  if (A.dim0 != dim0 || A.dim1 != dim1)
+  if (A.dims[0] != this->dims[0] || A.dims[1] != this->dims[1])
     FatalError("Incompatible matrix sizes for addMatrix.");
 
-  for (uint i=0; i<dim0; i++)
-    for (uint j=0; j<dim1; j++)
-      data[i*dim1+j] += A(i,j);
+  for (uint i=0; i<this->dims[0]; i++)
+    for (uint j=0; j<this->dims[1]; j++)
+      this->data[i*this->dims[1]+j] += A(i,j);
 
   return *this;
 }
@@ -82,35 +112,51 @@ matrix<double>& matrix<double>::operator+=(matrix<double> &A)
 template<>
 matrix<double>& matrix<double>::operator-=(matrix<double> &A)
 {
-  if (A.dim0 != dim0 || A.dim1 != dim1)
+  if (A.dims[0] != this->dims[0] || A.dims[1] != this->dims[1])
     FatalError("Incompatible matrix sizes for addMatrix.");
 
-  for (uint i=0; i<dim0; i++)
-    for (uint j=0; j<dim1; j++)
-      data[i*dim1+j] -= A(i,j);
+  for (uint i=0; i<this->dims[0]; i++)
+    for (uint j=0; j<this->dims[1]; j++)
+      this->data[i*this->dims[1]+j] -= A(i,j);
 
   return *this;
 }
 
-template<typename T>
-T* matrix<T>::operator[](int inRow)
+template<typename T, uint N>
+T* Array<T,N>::operator[](int inRow)
 {
-  if (inRow < (int)dim0 && inRow >= 0) {
-    return &data[inRow*dim1];
+  if (inRow < (int)this->dims[0] && inRow >= 0) {
+    return &data[inRow*dims[1]];
   }
   else {
-    FatalError("Attempted out-of-bounds access in matrix.");
+    cout << "inRow = " << inRow << ", nRows = " << this->dims[0] << endl;
+    FatalError("Operator[]: Attempted out-of-bounds access in matrix.");
+  }
+}
+
+template<typename T, uint N>
+T& Array<T,N>::operator()(int i, int j, int k, int l)
+{
+  if (i<(int)this->dims[0] && i>=0 && j<(int)this->dims[1] && j>=0 &&
+      k<(int)this->dims[2] && k>=0 && l<(int)this->dims[3] && l>= 0)
+  {
+    return data[l+dims[3]*(k+dims[2]*(j+dims[1]*i))];
+  }
+  else {
+    cout << "i=" << i << ", dim0=" << dims[0] << ", j=" << j << ", dim1=" << dims[1] << ", ";
+    cout << "k=" << k << ", dim2=" << dims[2] << ", l=" << l << ", dim3=" << dims[3] << endl;
+    FatalError("Attempted out-of-bounds access in Array.");
   }
 }
 
 template<typename T>
-T& matrix<T>::operator()(int i, int j)
+T& Array2D<T>::operator()(int i, int j)
 {
-  if (i<(int)dim0 && i>=0 && j<(int)dim1 && j>=0) {
-    return data[i*dim1+j];
+  if (i<(int)this->dims[0] && i>=0 && j<(int)this->dims[1] && j>=0) {
+    return this->data[j+this->dims[1]*i];
   }
   else {
-    cout << "i = " << i << ", dim0 = " << dim0 << ", j = " << j << ", dim1 = " << dim1 << endl;
+    cout << "i=" << i << ", dim0=" << this->dims[0] << ", j=" << j << ", dim1=" << this->dims[1] << endl;
     FatalError("Attempted out-of-bounds access in matrix.");
   }
 }
@@ -118,34 +164,38 @@ T& matrix<T>::operator()(int i, int j)
 template<typename T>
 void matrix<T>::initializeToZero(void)
 {
-  for (uint idim=0; idim<dim0; idim++)
-    for (uint jdim=0; jdim<dim1; jdim++)
-      data[idim*dim1+jdim] = 0;
+  for (uint i=0; i<this->dims[0]; i++)
+    for (uint j=0; j<this->dims[1]; j++)
+      for (uint k=0; k<this->dims[2]; k++)
+        for (uint l=0; l<this->dims[3]; l++)
+          this->data[l+this->dims[3]*(k+this->dims[2]*(j+this->dims[1]*i))] = 0;
 }
 
 template<typename T>
 void matrix<T>::initializeToValue(T val)
 {
-  for (uint idim=0; idim<dim0; idim++)
-    for (uint jdim=0; jdim<dim1; jdim++)
-      data[idim*dim1+jdim] = val;
+  for (uint i=0; i<this->dims[0]; i++)
+    for (uint j=0; j<this->dims[1]; j++)
+      for (uint k=0; k<this->dims[2]; k++)
+        for (uint l=0; l<this->dims[3]; l++)
+          this->data[l+this->dims[3]*(k+this->dims[2]*(j+this->dims[1]*i))] = val;
 }
 
 template <typename T>
 void matrix<T>::timesMatrix(matrix<T> &A, matrix<T> &B)
 {
   uint i, j, k, p;
-  p = A.dim1;
+  p = A.dims[1];
 
-  if (A.dim0 != dim1) FatalError("Incompatible matrix sizes in matrix multiplication!");
-  if (B.dim0 != dim0 || B.dim1 != A.dim1) B.setup(dim0, A.dim1);
+  if (A.dims[0] != this->dims[1]) FatalError("Incompatible matrix sizes in matrix multiplication!");
+  if (B.dims[0] != this->dims[0] || B.dims[1] != A.dims[1]) B.setup(this->dims[0], A.dims[1]);
 
   B.initializeToZero();
 
-  for (i=0; i<dim0; i++) {
-    for (j=0; j<dim1; j++) {
+  for (i=0; i<this->dims[0]; i++) {
+    for (j=0; j<this->dims[1]; j++) {
       for (k=0; k<p; k++) {
-        B[i][k] += data[i*dim1+j]*A[j][k];
+        B[i][k] += this->data[i*this->dims[1]+j]*A[j][k];
       }
     }
   }
@@ -163,15 +213,15 @@ matrix<double*> operator*(matrix<double*> &A, matrix<double*> &B)
 
 matrix<double> operator*(matrix<double> &A, matrix<double> &B)
 {
-  uint p = A.dim1;
+  uint p = A.dims[1];
 
-  if (A.dim1 != B.dim0) FatalError("Incompatible matrix sizes in matrix multiplication!");
+  if (A.dims[1] != B.dims[0]) FatalError("Incompatible matrix sizes in matrix multiplication!");
 
-  matrix<double> out(A.dim0,B.dim1);
+  matrix<double> out(A.dims[0],B.dims[1]);
   out.initializeToZero();
 
-  for (uint i=0; i<A.dim0; i++) {
-    for (uint j=0; j<B.dim1; j++) {
+  for (uint i=0; i<A.dims[0]; i++) {
+    for (uint j=0; j<B.dims[1]; j++) {
       for (uint k=0; k<p; k++) {
         out(i,j) += A(i,k)*B(k,j);
       }
@@ -184,15 +234,15 @@ template <typename T>
 void matrix<T>::timesMatrixPlus(matrix<T> &A, matrix<T> &B)
 {
   uint i, j, k, p;
-  p = A.dim1;
+  p = A.dims[1];
 
-  if (A.dim0 != dim1) FatalError("Incompatible matrix sizes in matrix multiplication!");
-  if (B.dim0 != dim0 || B.dim1 != A.dim1) B.setup(dim0, A.dim1);
+  if (A.dims[0] != this->dims[1]) FatalError("Incompatible matrix sizes in matrix multiplication!");
+  if (B.dims[0] != this->dims[0] || B.dims[1] != A.dims[1]) B.setup(this->dims[0], A.dims[1]);
 
-  for (i=0; i<dim0; i++) {
-    for (j=0; j<dim1; j++) {
+  for (i=0; i<this->dims[0]; i++) {
+    for (j=0; j<this->dims[1]; j++) {
       for (k=0; k<p; k++) {
-        B[i][k] += data[i*dim1+j]*A[j][k];
+        B[i][k] += this->data[i*this->dims[1]+j]*A[j][k];
       }
     }
   }
@@ -203,180 +253,183 @@ void matrix<T>::timesVector(vector<T> &A, vector<T> &B)
 {
   uint i, j;
 
-  //if (A.size() != dim1) FatalError("Incompatible vector size");
-  if (B.size() != dim1) B.resize(dim1);
+  //if (A.size() != this->dims[1]) FatalError("Incompatible vector size");
+  if (B.size() != this->dims[1]) B.resize(this->dims[1]);
 
-  for (i=0; i<dim0; i++) {
+  for (i=0; i<this->dims[0]; i++) {
     B[i] = 0;
-    for (j=0; j<dim1; j++) {
-      B[i] += data[i*dim1+j]*A[j];
+    for (j=0; j<this->dims[1]; j++) {
+      B[i] += this->data[i*this->dims[1]+j]*A[j];
     }
   }
 }
 
-// Support for non-arithematic data types (pointers) - do nothing.
-template<>
-void matrix<double*>::addMatrix(matrix<double*> &, double ) {
-  FatalError("matrix.addMatrix not supported for non-arithematic data types.");
-}
-
-template<>
-void matrix<double*>::timesMatrix(matrix<double*> &, matrix<double*> &) {
-  // incompatible - do nothing.
-  FatalError("matrix.timesMatrix not supported for non-arithematic data types.");
-}
-
-template<>
-void matrix<double*>::timesMatrixPlus(matrix<double*> &, matrix<double*> &) {
-  // incompatible - do nothing.
-  FatalError("matrix.timesMatrixPlus not supported for non-arithematic data types.");
-}
-
-template<>
-void matrix<double*>::timesVector(vector<double*> &, vector<double*> &) {
-  // incompatible - do nothing.
-  FatalError("matrix.timesVector not supported for non-arithematic data types.");
-}
-
-template<>
-matrix<double*> matrix<double*>::invertMatrix(void) {
-  // incompatible - do nothing.
-  FatalError("matrix.invertMatrix not supported for non-arithmatic data types.");
-}
-
 template<typename T>
-void matrix<T>::insertRow(const vector<T> &vec, int rowNum)
+void Array2D<T>::insertRow(const vector<T> &vec, int rowNum)
 {
-  if (dim1!= 0 && vec.size()!=dim1) FatalError("Attempting to assign row of wrong size to matrix.");
+  if (this->dims[1]!= 0 && vec.size()!=this->dims[1])
+    FatalError("Attempting to assign row of wrong size to matrix.");
 
-  if (rowNum==INSERT_AT_END || rowNum==(int)dim0) {
+  if (rowNum==INSERT_AT_END || rowNum==(int)this->dims[0]) {
     // Default action - add to end
-    data.insert(data.end(),vec.begin(),vec.end());
+    this->data.insert(this->data.end(),vec.begin(),vec.end());
   }else{
     // Insert at specified location
-    data.insert(data.begin()+rowNum*dim1,vec.begin(),vec.end());
+    this->data.insert(this->data.begin()+rowNum*this->dims[1],vec.begin(),vec.end());
   }
 
-  if (dim1==0) dim1=vec.size(); // This may not be needed (i.e. may never have dim1==0). need to verify how I set up dim0, dim1...
-  dim0++;
+  if (this->dims[1]==0) this->dims[1]=vec.size(); // This may not be needed (i.e. may never have this->dims[1]==0). need to verify how I set up this->dims[0], this->dims[1]...
+  this->dims[0]++;
 }
 
 template<typename T>
-void matrix<T>::insertRowUnsized(const vector<T> &vec)
+void Array2D<T>::insertRow(T *vec, int rowNum, int length)
+{
+  if (this->dims[1]!=0 && length!=(int)this->dims[1])
+    FatalError("Attempting to assign row of wrong size to matrix.");
+
+  if (rowNum==INSERT_AT_END || rowNum==(int)this->dims[0]) {
+    // Default action - add to end
+    this->data.insert(this->data.end(),vec,vec+length);
+  }else{
+    // Insert at specified location
+    this->data.insert(this->data.begin()+rowNum*this->dims[1],vec,vec+length);
+  }
+
+  if (this->dims[0]==0)
+    this->dims = {{0,(uint)length,1,1}};
+
+  this->dims[0]++;
+}
+
+
+template<typename T>
+void Array2D<T>::insertRowUnsized(const vector<T> &vec)
 {
   // Add row to end, and resize matrix (add columns) if needed
-  if (vec.size() > dim1) addCols(vec.size()-dim1);
+  if (vec.size() > this->dims[1]) addCols(vec.size()-this->dims[1]);
 
-  data.insert(data.end(),vec.begin(),vec.end());
+  this->data.insert(this->data.end(),vec.begin(),vec.end());
 
-  dim0++;
+  // If row too short, finish filling with 0's
+  if (vec.size() < this->dims[1]) this->data.insert(this->data.end(),this->dims[1]-vec.size(),(T)0);
+
+  this->dims[0]++;
 }
 
 template<typename T>
-void matrix<T>::insertRow(T *vec, int rowNum, int length)
+void Array2D<T>::insertRowUnsized(T* vec, uint length)
 {
-  if (dim1!=0 && length!=(int)dim1) FatalError("Attempting to assign row of wrong size to matrix.");
+  // Add row to end, and resize matrix (add columns) if needed
+  if (length > this->dims[1]) addCols(length-this->dims[1]);
 
-  if (rowNum==INSERT_AT_END || rowNum==(int)dim0) {
-    // Default action - add to end
-    data.insert(data.end(),vec,vec+length);
-  }else{
-    // Insert at specified location
-    data.insert(data.begin()+rowNum*dim1,vec,vec+length);
-  }
+  this->data.insert(this->data.end(),vec,vec+length);
 
-  if (dim1==0) dim1=length;
-  dim0++;
+  // If row too short, finish filling with 0's
+  if (length < this->dims[1]) this->data.insert(this->data.end(),this->dims[1]-length,(T)0);
+
+  this->dims[0]++;
 }
 
 template<typename T>
-void matrix<T>::addCol(void)
-{
-  typename vector<T>::iterator it;
-  for (uint row=0; row<dim0; row++) {
-    it = data.begin() + (row+1)*(dim1+1) - 1;
-    data.insert(it,1,(T)0);
-  }
-  dim1++;
-}
-
-template<typename T>
-void matrix<T>::addCols(int nCols)
+void Array2D<T>::addCol(void)
 {
   typename vector<T>::iterator it;
-  for (uint row=0; row<dim0; row++) {
-    it = data.begin() + (row+1)*(dim1+nCols) - nCols;
-    data.insert(it,nCols,(T)0);
+  for (uint row=0; row<this->dims[0]; row++) {
+    it = this->data.begin() + (row+1)*(this->dims[1]+1) - 1;
+    this->data.insert(it,1,(T)0);
   }
-  dim1 += nCols;
+  this->dims[1]++;
 }
 
+template<typename T>
+void Array2D<T>::addCols(int nCols)
+{
+  typename vector<T>::iterator it;
+  for (uint row=0; row<this->dims[0]; row++) {
+    it = this->data.begin() + (row+1)*(this->dims[1]+nCols) - nCols;
+    this->data.insert(it,nCols,(T)0);
+  }
+  this->dims[1] += nCols;
+}
 
 template<typename T>
-void matrix<T>::removeCols(int nCols)
+void Array2D<T>::removeCols(int nCols)
 {
   if (nCols == 0) return;
 
   typename vector<T>::iterator it;
-  for (uint row=dim0; row>0; row--) {
-    it = data.begin() + row*dim1;
-    data.erase(it-nCols,it);
+  for (uint row=this->dims[0]; row>0; row--) {
+    it = this->data.begin() + row*this->dims[1];
+    this->data.erase(it-nCols,it);
   }
-  dim1 -= nCols;
+  this->dims[1] -= nCols;
 }
 
 template<typename T>
-vector<T> matrix<T>::getRow(uint row)
+vector<T> Array2D<T>::getRow(uint row)
 {
+  if (row > this->dims[0]) FatalError("Attempting to grab row beyond end of matrix.");
+
   vector<T> out;
-  out.assign(&data[row*dim1],&data[row*dim1]+dim1);
+  out.assign(&(this->data[row*this->dims[1]]),&(this->data[row*this->dims[1]])+this->dims[1]);
   return out;
 }
 
 template<typename T>
-matrix<T> matrix<T>::getRows(vector<int> ind)
+Array2D<T> Array2D<T>::getRows(vector<int> ind)
 {
   matrix<T> out;
-  for (auto& i:ind) out.insertRow(&data[i*dim1],-1,dim1);
+  for (auto& i:ind) out.insertRow(&(this->data[i*this->dims[1]]),-1,this->dims[1]);
   return out;
 }
 
 template<typename T>
-vector<T> matrix<T>::getCol(int col)
+vector<T> Array2D<T>::getCol(int col)
 {
   vector<T> out;
-  for (uint i=0; i<dim0; i++) out.push_back(data[i*dim1+col]);
+  for (uint i=0; i<this->dims[0]; i++) out.push_back(this->data[i*this->dims[1]+col]);
   return  out;
 }
 
 template<typename T>
 void matrix<T>::print()
 {
-  for (uint i=0; i<dim0; i++) {
-    for (uint j=0; j<dim1; j++) {
-      std::cout << std::left << std::setw(10) << std::setprecision(8) << data[i*dim1+j] << " ";
+  cout.precision(8);
+  for (uint i=0; i<this->dims[0]; i++) {
+    for (uint j=0; j<this->dims[1]; j++) {
+      cout << setw(10) << left << this->data[i*this->dims[1]+j] << " ";
     }
     cout << endl;
   }
 }
 
 template<typename T>
-void matrix<T>::unique(matrix<T> &out, vector<int> &iRow)
+bool matrix<T>::checkNan(void)
+{
+  for (auto& i:this->data)
+    if (std::isnan(i)) return true;
+
+  return false;
+}
+
+template<typename T>
+void matrix<T>::unique(matrix<T>& out, vector<int> &iRow)
 {
   out.setup(0,0);
 
   // Setup vector for rows of final matrix that map to each row of initial matrix
-  iRow.resize(dim0);
-  iRow.assign(dim0,-1);
+  iRow.resize(this->dims[0]);
+  iRow.assign(this->dims[0],-1);
 
   /* --- For each row in the matrix, compare to all
      previous rows to get first unique occurence --- */
   typename vector<T>::iterator itI, itJ;
-  for (uint i=0; i<dim0; i++) {
-    itI = data.begin() + i*dim1;
+  for (uint i=0; i<this->dims[0]; i++) {
+    itI = this->data.begin() + i*this->dims[1];
     for (uint j=0; j<i; j++) {
-      itJ = data.begin() + j*dim1;
-      if (equal(itI,itI+dim1,itJ)) {
+      itJ = this->data.begin() + j*this->dims[1];
+      if (equal(itI,itI+this->dims[1],itJ)) {
         iRow[i] = iRow[j];
         break;
       }
@@ -384,14 +437,14 @@ void matrix<T>::unique(matrix<T> &out, vector<int> &iRow)
 
     // If no prior occurance found, put in 'out' matrix
     if (iRow[i]==-1) {
-      out.insertRow(&data[i*dim1],-1,dim1);
+      out.insertRow(&(this->data[i*this->dims[1]]),-1,this->dims[1]);
       iRow[i] = out.getDim0() - 1;
     }
   }
 }
 
-template<typename T>
-T *matrix<T>::getData(void)
+template<typename T, uint N>
+T *Array<T,N>::getData(void)
 {
   return data.data();
 }
@@ -400,7 +453,7 @@ T *matrix<T>::getData(void)
 template<typename T>
 matrix<T> matrix<T>::invertMatrix(void)
 {
-  if (dim0 != dim1)
+  if (this->dims[0] != this->dims[1])
     FatalError("Can only obtain inverse of a square matrix.");
 
   // Gaussian elimination with full pivoting
@@ -413,37 +466,37 @@ matrix<T> matrix<T>::invertMatrix(void)
   double max;
   double dtemp_0;
   double first;
-  matrix <T> atemp_0(dim0,1);
-  matrix <T> identity(dim0,dim0);
-  matrix <T> input(dim0,dim0);
-  matrix <T> inverse(dim0,dim0);
-  matrix <T> inverse_out(dim0,dim0);
-  matrix <int> swap_0(dim0,1);
-  matrix <int> swap_1(dim0,1);
+  matrix <T> atemp_0(this->dims[0],1);
+  matrix <T> identity(this->dims[0],this->dims[0]);
+  matrix <T> input(this->dims[0],this->dims[0]);
+  matrix <T> inverse(this->dims[0],this->dims[0]);
+  matrix <T> inverse_out(this->dims[0],this->dims[0]);
+  matrix <int> swap_0(this->dims[0],1);
+  matrix <int> swap_1(this->dims[0],1);
 
   input = *this;
 
   // setup swap arrays
-  for(uint i=0;i<dim0;i++) {
+  for(uint i=0;i<this->dims[0];i++) {
     swap_0(i)=i;
     swap_1(i)=i;
   }
 
   // setup identity array
-  for(uint i=0; i<dim0; i++) {
-    for(uint j=0; j<dim0; j++) {
+  for(uint i=0; i<this->dims[0]; i++) {
+    for(uint j=0; j<this->dims[0]; j++) {
       identity(i,j)=0.0;
     }
     identity(i,i)=1.0;
   }
 
   // make triangular
-  for(uint k=0; k<dim0-1; k++) {
+  for(uint k=0; k<this->dims[0]-1; k++) {
     max=0;
 
     // find pivot
-    for(uint i=k; i<dim0; i++) {
-      for(uint j=k; j<dim0; j++) {
+    for(uint i=k; i<this->dims[0]; i++) {
+      for(uint j=k; j<this->dims[0]; j++) {
         mag=input(i,j)*input(i,j);
         if(mag>max) {
           pivot_i=i;
@@ -462,14 +515,14 @@ matrix<T> matrix<T>::invertMatrix(void)
     swap_1(pivot_j)=itemp_0;
 
     // swap the columns
-    for(uint i=0; i<dim0; i++) {
+    for(uint i=0; i<this->dims[0]; i++) {
       atemp_0(i)=input(i,pivot_j);
       input(i,pivot_j)=input(i,k);
       input(i,k)=atemp_0(i);
     }
 
     // swap the rows
-    for(uint j=0; j<dim0; j++) {
+    for(uint j=0; j<this->dims[0]; j++) {
       atemp_0(j)=input(pivot_i,j);
       input(pivot_i,j)=input(k,j);
       input(k,j)=atemp_0(j);
@@ -479,9 +532,9 @@ matrix<T> matrix<T>::invertMatrix(void)
     }
 
     // subtraction
-    for(uint i=k+1; i<dim0; i++) {
+    for(uint i=k+1; i<this->dims[0]; i++) {
       first=input(i,k);
-      for(uint j=0; j<dim0; j++) {
+      for(uint j=0; j<this->dims[0]; j++) {
         if(j>=k) {
           input(i,j)=input(i,j)-((first/input(k,k))*input(k,j));
         }
@@ -491,17 +544,17 @@ matrix<T> matrix<T>::invertMatrix(void)
 
     //exact zero
     for(uint j=0; j<k+1; j++) {
-      for(uint i=j+1; i<dim0; i++) {
+      for(uint i=j+1; i<this->dims[0]; i++) {
         input(i,j)=0.0;
       }
     }
   }
 
   // back substitute
-  for(int i=(int)dim0-1; i>=0; i--) {
-    for(uint j=0; j<dim0; j++) {
+  for(int i=(int)this->dims[0]-1; i>=0; i--) {
+    for(uint j=0; j<this->dims[0]; j++) {
       dtemp_0=0.0;
-      for(uint k=i+1; k<dim0; k++) {
+      for(uint k=i+1; k<this->dims[0]; k++) {
         dtemp_0=dtemp_0+(input(i,k)*inverse(k,j));
       }
       inverse(i,j)=(identity(i,j)-dtemp_0)/input(i,i);
@@ -509,8 +562,8 @@ matrix<T> matrix<T>::invertMatrix(void)
   }
 
   // swap solution rows
-  for(uint i=0; i<dim0; i++) {
-    for(uint j=0; j<dim0; j++) {
+  for(uint i=0; i<this->dims[0]; i++) {
+    for(uint j=0; j<this->dims[0]; j++) {
       inverse_out(swap_1(i),j)=inverse(i,j);
     }
   }
@@ -522,17 +575,47 @@ matrix<T> matrix<T>::invertMatrix(void)
 template<typename T>
 void matrix<T>::vecToMatrixResize(vector<T> &A)
 {
-  if(A.size() != dim0*dim1) {
-    FatalError("Cannot fill vector into matrix - must have vector size == dim0*dim1.");
+  if(A.size() != this->dims[0]*this->dims[1]) {
+    FatalError("Cannot fill vector into matrix - must have vector size == this->dims[0]*this->dims[1].");
   }
   else {
     for(uint i=0; i<A.size(); i++)
-      data[i] = A[i];
+      this->data[i] = A[i];
   }
 }
 
 
 // Fix for compiler to know which template types will be needed later (and therefore must now be compiled):
+template class Array<int,1>;
+template class Array<int,2>;
+template class Array<int,3>;
+template class Array<int,4>;
+
+template class Array<double,1>;
+template class Array<double,2>;
+template class Array<double,3>;
+template class Array<double,4>;
+
+template class Array<double*,1>;
+template class Array<double*,2>;
+template class Array<double*,3>;
+template class Array<double*,4>;
+
+template class Array<point,1>;
+template class Array<point,2>;
+template class Array<point,3>;
+template class Array<point,4>;
+
+template class Array<set<int>,1>;
+template class Array<set<int>,2>;
+template class Array<set<int>,3>;
+template class Array<set<int>,4>;
+
+template class Array2D<int>;
+template class Array2D<double>;
+template class Array2D<point>;
+
 template class matrix<int>;
 template class matrix<double>;
-template class matrix<double*>;
+
+template class Array<matrix<double>,2>;

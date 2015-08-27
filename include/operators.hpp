@@ -19,9 +19,11 @@
 
 #include "global.hpp"
 
+#include "funcs.hpp"
 #include "geo.hpp"
 #include "input.hpp"
 #include "matrix.hpp"
+#include "points.hpp"
 
 class oper
 {
@@ -38,19 +40,30 @@ public:
   //! Setup operator for calculation of gradient at the solution points
   void setupGradSpts(vector<point> &loc_spts);
 
-  //! Setup an interpolation operation between two sets of points using solution basis
-  void setupInterpolate(vector<point> &pts_from, vector<point> &pts_to, matrix<double> &opp_interp);
-
   /*! Setup operator to calculate divergence of correction function at solution points
    *  based upon the normal flux correction at the flux points */
   void setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts);
 
+  //! Setup an interpolation operation between solution points and given points using solution basis
+  matrix<double> setupInterpolateSptsIpts(matrix<double>& loc_ipts);
+
+  //! Interpolate a set of values at the solution points of an element to given interpolation points
+  void interpolateSptsToPoints(matrix<double>& Q_spts, matrix<double>& Q_ipts, matrix<double>& loc_ipts);
+
+  //! Interpolate values at the solution points of an element at the given reference location
+  void interpolateToPoint(matrix<double> &Q_spts, double* Q_ipts, point &loc_ipt);
+
+  //! Interpolate a flux vector (nDims x nFields) to the given reference location
+  void interpolateFluxToPoint(vector<matrix<double>> &F_spts, matrix<double> &F_ipt, point &loc_ipt);
+
+  //! Get interpolation weights at given point
+  void getInterpWeights(double* loc_ipt, double* weights);
 
   void setupCorrectGradU(void);
 
   void applyGradSpts(matrix<double> &U_spts, vector<matrix<double> > &dU_spts);
 
-  void applyGradFSpts(vector<matrix<double>> &F_spts, vector<vector<matrix<double>>> &dF_spts);
+  void applyGradFSpts(vector<matrix<double>> &F_spts, Array<matrix<double>,2>& dF_spts);
 
   void applyDivFSpts(vector<matrix<double>> &F_spts, matrix<double> &divF_spts);
 
@@ -70,7 +83,7 @@ public:
   void applyCorrectDivF(matrix<double> &dFn_fpts, matrix<double> &divF_spts);
 
 
-  void applyCorrectGradU(matrix<double>& dUc_fpts, vector<matrix<double> >& dU_spts);
+  void applyCorrectGradU(matrix<double>& dUc_fpts, vector<matrix<double> >& dU_spts, vector<matrix<double> > &JGinv_spts, vector<double> &detJac_spts);
 
   /*! Shock Capturing in the element */
   double shockCaptureInEle(matrix<double> &U_spts, double threshold);
@@ -81,10 +94,14 @@ public:
   map<int,matrix<double>*> get_oper_grad_spts;
   map<int,matrix<double>*> get_oper_correct;
 
+  //! Calculate average density over an element (needed for negative-density correction)
+  void calcAvgU(matrix<double>& U_spts, vector<double>& detJ_spts, vector<double>& Uavg);
+
 private:
   geo *Geo;
   input *params;
   uint nDims, nFields, eType, order, nSpts, nFpts;
+  string sptsType;
 
   matrix<double> opp_spts_to_fpts;
   matrix<double> opp_spts_to_mpts;
