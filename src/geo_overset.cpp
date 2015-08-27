@@ -210,7 +210,7 @@ void geo::setCellFaceIblanks()
     if (iblank[iv] == FRINGE) {
       int nfringe = 0;
       for (int j=0; j<v2nv[iv]; j++) {
-        if ((iblank[v2v(iv,j)] == FRINGE || iblank[v2v(iv,j)] == HOLE) && nodeType[v2v(iv,j)] == NORMAL_NODE) {
+        if ((iblank[v2v(iv,j)] == FRINGE && nodeType[v2v(iv,j)] == NORMAL_NODE) || iblank[v2v(iv,j)] == HOLE ) {
           nfringe++;
         }
       }
@@ -270,28 +270,27 @@ void geo::setCellFaceIblanks()
     if (iblankCell[ic] == HOLE) {
       for (int j=0; j<c2nf[ic]; j++) {
         int ff = c2f(ic,j);
-//        int ic2 = c2c(ic,j);
-//        if (ic2>0) {
-//          // Cell exists
-//          if (iblankCell[ic2]==NORMAL) {
-//            iblankFace[ff] = FRINGE;
-//          }
-//          else {
-//            iblankFace[ff] = HOLE;
-//          }
-//        }
-//        else {
-//          // Cell doesn't exist (on this rank, at least)
-
-//        }
-        if (iblankFace[ff] == NORMAL) {
-          // If not set yet, assume fringe (overset), but set to hole if any hole nodes
-          iblankFace[ff] = FRINGE;
-          for (int k=0; k<f2nv[ff]; k++) {
-            int iv = f2v(ff,k);
-            if (iblank[iv] == HOLE) {
-              iblankFace[ff] = HOLE;
-              break;
+        int ic2 = c2c(ic,j);
+        if (ic2>0) {
+          // Cell exists
+          if (iblankCell[ic2]==NORMAL) {
+            iblankFace[ff] = FRINGE;
+          }
+          else {
+            iblankFace[ff] = HOLE;
+          }
+        }
+        else {
+          // Cell doesn't exist (on this rank, at least)
+          if (iblankFace[ff] == NORMAL) {
+            // If not set yet, assume fringe (overset), but set to hole if any hole nodes
+            iblankFace[ff] = FRINGE;
+            for (int k=0; k<f2nv[ff]; k++) {
+              int iv = f2v(ff,k);
+              if (iblank[iv] == HOLE) {
+                iblankFace[ff] = HOLE;
+                break;
+              }
             }
           }
         }

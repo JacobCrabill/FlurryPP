@@ -70,60 +70,30 @@
 			<Add option="-Wall" />
 			<Add option="/EHs" />
 		</Compiler>
-		<Unit filename="include/boundFace.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/ele.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/error.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/face.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/flurry.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/flux.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/geo.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/geo.inl">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/global.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/input.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/intFace.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/matrix.hpp">
-			<Option target="Debug" />
-		</Unit>
+		<Unit filename="include/boundFace.hpp" />
+		<Unit filename="include/ele.hpp" />
+		<Unit filename="include/error.hpp" />
+		<Unit filename="include/face.hpp" />
+		<Unit filename="include/flurry.hpp" />
+		<Unit filename="include/flux.hpp" />
+		<Unit filename="include/funcs.hpp" />
+		<Unit filename="include/geo.hpp" />
+		<Unit filename="include/global.hpp" />
+		<Unit filename="include/input.hpp" />
+		<Unit filename="include/intFace.hpp" />
+		<Unit filename="include/matrix.hpp" />
 		<Unit filename="include/mesh.hpp">
 			<Option target="Debug" />
 		</Unit>
-		<Unit filename="include/mpiFace.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/operators.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/output.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/polynomials.hpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="include/solver.hpp">
-			<Option target="Debug" />
-		</Unit>
+		<Unit filename="include/mpiFace.hpp" />
+		<Unit filename="include/operators.hpp" />
+		<Unit filename="include/output.hpp" />
+		<Unit filename="include/overComm.hpp" />
+		<Unit filename="include/overFace.hpp" />
+		<Unit filename="include/points.hpp" />
+		<Unit filename="include/polynomials.hpp" />
+		<Unit filename="include/solver.hpp" />
+		<Unit filename="include/superMesh.hpp" />
 		<Unit filename="lib/tioga/driver/checkfiles.f90">
 			<Option target="Debug" />
 		</Unit>
@@ -153,70 +123,22 @@
 		<Unit filename="lib/tioga/src/MeshBlock.h">
 			<Option target="Debug" />
 		</Unit>
-		<Unit filename="lib/tioga/src/bookKeeping.C">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/buildADTrecursion.c">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
 		<Unit filename="lib/tioga/src/cellVolume.f90">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/checkContainment.C">
-			<Option compilerVar="CC" />
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="lib/tioga/src/codetypes.h">
 			<Option target="Debug" />
 		</Unit>
-		<Unit filename="lib/tioga/src/computeCellVolume.c">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
 		<Unit filename="lib/tioga/src/computeCellVolume.f90">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/dataUpdate.C">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/exchangeBoxes.C">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/exchangeDonors.C">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/exchangeSearchData.C">
-			<Option compilerVar="CC" />
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="lib/tioga/src/globals.h">
 			<Option target="Debug" />
 		</Unit>
-		<Unit filename="lib/tioga/src/highOrder.C">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/holeMap.C">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
 		<Unit filename="lib/tioga/src/kaiser.f">
 			<Option target="Debug" />
 		</Unit>
-		<Unit filename="lib/tioga/src/linklist.c">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
 		<Unit filename="lib/tioga/src/makefile">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/math.c">
-			<Option compilerVar="CC" />
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="lib/tioga/src/median.F90">
@@ -227,14 +149,6 @@
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="lib/tioga/src/parallelComm.h">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/search.C">
-			<Option compilerVar="CC" />
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="lib/tioga/src/searchADTrecursion.C">
-			<Option compilerVar="CC" />
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="lib/tioga/src/tioga.C">
@@ -259,54 +173,28 @@
 			<Option compilerVar="CC" />
 			<Option target="Debug" />
 		</Unit>
-		<Unit filename="src/boundFace.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/ele.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/face.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/flurry.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/flux.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/geo.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/global.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/input.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/intFace.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/matrix.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/mesh.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/mpiFace.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/operators.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/output.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/polynomials.cpp">
-			<Option target="Debug" />
-		</Unit>
-		<Unit filename="src/solver.cpp">
-			<Option target="Debug" />
-		</Unit>
+		<Unit filename="src/boundFace.cpp" />
+		<Unit filename="src/ele.cpp" />
+		<Unit filename="src/face.cpp" />
+		<Unit filename="src/flurry.cpp" />
+		<Unit filename="src/flux.cpp" />
+		<Unit filename="src/funcs.cpp" />
+		<Unit filename="src/geo.cpp" />
+		<Unit filename="src/geo_overset.cpp" />
+		<Unit filename="src/global.cpp" />
+		<Unit filename="src/input.cpp" />
+		<Unit filename="src/intFace.cpp" />
+		<Unit filename="src/matrix.cpp" />
+		<Unit filename="src/mpiFace.cpp" />
+		<Unit filename="src/operators.cpp" />
+		<Unit filename="src/output.cpp" />
+		<Unit filename="src/overComm.cpp" />
+		<Unit filename="src/overFace.cpp" />
+		<Unit filename="src/points.cpp" />
+		<Unit filename="src/polynomials.cpp" />
+		<Unit filename="src/solver.cpp" />
+		<Unit filename="src/solver_overset.cpp" />
+		<Unit filename="src/superMesh.cpp" />
 		<Extensions>
 			<code_completion />
 			<envvars />

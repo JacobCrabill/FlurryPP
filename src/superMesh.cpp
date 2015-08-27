@@ -180,8 +180,8 @@ vector<tetra> superMesh::clipTet(tetra &tet, const vector<point> &clipFace, Vec3
       // Get the new points by intersecting the tet's edges with the clipping plane
       // Have to be careful about orientation of final tet
       map<int,array<int,3>> flipTet;
-      flipTet[0] = {1,3,2};  flipTet[1] = {0,2,3};
-      flipTet[2] = {0,3,1};  flipTet[3] = {0,1,2};
+      flipTet[0] = {{1,3,2}};  flipTet[1] = {{0,2,3}};
+      flipTet[2] = {{0,3,1}};  flipTet[3] = {{0,1,2}};
       array<int,3> ePts = flipTet[kill];
 
       // Find the intersection points
@@ -193,9 +193,9 @@ vector<tetra> superMesh::clipTet(tetra &tet, const vector<point> &clipFace, Vec3
       }
 
       outTets.resize(3);
-      outTets[0].nodes = {tet.nodes[ePts[0]], tet.nodes[ePts[1]], newPts[0], tet.nodes[ePts[2]]};
-      outTets[1].nodes = {tet.nodes[ePts[2]],newPts[0],newPts[2],newPts[1]};
-      outTets[2].nodes = {tet.nodes[ePts[1]],tet.nodes[ePts[2]],newPts[1],newPts[0]};
+      outTets[0].nodes = {{tet.nodes[ePts[0]], tet.nodes[ePts[1]], newPts[0], tet.nodes[ePts[2]]}};
+      outTets[1].nodes = {{tet.nodes[ePts[2]],newPts[0],newPts[2],newPts[1]}};
+      outTets[2].nodes = {{tet.nodes[ePts[1]],tet.nodes[ePts[2]],newPts[1],newPts[0]}};
       break;
     }
 
@@ -219,9 +219,9 @@ vector<tetra> superMesh::clipTet(tetra &tet, const vector<point> &clipFace, Vec3
        * clipping becomes standardized; 'base case' is keeping {0,1}
        * One possible case for edge edge being removed */
       map<array<int,2>,array<int,4>> flipTet;
-      flipTet[{0,1}] = {0,1,2,3};  flipTet[{0,2}] = {1,2,0,3};
-      flipTet[{0,3}] = {1,3,2,0};  flipTet[{1,2}] = {2,0,1,3};
-      flipTet[{1,3}] = {3,0,2,1};  flipTet[{2,3}] = {3,2,1,0};
+      flipTet[{{0,1}}] = {{0,1,2,3}};  flipTet[{{0,2}}] = {{1,2,0,3}};
+      flipTet[{{0,3}}] = {{1,3,2,0}};  flipTet[{{1,2}}] = {{2,0,1,3}};
+      flipTet[{{1,3}}] = {{3,0,2,1}};  flipTet[{{2,3}}] = {{3,2,1,0}};
       array<int,4> ind = flipTet[keep];
 
       // Intersect the plane with the edges to get the new points
@@ -259,9 +259,9 @@ vector<tetra> superMesh::clipTet(tetra &tet, const vector<point> &clipFace, Vec3
 
       // Setup the new tets
       outTets.resize(3);
-      outTets[0].nodes = {tet.nodes[ind[1]],newPts[0],newPts[3],tet.nodes[ind[0]]};
-      outTets[1].nodes = {newPts[0],newPts[3],newPts[1],tet.nodes[ind[1]]};
-      outTets[2].nodes = {newPts[1],newPts[3],newPts[2],tet.nodes[ind[1]]};
+      outTets[0].nodes = {{tet.nodes[ind[1]],newPts[0],newPts[3],tet.nodes[ind[0]]}};
+      outTets[1].nodes = {{newPts[0],newPts[3],newPts[1],tet.nodes[ind[1]]}};
+      outTets[2].nodes = {{newPts[1],newPts[3],newPts[2],tet.nodes[ind[1]]}};
       break;
     }
 
@@ -279,8 +279,8 @@ vector<tetra> superMesh::clipTet(tetra &tet, const vector<point> &clipFace, Vec3
       // Get the new points by intersecting the tet's edges with the clipping plane
       // Have to be careful about orientation of final tet, so map to a 'standard' orientation
       map<int,array<int,3>> flipTet;
-      flipTet[0] = {1,3,2};  flipTet[1] = {0,2,3};
-      flipTet[2] = {0,3,1};  flipTet[3] = {0,1,2};
+      flipTet[0] = {{1,3,2}};  flipTet[1] = {{0,2,3}};
+      flipTet[2] = {{0,3,1}};  flipTet[3] = {{0,1,2}};
       array<int,3> ePts = flipTet[keep];
 
       // Setup outgoing tet; node 3 is the 'kept' node

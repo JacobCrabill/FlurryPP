@@ -604,7 +604,8 @@ void geo::matchMPIFaces(void)
     mpiIblankR.resize(nMpiFaces);
     mpiIblank_proc.setup(nProcGrid,maxNMpiFaces);
     for (int i=0; i<nMpiFaces; i++)
-      mpiIblank[i] = iblankFace[mpiFaces[i]];
+      mpiIblank[i] = iblankCell[f2c(mpiFaces[i],0)];
+      //mpiIblank[i] = iblankFace[mpiFaces[i]];
 
     MPI_Allgather(mpiIblank.data(), nMpiFaces, MPI_INT, mpiIblank_proc.getData(), maxNMpiFaces, MPI_INT, gridComm);
   }
@@ -674,7 +675,7 @@ void geo::matchMPIFaces(void)
     for (int F=0; F<nMpiFaces; F++) {
       if (mpiIblank[F] != NORMAL || mpiIblankR[F] != NORMAL) {
         // Not a normal face; figure out if hole or fringe
-        if (mpiIblank[F] == HOLE || mpiIblankR[F] == HOLE)
+        if (mpiIblank[F] == HOLE && mpiIblankR[F] == HOLE)
           iblankFace[mpiFaces[F]] = HOLE;
         else
           iblankFace[mpiFaces[F]] = FRINGE;
