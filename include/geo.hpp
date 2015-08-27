@@ -147,6 +147,7 @@ public:
   vector<int> iblankFace; //! Flag for whether a face is normal, blanked, or receptor
   vector<int> iwall;      //! List of nodes on wall boundaries
   vector<int> iover;      //! List of nodes on overset boundaries
+  vector<int> nodeType;   //! For each node: normal interior, normal boundary, or overset
 
   vector<int> eleMap;     //! For overset meshes where some cells are blanked, map from 'ic' to 'eles' index
   vector<int> faceMap;    //! For overset meshes where some faces are blanked, map from 'ff' to faceType-vector index

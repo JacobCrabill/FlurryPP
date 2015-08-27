@@ -36,14 +36,7 @@ void solver::setupOverset(void)
 
   OComm->setup(params,nGrids,gridID,gridRank,nprocPerGrid,Geo->gridIdList);
 
-  MPI_Barrier(MPI_COMM_WORLD);
-
-  simTimer Timer;
-  Timer.startTimer();
   OComm->matchOversetPoints(eles,overFaces,Geo->c2ac,Geo->eleMap,Geo->centroid,Geo->extents);
-  MPI_Barrier(MPI_COMM_WORLD);
-  Timer.stopTimer();
-  Timer.showTime(6);
 }
 
 void solver::updateOversetConnectivity(void)

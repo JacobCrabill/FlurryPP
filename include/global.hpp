@@ -60,13 +60,20 @@ enum ETYPE {
   PYRAMID = 5
 };
 
-/*! Enumeration for face type */
+/*! Enumeration for original, mesh-file-defined face type */
 enum FACE_TYPE {
   HOLE_FACE = -1,
   INTERNAL  = 0,
   BOUNDARY  = 1,
   MPI_FACE  = 2,
   OVER_FACE = 3
+};
+
+/*! Enumeration for original, mesh-file-defined node type */
+enum NODE_TYPE {
+  NORMAL_NODE = 0,
+  OVERSET_NODE = 1,
+  BOUNDARY_NODE = 2
 };
 
 /*! Enumeration for mesh (either create cartesian mesh or read from file) */

@@ -43,7 +43,7 @@ void overComm::setup(input* _params, int _nGrids, int _gridID, int _gridRank, in
 #endif
 }
 
-void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &overFaces, const matrix<int> &c2ac,
+void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &overFaces, matrix<int> &c2ac,
                                   const vector<int> &eleMap, const point &centroid, const point &extents)
 {
 #ifndef _NO_MPI

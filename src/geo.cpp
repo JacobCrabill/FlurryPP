@@ -269,7 +269,7 @@ void geo::processConn3D(void)
 {
   /* --- Setup Single List of All Faces (sorted vertex lists) --- */
 
-  matrix<int> f2v1;
+  matrix<int> f2v1, e2v1;
   vector<int> f2nv1;
 
   // Handy map to store local face-vertex lists for each ele type
@@ -302,6 +302,11 @@ void geo::processConn3D(void)
       std::sort(facev.begin(),facev.end());
       f2v1.insertRowUnsized(facev);
       f2nv1.push_back(ct2fnv[ctype[e]][f]);
+
+      e2v1.insertRow({facev[0],facev[1]});
+      e2v1.insertRow({facev[1],facev[2]});
+      e2v1.insertRow({facev[2],facev[3]});
+      e2v1.insertRow({facev[0],facev[3]});
     }
   }
 
@@ -312,9 +317,11 @@ void geo::processConn3D(void)
   // iE is of length [original f2v1] with range [final f2v]
   // The number of times a face appears in iF is equal to
   // the number of cells that face touches
-  vector<int> iF;
+  vector<int> iF, iE;
   f2v1.unique(f2v,iF);
+  e2v1.unique(e2v,iE);
   nFaces = f2v.getDim0();
+  nEdges = e2v.getDim0();
 
   f2nv.resize(nFaces);
   for (uint i=0; i<f2nv1.size(); i++)
@@ -473,6 +480,39 @@ void geo::processConn3D(void)
   }
 
   getBoundingBox(xv,centroid,extents);
+
+  // Get vertex to vertex/edge connectivity
+  vector<set<int>> v2v_tmp(nVerts);
+  vector<set<int>> v2e_tmp(nVerts);
+  for (int ie=0; ie<nEdges; ie++) {
+    int iv1 = e2v(ie,0);
+    int iv2 = e2v(ie,1);
+    v2v_tmp[iv1].insert(iv2);
+    v2v_tmp[iv2].insert(iv1);
+    v2e_tmp[iv1].insert(ie);
+    v2e_tmp[iv2].insert(ie);
+  }
+
+  v2nv.resize(nVerts);
+  for (int iv=0; iv<nVerts; iv++) {
+    v2nv[iv] = v2v_tmp[iv].size();
+  }
+
+  v2v.setup(nVerts,getMax(v2nv));
+  v2e.setup(nVerts,getMax(v2nv));
+  for (int iv=0; iv<nVerts; iv++) {
+    int j = 0;
+    for (auto &iv2:v2v_tmp[iv]) {
+      v2v(iv,j) = iv2;
+      j++;
+    }
+
+    j = 0;
+    for (auto &ie:v2e_tmp[iv]) {
+      v2e(iv,j) = ie;
+      j++;
+    }
+  }
 
 }
 

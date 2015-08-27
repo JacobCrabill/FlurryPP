@@ -120,7 +120,8 @@ public:
    * @param[in] centroid: Centriod of current grid partition
    * @param[in] extents : x,y,z extents (max-min) of current grid partition
    */
-  void matchOversetPoints(vector<ele>& eles, vector<shared_ptr<overFace> >& overFaces, matrix<int>& c2ac, vector<int>& eleMap, const point& centroid, const point& extents);
+  void matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &overFaces, matrix<int> &c2ac,
+                                    const vector<int> &eleMap, const point &centroid, const point &extents);
 
   /*!
    * \brief Setup all communication for unblanked cells and faces

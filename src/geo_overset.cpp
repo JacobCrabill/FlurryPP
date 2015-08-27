@@ -112,16 +112,22 @@ void geo::registerGridDataTIOGA(void)
   // Setup iwall, iover (nodes on wall & overset boundaries)
   iover.resize(0);
   iwall.resize(0);
+  nodeType.assign(nVerts,NORMAL_NODE);
   for (int ib=0; ib<nBounds; ib++) {
     if (bcList[ib] == OVERSET) {
       for (int iv=0; iv<nBndPts[ib]; iv++) {
         iover.push_back(bndPts(ib,iv));
+        nodeType[bndPts(ib,iv)] = OVERSET_NODE;
       }
     }
     else if (bcList[ib] == SLIP_WALL || bcList[ib] == ADIABATIC_NOSLIP || bcList[ib] == ISOTHERMAL_NOSLIP) {
       for (int iv=0; iv<nBndPts[ib]; iv++) {
         iwall.push_back(bndPts(ib,iv));
+        nodeType[bndPts(ib,iv)] = BOUNDARY_NODE;
       }
+    }
+    else {
+      nodeType[bndPts(ib,ib)] = BOUNDARY_NODE;
     }
   }
 
@@ -198,9 +204,25 @@ void geo::setCellFaceIblanks()
 
   iblankCell.assign(nEles,NORMAL);
 
+  // First, blank any fringe vertices which should be treated as hole vertices
+
+  for (int iv=0; iv<nVerts; iv++) {
+    if (iblank[iv] == FRINGE) {
+      int nfringe = 0;
+      for (int j=0; j<v2nv[iv]; j++) {
+        if ((iblank[v2v(iv,j)] == FRINGE || iblank[v2v(iv,j)] == HOLE) && nodeType[v2v(iv,j)] == NORMAL_NODE) {
+          nfringe++;
+        }
+      }
+      if (nfringe == v2nv[iv])
+        iblank[iv] = HOLE;
+    }
+  }
+
   // First, blank all cells which contain a hole node
 
   for (int ic=0; ic<nEles; ic++) {
+//    int nfringe = 0;
     for (int j=0; j<c2nv[ic]; j++) {
       int iv = c2v(ic,j);
       if (iblank[iv] == HOLE) {
@@ -212,10 +234,14 @@ void geo::setCellFaceIblanks()
 
         break;
       }
+//      else if (iblank[iv] == FRINGE && nodeType[iv]==NORMAL_NODE) {
+//        nfringe++;
+//      }
     }
+//    if (nfringe == c2nv[ic]) {
+//      iblankCell[ic] = HOLE;
+//    }
   }
-
-  // Now find any 'fringe' cells
 
   // Only needed for moving grids: Get cells which  must be 'un-blanked'
   for (auto &ic:holeCells)
@@ -244,6 +270,20 @@ void geo::setCellFaceIblanks()
     if (iblankCell[ic] == HOLE) {
       for (int j=0; j<c2nf[ic]; j++) {
         int ff = c2f(ic,j);
+//        int ic2 = c2c(ic,j);
+//        if (ic2>0) {
+//          // Cell exists
+//          if (iblankCell[ic2]==NORMAL) {
+//            iblankFace[ff] = FRINGE;
+//          }
+//          else {
+//            iblankFace[ff] = HOLE;
+//          }
+//        }
+//        else {
+//          // Cell doesn't exist (on this rank, at least)
+
+//        }
         if (iblankFace[ff] == NORMAL) {
           // If not set yet, assume fringe (overset), but set to hole if any hole nodes
           iblankFace[ff] = FRINGE;
