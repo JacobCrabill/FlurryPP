@@ -238,6 +238,9 @@ void writeParaview(solver *Solver, input *params)
 
   Solver->extrapolateUMpts();
 
+  if (params->motion && params->nDims==3)
+    Solver->extrapolateGridVelMpts();
+
   if (params->equation == NAVIER_STOKES) {
     if (params->squeeze) {
       Solver->calcAvgSolution();

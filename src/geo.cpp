@@ -2375,5 +2375,20 @@ void geo::moveMesh(void)
       }
       break;
     }
+    case 3: {
+      if (gridID==0) {
+        double t0 = 10.*sqrt(5.);
+        double width = 5.;
+        #pragma omp parallel for
+        for (int iv=0; iv<nVerts; iv++) {
+          /// Taken from Liang-Miyaji
+          xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*sin(4*pi*params->rkTime/t0);
+          xv_new[iv].y = xv0[iv].y + sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*sin(8*pi*params->rkTime/t0);
+          gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*cos(4*pi*params->rkTime/t0);
+          gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*cos(8*pi*params->rkTime/t0);
+        }
+      }
+      break;
+    }
   }
 }

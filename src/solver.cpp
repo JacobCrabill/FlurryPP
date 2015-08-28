@@ -320,6 +320,14 @@ void solver::extrapolateUMpts(void)
   }
 }
 
+void solver::extrapolateGridVelMpts(void)
+{
+#pragma omp parallel for
+  for (uint i=0; i<eles.size(); i++) {
+    opers[eles[i].eType][eles[i].order].applySptsMpts(eles[i].gridVel_spts,eles[i].gridVel_mpts);
+  }
+}
+
 void solver::extrapolateSMpts(void)
 {
 #pragma omp parallel for

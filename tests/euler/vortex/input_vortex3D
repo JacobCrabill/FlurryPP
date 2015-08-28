@@ -9,7 +9,7 @@ dt            .005
 
 viscous       0   (0: Inviscid, 1: Viscous)
 motion        0   (0: Static, 1: Perturbation test case)
-riemannType  0   (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
+riemannType   0   (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
 nDims         3
 
 # =============================================================
@@ -26,10 +26,10 @@ diffD        .1   (Diffusion Coefficient)
 # Initial Condition
 # =============================================================
 #   Advection: 0-Gaussian,     1-u=x+y+z test case,  2-u=cos(x)*cos(y)*cos(z) test case
-#   N-S:       0-Uniform flow, 1-Uniform+Vortex
-icType       1
+#   N-S:       0-Uniform flow, 1-Vortex (Kui), 2-Vortex (Liang)
+icType       2
 testCase     0
-iterMax       2000
+iterMax      5000
 
 # =============================================================
 # Plotting/Output Options

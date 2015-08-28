@@ -236,6 +236,7 @@ public:
   matrix<double> gridVel_spts;         //! Mesh velocity at solution points
   matrix<double> gridVel_fpts;         //! Mesh velocity at flux points
   matrix<double> gridVel_nodes;        //! Mesh velocity at mesh (corner) points
+  matrix<double> gridVel_mpts;         //! Mesh velocity at ALL mesh points (corners + edges in 3D)
   vector<vector<point>> nodesRK; //! Location of mesh nodes in physical space
 
   // Geometry Variables

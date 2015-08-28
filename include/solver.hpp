@@ -131,10 +131,13 @@ public:
   //! Extrapolate the solution to the flux points
   void extrapolateU(void);
 
-  //! Extrapolate the solution to the mesh (corner) points
+  //! Extrapolate the solution to the mesh (corner) points (and edge points in 3D)
   void extrapolateUMpts(void);
 
-  //! Extrapolate entropy error-estimate variable to the mesh (corner) points
+  //! Extrapolate the grid velocity to the mesh (corner) points (and edge points in 3D)
+  void extrapolateGridVelMpts(void);
+
+  //! Extrapolate entropy error-estimate variable to the mesh (corner) points (and edge points in 3D)
   void extrapolateSMpts(void);
 
   //! //! Extrapolate entropy error-estimate variable to the flux points
