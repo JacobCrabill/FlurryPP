@@ -108,6 +108,15 @@ void geo::processConnectivity()
     registerGridDataTIOGA();
 
     updateOversetConnectivity();
+
+    // Since this is initial pre-processing, clear blank/unblanks
+    blankCells.clear();
+    blankOFaces.clear();
+    blankFaces.clear();
+
+    unblankCells.clear();
+    unblankOFaces.clear();
+    unblankFaces.clear();
   }
 
   /* --- Setup MPI Processor Boundary Faces --- */
@@ -582,9 +591,16 @@ void geo::matchMPIFaces(void)
   matrix<int> mpiFaceNodes_proc(nProcGrid,maxNMpiFaces*maxNodesPerFace);
   matrix<int> mpiFptr_proc(nProcGrid,maxNMpiFaces+1);
   matrix<int> mpiFid_proc(nProcGrid,maxNMpiFaces);
+  int RANK, SIZE;
+  MPI_Comm_rank(gridComm,&RANK);
+  MPI_Comm_size(gridComm,&SIZE);
+  //cout << "rank " << params->rank << ": " << mpiFaceNodes.size() << " | " << maxNodesPerFace*maxNMpiFaces;
+  //cout << ", rank,size=" << RANK << "," << SIZE << ",  " << gridRank << "," << nProcGrid << endl;
   MPI_Allgather(mpiFaceNodes.data(),mpiFaceNodes.size(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,gridComm);
   MPI_Allgather(mpiFptr.data(),mpiFptr.size(),MPI_INT,mpiFptr_proc.getData(),maxNMpiFaces+1,MPI_INT,gridComm);
   MPI_Allgather(mpiFaces.data(),nMpiFaces,MPI_INT,mpiFid_proc.getData(),maxNMpiFaces,MPI_INT,gridComm);
+
+  cout << "GridID " << gridID << endl;
 
   matrix<int> mpiCells_proc, mpiLocF_proc;
   if (nDims == 3) {

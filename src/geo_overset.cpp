@@ -165,10 +165,6 @@ void geo::registerGridDataTIOGA(void)
       overCells.insert(f2c(bndFaces[i],0));
     }
   }
-
-  // Create a new communicator to communicate across grids
-  MPI_Comm_split(MPI_COMM_WORLD, gridRank, gridID, &interComm);
-  MPI_Comm_split(MPI_COMM_WORLD, gridID, params->rank, &gridComm);
 #endif
 }
 
@@ -349,6 +345,8 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
   /* --- Remove Newly-Blanked Elements --- */
 
   for (auto &ic:blankCells) {
+    if (ic<0) continue;
+
     int ind = eleMap[ic];
     eles.erase(eles.begin()+ind,eles.begin()+ind+1);
     eleMap[ic] = -1;
@@ -361,6 +359,8 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
   /* --- Setup & Insert Unblanked Elements --- */
 
   for (auto &ic:unblankCells) {
+    if (ic<0) continue;
+
     // Find the next-lowest index
     int ind = eleMap[ic];
     int j = 0;
@@ -413,6 +413,8 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
   //       (Before overset connectivity processing)
 
   for (auto &ff:blankFaces) {
+    if (ff<0) continue;
+
     int ind = faceMap[ff];
     int fType = faceType[ff];
 
@@ -447,8 +449,10 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
   }
 
   for (auto &ff:blankOFaces) {
+    if (ff<0) continue;
+
     int ind = faceMap[ff];
-    oFaces.erase(oFaces.begin()+ind,oFaces.begin()+ind+1);
+    if (ind>=0) oFaces.erase(oFaces.begin()+ind,oFaces.begin()+ind+1);
 
     // Update the map
     faceMap[ff] = -1;
@@ -461,6 +465,8 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
   /* --- Create Newly-Unblanked Faces --- */
 
   for (auto &ff:unblankFaces) {
+    if (ff<0) continue;
+
     if (faceType[ff] == INTERNAL)
     {
       shared_ptr<face> iface = make_shared<intFace>();
@@ -578,6 +584,8 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
   /* --- Setup Newly-Unblanked Overset Faces --- */
 
   for (auto &ff:unblankOFaces) {
+    if (ff<0) continue;
+
     shared_ptr<overFace> oface = make_shared<overFace>();
 
     int ic = f2c(ff,0);

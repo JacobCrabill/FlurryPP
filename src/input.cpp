@@ -337,6 +337,7 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("create_bcRight",create_bcRight,string("periodic"));
     opts.getScalarValue("create_bcFront",create_bcFront,string("periodic"));
     opts.getScalarValue("create_bcBack",create_bcBack,string("periodic"));
+    writeIBLANK = 0;
   }
   else {
     // Reading in the mesh in one form or another

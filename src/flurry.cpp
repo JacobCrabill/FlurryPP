@@ -91,8 +91,8 @@ int main(int argc, char *argv[]) {
   writeData(&Solver,&params);
 
   /* Write out mesh in Tecplot format, with IBLANK data */
-  //if (params.writeIBLANK)
-  //  writeMeshTecplot(&Solver,&params);
+  if (params.writeIBLANK==1)
+    writeMeshTecplot(&Solver,&params);
 
 #ifndef _NO_MPI
   // Allow all processes to finish initial file writing before starting computation
