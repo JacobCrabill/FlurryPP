@@ -72,16 +72,17 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
   foundLocs.resize(nproc);
   int offset = 0;
 
+  double eps = 1e-10;
   point minPt, maxPt;
-  minPt.x = centroid.x - extents.x/2.;
-  minPt.y = centroid.y - extents.y/2.;
-  minPt.z = centroid.z - extents.z/2.;
+  minPt.x = centroid.x - extents.x/2. - eps;
+  minPt.y = centroid.y - extents.y/2. - eps;
+  minPt.z = centroid.z - extents.z/2. - eps;
 
-  maxPt.x = centroid.x + extents.x/2.;
-  maxPt.y = centroid.y + extents.y/2.;
-  maxPt.z = centroid.z + extents.z/2.;
+  maxPt.x = centroid.x + extents.x/2. + eps;
+  maxPt.y = centroid.y + extents.y/2. + eps;
+  maxPt.z = centroid.z + extents.z/2. + eps;
 
-  for (int p=0; p<nproc; p++) {
+  /*for (int p=0; p<nproc; p++) {
     if (p>0) offset += nPts_rank[p-1];
 
     if (gridIdList[p] == gridID) continue;
@@ -161,6 +162,40 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
         foundLocs[p].push_back(refLoc);
       }
     }
+  }*/
+
+  for (int p=0; p<nproc; p++) {
+    if (p>0) offset += nPts_rank[p-1];
+
+    if (gridIdList[p] == gridID) continue;
+
+    for (int i=0; i<nPts_rank[p]; i++) {
+      // Get requested interpolation point
+      point pt = point(&interpPtsPhys[3*(offset+i)]);
+
+      // First, check that point even lies within bounding box of grid
+      if ( (pt.x<minPt.x) || (pt.y<minPt.y) || (pt.z<minPt.z) ||
+           (pt.x>maxPt.x) || (pt.y>maxPt.y) || (pt.z>maxPt.z) )
+        continue;
+
+      // Check for containment in all eles on this rank of this grid
+      int ic = 0;
+      for (auto &e:eles) {
+        // !! THIS IS HORRIBLY INEFFICIENT !! - should use c2c to march from an
+        // initial guess to the neighboring cell nearest the point in question
+        point refLoc;
+        bool isInEle = e.getRefLocNelderMeade(pt,refLoc);
+
+        if (isInEle) {
+          foundPts[p].push_back(i);
+          foundEles[p].push_back(ic); // Local ele id for this grid
+          foundLocs[p].push_back(refLoc);
+          break;
+        }
+        ic++;
+      }
+    }
+    //cout << "Grid,Rank = " << gridID << "," << rank << ": nFoundPts for rank" << p << " = " << foundPts[p].size() << endl;
   }
 
   /* ---- Prepare for Data Communication ---- */

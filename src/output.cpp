@@ -207,6 +207,24 @@ void writeParaview(solver *Solver, input *params)
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
+  /* --- There's no possible way to put the simulation time into a ParaView file,
+         so we have to create a separate file to store the time values --- */
+  char datadirC[256];
+  char *datadir = &datadirC[0];
+  sprintf(datadirC,"%s_time",&fileName[0]);
+  if (params->rank == 0) {
+    struct stat st = {0};
+    if (stat(datadir, &st) == -1) {
+      mkdir(datadir, 0755);
+    }
+    char timeFileC[256];
+    sprintf(timeFileC,"%s_time/%d",&fileName[0],iter);
+    dataFile.open(timeFileC);
+    dataFile << params->time;
+    dataFile.clear();
+    dataFile.close();
+  }
+
   dataFile.open(fileNameC);
   dataFile.precision(16);
 
@@ -598,9 +616,9 @@ void writeMeshTecplot(solver* Solver, input* params)
   sprintf(fileNameC,"%s.plt",&fileName[0]);
 #endif
 
-  //if (params->rank == 0)
-  //  cout << "Writing Tecplot mesh file " << string(fileNameC) << "...  " << flush;
-  cout << "Writing Tecplot mesh file " << string(fileNameC) << "...  " << endl;
+  if (params->rank == 0)
+    cout << "Writing Tecplot mesh file " << string(fileNameC) << "...  " << flush;
+  //cout << "Writing Tecplot mesh file " << string(fileNameC) << "...  " << endl;
 
 #ifndef _NO_MPI
   /* --- Write folder for output mesh files --- */
@@ -624,7 +642,7 @@ void writeMeshTecplot(solver* Solver, input* params)
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-  cout << "rank " << params->rank << ": Opening file for writing" << endl;
+  //cout << "rank " << params->rank << ": Opening file for writing" << endl;
 
   dataFile.open(fileNameC);
   dataFile.precision(16);
@@ -636,14 +654,14 @@ void writeMeshTecplot(solver* Solver, input* params)
 
   int gridID = Geo->gridID;
 
-  cout << "nNodesWall = " << nNodesWall << ", nNodesOver = " << nNodesOver << ", gridID = " << gridID << endl;
+  //cout << "nNodesWall = " << nNodesWall << ", nNodesOver = " << nNodesOver << ", gridID = " << gridID << endl;
 
   int nPrism = 0;
   int nNodes = Geo->nVerts;
   int nCells = Geo->nEles;
   int nHex = nCells;
 
-  cout << "nNodes = " << nNodes << ", nEles = " << nCells << endl;
+  //cout << "nNodes = " << nNodes << ", nEles = " << nCells << endl;
 
   dataFile << "# " << nPrism << " " << nHex << " " << nNodes << " " << nCells << " " << nNodesWall << " " << nNodesOver << endl;
   dataFile << "TITLE = \"" << fileName << "\"" << endl;

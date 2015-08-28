@@ -136,27 +136,27 @@ void face::calcInviscidFlux(void)
     }
   }
 
-  if (Fn.checkNan()) {
-    cout << "NaN in calcInviscidFlux Fn!" << endl;
-
-    for (int i=0; i<nFptsL; i++) {
-      cout << "  UL: ";
-      for (int k=0; k<nFields; k++) {
-        cout << UL(i,k) << ", ";
-      }
-      cout << endl;
-    }
-    cout << endl;
-
-    for (int i=0; i<nFptsL; i++) {
-      cout << "  UR: ";
-      for (int k=0; k<nFields; k++) {
-        cout << UR(i,k) << ", ";
-      }
-      cout << endl;
-    }
-    cout << endl;
-  }
+//  if (Fn.checkNan()) {
+//    cout << "NaN in calcInviscidFlux Fn!" << endl;
+//
+//    for (int i=0; i<nFptsL; i++) {
+//      cout << "  UL: ";
+//      for (int k=0; k<nFields; k++) {
+//        cout << UL(i,k) << ", ";
+//      }
+//      cout << endl;
+//    }
+//    cout << endl;
+//
+//    for (int i=0; i<nFptsL; i++) {
+//      cout << "  UR: ";
+//      for (int k=0; k<nFields; k++) {
+//        cout << UR(i,k) << ", ";
+//      }
+//      cout << endl;
+//    }
+//    cout << endl;
+//  }
 
   // Transform normal flux using edge Jacobian and put into ele's memory
   for (int i=0; i<nFptsL; i++) {

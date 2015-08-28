@@ -116,8 +116,9 @@ void geo::processConnectivity()
   /* --- Additional setup for moving grids --- */
   if (params->motion) {
     xv0.resize(nVerts);
-    for (int i=0; i<nVerts; i++) xv0[i] = point(xv[i]);
     xv_new.resize(nVerts);
+    for (int i=0; i<nVerts; i++) xv0[i] = point(xv[i]);
+    for (int i=0; i<nVerts; i++) xv_new[i] = point(xv[i]);
     gridVel.setup(nVerts,nDims);
   }
 #endif
@@ -2198,6 +2199,7 @@ void geo::partitionMesh(void)
   else {
     if (rank == 0) cout << "Geo: Partitioning mesh across " << nproc << " processes" << endl;
     if (rank == 0) cout << "Geo:   Number of elements globally: " << nEles << endl;
+    gridComm = MPI_COMM_WORLD;
   }
 
   vector<idx_t> eptr(nEles+1);
@@ -2337,27 +2339,13 @@ void geo::moveMesh(void)
 
   switch (params->motion) {
     case 1: {
-      if (nDims == 2) {
-        #pragma omp parallel for
-        for (int iv=0; iv<nVerts; iv++) {
-          /// Taken from Kui, AIAA-2010-5031-661
-          xv_new[iv].x = xv0[iv].x + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*params->rkTime/10.);
-          xv_new[iv].y = xv0[iv].y + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*params->rkTime/10.);
-          gridVel(iv,0) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*params->rkTime/10.);
-          gridVel(iv,1) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*params->rkTime/10.);
-        }
-      }
-      else {
-        #pragma omp parallel for
-        for (int iv=0; iv<nVerts; iv++) {
-          /// Taken from Kui, AIAA-2010-5031-661
-          xv_new[iv].x = xv0[iv].x + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*sin(2*pi*params->rkTime/10.);
-          xv_new[iv].y = xv0[iv].y + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*sin(2*pi*params->rkTime/10.);
-          xv_new[iv].z = xv0[iv].z + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*sin(2*pi*params->rkTime/10.);
-          gridVel(iv,0) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*cos(2*pi*params->rkTime/10.);
-          gridVel(iv,1) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*cos(2*pi*params->rkTime/10.);
-          gridVel(iv,2) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(pi*xv0[iv].z/10.)*cos(2*pi*params->rkTime/10.);
-        }
+      #pragma omp parallel for
+      for (int iv=0; iv<nVerts; iv++) {
+        /// Taken from Kui, AIAA-2010-5031-661
+        xv_new[iv].x = xv0[iv].x + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+        xv_new[iv].y = xv0[iv].y + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*params->rkTime/10.);
+        gridVel(iv,0) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*params->rkTime/10.);
+        gridVel(iv,1) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*params->rkTime/10.);
       }
       break;
     }

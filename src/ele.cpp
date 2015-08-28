@@ -656,6 +656,7 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   double xmax, ymax, zmax;
   xmin = ymin = zmin =  1e15;
   xmax = ymax = zmax = -1e15;
+  double eps = 1e-12;
   for (int i=0; i<nNodes; i++) {
     xmin = min(nodes[i].x, xmin);
     ymin = min(nodes[i].y, ymin);
@@ -665,8 +666,8 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
     ymax = max(nodes[i].y, ymax);
     zmax = max(nodes[i].z, zmax);
   }
-  if (pos.x < xmin || pos.y < ymin || pos.z < zmin ||
-      pos.x > xmax || pos.y > ymax || pos.z > zmax) {
+  if (pos.x < xmin-eps || pos.y < ymin-eps || pos.z < zmin-eps ||
+      pos.x > xmax+eps || pos.y > ymax+eps || pos.z > zmax+eps) {
     // Point does not lie within cell - return an obviously bad ref position
     loc.x = 99; loc.y = 99; loc.z = 99;
     return false;
@@ -770,7 +771,7 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   loc = point(X[ind[nPts-1]]);
 
   // Check to see if final location lies within element or not
-  double eps = 1e-12;
+  eps = 1e-12;
   if (std::abs(loc.x)-eps<=1 && std::abs(loc.y)-eps<=1 && std::abs(loc.z)-eps<=1 && !std::isnan(loc.norm()))
     return true;
   else
@@ -1879,6 +1880,11 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
     cout << "ele order = " << order << ", input order = " << params->order << endl;
     FatalError("Cannot restart a simulation using a different polynomial order.");
   }
+
+  if (eType == QUAD || eType == HEX)
+    sptsType = params->sptsTypeQuad;
+  else
+    FatalError("Only quads and hexes implemented.");
 
   loc_spts = getLocSpts(eType,order,sptsType);
   loc_fpts = getLocFpts(eType,order,sptsType);

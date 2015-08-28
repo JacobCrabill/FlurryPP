@@ -550,13 +550,13 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
       if (nDims == 2) {
         cellFaces.assign(c2f[ic],c2f[ic]+c2nf[ic]);
         fid1 = findFirst(cellFaces,ff);
-      }
-      else {
+      } else {
         fid1 = mpiLocF[ind];
       }
+
       if (f2c(ff,1) != -1) {
         FatalError("MPI face has a right element assigned.");
-      }else{
+      } else {
         int relRot = 0;
         if (nDims == 3) {
           // Find the relative orientation (rotation) between left & right faces

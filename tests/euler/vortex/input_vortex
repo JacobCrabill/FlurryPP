@@ -1,44 +1,87 @@
-equation      1    # 0: Advection-Diffusion;  1: Euler/Navier-Stokes
-order         3    # Polynomial order to use
-dt            .0000125  # Time step size
-timeType      4
+# =============================================================
+# Basic Options
+# =============================================================
+equation      1       (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
+order         3       (Polynomial order to use)
+timeType      4       (0: Forward Euler, 4: RK44)
+dtType        1       (0: Constant, 1: Global CFL-based)
+dt            1.25e-5 (Constant time step size)
+CFL           .05      (CFL number for time-step calculation)
 
-riemannType  0    # Advection: use 0; N-S: 0: Rusanov, 1: Roe
+viscous       0   (0: Inviscid, 1: Viscous)
+motion        2   (0: Static, 1: Kui test case, 2: Liang test case)
+riemannType   0   (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
 nDims         2
 
-advectVx      1    # Advection wave speed, x-component
-advectVy      1    # Advection wave speed, y-component
+# =============================================================
+# Physics Parameters
+# =============================================================
+# Advection-Diffusion Equation Parameters
+advectVx      1   (Wave speed, x-direction)
+advectVy      1   (Wave speed, y-direction)
+advectVz     -1   (Wave speed, z-direction)
+lambda        1   (Upwinding Parameter - 0: Central, 1: Upwind)
+diffD        .1   (Diffusion Coefficient)
 
-motion        2    # 0: Static, 1: Kui test case, 2: Liang test case 
-
+# =============================================================
 # Initial Condition
-#   Advection: 0-Gaussian, 1-u=x+y test case
-#   N-S: 0-Uniform flow, 1-Vortex (Kui), 2-Vortex (Liang)
+# =============================================================
+#   Advection: 0-Gaussian,     1-u=x+y+z test case,  2-u=cos(x)*cos(y)*cos(z) test case
+#   N-S:       0-Uniform flow, 1-Uniform+Vortex
 icType       2
-iterMax       1788855
+testCase     0
+iterMax      5000
 
-# Plotting/Output Parameters
-plotFreq         100  # Frequency to write plot files
-monitorResFreq  10  # Frequency to print residual to terminal
-resType           2    # 1: 1-norm, 2: 2-norm, 3: Inf-norm
-dataFileName      DeformVortex  # Prefix for all output files
+# =============================================================
+# Plotting/Output Options
+# =============================================================
+plotFreq          200          (Frequency to write plot files)
+monitorResFreq    100          (Frequency to print residual to terminal)
+resType           2            (1: 1-norm, 2: 2-norm, 3: Inf-norm)
+dataFileName      DeformVortex (Filename prefix for output files)
+entropySensor     0            (Calculate & plot entropy-error sensor)
 
-# mesh_type - 0: Read mesh, 1: Create mesh
+# =============================================================
+# Mesh Options
+# =============================================================
+# meshType - 0: Read mesh, 1: Create mesh
 meshType     1
 
-# Boundary conditions
-create_bcTop     periodic
-create_bcBottom  periodic
-create_bcLeft    periodic
-create_bcRight   periodic
-
-# Parameters used when creating the mesh:
+# The following parameters are only needed when creating a mesh:
 nx            20
 ny            20
-xmin          -5
+xmin          -05
 xmax          5
 ymin          -5
 ymax          5
 
-# Flux Reconstruction parameters
-spts_type_quad  Legendre
+# =============================================================
+# Boundary Conditions
+# =============================================================
+# For creating a cartesian mesh, boundary condition to apply to each face
+# (default is periodic)
+#create_bcTop     sup_in
+#create_bcBottom  slip_wall
+#create_bcLeft    sup_in
+#create_bcRight   sup_out
+#create_bcFront   periodic
+#create_bcBack    periodic
+
+# =============================================================
+# Freestream Boundary Conditions [for all freestream/inlet-type boundaries]
+# =============================================================
+# Inviscid Flows
+rhoBound 1
+uBound   .2
+vBound   0.
+wBound   0.
+pBound   .7142857143
+
+# Viscous Flows
+MachBound  .2
+Re    100
+Lref  1.0
+TBound  300
+nxBound   1
+nyBound   0
+nzBound   0

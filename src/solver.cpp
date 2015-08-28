@@ -97,6 +97,8 @@ void solver::update(void)
 
   /* Intermediate residuals for Runge-Kutta time integration */
 
+  if (params->dtType == 1) calcDt(); // -- RELOCATING FOR MOVING-MESH CASES --
+
   for (int step=0; step<nRKSteps-1; step++) {
 
     if (step == 0)
@@ -108,8 +110,8 @@ void solver::update(void)
 
     calcResidual(step);
 
-    /* If in first stage, compute CFL-based timestep */
-    if (step == 0 && params->dtType == 1) calcDt();  // -- NOT CONSISTENT WITH MOVING MESH SEQUENCE --
+//    /* If in first stage, compute CFL-based timestep */
+//    if (step == 0 && params->dtType == 1) calcDt();  // -- NOT CONSISTENT WITH MOVING MESH SEQUENCE --
 
     timeStepA(step);
 
@@ -120,7 +122,7 @@ void solver::update(void)
   if (nRKSteps == 1) {
     params->rkTime = params->time;
     /* Calculate CFL-based timestep */
-    if (params->dtType == 1) calcDt();
+    //if (params->dtType == 1) calcDt();
   }
   else {
     params->rkTime = params->time + params->dt;
@@ -592,6 +594,7 @@ void solver::readRestartFile(void) {
 
   // Get the file name & open the file
   char fileNameC[256];
+  char timeFileC[256];
   string fileName = params->dataFileName;
 #ifndef _NO_MPI
   /* --- All processors read their data from their own .vtu file --- */
@@ -605,6 +608,22 @@ void solver::readRestartFile(void) {
 
   if (params->rank==0) cout << "Solver: Restarting from " << fileNameC << endl;
 
+  // Read the simulation time from the separate time file
+  sprintf(timeFileC,"%s_time/%d",&fileName[0],params->restartIter);
+  dataFile.open(timeFileC);
+  if (dataFile.is_open()) {
+    dataFile >> params->time;
+    params->rkTime = params->time;
+    if (params->rank == 0)
+      cout << "  Restart time = " << params->time << endl;
+  } else {
+    if (params->rank == 0)
+      cout << "WARNING: Unable to read simulation restart time." << endl;
+  }
+  dataFile.clear();
+  dataFile.close();
+
+  // Move on to the actual restart file
   dataFile.open(fileNameC);
 
   if (!dataFile.is_open())
@@ -692,6 +711,11 @@ void solver::initializeSolution()
 #endif
 
     params->dt = dt;
+
+    if (params->restart) {
+      // Update the mesh to match the current (nonzero) sim time
+      moveMesh(0);
+    }
   }
 
   if (params->rank == 0) cout << "done." << endl;
