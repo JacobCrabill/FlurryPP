@@ -2366,22 +2366,22 @@ void geo::moveMesh(void)
         for (int iv=0; iv<nVerts; iv++) {
           /// Taken from Liang-Miyaji
           xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*params->rkTime/t0);
-          xv_new[iv].y = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*params->rkTime/t0);
+          xv_new[iv].y = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(8*pi*params->rkTime/t0);
           xv_new[iv].z = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*params->rkTime/t0);
           gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(4*pi*params->rkTime/t0);
           gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(8*pi*params->rkTime/t0);
-          gridVel(iv,2) = 8.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(8*pi*params->rkTime/t0);
+          gridVel(iv,2) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(4*pi*params->rkTime/t0);
         }
       }
       break;
     }
     case 3: {
       if (gridID==0) {
+        /// LiangiMiyaji with easily-modifiable domain width
         double t0 = 10.*sqrt(5.);
         double width = 5.;
         #pragma omp parallel for
         for (int iv=0; iv<nVerts; iv++) {
-          /// Taken from Liang-Miyaji
           xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*sin(4*pi*params->rkTime/t0);
           xv_new[iv].y = xv0[iv].y + sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*sin(8*pi*params->rkTime/t0);
           gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*cos(4*pi*params->rkTime/t0);
@@ -2389,6 +2389,19 @@ void geo::moveMesh(void)
         }
       }
       break;
+    }
+    case 4: {
+      /// Rigid oscillation along a diagonal
+      if (params->meshType!=OVERSET_MESH || gridID==0) {
+        double A = .5; // Amplitude  (m)
+        double f = .2; // Frequency  (Hz)
+        for (int iv=0; iv<nVerts; iv++) {
+          xv_new[iv].x = xv0[iv].x + A*sin(2.*pi*f*params->rkTime);
+          xv_new[iv].y = xv0[iv].y + A*sin(2.*pi*f*params->rkTime);
+          gridVel(iv,0) = 2.*pi*f*A*cos(2.*pi*f*params->rkTime);
+          gridVel(iv,1) = 2.*pi*f*A*cos(2.*pi*f*params->rkTime);
+        }
+      }
     }
   }
 }

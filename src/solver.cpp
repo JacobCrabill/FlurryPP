@@ -110,9 +110,6 @@ void solver::update(void)
 
     calcResidual(step);
 
-//    /* If in first stage, compute CFL-based timestep */
-//    if (step == 0 && params->dtType == 1) calcDt();  // -- NOT CONSISTENT WITH MOVING MESH SEQUENCE --
-
     timeStepA(step);
 
   }
@@ -121,8 +118,6 @@ void solver::update(void)
 
   if (nRKSteps == 1) {
     params->rkTime = params->time;
-    /* Calculate CFL-based timestep */
-    //if (params->dtType == 1) calcDt();
   }
   else {
     params->rkTime = params->time + params->dt;

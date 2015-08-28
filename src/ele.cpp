@@ -1013,7 +1013,7 @@ void ele::calcViscousFlux_spts()
 
 void ele::transformGradF_spts(int step)
 {
-  // The first 'nDim' of dF is the derivative, and the 2nd is the flux direction
+  // NOTE: The 1st dim of dF is the derivative, and the 2nd is the flux direction
 
   if (nDims == 2) {
     for (int spt=0; spt<nSpts; spt++) {
@@ -1026,16 +1026,25 @@ void ele::transformGradF_spts(int step)
       }
     }
   } else {
-    // --- NEED TO DO FOR 3D!! ---
+    divF_spts[step].initializeToZero();
     for (int spt=0; spt<nSpts; spt++) {
-      double A = gridVel_spts(spt,1)*Jac_spts[spt](0,1) - gridVel_spts(spt,0)*Jac_spts[spt](1,1);
-      double B = gridVel_spts(spt,0)*Jac_spts[spt](1,0) - gridVel_spts(spt,1)*Jac_spts[spt](0,0);
-      double C = gridVel_spts(spt,0)*Jac_spts[spt](1,0) - gridVel_spts(spt,1)*Jac_spts[spt](0,0);
+      // Build the full 4D (space+time) Jacobian matrix & its adjoint
+      matrix<double> Jacobian(4,4);
+      Jacobian(3,3) = 1;
+      for (int i=0; i<3; i++) {
+        for (int j=0; j<3; j++)
+          Jacobian(i,j) = Jac_spts[spt](i,j);
+        Jacobian(i,3) = gridVel_spts(spt,i);
+      }
+      matrix<double> S = Jacobian.adjoint();
+
       for (int k=0; k<nFields; k++) {
-        dF_spts(0,0)(spt,k) =  dF_spts(0,0)(spt,k)*Jac_spts[spt](1,1) - dF_spts(0,1)(spt,k)*Jac_spts[spt](0,1) + dU_spts[0](spt,k)*A;
-        dF_spts(1,1)(spt,k) = -dF_spts(1,0)(spt,k)*Jac_spts[spt](1,0) + dF_spts(1,1)(spt,k)*Jac_spts[spt](0,0) + dU_spts[1](spt,k)*B;
-        dF_spts(2,2)(spt,k) = -dF_spts(2,0)(spt,k)*Jac_spts[spt](1,0) + dF_spts(2,1)(spt,k)*Jac_spts[spt](0,0) + dU_spts[2](spt,k)*C;
-        divF_spts[step](spt,k) = dF_spts(0,0)(spt,k)+dF_spts(1,1)(spt,k)+dF_spts(2,2)(spt,k);
+        for (int dim1=0; dim1<3; dim1++)
+          for (int dim2=0; dim2<3; dim2++)
+            divF_spts[step](spt,k) += dF_spts(dim2,dim1)(spt,k)*S(dim2,dim1);
+
+        for (int dim=0; dim<3; dim++)
+          divF_spts[step](spt,k) += dU_spts[dim](spt,k)*S(dim,3);
       }
     }
   }
