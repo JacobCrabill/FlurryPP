@@ -166,6 +166,12 @@ public:
   /*! Invert the current Matrix using Gauss elimination with pivots */
   matrix<T> invertMatrix(void);
 
+  //! Get the determinant of the matrix (recursive algorithm)
+  double det();
+
+  //! Get the adjoint of the matrix (transpose of the cofactor matrix)
+  matrix<T> adjoint(void);
+
   /*! Reshape a 1D vector into a 2D Array */
   void vecToMatrixResize(vector<T> &A);
 

@@ -31,12 +31,12 @@
 				<Option compiler="icc" />
 				<Option use_console_runner="0" />
 				<MakeCommands>
-					<Build command="$make -f $makefile $target" />
-					<CompileFile command="$make -f $makefile $file" />
+					<Build command="$make -j -f $makefile $target mpi=n" />
+					<CompileFile command="$make -f $makefile $file mpi=n" />
 					<Clean command="$make -f $makefile clean" />
 					<DistClean command="$make -f $makefile distclean$target" />
-					<AskRebuildNeeded command="$make -q -f $makefile $target" />
-					<SilentBuild command="$make -s -f $makefile $target" />
+					<AskRebuildNeeded command="$make -q -j -f $makefile $target mpi=n" />
+					<SilentBuild command="$make -s -j -f $makefile $target mpi=n" />
 				</MakeCommands>
 			</Target>
 			<Target title="mpi">
@@ -44,12 +44,12 @@
 				<Option type="0" />
 				<Option compiler="icc" />
 				<MakeCommands>
-					<Build command="$make -f $makefile $target" />
+					<Build command="$make -j -f $makefile $target" />
 					<CompileFile command="$make -f $makefile $file" />
 					<Clean command="$make -f $makefile clean" />
 					<DistClean command="$make -f $makefile distclean$target" />
-					<AskRebuildNeeded command="$make -q -f $makefile $target" />
-					<SilentBuild command="$make -s -f $makefile $target" />
+					<AskRebuildNeeded command="$make -j -q -f $makefile $target" />
+					<SilentBuild command="$make -j -s -f $makefile $target" />
 				</MakeCommands>
 			</Target>
 			<Target title="mpidebug">
@@ -57,12 +57,12 @@
 				<Option type="0" />
 				<Option compiler="icc" />
 				<MakeCommands>
-					<Build command="$make -f $makefile $target" />
+					<Build command="$make -j -f $makefile $target" />
 					<CompileFile command="$make -f $makefile $file" />
 					<Clean command="$make -f $makefile clean" />
 					<DistClean command="$make -f $makefile distclean$target" />
-					<AskRebuildNeeded command="$make -q -f $makefile $target" />
-					<SilentBuild command="$make -s -f $makefile $target" />
+					<AskRebuildNeeded command="$make -j -q -f $makefile $target" />
+					<SilentBuild command="$make -j -s -f $makefile $target" />
 				</MakeCommands>
 			</Target>
 		</Build>
