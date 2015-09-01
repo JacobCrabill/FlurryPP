@@ -27,8 +27,6 @@
 
 #include "error.hpp"
 
-struct point;
-
 #include "global.hpp"
 
 #define INSERT_AT_END -1

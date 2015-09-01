@@ -591,16 +591,26 @@ void geo::matchMPIFaces(void)
   matrix<int> mpiFaceNodes_proc(nProcGrid,maxNMpiFaces*maxNodesPerFace);
   matrix<int> mpiFptr_proc(nProcGrid,maxNMpiFaces+1);
   matrix<int> mpiFid_proc(nProcGrid,maxNMpiFaces);
-  int RANK, SIZE;
-  MPI_Comm_rank(gridComm,&RANK);
-  MPI_Comm_size(gridComm,&SIZE);
-  //cout << "rank " << params->rank << ": " << mpiFaceNodes.size() << " | " << maxNodesPerFace*maxNMpiFaces;
-  //cout << ", rank,size=" << RANK << "," << SIZE << ",  " << gridRank << "," << nProcGrid << endl;
-  MPI_Allgather(mpiFaceNodes.data(),mpiFaceNodes.size(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,gridComm);
+
+  cout << "nBytes = " << nProcGrid*maxNMpiFaces*maxNodesPerFace*nProcGrid << endl;
+  //MPI_Allgather(mpiFaceNodes.data(),mpiFaceNodes.size(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,gridComm);
+
+  vector<int> faceCnts(nProcGrid);
+  vector<int> faceDisp(nProcGrid);
+  for (int i=0; i<nProcGrid; i++) {
+    faceCnts[i] = nMpiFaces_proc[i]*maxNodesPerFace;
+    faceDisp[i] = i*maxNMpiFaces*maxNodesPerFace;
+  }
+  MPI_Allgatherv(mpiFaceNodes.data(),mpiFaceNodes.size(),MPI_INT,mpiFaceNodes_proc.getData(),faceCnts.data(),faceDisp.data(),MPI_INT,gridComm);
+
+//  for (int p=0; p<nProcGrid; p++) {
+//    // MPI is being a little **** and not letting me use an Allgather here (error or deadlock).  Fortunately, this method still works.
+//    //cout << mpiFaceNodes.size() << ", " << mpiFaceNodes_proc.getSize() << endl;
+//    MPI_Gather(mpiFaceNodes.data(),mpiFaceNodes.size(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,p,gridComm);
+//    MPI_Barrier(gridComm);
+//  }
   MPI_Allgather(mpiFptr.data(),mpiFptr.size(),MPI_INT,mpiFptr_proc.getData(),maxNMpiFaces+1,MPI_INT,gridComm);
   MPI_Allgather(mpiFaces.data(),nMpiFaces,MPI_INT,mpiFid_proc.getData(),maxNMpiFaces,MPI_INT,gridComm);
-
-  cout << "GridID " << gridID << endl;
 
   matrix<int> mpiCells_proc, mpiLocF_proc;
   if (nDims == 3) {
@@ -1589,11 +1599,6 @@ void geo::processPeriodicBoundaries(void)
 
   nPeriodic = iPeriodic.size();
 
-#ifndef _NO_MPI
-  /*if (nPeriodic > 0)
-    FatalError("Periodic boundaries not implemented yet with MPI! Recompile for serial.");*/
-#endif
-
   if (nPeriodic == 0) return;
   if (nPeriodic%2 != 0 && nProcGrid==1) FatalError("Expecting even number of periodic faces; have odd number.");
   if (params->rank==0) cout << "Geo: Processing periodic boundaries" << endl;
@@ -1662,6 +1667,7 @@ void geo::processPeriodicBoundaries(void)
   nIntFaces = intFaces.size();
 
 #ifdef _NO_MPI
+  // Can't remember why, but this doesn't apply for MPI cases
   if (nUnmatched>0)
     FatalError("Unmatched periodic faces exist.");
 #endif
@@ -2196,9 +2202,6 @@ int geo::compareOrientationMPI(int ic1, int f1, int ic2, int f2, int isPeriodic=
 void geo::partitionMesh(void)
 {
 #ifndef _NO_MPI
-  int rank, nproc;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 
   if (nproc <= 1) return;
 
@@ -2407,15 +2410,15 @@ void geo::moveMesh(void)
       break;
     }
     case 4: {
-      /// Rigid oscillation along a diagonal
+      /// Rigid oscillation in a circle
       if (params->meshType!=OVERSET_MESH || gridID==0) {
         double A = .5; // Amplitude  (m)
         double f = .2; // Frequency  (Hz)
         for (int iv=0; iv<nVerts; iv++) {
           xv_new[iv].x = xv0[iv].x + A*sin(2.*pi*f*params->rkTime);
-          xv_new[iv].y = xv0[iv].y + A*sin(2.*pi*f*params->rkTime);
+          xv_new[iv].y = xv0[iv].y - A*(1-cos(2.*pi*f*params->rkTime));
           gridVel(iv,0) = 2.*pi*f*A*cos(2.*pi*f*params->rkTime);
-          gridVel(iv,1) = 2.*pi*f*A*cos(2.*pi*f*params->rkTime);
+          gridVel(iv,1) = 2.*pi*f*A*sin(2.*pi*f*params->rkTime);
         }
       }
     }

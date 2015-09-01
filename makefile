@@ -124,6 +124,14 @@ mpi: FFLAGS=-Ofast
 mpi: LIBS+= -lmetis $(TIOGA_LIB)
 mpi: $(TARGET)
 
+.PHONY: mpi
+mpi2: CXX=$(MPICXX)
+mpi2: LINK=$(MPILD)
+mpi2: CXXFLAGS=$(CXXFLAGS_MPI) -g -O2 
+mpi2: FFLAGS=-Ofast
+mpi2: LIBS+= -lmetis $(TIOGA_LIB)
+mpi2: $(TARGET)
+
 .PHONY: mpidebug
 mpidebug: CXX=$(MPICXX)
 mpidebug: LINK=$(MPILD)
