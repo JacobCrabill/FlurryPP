@@ -3,7 +3,7 @@
  * Base class and dependencies
  * The methods of this class are invoked from tiogaInterface.C
  *
- *  Jay Sitaraman 02/24/2014 
+ *  Jay Sitaraman 02/24/2014
  */
 
 #pragma once
@@ -40,8 +40,8 @@ class tioga
   tioga();
 
   /** basic destructor */
-  ~tioga(); 
-  
+  ~tioga();
+
   /** set communicator */
   void setCommunicator(MPI_Comm communicator,int id_proc,int nprocs);
 
@@ -52,6 +52,8 @@ class tioga
 
   void profile(void);
 
+  int findPointDonor(double* x_pt);
+
   void exchangeBoxes(void);
 
   void exchangeSearchData(void);
@@ -59,7 +61,7 @@ class tioga
   void exchangePointSearchData(void);
 
   void exchangeDonors(void);
-    
+
   /** perform overset grid connectivity */
 
   void performConnectivity(void);
@@ -73,17 +75,17 @@ class tioga
   void dataUpdate_highorder(int nvar,double *q,int interptype) ;
 
   /** get hole map for each mesh */
- 
+
   void getHoleMap(void);
 
   /** output HoleMaps */
-  
+
   void outputHoleMap(void);
 
   void writeData(int nvar,double *q,int interptype);
 
   void getDonorCount(int *dcount, int *fcount);
-  
+
   void getDonorInfo(int *receptors,int *indices,double *frac,int *dcount);
 
   /** set symmetry bc */
@@ -103,7 +105,7 @@ class tioga
 
   void setcallback(solver* _solver);
 };
-      
-  
+
+
 
 

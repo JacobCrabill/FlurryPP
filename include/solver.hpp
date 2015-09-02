@@ -55,7 +55,7 @@ public:
   map<int, map<int,oper> > opers;
 
   //! Vector of all eles handled by this solver
-  vector<ele> eles;
+  vector<shared_ptr<ele>> eles;
 
   //! Vector of all non-MPI faces handled by this solver
   vector<shared_ptr<face>> faces;

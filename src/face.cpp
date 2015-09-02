@@ -20,7 +20,7 @@
 #include "../include/flux.hpp"
 #include "../include/ele.hpp"
 
-void face::initialize(ele *eL, ele *eR, int gID, int locF_L, faceInfo myInfo, input *params)
+void face::initialize(shared_ptr<ele> &eL, shared_ptr<ele> &eR, int gID, int locF_L, faceInfo myInfo, input *params)
 {
   ID = gID;
 

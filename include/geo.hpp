@@ -57,7 +57,7 @@ public:
   void processConnectivity();
 
   //! Create the elements and faces needed for the simulation
-  void setupElesFaces(vector<ele> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec, vector<shared_ptr<overFace> >& overFacesVec);
+  void setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec, vector<shared_ptr<overFace> >& overFacesVec);
 
   //! Update nodal positions and velocities for moving-grid cases
   void moveMesh(void);
@@ -87,14 +87,14 @@ public:
   /* ---- My Overset Functions ---- */
 
   //! Setup the 'connectivity' between the overset interpolation points & donor grids/cells
-  void matchOversetPoints(vector<ele> &eles, struct dataExchange& exchange);
+  void matchOversetPoints(vector<shared_ptr<ele>> &eles, struct dataExchange& exchange);
 
   //! Send / Receive interpolated data to proper grid and rank
   void exchangeOversetData(struct dataExchange &exchange);
 
-  void matchOversetDonors(vector<ele> &eles, vector<superMesh> &donors);
+  void matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &donors);
 
-  void setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
+  void setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
 
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces, nOverFaces;

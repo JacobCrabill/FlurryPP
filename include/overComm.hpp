@@ -30,6 +30,7 @@ class overFace;
 #include "operators.hpp"
 #include "overFace.hpp"
 #include "superMesh.hpp"
+#include "tioga.h"
 
 #ifndef _NO_MPI
 #include "mpi.h"
@@ -73,6 +74,8 @@ public:
 
 #ifndef _NO_MPI
   MPI_Comm gridComm;
+
+  shared_ptr<tioga> tg;  //! TIOGA object in use for simulation
 #endif
 
   /* --- Variables for Exchanging Data at Overset Faces --- */
@@ -120,7 +123,7 @@ public:
    * @param[in] centroid: Centriod of current grid partition
    * @param[in] extents : x,y,z extents (max-min) of current grid partition
    */
-  void matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &overFaces, matrix<int> &c2ac,
+  void matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, matrix<int> &c2ac,
                                     const vector<int> &eleMap, const point &centroid, const point &extents);
 
   /*!
@@ -132,10 +135,10 @@ public:
    * For each unblanked face, add its points to the communicator
    *
    */
-  void matchUnblankCells(vector<ele> &eles, set<int>& unblankCells, matrix<int>& c2c, vector<int>& eleMap, int quadOrder);
+  void matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int>& unblankCells, matrix<int>& c2c, vector<int>& eleMap, int quadOrder);
 
   //! Perform the interpolation and communicate data across all grids
-  void exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &opers);
+  void exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers);
 
   /*!
    * \brief Gather a distributed dataset so that every rank has the full, organized dataset

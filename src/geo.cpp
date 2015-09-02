@@ -592,9 +592,6 @@ void geo::matchMPIFaces(void)
   matrix<int> mpiFptr_proc(nProcGrid,maxNMpiFaces+1);
   matrix<int> mpiFid_proc(nProcGrid,maxNMpiFaces);
 
-  cout << "nBytes = " << nProcGrid*maxNMpiFaces*maxNodesPerFace*nProcGrid << endl;
-  //MPI_Allgather(mpiFaceNodes.data(),mpiFaceNodes.size(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,gridComm);
-
   vector<int> faceCnts(nProcGrid);
   vector<int> faceDisp(nProcGrid);
   for (int i=0; i<nProcGrid; i++) {
@@ -602,13 +599,6 @@ void geo::matchMPIFaces(void)
     faceDisp[i] = i*maxNMpiFaces*maxNodesPerFace;
   }
   MPI_Allgatherv(mpiFaceNodes.data(),mpiFaceNodes.size(),MPI_INT,mpiFaceNodes_proc.getData(),faceCnts.data(),faceDisp.data(),MPI_INT,gridComm);
-
-//  for (int p=0; p<nProcGrid; p++) {
-//    // MPI is being a little **** and not letting me use an Allgather here (error or deadlock).  Fortunately, this method still works.
-//    //cout << mpiFaceNodes.size() << ", " << mpiFaceNodes_proc.getSize() << endl;
-//    MPI_Gather(mpiFaceNodes.data(),mpiFaceNodes.size(),MPI_INT,mpiFaceNodes_proc.getData(),maxNMpiFaces*maxNodesPerFace,MPI_INT,p,gridComm);
-//    MPI_Barrier(gridComm);
-//  }
   MPI_Allgather(mpiFptr.data(),mpiFptr.size(),MPI_INT,mpiFptr_proc.getData(),maxNMpiFaces+1,MPI_INT,gridComm);
   MPI_Allgather(mpiFaces.data(),nMpiFaces,MPI_INT,mpiFid_proc.getData(),maxNMpiFaces,MPI_INT,gridComm);
 
@@ -718,7 +708,7 @@ void geo::matchMPIFaces(void)
 #endif
 }
 
-void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec, vector<shared_ptr<overFace>> &overFacesVec)
+void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec, vector<shared_ptr<overFace>> &overFacesVec)
 {
   if (nEles<=0) FatalError("Cannot setup elements array - nEles = 0");
 
@@ -738,33 +728,33 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
     // Skip any hole cells
     if (meshType == OVERSET_MESH && iblankCell[ic] != NORMAL) continue;
 
-    ele e;
-    e.ID = ic;
+    shared_ptr<ele> e = make_shared<ele>();
+    e->ID = ic;
     if (nProcGrid>1)
-      e.IDg = ic2icg[ic];
+      e->IDg = ic2icg[ic];
     else
-      e.IDg = ic;
-    e.eType = ctype[ic];
-    e.nNodes = c2nv[ic];
+      e->IDg = ic;
+    e->eType = ctype[ic];
+    e->nNodes = c2nv[ic];
     if (nDims == 2)
-      e.nMpts = 4;
+      e->nMpts = 4;
     else
-      e.nMpts = 8;
+      e->nMpts = 8;
 
     // Shape [mesh] nodes
-    e.nodeID.resize(c2nv[ic]);
-    e.nodes.resize(c2nv[ic]);
+    e->nodeID.resize(c2nv[ic]);
+    e->nodes.resize(c2nv[ic]);
     for (int iv=0; iv<c2nv[ic]; iv++) {
-      e.nodeID[iv] = c2v(ic,iv);
-      e.nodes[iv] = point(xv[c2v(ic,iv)]);
+      e->nodeID[iv] = c2v(ic,iv);
+      e->nodes[iv] = point(xv[c2v(ic,iv)]);
     }
 
     // Global face IDs for internal & boundary faces
-    e.faceID.resize(c2nf[ic]);
-    e.bndFace.resize(c2nf[ic]);
+    e->faceID.resize(c2nf[ic]);
+    e->bndFace.resize(c2nf[ic]);
     for (int k=0; k<c2nf[ic]; k++) {
-      e.bndFace[k] = c2b(ic,k);
-      e.faceID[k] = c2f(ic,k);
+      e->bndFace[k] = c2b(ic,k);
+      e->faceID[k] = c2f(ic,k);
     }
 
     eles.push_back(e);
@@ -822,7 +812,7 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       info.relRot = relRot;
       ic1 = eleMap[ic1];
       ic2 = eleMap[ic2];
-      iface->initialize(&eles[ic1],&eles[ic2],ff,fid1,info,params);
+      iface->initialize(eles[ic1],eles[ic2],ff,fid1,info,params);
     }
 
     faces.push_back(iface);
@@ -859,7 +849,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
       info.bcType = bcType[i];
       info.isBnd = 1;
       ic = eleMap[ic];
-      bface->initialize(&eles[ic],NULL,ff,fid1,info,params);
+      shared_ptr<ele> nullEle;  // Since just giving the funciton 'NULL' isn't possible
+      bface->initialize(eles[ic],nullEle,ff,fid1,info,params);
     }
 
     faces.push_back(bface);
@@ -913,7 +904,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
         info.isMPI = 1;
         info.gridComm = gridComm;  // Note that this is equivalent to MPI_COMM_WORLD if non-overset (ngrids = 1)
         ic = eleMap[ic];
-        mface->initialize(&eles[ic],NULL,ff,fid1,info,params);
+        shared_ptr<ele> nullEle;  // Since just giving the funciton 'NULL' isn't possible
+        mface->initialize(eles[ic],nullEle,ff,fid1,info,params);
       }
 
       mpiFacesVec.push_back(mface);
@@ -950,7 +942,8 @@ void geo::setupElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vec
 
       struct faceInfo info;
       ic = eleMap[ic];
-      oface->initialize(&eles[ic],NULL,ff,fid,info,params);
+      shared_ptr<ele> nullEle;  // Since just giving the funciton 'NULL' isn't possible
+      oface->initialize(eles[ic],nullEle,ff,fid,info,params);
 
       overFacesVec.push_back(oface);
     }

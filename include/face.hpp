@@ -16,6 +16,7 @@
  */
 #pragma once
 
+#include <memory>
 #include <vector>
 
 #ifndef _NO_MPI
@@ -41,7 +42,7 @@ struct faceInfo {
   //! boundFace parameters
   int bcType;
 
-  //! mpiFace parameters  
+  //! mpiFace parameters
   int procL;
   int procR;
 
@@ -55,7 +56,7 @@ class face
 public:
 
   /*! Assign basic parameters to boundary */
-  void initialize(ele *eL, ele *eR, int gID, int locF_L, struct faceInfo myInfo, input* params);
+  void initialize(shared_ptr<ele> &eL, shared_ptr<ele> &eR, int gID, int locF_L, struct faceInfo myInfo, input* params);
 
   /*! Setup access to the left elements' data */
   void setupFace(void);
@@ -110,8 +111,8 @@ public:
   struct faceInfo myInfo;
 
 protected:
-  ele* eL;
-  ele* eR;
+  shared_ptr<ele> eL;
+  shared_ptr<ele> eR;
 
   /* --- Storage for all solution/geometry data at flux points [left state] --- */
   matrix<double> UL;      //! Discontinuous solution at left, right eles [nFpts, nFields]

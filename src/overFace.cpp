@@ -56,5 +56,8 @@ vector<double> overFace::computeWallForce()
 
 vector<point> overFace::getPosFpts()
 {
+  for (uint i=0; i<nFptsL; i++) {
+    posFpts[i] = eL->getPosFpt(fptStartL+i);;
+  }
   return posFpts;
 }

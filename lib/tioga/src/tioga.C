@@ -40,7 +40,7 @@ void tioga::setCommunicator(MPI_Comm communicator, int id_proc, int nprocs)
   pc=new parallelComm[1];
   pc->myid=myid;
   pc->scomm=scomm;
-  pc->numprocs=numprocs;  
+  pc->numprocs=numprocs;
 }
 
 /**
@@ -92,6 +92,11 @@ void tioga::performConnectivityHighOrder(void)
   iorphanPrint=1;
 }
 
+int tioga::findPointDonor(double *x_pt)
+{
+  return mb->findPointDonor(x_pt);
+}
+
 void tioga::dataUpdate(int nvar,double *q,int interptype)
 {
   int i,j,k,m;
@@ -116,7 +121,7 @@ void tioga::dataUpdate(int nvar,double *q,int interptype)
   icount=(int *)malloc(sizeof(int)*nsend);
   dcount=(int *)malloc(sizeof(int)*nrecv);
 
-  pc->initPackets(sndPack,rcvPack);  
+  pc->initPackets(sndPack,rcvPack);
 
   // get the interpolated solution now
   integerRecords=NULL;
@@ -136,7 +141,7 @@ void tioga::dataUpdate(int nvar,double *q,int interptype)
      sndPack[k].intData=(int *)malloc(sizeof(int)*sndPack[k].nints);
      sndPack[k].realData=(double *)malloc(sizeof(double)*sndPack[k].nreals);
      icount[k]=dcount[k]=0;
-    }  
+    }
 
   m=0;
   for(i=0;i<nints;i++)
@@ -188,7 +193,7 @@ void tioga::getDonorInfo(int *receptors,int *indices,double *frac,int *dcount)
   int *sndMap,*rcvMap;
   int i;
   mb->getDonorInfo(receptors,indices,frac);
-  pc->getMap(&nsend,&nrecv,&sndMap,&rcvMap); 
+  pc->getMap(&nsend,&nrecv,&sndMap,&rcvMap);
 
   // map receptor indices to actual processor id here
   for(i=0;i<3*(*dcount);i+=3)
@@ -196,10 +201,10 @@ void tioga::getDonorInfo(int *receptors,int *indices,double *frac,int *dcount)
 }
 
 tioga::~tioga()
-{      
+{
   int i;
   if (mb) delete[] mb;
-  if (holeMap) 
+  if (holeMap)
     {
       for(i=0;i<nmesh;i++)
 	if (holeMap[i].existWall) free(holeMap[i].sam);
@@ -242,7 +247,7 @@ void tioga::dataUpdate_highorder(int nvar,double *q,int interptype)
   icount=(int *)malloc(sizeof(int)*nsend);
   dcount=(int *)malloc(sizeof(int)*nrecv);
 
-  pc->initPackets(sndPack,rcvPack);  
+  pc->initPackets(sndPack,rcvPack);
 
   // get the interpolated solution now
   integerRecords=NULL;
@@ -714,27 +719,27 @@ void tioga::exchangeSearchData(void)
   icount=0;
   dcount=0;
   for(k=0;k<nrecv;k++)
-    {
-      l=0;
-      for(j=0;j<rcvPack[k].nints;j++)
   {
-    mb->isearch[icount++]=k;
-    mb->isearch[icount++]=rcvPack[k].intData[j];
-    mb->xsearch[dcount++]=rcvPack[k].realData[l++];
-    mb->xsearch[dcount++]=rcvPack[k].realData[l++];
-    mb->xsearch[dcount++]=rcvPack[k].realData[l++];
+    l=0;
+    for(j=0;j<rcvPack[k].nints;j++)
+    {
+      mb->isearch[icount++]=k;
+      mb->isearch[icount++]=rcvPack[k].intData[j];
+      mb->xsearch[dcount++]=rcvPack[k].realData[l++];
+      mb->xsearch[dcount++]=rcvPack[k].realData[l++];
+      mb->xsearch[dcount++]=rcvPack[k].realData[l++];
+    }
   }
-    }
   for(i=0;i<nsend;i++)
-    {
-      if (sndPack[i].nints > 0) free(sndPack[i].intData);
-      if (sndPack[i].nreals >0) free(sndPack[i].realData);
-    }
+  {
+    if (sndPack[i].nints > 0) free(sndPack[i].intData);
+    if (sndPack[i].nreals >0) free(sndPack[i].realData);
+  }
   for(i=0;i<nrecv;i++)
-    {
-      if (rcvPack[i].nints > 0) free(rcvPack[i].intData);
-      if (rcvPack[i].nreals >0) free(rcvPack[i].realData);
-    }
+  {
+    if (rcvPack[i].nints > 0) free(rcvPack[i].intData);
+    if (rcvPack[i].nreals >0) free(rcvPack[i].realData);
+  }
   free(sndPack);
   free(rcvPack);
   //printf("%d %d\n",myid,mb->nsearch);
@@ -819,27 +824,27 @@ void tioga::exchangePointSearchData(void)
   icount=0;
   dcount=0;
   for(k=0;k<nrecv;k++)
-    {
-      l=0;
-      for(j=0;j<rcvPack[k].nints;j++)
   {
-    mb->isearch[icount++]=k;
-    mb->isearch[icount++]=rcvPack[k].intData[j];
-    mb->xsearch[dcount++]=rcvPack[k].realData[l++];
-    mb->xsearch[dcount++]=rcvPack[k].realData[l++];
-    mb->xsearch[dcount++]=rcvPack[k].realData[l++];
+    l=0;
+    for(j=0;j<rcvPack[k].nints;j++)
+    {
+      mb->isearch[icount++]=k;
+      mb->isearch[icount++]=rcvPack[k].intData[j];
+      mb->xsearch[dcount++]=rcvPack[k].realData[l++];
+      mb->xsearch[dcount++]=rcvPack[k].realData[l++];
+      mb->xsearch[dcount++]=rcvPack[k].realData[l++];
+    }
   }
-    }
   for(i=0;i<nsend;i++)
-    {
-      if (sndPack[i].nints > 0) free(sndPack[i].intData);
-      if (sndPack[i].nreals >0) free(sndPack[i].realData);
-    }
+  {
+    if (sndPack[i].nints > 0) free(sndPack[i].intData);
+    if (sndPack[i].nreals >0) free(sndPack[i].realData);
+  }
   for(i=0;i<nrecv;i++)
-    {
-      if (rcvPack[i].nints > 0) free(rcvPack[i].intData);
-      if (rcvPack[i].nreals >0) free(rcvPack[i].realData);
-    }
+  {
+    if (rcvPack[i].nints > 0) free(rcvPack[i].intData);
+    if (rcvPack[i].nreals >0) free(rcvPack[i].realData);
+  }
   free(sndPack);
   free(rcvPack);
   //printf("%d %d\n",myid,mb->nsearch);
@@ -876,11 +881,11 @@ void tioga::getHoleMap(void)
  MPI_Allreduce(&meshtag,&maxtag,1,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
  //
  if (holeMap)
-   {
-     for(i=0;i<nmesh;i++)
-       if (holeMap[i].existWall) free(holeMap[i].sam);
-     delete [] holeMap;
-   }
+ {
+   for(i=0;i<nmesh;i++)
+     if (holeMap[i].existWall) free(holeMap[i].sam);
+   delete [] holeMap;
+ }
  holeMap=new HOLEMAP[maxtag];
  //
  existHoleLocal=(int *)malloc(sizeof(int)*maxtag);
@@ -919,48 +924,48 @@ void tioga::getHoleMap(void)
  // from the globally reduced data
  //
  for(i=0;i<maxtag;i++)
+ {
+   if (holeMap[i].existWall)
    {
-     if (holeMap[i].existWall)
-       {
-   for(j=0;j<3;j++)
+     for(j=0;j<3;j++)
      {
        holeMap[i].extents[j]=bboxGlobal[3*i+j];
        holeMap[i].extents[j+3]=bboxGlobal[3*i+j+3*maxtag];
        ds[j]=holeMap[i].extents[j+3]-holeMap[i].extents[j];
      }
-   dsmax=max(ds[0],ds[1]);
-   dsmax=max(dsmax,ds[2]);
-   dsbox=dsmax/64;
+     dsmax=max(ds[0],ds[1]);
+     dsmax=max(dsmax,ds[2]);
+     dsbox=dsmax/64;
 
-   for(j=0;j<3;j++)
+     for(j=0;j<3;j++)
      {
        holeMap[i].extents[j]-=(2*dsbox);
        holeMap[i].extents[j+3]+=(2*dsbox);
        holeMap[i].nx[j]=floor((double)max((holeMap[i].extents[j+3]-holeMap[i].extents[j])/dsbox,1.));
      }
-   bufferSize=holeMap[i].nx[0]*holeMap[i].nx[1]*holeMap[i].nx[2];
-   holeMap[i].sam=(int *)malloc(sizeof(int)*bufferSize);
-   holeMap[i].samLocal=(int *)malloc(sizeof(int)*bufferSize);
-   for(j=0;j<bufferSize;j++) holeMap[i].sam[j]=holeMap[i].samLocal[j]=0;
-       }
+     bufferSize=holeMap[i].nx[0]*holeMap[i].nx[1]*holeMap[i].nx[2];
+     holeMap[i].sam=(int *)malloc(sizeof(int)*bufferSize);
+     holeMap[i].samLocal=(int *)malloc(sizeof(int)*bufferSize);
+     for(j=0;j<bufferSize;j++) holeMap[i].sam[j]=holeMap[i].samLocal[j]=0;
    }
+ }
  //
  // mark the wall boundary cells in the holeMap
  //
  if (holeMap[meshtag-1].existWall) {
- mb->markWallBoundary(holeMap[meshtag-1].samLocal,holeMap[meshtag-1].nx,holeMap[meshtag-1].extents);
+   mb->markWallBoundary(holeMap[meshtag-1].samLocal,holeMap[meshtag-1].nx,holeMap[meshtag-1].extents);
  }
  //
  // allreduce the holeMap of each mesh
  //
  for(i=0;i<maxtag;i++)
+ {
+   if (holeMap[i].existWall)
    {
-    if (holeMap[i].existWall)
-     {
-      bufferSize=holeMap[i].nx[0]*holeMap[i].nx[1]*holeMap[i].nx[2];
-      MPI_Allreduce(holeMap[i].samLocal,holeMap[i].sam,bufferSize,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
-     }
+     bufferSize=holeMap[i].nx[0]*holeMap[i].nx[1]*holeMap[i].nx[2];
+     MPI_Allreduce(holeMap[i].samLocal,holeMap[i].sam,bufferSize,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
    }
+ }
  //
  // set the global number of meshes to maxtag
  //

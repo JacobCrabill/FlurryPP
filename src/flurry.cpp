@@ -40,12 +40,6 @@ int main(int argc, char *argv[]) {
   params.rank = rank;
   params.nproc = nproc;
 
-//  char* limit = getenv("MP_EAGER_LIMIT");
-//  cout << "lmit = " << limit << endl;
-//  putenv("MP_EAGER_LIMIT=65536");
-//  limit = getenv("MP_EAGER_LIMIT");
-//  cout << "lmit = " << limit << endl;
-
   if (rank == 0) {
     cout << endl;
     cout << R"(  ========================================================  )" << endl;

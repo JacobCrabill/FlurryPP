@@ -1,5 +1,5 @@
 /**
- * Build an alternating digital tree 
+ * Build an alternating digital tree
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -104,6 +104,7 @@ void buildADTrecursion(double *coord,double *adtReals,double *adtWork,int *adtIn
     }
 
     for(i=0;i<nav;i++)
+    {
       for(j=0;j<nd;j++)
       {
         ii=ndim*(*adtCount)+j;
@@ -114,6 +115,7 @@ void buildADTrecursion(double *coord,double *adtReals,double *adtWork,int *adtIn
         adtReals[ii]=min(adtReals[ii],coord[jj]);
         adtReals[iip]=max(adtReals[iip],coord[jjp]);
       }
+    }
 
     // specify that the new element is the child of parent
     // unless root
@@ -137,6 +139,7 @@ void buildADTrecursion(double *coord,double *adtReals,double *adtWork,int *adtIn
                       adtCount,2,parentToChild,level+1,ndim,nelem,nav-nleft);
   }
   else if (nav==1) {
+    // Base case: only 1 available element left
     (*adtCount)++;
     ii=4*(*adtCount);
     jj=ndim*(*adtCount);
@@ -158,7 +161,7 @@ void ADT::buildADT(int d, int nelements,double *elementBbox)
   int *elementsAvailable;
   double *adtWork;
   int adtCount,parent,level,nav;
-  int side;    
+  int side;
   double tolerance,delta;
 
   /* set dimensions and number of elements */
@@ -168,7 +171,7 @@ void ADT::buildADT(int d, int nelements,double *elementBbox)
 
   /* set element bbox pointer */
 
-  coord=elementBbox;  
+  coord=elementBbox;
 
   /*
    * Allocate work arrays

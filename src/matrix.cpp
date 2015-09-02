@@ -89,7 +89,7 @@ template<typename T>
 void matrix<T>::addMatrix(matrix<T> &A, double a)
 {
   if (A.dims[0] != this->dims[0] || A.dims[1] != this->dims[1])
-    FatalError("Incompatible matrix sizes for addMatrix.");
+    FatalErrorST("Incompatible matrix sizes for addMatrix.");
 
   for (uint i=0; i<this->dims[0]; i++)
     for (uint j=0; j<this->dims[1]; j++)
@@ -100,7 +100,7 @@ template<>
 matrix<double>& matrix<double>::operator+=(matrix<double> &A)
 {
   if (A.dims[0] != this->dims[0] || A.dims[1] != this->dims[1])
-    FatalError("Incompatible matrix sizes for addMatrix.");
+    FatalErrorST("Incompatible matrix sizes for addMatrix.");
 
   for (uint i=0; i<this->dims[0]; i++)
     for (uint j=0; j<this->dims[1]; j++)
@@ -113,7 +113,7 @@ template<>
 matrix<double>& matrix<double>::operator-=(matrix<double> &A)
 {
   if (A.dims[0] != this->dims[0] || A.dims[1] != this->dims[1])
-    FatalError("Incompatible matrix sizes for addMatrix.");
+    FatalErrorST("Incompatible matrix sizes for addMatrix.");
 
   for (uint i=0; i<this->dims[0]; i++)
     for (uint j=0; j<this->dims[1]; j++)
@@ -130,7 +130,7 @@ T* Array<T,N>::operator[](int inRow)
   }
   else {
     cout << "inRow = " << inRow << ", nRows = " << this->dims[0] << endl;
-    FatalError("Operator[]: Attempted out-of-bounds access in matrix.");
+    FatalErrorST("Operator[]: Attempted out-of-bounds access in matrix.");
   }
 }
 
@@ -145,7 +145,7 @@ T& Array<T,N>::operator()(int i, int j, int k, int l)
   else {
     cout << "i=" << i << ", dim0=" << dims[0] << ", j=" << j << ", dim1=" << dims[1] << ", ";
     cout << "k=" << k << ", dim2=" << dims[2] << ", l=" << l << ", dim3=" << dims[3] << endl;
-    FatalError("Attempted out-of-bounds access in Array.");
+    FatalErrorST("Attempted out-of-bounds access in Array.");
   }
 }
 
@@ -157,7 +157,7 @@ T& Array2D<T>::operator()(int i, int j)
   }
   else {
     cout << "i=" << i << ", dim0=" << this->dims[0] << ", j=" << j << ", dim1=" << this->dims[1] << endl;
-    FatalError("Attempted out-of-bounds access in matrix.");
+    FatalErrorST("Attempted out-of-bounds access in matrix.");
   }
 }
 
@@ -187,7 +187,7 @@ void matrix<T>::timesMatrix(matrix<T> &A, matrix<T> &B)
   uint i, j, k, p;
   p = A.dims[1];
 
-  if (A.dims[0] != this->dims[1]) FatalError("Incompatible matrix sizes in matrix multiplication!");
+  if (A.dims[0] != this->dims[1]) FatalErrorST("Incompatible matrix sizes in matrix multiplication!");
   if (B.dims[0] != this->dims[0] || B.dims[1] != A.dims[1]) B.setup(this->dims[0], A.dims[1]);
 
   B.initializeToZero();
@@ -236,7 +236,7 @@ void matrix<T>::timesMatrixPlus(matrix<T> &A, matrix<T> &B)
   uint i, j, k, p;
   p = A.dims[1];
 
-  if (A.dims[0] != this->dims[1]) FatalError("Incompatible matrix sizes in matrix multiplication!");
+  if (A.dims[0] != this->dims[1]) FatalErrorST("Incompatible matrix sizes in matrix multiplication!");
   if (B.dims[0] != this->dims[0] || B.dims[1] != A.dims[1]) B.setup(this->dims[0], A.dims[1]);
 
   for (i=0; i<this->dims[0]; i++) {
@@ -268,7 +268,7 @@ template<typename T>
 void Array2D<T>::insertRow(const vector<T> &vec, int rowNum)
 {
   if (this->dims[1]!= 0 && vec.size()!=this->dims[1])
-    FatalError("Attempting to assign row of wrong size to matrix.");
+    FatalErrorST("Attempting to assign row of wrong size to matrix.");
 
   if (rowNum==INSERT_AT_END || rowNum==(int)this->dims[0]) {
     // Default action - add to end
@@ -286,7 +286,7 @@ template<typename T>
 void Array2D<T>::insertRow(T *vec, int rowNum, int length)
 {
   if (this->dims[1]!=0 && length!=(int)this->dims[1])
-    FatalError("Attempting to assign row of wrong size to matrix.");
+    FatalErrorST("Attempting to assign row of wrong size to matrix.");
 
   if (rowNum==INSERT_AT_END || rowNum==(int)this->dims[0]) {
     // Default action - add to end
@@ -369,7 +369,7 @@ void Array2D<T>::removeCols(int nCols)
 template<typename T>
 vector<T> Array2D<T>::getRow(uint row)
 {
-  if (row > this->dims[0]) FatalError("Attempting to grab row beyond end of matrix.");
+  if (row > this->dims[0]) FatalErrorST("Attempting to grab row beyond end of matrix.");
 
   vector<T> out;
   out.assign(&(this->data[row*this->dims[1]]),&(this->data[row*this->dims[1]])+this->dims[1]);
@@ -454,7 +454,7 @@ template<typename T>
 matrix<T> matrix<T>::invertMatrix(void)
 {
   if (this->dims[0] != this->dims[1])
-    FatalError("Can only obtain inverse of a square matrix.");
+    FatalErrorST("Can only obtain inverse of a square matrix.");
 
   // Gaussian elimination with full pivoting
   // not to be used where speed is paramount
@@ -575,7 +575,7 @@ template<typename T>
 double matrix<T>::det()
 {
   if (this->dims[0]!=this->dims[1])
-    FatalError("Determinant only meaningful for square matrices.");
+    FatalErrorST("Determinant only meaningful for square matrices.");
 
   if (this->dims[0] == 2) {
     // Base case
@@ -609,7 +609,7 @@ template<typename T>
 matrix<T> matrix<T>::adjoint(void)
 {
   if (this->dims[0]!=this->dims[1])
-    FatalError("Adjoint only meaningful for square matrices.");
+    FatalErrorST("Adjoint only meaningful for square matrices.");
 
   matrix<T> adj(this->dims[0],this->dims[1]);
 
@@ -646,7 +646,7 @@ template<typename T>
 void matrix<T>::vecToMatrixResize(vector<T> &A)
 {
   if(A.size() != this->dims[0]*this->dims[1]) {
-    FatalError("Cannot fill vector into matrix - must have vector size == this->dims[0]*this->dims[1].");
+    FatalErrorST("Cannot fill vector into matrix - must have vector size == this->dims[0]*this->dims[1].");
   }
   else {
     for(uint i=0; i<A.size(); i++)

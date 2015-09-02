@@ -333,21 +333,22 @@ void geo::writeOversetConnectivity(void)
 #endif
 }
 
-void geo::matchOversetDonors(vector<ele> &eles, vector<superMesh> &donors)
+void geo::matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &donors)
 {
 #ifndef _NO_MPI
 
 #endif
 }
 
-void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
+void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
 {
   /* --- Remove Newly-Blanked Elements --- */
 
   for (auto &ic:blankCells) {
     if (ic<0) continue;
-
+cout << "Blanking cells!" << endl;
     int ind = eleMap[ic];
+    if (ind<0) FatalError("Should not have marked a hole cell for blanking!");
     eles.erase(eles.begin()+ind,eles.begin()+ind+1);
     eleMap[ic] = -1;
 
@@ -360,9 +361,10 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
 
   for (auto &ic:unblankCells) {
     if (ic<0) continue;
-
+  cout << "Unblanking cells!" << endl;
     // Find the next-lowest index
     int ind = eleMap[ic];
+    if (ind>=0) FatalError("Should not have marked a non-hole cell for un-blanking!");
     int j = 0;
     while (ind < 0) {
       ind = eleMap[ic-j];
@@ -370,33 +372,33 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
     }
     ind++;
 
-    ele e;
-    e.ID = ic;
+    shared_ptr<ele> e = make_shared<ele>();
+    e->ID = ic;
     if (nProcGrid>1)
-      e.IDg = ic2icg[ic];
+      e->IDg = ic2icg[ic];
     else
-      e.IDg = ic;
-    e.eType = ctype[ic];
-    e.nNodes = c2nv[ic];
+      e->IDg = ic;
+    e->eType = ctype[ic];
+    e->nNodes = c2nv[ic];
     if (nDims == 2)
-      e.nMpts = 4;
+      e->nMpts = 4;
     else
-      e.nMpts = 8;
+      e->nMpts = 8;
 
     // Shape [mesh] nodes
-    e.nodeID.resize(c2nv[ic]);
-    e.nodes.resize(c2nv[ic]);
+    e->nodeID.resize(c2nv[ic]);
+    e->nodes.resize(c2nv[ic]);
     for (int iv=0; iv<c2nv[ic]; iv++) {
-      e.nodeID[iv] = c2v(ic,iv);
-      e.nodes[iv] = point(xv[c2v(ic,iv)]);
+      e->nodeID[iv] = c2v(ic,iv);
+      e->nodes[iv] = point(xv[c2v(ic,iv)]);
     }
 
     // Global face IDs for internal & boundary faces
-    e.faceID.resize(c2nf[ic]);
-    e.bndFace.resize(c2nf[ic]);
+    e->faceID.resize(c2nf[ic]);
+    e->bndFace.resize(c2nf[ic]);
     for (int k=0; k<c2nf[ic]; k++) {
-      e.bndFace[k] = c2b(ic,k);
-      e.faceID[k] = c2f(ic,k);
+      e->bndFace[k] = c2b(ic,k);
+      e->faceID[k] = c2f(ic,k);
     }
 
     eles.insert(eles.begin()+ind,1,e);
@@ -404,7 +406,8 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
     // Update the map
     eleMap[ic] = ind;
     for (int k=ic+1; k<nEles; k++)
-      eleMap[k]++;
+      if (eleMap[k]>=0)
+        eleMap[k]++;
   }
 
   /* --- Remove Newly-Blanked Faces --- */
@@ -414,7 +417,7 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
 
   for (auto &ff:blankFaces) {
     if (ff<0) continue;
-
+cout << "Blanking Faces!" << endl;
     int ind = faceMap[ff];
     int fType = faceType[ff];
 
@@ -450,7 +453,7 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
 
   for (auto &ff:blankOFaces) {
     if (ff<0) continue;
-
+//cout << "Blanking OFaces!" << endl;
     int ind = faceMap[ff];
     if (ind>=0) oFaces.erase(oFaces.begin()+ind,oFaces.begin()+ind+1);
 
@@ -464,11 +467,12 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
 
   /* --- Create Newly-Unblanked Faces --- */
 
+  set<int> unblankMFaces;
   for (auto &ff:unblankFaces) {
     if (ff<0) continue;
 
     if (faceType[ff] == INTERNAL)
-    {
+    {cout << "Unblanking int face!" << endl;
       shared_ptr<face> iface = make_shared<intFace>();
 
       int ic1 = f2c(ff,0);
@@ -489,7 +493,9 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
         info.relRot = relRot;
         ic1 = eleMap[ic1];
         ic2 = eleMap[ic2];
-        iface->initialize(&eles[ic1],&eles[ic2],ff,fid1,info,params);
+        if (ic1<0 || ic2<0) FatalError("Unblanking an internal face, but an ele remains blanked!");
+        iface->initialize(eles[ic1],eles[ic2],ff,fid1,info,params);
+        iface->setupFace();
       }
 
       // Find the next-lowest index for insertion into vector
@@ -501,10 +507,14 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
           break;
         }
       }
+      ind = max(ind,0);
       faces.insert(faces.begin()+ind,1,iface);
+      faceMap[ff] = ind;
+      for (int i=ind+1; i<faces.size(); i++)
+        faceMap[faces[i]->ID] = i;
     }
     else if (faceType[ff] == BOUNDARY)
-    {
+    {cout << "Unblanking bound face!" << endl;
       int ind = std::distance(bndFaces.begin(), std::find(bndFaces.begin(),bndFaces.end(),ff));
 
       if (bcType[ind] == OVERSET) {
@@ -528,7 +538,10 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
           info.bcType = bcType[ind];
           info.isBnd = 1;
           ic = eleMap[ic];
-          bface->initialize(&eles[ic],NULL,ff,fid1,info,params);
+          if (ic<0) FatalError("Unblanking a boundary face, but ele remains blanked!");
+          shared_ptr<ele> nullEle;
+          bface->initialize(eles[ic],nullEle,ff,fid1,info,params);
+          bface->setupFace();
         }
 
         // Find the next-lowest index for insertion into vector
@@ -540,11 +553,15 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
             break;
           }
         }
+        ind = max(ind,0);
         faces.insert(faces.begin()+ind,1,bface);
+        faceMap[ff] = ind;
+        for (int i=ind+1; i<faces.size(); i++)
+          faceMap[faces[i]->ID] = i;
       }
     }
     else if (faceType[ff] == MPI_FACE)
-    {
+    {cout << "Unblanking mpi face!" << endl;
       int ind = std::distance(mpiFaces.begin(), std::find(mpiFaces.begin(),mpiFaces.end(),ff));
 
       shared_ptr<mpiFace> mface = make_shared<mpiFace>();
@@ -576,8 +593,26 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
         info.isMPI = 1;
         info.gridComm = gridComm;  // Note that this is equivalent to MPI_COMM_WORLD if non-overset (ngrids = 1)
         ic = eleMap[ic];
-        mface->initialize(&eles[ic],NULL,ff,fid1,info,params);
+        if (ic<0) FatalError("Unblanking an MPI face, but ele remains blanked!");
+        shared_ptr<ele> nullEle;
+        mface->initialize(eles[ic],nullEle,ff,fid1,info,params);
+        mface->setupFace();
+        unblankMFaces.insert(ff);
       }
+      // Find the next-lowest index for insertion into vector
+      ind = 0;
+      for (int f2=ff-1; f2>=0; f2--) {
+        ind = faceMap[f2];
+        if ( ind>0 && (faceType[f2] == MPI_FACE) && mFaces[ind]->ID < ff) {
+          ind++;
+          break;
+        }
+      }
+      ind = max(ind,0);
+      mFaces.insert(mFaces.begin()+ind,1,mface);
+      faceMap[ff] = ind;
+      for (int i=ind+1; i<mFaces.size(); i++)
+        faceMap[mFaces[i]->ID] = i;
     }
   }
 
@@ -585,7 +620,7 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
 
   for (auto &ff:unblankOFaces) {
     if (ff<0) continue;
-
+cout << "Unblanking OFaces!" << endl;
     shared_ptr<overFace> oface = make_shared<overFace>();
 
     int ic = f2c(ff,0);
@@ -606,6 +641,25 @@ void geo::setupUnblankElesFaces(vector<ele> &eles, vector<shared_ptr<face>> &fac
 
     struct faceInfo info;
     ic = eleMap[ic];
-    oface->initialize(&eles[ic],NULL,ff,fid,info,params);
+    if (ic<0) FatalError("Unblanking an Overset face, but ele remains blanked!");
+    shared_ptr<ele> nullEle;
+    oface->initialize(eles[ic],nullEle,ff,fid,info,params);
+    oface->setupFace();
+
+    // Find the next-lowest index for insertion into vector
+    int ind = 0;
+    while (ind+1<oFaces.size() && oFaces[ind+1]->ID < ff) {
+      ind++;
+    }
+    oFaces.insert(oFaces.begin()+ind,1,oface);
+    faceMap[ff] = ind;
+    for (int i=ind+1; i<oFaces.size(); i++)
+      faceMap[oFaces[i]->ID] = i;
+  }
+
+  // Finish the setup of all unblanked MPI faces (need L/R ranks to be ready)
+  for (auto &mface:mFaces) {
+    if (unblankMFaces.count(mface->ID))
+      mface->finishRightSetup();
   }
 }

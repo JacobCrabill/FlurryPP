@@ -2,7 +2,7 @@
 
 #include "utils.h"
 
-void MeshBlock::setData(int btag,int nnodesi,double *xyzi, int *ibli,int nwbci, int nobci, 
+void MeshBlock::setData(int btag,int nnodesi,double *xyzi, int *ibli,int nwbci, int nobci,
 			int *wbcnodei,int *obcnodei,
 			int ntypesi,int *nvi,int *nci,int **vconni)
 {
@@ -49,13 +49,13 @@ void MeshBlock::preprocess(void)
 
 void MeshBlock::tagBoundary(void)
 {
-  int i,j,k,n,m,ii;
+  int i,j,k,n,m;
   int itag;
   int inode[8];
   double xv[8][3];
   double vol;
   int *iflag;
-  int nvert,i3;  
+  int nvert,i3;
 
   // do this only once
   // i.e. when the meshblock is first
@@ -123,17 +123,16 @@ void MeshBlock::tagBoundary(void)
       iflag[i]=0;
     }
 
-    // now tag the boundary nodes
+    // now tag the overset-boundary nodes
     // reuse the iflag array
 
     //tracei(nobc);
     for(i=0;i<nobc;i++)
     {
-      ii=(obcnode[i]-BASE);
       iflag[(obcnode[i]-BASE)]=1;
     }
 
-    // now tag all the nodes of boundary cells
+    // now tag all the nodes of overset-boundary cells
     // to be mandatory receptors
 
     for(n=0;n<ntypes;n++)
@@ -224,7 +223,7 @@ void MeshBlock::writeGridFile(int bid)
 		      vconn[n][nvert*i+3]+ba,
 		      vconn[n][nvert*i+3]+ba);
 	    }
-	  else if (nvert==5) 
+	  else if (nvert==5)
 	    {
 	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
 		      vconn[n][nvert*i]+ba,
@@ -236,7 +235,7 @@ void MeshBlock::writeGridFile(int bid)
 		      vconn[n][nvert*i+4]+ba,
 		      vconn[n][nvert*i+4]+ba);
 	    }
-	  else if (nvert==6) 
+	  else if (nvert==6)
 	    {
 	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
 		      vconn[n][nvert*i]+ba,
@@ -310,7 +309,7 @@ void MeshBlock::writeCellFile(int bid)
 		      vconn[n][nvert*i+3]+ba,
 		      vconn[n][nvert*i+3]+ba);
 	    }
-	  else if (nvert==5) 
+	  else if (nvert==5)
 	    {
 	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
 		      vconn[n][nvert*i]+ba,
@@ -322,7 +321,7 @@ void MeshBlock::writeCellFile(int bid)
 		      vconn[n][nvert*i+4]+ba,
 		      vconn[n][nvert*i+4]+ba);
 	    }
-	  else if (nvert==6) 
+	  else if (nvert==6)
 	    {
 	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
 		      vconn[n][nvert*i]+ba,
@@ -384,7 +383,7 @@ void MeshBlock::writeFlowFile(int bid,double *q,int nvar,int type)
 	{
 	  fprintf(fp,"%lf %lf %lf %d ",x[3*i],x[3*i+1],x[3*i+2],iblank[i]);
 	  for(j=0;j<nvar;j++)
-	    fprintf(fp,"%lf ",q[i*nvar+j]);      
+	    fprintf(fp,"%lf ",q[i*nvar+j]);
 	  //for(j=0;j<nvar;j++)
 	  //  fprintf(fp,"%lf ", x[3*i]+x[3*i+1]+x[3*i+2]);
           fprintf(fp,"\n");
@@ -418,7 +417,7 @@ void MeshBlock::writeFlowFile(int bid,double *q,int nvar,int type)
 		      vconn[n][nvert*i+3]+ba,
 		      vconn[n][nvert*i+3]+ba);
 	    }
-	  else if (nvert==5) 
+	  else if (nvert==5)
 	    {
 	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
 		      vconn[n][nvert*i]+ba,
@@ -430,7 +429,7 @@ void MeshBlock::writeFlowFile(int bid,double *q,int nvar,int type)
 		      vconn[n][nvert*i+4]+ba,
 		      vconn[n][nvert*i+4]+ba);
 	    }
-	  else if (nvert==6) 
+	  else if (nvert==6)
 	    {
 	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
 		      vconn[n][nvert*i]+ba,
@@ -459,13 +458,13 @@ void MeshBlock::writeFlowFile(int bid,double *q,int nvar,int type)
   fclose(fp);
   return;
 }
-  
+
 void MeshBlock::getWallBounds(int *mtag,int *existWall, double wbox[6])
 {
   int i,j,i3;
   int inode;
 
-  *mtag=meshtag+(1-BASE); 
+  *mtag=meshtag+(1-BASE);
   if (nwbc <=0) {
     *existWall=0;
     for(i=0;i<6;i++) wbox[i]=0;
@@ -486,9 +485,9 @@ void MeshBlock::getWallBounds(int *mtag,int *existWall, double wbox[6])
 	  wbox[j+3]=max(wbox[j+3],x[i3+j]);
 	}
     }
-  
+
 }
-  
+
 void MeshBlock::markWallBoundary(int *sam,int nx[3],double extents[6])
 {
   int i,j,k,m,n;
@@ -555,7 +554,7 @@ void MeshBlock::markWallBoundary(int *sam,int nx[3],double extents[6])
        nvert=nv[n];
        for(i=0;i<nc[n];i++)
  	{
-	  if (iflag[m]==1) 
+	  if (iflag[m]==1)
 	    {
 	      //
 	      // find the index bounds of each wall boundary cell
@@ -596,7 +595,7 @@ void MeshBlock::markWallBoundary(int *sam,int nx[3],double extents[6])
    free(iflag);
    free(inode);
 }
-	
+
 void MeshBlock::getQueryPoints(OBB *obc,int *nints,int **intData,int *nreals, double **realData)
 {
   int i,j,k;
@@ -639,8 +638,8 @@ void MeshBlock::getQueryPoints(OBB *obc,int *nints,int **intData,int *nreals, do
   }
 
   free(inode);
-}  
-	  
+}
+
 void MeshBlock::writeOBB(int bid)
 {
   FILE *fp;
@@ -670,7 +669,7 @@ void MeshBlock::writeOBB(int bid)
 	      for(m=0;m<3;m++)
 		xx[m]=obb->xc[m]+ij*obb->vec[0][m]*obb->dxc[0]
 		  +ik*obb->vec[1][m]*obb->dxc[1]
-		  +il*obb->vec[2][m]*obb->dxc[2];	      
+		  +il*obb->vec[2][m]*obb->dxc[2];
 	      fprintf(fp,"%f %f %f\n",xx[0],xx[1],xx[2]);
 	    }
 	}
@@ -728,7 +727,7 @@ MeshBlock::~MeshBlock()
   if (pointsPerCell) free(pointsPerCell);
   if (rxyz) free(rxyz);
   // need to add code here for other objects as and
-  // when they become part of MeshBlock object  
+  // when they become part of MeshBlock object
 };
 //
 // set user specified node and cell resolutions
@@ -1360,6 +1359,13 @@ void MeshBlock::search(void)
   free(obq);
 }
 
+int MeshBlock::findPointDonor(double *x_pt)
+{
+  int foundCell;
+  adt->searchADT(this,&foundCell,x_pt);
+  return foundCell;
+}
+
 /* ---- Bookkeeping Functions ---- */
 
 
@@ -1510,7 +1516,7 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
   for(i=0;i<nnodes;i++)
   {
     mtag[i]=mtag1[i]=0;
-    if (iblank[i] == HOLE) mtag[i]=mtag1[i]=1;
+    if (iblank[i] == HOLE) mtag[i]=mtag1[i]=NORMAL;
   }
 
   for(iter=0;iter<nfringe;iter++)
@@ -1522,11 +1528,11 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
       {
         for(m=0;m<nvert;m++)
         {
-          if (mtag[(vconn[n][nvert*i+m]-BASE)]==1)
+          if (mtag[(vconn[n][nvert*i+m]-BASE)]==NORMAL)
           {
             for(mm=0;mm<nvert;mm++)
-              if (m!=mm && mtag[vconn[n][nvert*i+mm]-BASE] !=1)
-                mtag1[vconn[n][nvert*i+mm]-BASE] = 1;
+              if (m!=mm && mtag[vconn[n][nvert*i+mm]-BASE] !=NORMAL)
+                mtag1[vconn[n][nvert*i+mm]-BASE] = NORMAL;
           }
         }
       }

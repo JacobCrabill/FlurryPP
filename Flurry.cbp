@@ -65,6 +65,19 @@
 					<SilentBuild command="$make -j -s -f $makefile $target" />
 				</MakeCommands>
 			</Target>
+			<Target title="mpi2">
+				<Option output="bin/Flurry" prefix_auto="1" extension_auto="1" />
+				<Option type="0" />
+				<Option compiler="icc" />
+				<MakeCommands>
+					<Build command="$make -j -f $makefile $target" />
+					<CompileFile command="$make -f $makefile $file" />
+					<Clean command="$make -f $makefile clean" />
+					<DistClean command="$make -f $makefile distclean$target" />
+					<AskRebuildNeeded command="$make -j -q -f $makefile $target" />
+					<SilentBuild command="$make -j -s -f $makefile $target" />
+				</MakeCommands>
+			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />

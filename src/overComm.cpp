@@ -43,7 +43,7 @@ void overComm::setup(input* _params, int _nGrids, int _gridID, int _gridRank, in
 #endif
 }
 
-void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>> &overFaces, matrix<int> &c2ac,
+void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, matrix<int> &c2ac,
                                   const vector<int> &eleMap, const point &centroid, const point &extents)
 {
 #ifndef _NO_MPI
@@ -106,7 +106,7 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
       }
 
       point refLoc;
-      bool isInEle = eles[ic].getRefLocNelderMeade(pt,refLoc);
+      bool isInEle = eles[ic]->getRefLocNelderMeade(pt,refLoc);
 
       set<int> triedCells;
       triedCells.insert(ic);
@@ -125,7 +125,7 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
         int nextCell = -1;
         for (auto &icNext:nextCells) {
           int icn = eleMap[icNext];
-          isInEle = eles[icn].getRefLocNelderMeade(pt,refLoc);
+          isInEle = eles[icn]->getRefLocNelderMeade(pt,refLoc);
           triedCells.insert(icn);
 
           if (isInEle) {
@@ -134,7 +134,7 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
             break;
           }
           else {
-            auto box = eles[icn].getBoundingBox();
+            auto box = eles[icn]->getBoundingBox();
             point xc_next = point(&box[0]);
             double dist = getDist(pt,xc_next);
             if (dist < minDist) {
@@ -172,28 +172,37 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
     for (int i=0; i<nPts_rank[p]; i++) {
       // Get requested interpolation point
       point pt = point(&interpPtsPhys[3*(offset+i)]);
-
-      // First, check that point even lies within bounding box of grid
-      if ( (pt.x<minPt.x) || (pt.y<minPt.y) || (pt.z<minPt.z) ||
-           (pt.x>maxPt.x) || (pt.y>maxPt.y) || (pt.z>maxPt.z) )
-        continue;
-
-      // Check for containment in all eles on this rank of this grid
-      int ic = 0;
-      for (auto &e:eles) {
-        // !! THIS IS HORRIBLY INEFFICIENT !! - should use c2c to march from an
-        // initial guess to the neighboring cell nearest the point in question
+      int ic = tg->findPointDonor(&interpPtsPhys[3*(offset+i)]);
+      if (ic>=0 && eleMap[ic]>=0) {
+        ic = eleMap[ic];
         point refLoc;
-        bool isInEle = e.getRefLocNelderMeade(pt,refLoc);
-
-        if (isInEle) {
-          foundPts[p].push_back(i);
-          foundEles[p].push_back(ic); // Local ele id for this grid
-          foundLocs[p].push_back(refLoc);
-          break;
-        }
-        ic++;
+        bool isInEle = eles[ic]->getRefLocNelderMeade(pt,refLoc);
+        foundPts[p].push_back(i);
+        foundEles[p].push_back(ic); // Local ele id for this grid
+        foundLocs[p].push_back(refLoc);
       }
+
+//      // First, check that point even lies within bounding box of grid
+//      if ( (pt.x<minPt.x) || (pt.y<minPt.y) || (pt.z<minPt.z) ||
+//           (pt.x>maxPt.x) || (pt.y>maxPt.y) || (pt.z>maxPt.z) )
+//        continue;
+//
+//      // Check for containment in all eles on this rank of this grid
+//      int ic = 0;
+//      for (auto &e:eles) {
+//        // !! THIS IS HORRIBLY INEFFICIENT !! - should use c2c to march from an
+//        // initial guess to the neighboring cell nearest the point in question
+//        point refLoc;
+//        bool isInEle = e->getRefLocNelderMeade(pt,refLoc);
+//
+//        if (isInEle) {
+//          foundPts[p].push_back(i);
+//          foundEles[p].push_back(ic); // Local ele id for this grid
+//          foundLocs[p].push_back(refLoc);
+//          break;
+//        }
+//        ic++;
+//      }
     }
     //cout << "Grid,Rank = " << gridID << "," << rank << ": nFoundPts for rank" << p << " = " << foundPts[p].size() << endl;
   }
@@ -211,7 +220,7 @@ void overComm::matchOversetPoints(vector<ele> &eles, vector<shared_ptr<overFace>
 #endif
 }
 
-void overComm::matchUnblankCells(vector<ele> &eles, set<int> &unblankCells, matrix<int> &c2c, vector<int> &eleMap, int quadOrder)
+void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int> &unblankCells, matrix<int> &c2c, vector<int> &eleMap, int quadOrder)
 {
 #ifndef _NO_MPI
 
@@ -226,7 +235,7 @@ void overComm::matchUnblankCells(vector<ele> &eles, set<int> &unblankCells, matr
     // Constraining this to just linear hexahedrons for the time being
     for (int j=0; j<8; j++) {
       for (int k=0; k<3; k++) {
-        ubCellNodes(i,j,k) = eles[ie].nodesRK[0][j][k];
+        ubCellNodes(i,j,k) = eles[ie]->nodesRK[0][j][k];
       }
     }
     i++;
@@ -295,11 +304,11 @@ void overComm::matchUnblankCells(vector<ele> &eles, set<int> &unblankCells, matr
             else {
               // center of current bounding box
               point xc = point(boundingBoxex[offset+i]);
-              point ele_xc1 = eles[currCell].getCentroid();
+              point ele_xc1 = eles[currCell]->getCentroid();
               double maxDot = 0;
               int nextCell = 0;
               for (int j=0; j<c2nc[ic]; j++) {
-                point ele_xc2 = eles[c2c(ic,j)].getCentroid();
+                point ele_xc2 = eles[c2c(ic,j)]->getCentroid();
                 Vec3 dx1 = xc - ele_xc1;
                 Vec3 dx2 = ele_xc2 - ele_xc1;
                 double dot = dx1*dx2;
@@ -313,7 +322,7 @@ void overComm::matchUnblankCells(vector<ele> &eles, set<int> &unblankCells, matr
           }
         }*/
 
-        auto eBox = e.getBoundingBox();
+        auto eBox = e->getBoundingBox();
 
         bool intersect = (abs(cent.x-eBox[0])*2. < (dx.x + eBox[3])) &&
                          (abs(cent.y-eBox[1])*2. < (dx.y + eBox[4])) &&
@@ -327,14 +336,14 @@ void overComm::matchUnblankCells(vector<ele> &eles, set<int> &unblankCells, matr
             found = true;
           }
           foundCellNDonors[p][ind]++;
-          donorsIDs.push_back(e.ID); // Local ele id for this grid
+          donorsIDs.push_back(e->ID); // Local ele id for this grid
         }
       }
       if (found) {
         // Setup the donor cells [on this grid] for the unblanked cell [on other grid]
         foundCellDonors[p].insertRowUnsized(donorsIDs);
         for (int k=0; k<donorsIDs.size(); k++) {
-          donorPts.insertRow(eles[donorsIDs[k]].nodesRK[0]);
+          donorPts.insertRow(eles[donorsIDs[k]]->nodesRK[0]);
         }
         superMesh mesh(targetNodes,donorPts,quadOrder);
         donors.push_back(mesh);
@@ -354,7 +363,7 @@ void overComm::matchUnblankCells(vector<ele> &eles, set<int> &unblankCells, matr
 #endif
 }
 
-void overComm::exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &opers)
+void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers)
 {
 #ifndef _NO_MPI
 
@@ -365,7 +374,7 @@ void overComm::exchangeOversetData(vector<ele> &eles, map<int, map<int,oper> > &
     for (int i=0; i<foundPts[p].size(); i++) {
       point refPos = foundLocs[p][i];
       int ic = foundEles[p][i];
-      opers[eles[ic].eType][eles[ic].order].interpolateToPoint(eles[ic].U_spts, U_out[p][i], refPos);
+      opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, U_out[p][i], refPos);
     }
   }
 

@@ -72,39 +72,39 @@ void writeCSV(solver *Solver, input *params)
   // Solution data
   for (auto& e:Solver->eles) {
     if (params->motion != 0) {
-      e.updatePosSpts();
-      e.updatePosFpts();
-      e.setPpts();
+      e->updatePosSpts();
+      e->updatePosFpts();
+      e->setPpts();
     }
-    for (uint spt=0; spt<e.getNSpts(); spt++) {
-      V = e.getPrimitives(spt);
-      pt = e.getPosSpt(spt);
+    for (uint spt=0; spt<e->getNSpts(); spt++) {
+      V = e->getPrimitives(spt);
+      pt = e->getPosSpt(spt);
 
-      for (uint dim=0; dim<e.getNDims(); dim++) {
+      for (uint dim=0; dim<e->getNDims(); dim++) {
         dataFile << pt[dim] << ",";
       }
-      if (e.getNDims() == 2) dataFile << "0.0,"; // output a 0 for z [2D]
+      if (e->getNDims() == 2) dataFile << "0.0,"; // output a 0 for z [2D]
 
-      for (uint i=0; i<e.getNFields()-1; i++) {
+      for (uint i=0; i<e->getNFields()-1; i++) {
         dataFile << V[i] << ",";
       }
-      dataFile << V[e.getNFields()-1] << endl;
+      dataFile << V[e->getNFields()-1] << endl;
     }
 
     if (plotFpts) {
-      for (uint fpt=0; fpt<e.getNFpts(); fpt++) {
-        V = e.getPrimitivesFpt(fpt);
-        pt = e.getPosFpt(fpt);
+      for (uint fpt=0; fpt<e->getNFpts(); fpt++) {
+        V = e->getPrimitivesFpt(fpt);
+        pt = e->getPosFpt(fpt);
 
-        for (uint dim=0; dim<e.getNDims(); dim++) {
+        for (uint dim=0; dim<e->getNDims(); dim++) {
           dataFile << pt[dim] << ",";
         }
-        if (e.getNDims() == 2) dataFile << "0.0,"; // output a 0 for z [2D]
+        if (e->getNDims() == 2) dataFile << "0.0,"; // output a 0 for z [2D]
 
-        for (uint i=0; i<e.getNFields()-1; i++) {
+        for (uint i=0; i<e->getNFields()-1; i++) {
           dataFile << V[i] << ",";
         }
-        dataFile << V[e.getNFields()-1] << endl;
+        dataFile << V[e->getNFields()-1] << endl;
       }
     }
   }
@@ -256,37 +256,37 @@ void writeParaview(solver *Solver, input *params)
 
   for (auto& e:Solver->eles) {
     if (params->motion != 0) {
-      e.updatePosSpts();
-      e.updatePosFpts();
-      e.setPpts();
+      e->updatePosSpts();
+      e->updatePosFpts();
+      e->setPpts();
     }
 
     // The combination of spts + fpts will be the plot points
     matrix<double> vPpts, gridVelPpts, errPpts;
     vector<point> ppts;
-    e.getPrimitivesPlot(vPpts);
+    e->getPrimitivesPlot(vPpts);
     if (params->motion)
-      e.getGridVelPlot(gridVelPpts);
-    ppts = e.getPpts();
+      e->getGridVelPlot(gridVelPpts);
+    ppts = e->getPpts();
 
     // Shock Capturing stuff
     double sensor;
     if(params->scFlag == 1) {
-      sensor = e.getSensor();
+      sensor = e->getSensor();
     }
 
     if (params->equation == NAVIER_STOKES && params->calcEntropySensor)
-      e.getEntropyErrPlot(errPpts);
+      e->getEntropyErrPlot(errPpts);
 
     int nSubCells, nPpts;
-    int nPpts1D = e.order+3;
+    int nPpts1D = e->order+3;
     if (params->nDims == 2) {
-      nSubCells = (e.order+2)*(e.order+2);
-      nPpts = (e.order+3)*(e.order+3);
+      nSubCells = (e->order+2)*(e->order+2);
+      nPpts = (e->order+3)*(e->order+3);
     }
     else if (params->nDims == 3) {
-      nSubCells = (e.order+2)*(e.order+2)*(e.order+2);
-      nPpts = (e.order+3)*(e.order+3)*(e.order+3);
+      nSubCells = (e->order+2)*(e->order+2)*(e->order+2);
+      nPpts = (e->order+3)*(e->order+3)*(e->order+3);
     }
     else
       FatalError("Invalid dimensionality [nDims].");
@@ -376,7 +376,7 @@ void writeParaview(solver *Solver, input *params)
       dataFile << "				<DataArray type=\"Float32\" Name=\"IBLANK\" format=\"ascii\">" << endl;
 
       for(int k=0; k<nPpts; k++) {
-        dataFile << Solver->Geo->iblankCell[e.ID] << " ";
+        dataFile << Solver->Geo->iblankCell[e->ID] << " ";
       }
       dataFile << endl;
       dataFile << "				</DataArray>" << endl;
@@ -492,10 +492,10 @@ void writeResidual(solver *Solver, input *params)
   if (params->resType == 3) {
     // Infinity Norm
     for (uint e=0; e<Solver->eles.size(); e++) {
-      auto resTmp = Solver->eles[e].getNormResidual(params->resType);
+      auto resTmp = Solver->eles[e]->getNormResidual(params->resType);
       if(checkNaN(resTmp)) {
         cout << "rank " << params->rank << ", ele " << e << ": ";
-        auto box = Solver->eles[e].getBoundingBox();
+        auto box = Solver->eles[e]->getBoundingBox();
         cout << " centriod = " << box[0] << "," << box[1] << "," << box[2] << endl;
         FatalError("NaN Encountered in Solution Residual!");
       }
@@ -507,10 +507,10 @@ void writeResidual(solver *Solver, input *params)
   else if (params->resType == 1 || params->resType == 2) {
     // 1-Norm or 2-Norm
     for (uint e=0; e<Solver->eles.size(); e++) {
-      auto resTmp = Solver->eles[e].getNormResidual(params->resType);
+      auto resTmp = Solver->eles[e]->getNormResidual(params->resType);
       if(checkNaN(resTmp)) {
         cout << "rank " << params->rank << ", ele " << e << ": " << flush;
-        auto box = Solver->eles[e].getBoundingBox();
+        auto box = Solver->eles[e]->getBoundingBox();
         cout << " centriod = " << box[0] << "," << box[1] << "," << box[2] << endl;
         FatalError("NaN Encountered in Solution Residual!");
       }

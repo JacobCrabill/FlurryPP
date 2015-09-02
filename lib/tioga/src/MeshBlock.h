@@ -1,6 +1,6 @@
 /**
  * MeshBlock class - container and functions for generic unstructured grid partition in 3D
- *         
+ *
  * Jay Sitaraman
  * 02/20/2014
  */
@@ -53,7 +53,7 @@ class MeshBlock
 
   int ninterp;              /**< number of interpolations to be performed */
   INTERPLIST *interpList;   /**< list of donor nodes in my grid, with fractions and information of
-                                 who they donate to */ 
+                                 who they donate to */
   int *interp2donor;
 
   INTEGERLIST *cancelList;  /** receptors that need to be cancelled because of */
@@ -112,7 +112,7 @@ class MeshBlock
   int *pointsPerCell;      /** number of receptor points per cell */
   int maxPointsPerCell;    /** max of pointsPerCell vector */
   double *rxyz;            /**  point coordinates */
-  int ipoint; 
+  int ipoint;
 
  public :
   int nfringe;
@@ -133,7 +133,7 @@ class MeshBlock
   int ihigh;
   int ninterp2;            /** < number of interpolants for high-order points */
   INTERPLIST *interpList2; /** < list for high-interpolation points */
-  
+
   /** basic constructor */
   MeshBlock() {
     nv=NULL;
@@ -176,22 +176,25 @@ class MeshBlock
 
   /** basic destructor */
   ~MeshBlock();
-      
+
   void preprocess(void);
 
   void tagBoundary(void);
-  
+
   void writeGridFile(int bid);
 
   void writeFlowFile(int bid,double *q,int nvar,int type);
-  
-  void setData(int btag,int nnodesi,double *xyzi, int *ibli,int nwbci, int nobci, 
+
+  void setData(int btag,int nnodesi,double *xyzi, int *ibli,int nwbci, int nobci,
 	       int *wbcnodei,int *obcnodei,
 	       int ntypesi, int *nvi, int *nci, int **vconni);
 
-  void setResolutions(double *nres,double *cres);    
-	       
+  void setResolutions(double *nres,double *cres);
+
   void search();
+
+  /*! Given a 3D position, find the cell it lies within (-1 if not found) */
+  int findPointDonor(double *x_pt);
 
   void writeOBB(int bid);
 
@@ -201,30 +204,30 @@ class MeshBlock
 
   void getInterpolatedSolution(int *nints,int *nreals,int **intData,double **realData,double *q,
 			       int nvar, int interptype);
-  
+
   void checkContainment(int *cellIndex,int adtElement,double *xsearch);
 
   void getWallBounds(int *mtag,int *existWall, double wbox[6]);
-  
+
   void markWallBoundary(int *sam,int nx[3],double extents[6]);
 
   void getQueryPoints(OBB *obb,int *nints,int **intData,int *nreals,
 		      double **realData);
-  
+
 
   /** routines that do book keeping */
 
   void getDonorPacket(PACKET *sndPack, int nsend);
 
   void initializeDonorList();
-  
+
   void insertAndSort(int pointid,int senderid,int meshtag, int remoteid, double donorRes);
-  
+
   void processDonors(HOLEMAP *holemap, int nmesh,int **donorRecords,double **receptorResolution,
 		     int *nrecords);
 
   void initializeInterpList(int ninterp_input);
-  
+
   void findInterpData(int* recid,int irecord, double receptorRes);
 
   void set_ninterp(int);
