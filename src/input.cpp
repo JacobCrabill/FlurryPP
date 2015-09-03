@@ -399,6 +399,7 @@ void input::readInputFile(char *filename)
   switch (timeType) {
     case 0:
       nRKSteps = 1;
+      RKa = {0};
       RKb = {1};
       break;
     case 4:

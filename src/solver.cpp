@@ -85,7 +85,7 @@ void solver::update(void)
 
   /* Intermediate residuals for Runge-Kutta time integration */
 
-  if (params->dtType == 1) calcDt(); // -- RELOCATING FOR MOVING-MESH CASES --
+  if (params->dtType == 1) calcDt();
 
   for (int step=0; step<nRKSteps-1; step++) {
 
@@ -101,12 +101,7 @@ void solver::update(void)
 
   /* Final Runge-Kutta time advancement step */
 
-  if (nRKSteps == 1) {
-    params->rkTime = params->time;
-  }
-  else {
-    params->rkTime = params->time + params->dt;
-  }
+  params->rkTime = params->time + params->RKa[nRKSteps-1]*params->dt;
 
   moveMesh(nRKSteps-1);
 
@@ -218,7 +213,7 @@ void solver::timeStepA(int step)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    eles[i]->timeStepA(step,params->RKa[step]);
+    eles[i]->timeStepA(step,params->RKa[step+1]);
   }
 }
 
