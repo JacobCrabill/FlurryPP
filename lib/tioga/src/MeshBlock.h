@@ -7,11 +7,12 @@
 
 #pragma once
 
+#include <set>
+
 #include "codetypes.h"
 
 class ADT;
 class solver;
-//class MeshBlock;
 
 #include "ADT.h"
 
@@ -196,6 +197,9 @@ class MeshBlock
   /*! Given a 3D position, find the cell it lies within (-1 if not found) */
   int findPointDonor(double *x_pt);
 
+  /*! Given a bounding box, find all elements which overlap with it */
+  std::set<int> findCellDonors(double *bbox);
+
   void writeOBB(int bid);
 
   void updateSolnData(int inode,double *qvar,double *q,int nvar,int interptype);
@@ -204,6 +208,8 @@ class MeshBlock
 
   void getInterpolatedSolution(int *nints,int *nreals,int **intData,double **realData,double *q,
 			       int nvar, int interptype);
+
+  int getCellIndex(int adtEle);
 
   void checkContainment(int *cellIndex,int adtElement,double *xsearch);
 

@@ -59,11 +59,62 @@ void searchIntersections(MeshBlock *mb,int *cellIndex,int *adtIntegers,double *a
   return;
 }
 
+void searchBoxIntersections(MeshBlock *mb,std::set<int> &icells,int *adtIntegers,double *adtReals,
+       double *coord,int level,int node,double *bbox,int nelem,int ndim)
+{
+  int i;
+  int d,nodeChild,dimcut;
+  double element[ndim];
+
+  for(i=0;i<ndim;i++)
+    element[i]=coord[ndim*(adtIntegers[4*node])+i];
+
+  // Check if bbox intersects with bounding box of current mesh element in ADT
+  bool flag = true;
+  for(i=0;i<3;i++) {
+    flag = (flag && (bbox[i+3] >= element[i]  -TOL));
+    flag = (flag && (bbox[i]   <= element[i+3]+TOL));
+  }
+
+  if (flag) {
+    int ind = mb->getCellIndex(adtIntegers[4*node]);
+    icells.insert(ind);
+  }
+
+  // check the left and right children
+  // now
+  for(d=1;d<3;d++)
+  {
+    nodeChild=adtIntegers[4*node+d];
+    if (nodeChild > -1) {
+      nodeChild = adtIntegers[4*nodeChild+3];
+
+      for(i=0;i<ndim;i++)
+        element[i]=adtReals[ndim*nodeChild+i];
+
+      flag = true;
+      for(i=0;i<3;i++) {
+        flag = (flag && (bbox[i+3] >= element[i]  -TOL));
+        flag = (flag && (bbox[i]   <= element[i+3]+TOL));
+      }
+
+      if (flag)
+        searchBoxIntersections(mb,icells,adtIntegers,adtReals,coord,level+1,
+                            nodeChild,bbox,nelem,ndim);
+    }
+  }
+  return;
+}
+
 void buildADTrecursion(double *coord,double *adtReals,double *adtWork,int *adtIntegers,
            int *elementsAvailable,int *adtCount,int side,int parent,
            int level,int ndim,int nelem, int nav)
 {
 
+  /* RECALL:
+   * --coord contains the bounding box for each individual *mesh* element
+   * --adtReals contains the bounding box for each *ADT* element/node
+   */
   int nd=ndim/2;
   double coordmid;
   int i,j;
@@ -269,7 +320,7 @@ void ADT::buildADT(int d, int nelements,double *elementBbox)
 }
 
 
-void ADT::searchADT(MeshBlock *mb, int *cellIndex,double *xsearch)
+void ADT::searchADT_point(MeshBlock *mb, int* cellIndex, double *xsearch)
 {
   int rootNode=0;
   *cellIndex=-1;
@@ -284,5 +335,22 @@ void ADT::searchADT(MeshBlock *mb, int *cellIndex,double *xsearch)
   // call recursive routine to check intersections with ADT nodes
   if (flag) searchIntersections(mb,cellIndex,adtIntegers,adtReals,
         coord,0,rootNode,xsearch,nelem,ndim);
+}
+
+void ADT::searchADT_box(MeshBlock *mb, std::set<int> &icells, double *bbox)
+{
+  int rootNode=0;
+  icells.clear();
+
+  // Check if the given bounding box intersects with the the bounds of the ADT
+  bool flag = true;
+  for(int i=0;i<3;i++) {
+    flag = (flag && (bbox[i+3] >= adtExtents[2*i]  -TOL));
+    flag = (flag && (bbox[i]   <= adtExtents[2*i+1]+TOL));
+  }
+
+  // Call recursive routine to check intersections with ADT nodes
+  if (flag) searchBoxIntersections(mb,icells,adtIntegers,adtReals,
+        coord,0,rootNode,bbox,nelem,ndim);
 }
 

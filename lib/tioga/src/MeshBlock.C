@@ -738,6 +738,11 @@ void MeshBlock::setResolutions(double *nres,double *cres)
   userSpecifiedCellRes=cres;
 }
 
+int MeshBlock::getCellIndex(int adtEle)
+{
+  return elementList[adtEle];
+}
+
 
 void MeshBlock::checkContainment(int *cellIndex, int adtElement, double *xsearch)
 {
@@ -1197,13 +1202,6 @@ void MeshBlock::updatePointData(double *q,double *qtmp,int nvar,int interptype)
 
 void MeshBlock::search(void)
 {
-  int i,j,k,l,m,n,p,i3;
-  int ndim;
-  int iptr,isum,nvert;
-  OBB *obq;
-  int *icell;
-  int cell_count;
-  int cellindex;
   double xd[3];
   double dxc[3];
   double xmin[3];
@@ -1216,42 +1214,38 @@ void MeshBlock::search(void)
 //    return;
 //  }
 
-  obq=(OBB *) malloc(sizeof(OBB));
+  OBB* obq=(OBB *) malloc(sizeof(OBB));
   findOBB(xsearch,obq->xc,obq->dxc,obq->vec,nsearch);
 
-  //writebbox(obq,4);
-  //writePoints(xsearch,nsearch,4);
-  //
   // find all the cells that may have intersections with
   // the OBB
 
-  icell=(int *)malloc(sizeof(int)*ncells);
-  for(i=0;i<ncells;i++) icell[i]=-1;
-  iptr=-1;
-  cell_count=0;
-  p=0;
-  for(n=0;n<ntypes;n++)
-  {
-    nvert=nv[n];
-    for(i=0;i<nc[n];i++)
-    {
+  int* icell=(int *)malloc(sizeof(int)*ncells);
+  for(int i=0;i<ncells;i++) icell[i]=-1;
 
+  int iptr=-1;
+  int cell_count=0;
+  for(int n=0;n<ntypes;n++)
+  {
+    int nvert=nv[n];
+    for(int i=0;i<nc[n];i++)
+    {
       // find each cell that has
       // overlap with the bounding box
       xmin[0]=xmin[1]=xmin[2]=BIGVALUE;
       xmax[0]=xmax[1]=xmax[2]=-BIGVALUE;
-      for(m=0;m<nvert;m++)
+      for(int m=0;m<nvert;m++)
       {
-        i3=3*(vconn[n][nvert*i+m]-BASE);
-        for(j=0;j<3;j++)
+        int i3=3*(vconn[n][nvert*i+m]-BASE);
+        for(int j=0;j<3;j++)
         {
           xd[j]=0;
-          for(k=0;k<3;k++)
+          for(int k=0;k<3;k++)
             xd[j]+=(x[i3+k]-obq->xc[k])*obq->vec[j][k];
           xmin[j]=min(xmin[j],xd[j]);
           xmax[j]=max(xmax[j],xd[j]);
         }
-        for(j=0;j<3;j++)
+        for(int j=0;j<3;j++)
         {
           xd[j]=(xmax[j]+xmin[j])*0.5;
           dxc[j]=(xmax[j]-xmin[j])*0.5;
@@ -1262,15 +1256,14 @@ void MeshBlock::search(void)
           fabs(xd[2]) <= (dxc[2]+obq->dxc[2]))
       {
 
-        // create a LIFO stack
-        // with all the cells that
-        // have bounding box intersection with
-        // the QP bounding box
-        icell[p]=iptr;
-        iptr=p;
+        /* Create a LIFO stack ('icell') with all the cells
+         * that have a bounding-box intersection with the
+         * query-point bounding box
+         */
+        icell[i]=iptr;
+        iptr=i;
         cell_count++;
       }
-      p++;
     }
   }
 
@@ -1283,30 +1276,30 @@ void MeshBlock::search(void)
   elementBbox=(double *)malloc(sizeof(double)*cell_count*6);
   elementList=(int *)malloc(sizeof(int)*cell_count);
 
-  k=iptr;
-  l=0;
-  p=0;
-  //for(k=0;k<ncells;k++)
+  int k=iptr;
+  int l=0;
+  int p=0;
   while(k!=-1)
   {
-    cellindex=k;
-    isum=0;
+    int cellindex=k;
+    int isum=0;
+    int ic,n;
     for(n=0;n<ntypes;n++)
     {
       isum+=nc[n];
       if (cellindex < isum)
       {
-        i=cellindex-(isum-nc[n]);
+        ic=cellindex-(isum-nc[n]);
         break;
       }
     }
-    nvert=nv[n];
+    int nvert=nv[n];
     xmin[0]=xmin[1]=xmin[2]=BIGVALUE;
     xmax[0]=xmax[1]=xmax[2]=-BIGVALUE;
-    for(m=0;m<nvert;m++)
+    for(int m=0;m<nvert;m++)
     {
-      i3=3*(vconn[n][nvert*i+m]-BASE);
-      for(j=0;j<3;j++)
+      int i3=3*(vconn[n][nvert*ic+m]-BASE);
+      for(int j=0;j<3;j++)
       {
         xmin[j]=min(xmin[j],x[i3+j]);
         xmax[j]=max(xmax[j],x[i3+j]);
@@ -1327,32 +1320,28 @@ void MeshBlock::search(void)
 
   // build the ADT now
 
-  if (adt)
-  {
+  if (adt) {
     adt->clearData();
-  }
-  else
-  {
+  } else {
     adt=new ADT[1];
   }
-  ndim=6;
+
+  int ndim=6;
   adt->buildADT(ndim,cell_count,elementBbox);
 
   if (donorId) free(donorId);
   donorId=(int*)malloc(sizeof(int)*nsearch);
 
-  //for(i=0;i<nsearch;i++)
   donorCount=0;
   ipoint=0;
-  for(i=0;i<nsearch;i++)
+  for(int i=0;i<nsearch;i++)
   {
-    adt->searchADT(this,&(donorId[i]),&(xsearch[3*i]));
+    adt->searchADT_point(this,&(donorId[i]),&(xsearch[3*i]));
     if (donorId[i] > -1) {
       donorCount++;
     }
     ipoint+=3;
   }
-  //printf("found %d donors out of %d points\n",donorCount,nsearch);
 
   free(icell);
   free(obq);
@@ -1361,8 +1350,15 @@ void MeshBlock::search(void)
 int MeshBlock::findPointDonor(double *x_pt)
 {
   int foundCell;
-  adt->searchADT(this,&foundCell,x_pt);
+  adt->searchADT_point(this,&foundCell,x_pt);
   return foundCell;
+}
+
+std::set<int> MeshBlock::findCellDonors(double *bbox)
+{
+  std::set<int> foundCells;
+  adt->searchADT_box(this,foundCells,bbox);
+  return foundCells;
 }
 
 /* ---- Bookkeeping Functions ---- */

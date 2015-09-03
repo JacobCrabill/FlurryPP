@@ -97,6 +97,11 @@ int tioga::findPointDonor(double *x_pt)
   return mb->findPointDonor(x_pt);
 }
 
+std::set<int> tioga::findCellDonors(double *bbox)
+{
+  return mb->findCellDonors(bbox);
+}
+
 void tioga::dataUpdate(int nvar,double *q,int interptype)
 {
   int i,j,k,m;

@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <set>
+
 // forward declaration for instantiation
 class MeshBlock;
 
@@ -44,9 +46,18 @@ public :
   }
 
   void buildADT(int d,int nelements,double *elementBbox);  
-  void searchADT(MeshBlock *mb,int *cellindx,double *xsearch);
+
+  //! Search the ADT for the element containint the point xsearch
+  void searchADT_point(MeshBlock *mb,int *cellIndex,double *xsearch);
+
+  //! Search the ADT for all elements overlapping with bounding-box bbox
+  void searchADT_box(MeshBlock *mb, std::set<int> &icells, double *bbox);
 };
 
+//! Recursively search the input ADT for the MeshBlock cell containing xsearch
 void searchIntersections(MeshBlock *mb,int *cellIndex,int *adtIntegers,double *adtReals,double *coord,int level,int node,double *xsearch,int nelem,int ndim);
+
+//! Recursively search the input ADT for all MeshBlock cells intersecting with bbox
+void searchBoxIntersections(MeshBlock *mb,std::set<int> &icells,int *adtIntegers,double *adtReals,double *coord,int level,int node,double *bbox,int nelem,int ndim);
 
 void buildADTrecursion(double *coord,double *adtReals,double *adtWork,int *adtIntegers,int *elementsAvailable,int *adtCount,int side,int parent,int level,int ndim,int nelem, int nav);

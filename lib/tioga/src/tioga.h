@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <set>
+
 class MeshBlock;
 
 #include "parallelComm.h"
@@ -53,6 +55,8 @@ class tioga
   void profile(void);
 
   int findPointDonor(double* x_pt);
+
+  std::set<int> findCellDonors(double* bbox);
 
   void exchangeBoxes(void);
 

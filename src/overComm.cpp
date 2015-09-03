@@ -260,91 +260,37 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int> &unblan
     if (gridIdList[p] == gridID) continue;
 
     for (int i=0; i<nCells_rank[p]; i++) {
-      // Get requested cell's bounding box
-      vector<point> targetNodes(8);
+      // Get requested cell's bounding box [min & max extents]
+      vector<double> targetBox = {1e15, 1e15, 1e15, -1e15, -1e15, -1e15};
+      vector<point> targetNodes;
       for (int j=0; j<8; j++) {
-        targetNodes[j] = point(&ubNodes_rank[(offset+i)*stride+3*j]);
-      }
-      point cent, dx;
-      getBoundingBox(targetNodes,cent,dx);
-      //point cent = point(&bBoxes_grid[offset+i]);
-      //point dx = point(&bBoxes_grid[offset+i+3]);
-
-      // Check for overlap in all eles on this rank of this grid
-      bool found = false;
-      int ind = -1;
-      vector<int> donorsIDs;
-      Array2D<point> donorPts;
-      for (auto &e:eles) {
-      /*set<int> triedCells;
-        int currCell = 0;
-        for (int i=0; i<nCells_grid[g]; i++) {
-          bool matched = false;
-          while (!matched) {
-            bool intersect = hitTest(box,currCell);
-            triedCells.insert(currCell);
-            if (intersect) {
-              foundCellDonors[g].push_back(currCell);
-              vector<int> possibleDonors = c2c.getRow(ic);
-              // Explore around current cell to find other possible donors. If no intersection, we're too far away.
-              while (possibleDonors.size()>0) {
-                int nextC = possibleDonors.back();
-                triedCells.insert(nextC);
-                possibleDonors.pop_back();
-                if (hitTest(bbox,eles[nextC])) {
-                  foundCellDonors[g].push_back(nextC);
-                  for (int j=0; j<c2nc[nextC]; j++) {
-                    if (!triedCells.count(c2c(nextC,j))) {
-                      possibleDonors.push_back(c2c(nextC,j));
-                    }
-                  }
-                }
-              }
-            }
-            else {
-              // center of current bounding box
-              point xc = point(boundingBoxex[offset+i]);
-              point ele_xc1 = eles[currCell]->getCentroid();
-              double maxDot = 0;
-              int nextCell = 0;
-              for (int j=0; j<c2nc[ic]; j++) {
-                point ele_xc2 = eles[c2c(ic,j)]->getCentroid();
-                Vec3 dx1 = xc - ele_xc1;
-                Vec3 dx2 = ele_xc2 - ele_xc1;
-                double dot = dx1*dx2;
-                if (dot > maxDot) {
-                  maxDot = dot;
-                  nextCell = j;
-                }
-              }
-              currCell = c2c(currCell,nextCell);
-            }
-          }
-        }*/
-
-        auto eBox = e->getBoundingBox();
-
-        bool intersect = (abs(cent.x-eBox[0])*2. < (dx.x + eBox[3])) &&
-                         (abs(cent.y-eBox[1])*2. < (dx.y + eBox[4])) &&
-                         (abs(cent.z-eBox[2])*2. < (dx.z + eBox[5]));
-
-        if (intersect) {
-          if (!found) {
-            ind = foundCells.size();
-            foundCellNDonors[p].push_back(0);
-            foundCells[p].push_back(i);
-            found = true;
-          }
-          foundCellNDonors[p][ind]++;
-          donorsIDs.push_back(e->ID); // Local ele id for this grid
+        point pt = point(&ubNodes_rank[(offset+i)*stride+3*j]);
+        targetNodes.push_back(pt);
+        for (int dim=0; dim<3; dim++) {
+          targetBox[dim]   = min(pt[dim],targetBox[dim]);
+          targetBox[dim+3] = max(pt[dim],targetBox[dim+3]);
         }
       }
-      if (found) {
+
+      // Find all possible donors using Tioga's ADT search
+      set<int> cellIDs = tg->findCellDonors(targetBox.data());
+
+      if (cellIDs.size() > 0) {
+        vector<int> donorsIDs;
+        int ind = foundCells.size();
+        foundCellNDonors[p].push_back(cellIDs.size());
+        foundCells[p].push_back(i);
+        for (auto &ic:cellIDs)
+          donorsIDs.push_back(ic);
+
         // Setup the donor cells [on this grid] for the unblanked cell [on other grid]
         foundCellDonors[p].insertRowUnsized(donorsIDs);
-        for (int k=0; k<donorsIDs.size(); k++) {
-          donorPts.insertRow(eles[donorsIDs[k]]->nodesRK);
+
+        Array2D<point> donorPts;
+        for (auto &ic:donorsIDs) {
+          donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
         }
+
         superMesh mesh(targetNodes,donorPts,quadOrder);
         donors.push_back(mesh);
       }
