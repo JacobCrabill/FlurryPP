@@ -124,14 +124,6 @@ void solver::calcResidual(int step)
     shockCapture();
   }
 
-//  if (params->meshType == OVERSET_MESH) {
-//    setGlobalSolutionArray();
-//
-//    callDataUpdateTIOGA();
-//
-//    updateElesSolutionArrays();
-//  }
-
   extrapolateU();
 
   /* --- Polynomial-Squeezing stabilization procedure --- */

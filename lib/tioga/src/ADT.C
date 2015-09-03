@@ -19,6 +19,7 @@ void searchIntersections(MeshBlock *mb,int *cellIndex,int *adtIntegers,double *a
   for(i=0;i<ndim;i++)
     element[i]=coord[ndim*(adtIntegers[4*node])+i];
 
+  // Check if point is inside bounding box of current mesh element, index 'node'
   flag=1;
   for(i=0;i<ndim/2;i++)
     flag = (flag && (xsearch[i] >=element[i]-TOL));
