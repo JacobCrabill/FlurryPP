@@ -323,6 +323,13 @@ void geo::setCellFaceIblanks()
       unblankOFaces.insert(ff);
     }
   }
+
+  if ((blankCells.size()>0 || blankFaces.size()>0) && params->iter != params->initIter)
+    cout << "nBlankCells   = " << blankCells.size() << "  nBlakFaces   = " << blankFaces.size() << "  nBlankOfaces   = " << blankOFaces.size() << endl;
+  if ((unblankCells.size()>0 || unblankFaces.size()>0 || unblankOFaces.size()>0) && params->iter != params->initIter)
+    cout << "nUnBlankCells = " << unblankCells.size() << "  nUnBlakFaces = " << unblankFaces.size() << "  nUnBlankOfaces = " << unblankOFaces.size() << endl;
+
+
 }
 
 void geo::writeOversetConnectivity(void)
@@ -400,9 +407,10 @@ cout << "Blanking Faces!" << endl;
 
   for (auto &ff:blankOFaces) {
     if (ff<0) continue;
-//cout << "Blanking OFaces!" << endl;
     int ind = faceMap[ff];
-    if (ind>=0) oFaces.erase(oFaces.begin()+ind,oFaces.begin()+ind+1);
+    if (ind<0) continue;
+  cout << "Blanking OFaces!" << endl;
+    oFaces.erase(oFaces.begin()+ind,oFaces.begin()+ind+1);
 
     // Update the map
     faceMap[ff] = -1;

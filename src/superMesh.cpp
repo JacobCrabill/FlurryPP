@@ -296,7 +296,7 @@ vector<tetra> superMesh::clipTet(tetra &tet, const vector<point> &clipFace, Vec3
     }
 
     case 4: {
-      cout << "WARNING: input donor-cell tet is completely exterior to target cell!" << endl;
+      //cout << "WARNING: input donor-cell tet is completely exterior to target cell!" << endl;
       break;
     }
   }

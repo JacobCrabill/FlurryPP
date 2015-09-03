@@ -177,6 +177,25 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_p
         ic = eleMap[ic];
         point refLoc;
         eles[ic]->getRefLocNelderMeade(pt,refLoc);
+//        if (!isInEle) {
+//          auto bbox = eles[ic]->getBoundingBox();
+//          cout << endl;
+//          cout << "rank " << rank << ": p = " << p << ", i = " << i << ":" << endl;
+//          //cout << "point = " << pt.x << "," << pt.y << "," << pt.z << "; ";
+//          cout << "refLoc = " << refLoc.x << "," << refLoc.y << "," << refLoc.z << "; " << 1.-abs(refLoc.z) << endl;
+//          //cout << "ele bbox = " << bbox[0] << "," << bbox[1] << "," << bbox[2] << "; ";
+//          //cout << bbox[3] << "," << bbox[4] << "," << bbox[5] << endl;
+//          cout << endl;
+//          FatalError("Need to update ADT!");
+//        }
+//        else {
+//          cout << "rank " << rank << ": p = " << p << ", i = " << i << ": ";
+//          cout << "point = " << pt.x << "," << pt.y << "," << pt.z << "; ";
+//          cout << "refLoc = " << refLoc.x << "," << refLoc.y << "," << refLoc.z << "; ";
+//          auto bbox = eles[ic]->getBoundingBox();
+//          cout << "ele bbox = " << bbox[0] << "," << bbox[1] << "," << bbox[2] << "; ";
+//          cout << bbox[3] << "," << bbox[4] << "," << bbox[5] << endl;
+//        }
         foundPts[p].push_back(i);
         foundEles[p].push_back(ic); // Local ele id for this grid
         foundLocs[p].push_back(refLoc);

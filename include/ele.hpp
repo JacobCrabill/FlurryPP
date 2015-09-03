@@ -144,7 +144,7 @@ public:
 
   void getPosSpts(double* posSpts);
 
-  //! Get a bounding box for the element defined by a center point, width, length, and height
+  //! Get a bounding box for the element defined by the minimum and maximum extents
   vector<double> getBoundingBox(void);
 
   /*! Find the reference location of a point inside an element given its

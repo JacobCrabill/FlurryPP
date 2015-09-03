@@ -115,11 +115,12 @@ protected:
   shared_ptr<ele> eR;
 
   /* --- Storage for all solution/geometry data at flux points [left state] --- */
-  matrix<double> UL;      //! Discontinuous solution at left, right eles [nFpts, nFields]
-  matrix<double> UR;      //! Discontinuous solution at left, right eles [nFpts, nFields]
+  matrix<double> UL;      //! Discontinuous solution at left ele [nFpts, nFields]
+  matrix<double> UR;      //! Discontinuous solution at right ele [nFpts, nFields]
   matrix<double> UC;      //! Common solution at interface [nFpts, nFields]
   vector<matrix<double>> gradUL; //! Solution gradient at left side
   vector<matrix<double>> gradUR; //! Solution gradient at right side
+  matrix<double> Vg;      //! Grid velocity at interface
   vector<matrix<double>> FL; //! Flux matrix at each flux point [nFpts, nDims, nFields]
   vector<double*> FnL;    //! Common normal flux for left ele (in ele's memory)  [nFpts, nFields]
   vector<double*> UcL;    //! Common solution for left ele (in ele's memory)  [nFpts, nFields]

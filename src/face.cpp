@@ -73,6 +73,10 @@ void face::setupFace(void)
     for (auto &dU:gradUR) dU.setup(nDims,nFields);
   }
 
+  if (params->motion) {
+    Vg.setup(nFptsL,nDims);
+  }
+
   // Get access to data at left element
   int fpt = 0;
   for (int i=fptStartL; i<fptEndL; i++) {
@@ -108,9 +112,14 @@ void face::getLeftState()
     }
 
     if (params->viscous) {
-      for (int j=0; j<nFields; j++)
-        for (int dim=0; dim<nDims; dim++)
+      for (int dim=0; dim<nDims; dim++)
+        for (int j=0; j<nFields; j++)
           gradUL[fpt](dim,j) = (eL->dU_fpts[dim](i,j));
+    }
+
+    if (params->motion) {
+      for (int dim=0; dim<nDims; dim++)
+        Vg(fpt,dim) = eL->gridVel_fpts(i,dim);
     }
 
     fpt++;
@@ -294,6 +303,7 @@ void face::rusanovFlux(void)
 
     double wL, pL, vnL=0.;
     double wR, pR, vnR=0.;
+    double vgn=0.;
 
     // Calculate pressure
     if (params->nDims==2) {
@@ -310,6 +320,7 @@ void face::rusanovFlux(void)
     for (int dim=0; dim<params->nDims; dim++) {
       vnL += normL(fpt,dim)*UL(fpt,dim+1)/rhoL;
       vnR += normL(fpt,dim)*UR(fpt,dim+1)/rhoR;
+      vgn += normL(fpt,dim)*Vg(fpt,dim);
       for (int i=0; i<params->nFields; i++) {
         tempFnL[i] += normL(fpt,dim)*tempFL(dim,i);
         tempFnR[i] += normL(fpt,dim)*tempFR(dim,i);
@@ -319,14 +330,21 @@ void face::rusanovFlux(void)
     // Get maximum eigenvalue for diffusion coefficient
     double csqL = max(params->gamma*pL/rhoL,0.0);
     double csqR = max(params->gamma*pR/rhoR,0.0);
-    double eigL = std::fabs(vnL) + sqrt(csqL);
-    double eigR = std::fabs(vnR) + sqrt(csqR);
-    *waveSp[fpt] = max(eigL,eigR);
+    double eigL = std::fabs(vnL-vgn) + sqrt(csqL);
+    double eigR = std::fabs(vnR-vgn) + sqrt(csqR);
+    double eig  = max(eigL,eigR);
 
     // Calculate Rusanov flux
     for (int i=0; i<params->nFields; i++) {
-      Fn(fpt,i) = 0.5*(tempFnL[i]+tempFnR[i] - (*waveSp[fpt])*(UR(fpt,i)-UL(fpt,i)));
+      Fn(fpt,i) = 0.5*(tempFnL[i]+tempFnR[i] - eig*(UR(fpt,i)-UL(fpt,i)));
     }
+
+    // Store wave speed for calculation of allowable dt
+    if (params->motion) {
+      eigL = std::fabs(vnL-vgn) + sqrt(csqL);
+      eigR = std::fabs(vnR-vgn) + sqrt(csqR);
+    }
+    *waveSp[fpt] = max(eigL,eigR);
   }
 }
 

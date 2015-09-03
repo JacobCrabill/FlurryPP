@@ -46,6 +46,11 @@ void solver::updateOversetConnectivity(bool doBlanking)
     // Setup unblanks for this iteration
     Geo->setupUnblankElesFaces(eles,faces,mpiFaces,overFaces);
   }
+  else {
+    Geo->tg->profile();
+
+    Geo->tg->performConnectivity();
+  }
 
   OComm->matchOversetPoints(eles,overFaces,Geo->c2ac,Geo->eleMap,Geo->centroid,Geo->extents);
 

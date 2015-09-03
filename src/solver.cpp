@@ -679,6 +679,13 @@ void solver::initializeSolution()
 {
   if (params->rank==0) cout << "Solver: Initializing Solution... " << flush;
 
+  /* Update the mesh to match the restart-file time, or just
+   * get the initial grid velocity for wave speed calculations */
+  if (params->motion > 0) {
+    Geo->moveMesh(0.);
+    for (auto &e:eles) e->move(true);
+  }
+
   if (!params->restart) {
 #pragma omp parallel for
     for (uint i=0; i<eles.size(); i++) {
@@ -686,27 +693,13 @@ void solver::initializeSolution()
     }
   }
 
-  /* If running a moving-mesh case and using CFL-based time-stepping,
-   * calc initial dt for grid velocity calculation */
+  /* If using CFL-based time-stepping, calc wave speed in each
+   * ele for initial dt calculation */
   if (params->dtType == 1) {
     extrapolateU();
-    double dt = INFINITY;
-#pragma omp parallel for reduction(min:dt)
+#pragma omp parallel for
     for (uint i=0; i<eles.size(); i++) {
       eles[i]->calcWaveSpFpts();
-      dt = std::min(dt, eles[i]->calcDt());
-    }
-
-#ifndef _NO_MPI
-  double dtTmp = dt;
-  MPI_Allreduce(&dtTmp, &dt, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-#endif
-
-    params->dt = dt;
-
-    if (params->restart) {
-      // Update the mesh to match the current (nonzero) sim time
-      moveMesh(0);
     }
   }
 

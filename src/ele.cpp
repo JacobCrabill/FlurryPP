@@ -534,29 +534,22 @@ point ele::calcPos(const point &loc)
 
 vector<double> ele::getBoundingBox(void)
 {
-  point minPt(INFINITY,INFINITY,INFINITY);
-  point maxPt(-INFINITY,-INFINITY,-INFINITY);
+  vector<double> bbox = {INFINITY,INFINITY,INFINITY,-INFINITY,-INFINITY,-INFINITY};
   if (params->motion == 0) {
     for (auto &pt:nodes) {
       for (int dim=0; dim<nDims; dim++) {
-        minPt[dim] = min(minPt[dim],pt[dim]);
-        maxPt[dim] = max(maxPt[dim],pt[dim]);
+        bbox[dim]   = min(bbox[dim],  pt[dim]);
+        bbox[dim+3] = max(bbox[dim+3],pt[dim]);
       }
     }
   }
   else {
     for (auto &pt:nodesRK) {
       for (int dim=0; dim<nDims; dim++) {
-        minPt[dim] = min(minPt[dim],pt[dim]);
-        maxPt[dim] = max(maxPt[dim],pt[dim]);
+        bbox[dim]   = min(bbox[dim],  pt[dim]);
+        bbox[dim+3] = max(bbox[dim+3],pt[dim]);
       }
     }
-  }
-
-  vector<double> bbox(6);
-  for (int dim=0; dim<nDims; dim++) {
-    bbox[dim] = (minPt[dim]+maxPt[dim])*0.5;
-    bbox[dim+3] = maxPt[dim] - minPt[dim];
   }
 
   return bbox;
@@ -687,16 +680,17 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   matrix<double> X(4,3);
 
   // Starting location for search
-  X(0,0) = 0;  X(0,1) = 0;   X(0,2) = 0;
-  X(1,0) = .2; X(1,1) = 0;   X(1,2) = 0;
-  X(2,0) = 0;  X(2,1) = .2;  X(2,2) = 0;
-  X(3,0) = 0;  X(3,1) = 0;   X(3,2) = .2;
+  double L = .75;
+  X(0,0) =-L*.5; X(0,1) =-L*.43301; X(0,2) =-L*.375;
+  X(1,0) = L*.5; X(1,1) =-L*.43301; X(1,2) =-L*.375;
+  X(2,0) = L*0;  X(2,1) = L*.43301; X(2,2) =-L*.375;
+  X(3,0) = L*0;  X(3,1) = L*0;      X(3,2) = L*.375;
 
   // Evaluate the 'function' at the initial 'points'
   for (int i=0; i<nPts; i++)
     F[i] = getDxNelderMeade(point(X[i]),pos);
 
-  double tol = 1e-13;
+  double tol = 1e-10;
   int iter = 0;
   while (iter < 300 && getMin(F)>tol) {
     auto ind = getOrder(F);
@@ -776,7 +770,7 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   loc = point(X[ind[nPts-1]]);
 
   // Check to see if final location lies within element or not
-  eps = 1e-12;
+  eps = 1e-10;
   if (std::abs(loc.x)-eps<=1 && std::abs(loc.y)-eps<=1 && std::abs(loc.z)-eps<=1 && !std::isnan(loc.norm()))
     return true;
   else
@@ -1120,9 +1114,12 @@ void ele::calcWaveSpFpts(void)
 {
   if (params->equation == ADVECTION_DIFFUSION) {
     for (int fpt=0; fpt<nFpts; fpt++) {
-      double csq = params->advectVx*params->advectVx + params->advectVy*params->advectVy;
+      double u = params->advectVx - gridVel_fpts(fpt,0);
+      double v = params->advectVy - gridVel_fpts(fpt,1);
+      double w = params->advectVz - gridVel_fpts(fpt,2);
+      double csq = u*u + v*v;
       if (nDims == 3)
-        csq += params->advectVz*params->advectVz;
+        csq += w*w;
       waveSp_fpts[fpt] = sqrt(csq) / dA_fpts[fpt];
     }
   }
@@ -1140,8 +1137,14 @@ void ele::calcWaveSpFpts(void)
       double vN = u*norm_fpts(fpt,0) + v*norm_fpts(fpt,1);
       if (nDims == 3) vN += w*norm_fpts(fpt,2);
 
+      double vgN = 0;
+      if (params->motion) {
+        vgN = gridVel_fpts(fpt,0)*norm_fpts(fpt,0) + gridVel_fpts(fpt,1)*norm_fpts(fpt,1);
+        if (nDims == 3) vgN += gridVel_fpts(fpt,2)*norm_fpts(fpt,2);
+      }
+
       double csq = std::max(params->gamma*p/rho,0.0);
-      waveSp_fpts[fpt] = (std::abs(vN) + std::sqrt(csq)) / dA_fpts[fpt];
+      waveSp_fpts[fpt] = (std::abs(vN - vgN) + std::sqrt(csq)) / dA_fpts[fpt];
     }
   }
 }
