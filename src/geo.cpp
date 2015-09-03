@@ -592,23 +592,33 @@ void geo::matchMPIFaces(void)
   matrix<int> mpiFptr_proc(nProcGrid,maxNMpiFaces+1);
   matrix<int> mpiFid_proc(nProcGrid,maxNMpiFaces);
 
-  vector<int> faceCnts(nProcGrid);
-  vector<int> faceDisp(nProcGrid);
+  vector<int> recvCnts(nProcGrid);
+  vector<int> recvDisp(nProcGrid);
   for (int i=0; i<nProcGrid; i++) {
-    faceCnts[i] = nMpiFaces_proc[i]*maxNodesPerFace;
-    faceDisp[i] = i*maxNMpiFaces*maxNodesPerFace;
+    recvCnts[i] = nMpiFaces_proc[i]*maxNodesPerFace;
+    recvDisp[i] = i*maxNMpiFaces*maxNodesPerFace;
   }
-  MPI_Allgatherv(mpiFaceNodes.data(),mpiFaceNodes.size(),MPI_INT,mpiFaceNodes_proc.getData(),faceCnts.data(),faceDisp.data(),MPI_INT,gridComm);
-  MPI_Allgather(mpiFptr.data(),mpiFptr.size(),MPI_INT,mpiFptr_proc.getData(),maxNMpiFaces+1,MPI_INT,gridComm);
-  MPI_Allgather(mpiFaces.data(),nMpiFaces,MPI_INT,mpiFid_proc.getData(),maxNMpiFaces,MPI_INT,gridComm);
+  MPI_Allgatherv(mpiFaceNodes.data(),mpiFaceNodes.size(),MPI_INT,mpiFaceNodes_proc.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
+
+  for (int i=0; i<nProcGrid; i++) {
+    recvCnts[i] = nMpiFaces_proc[i]+1;
+    recvDisp[i] = i*(maxNMpiFaces+1);
+  }
+  MPI_Allgatherv(mpiFptr.data(),mpiFptr.size(),MPI_INT,mpiFptr_proc.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
+
+  for (int i=0; i<nProcGrid; i++) {
+    recvCnts[i] = nMpiFaces_proc[i];
+    recvDisp[i] = i*maxNMpiFaces;
+  }
+  MPI_Allgatherv(mpiFaces.data(),nMpiFaces,MPI_INT,mpiFid_proc.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
 
   matrix<int> mpiCells_proc, mpiLocF_proc;
   if (nDims == 3) {
     // Needed for 3D face-matching (to find relRot)
     mpiCells_proc.setup(nProcGrid,maxNMpiFaces);
     mpiLocF_proc.setup(nProcGrid,maxNMpiFaces);
-    MPI_Allgather(mpiCells.data(),mpiCells.size(),MPI_INT,mpiCells_proc.getData(),maxNMpiFaces,MPI_INT,gridComm);
-    MPI_Allgather(mpiLocF.data(),mpiLocF.size(),MPI_INT,mpiLocF_proc.getData(),maxNMpiFaces,MPI_INT,gridComm);
+    MPI_Allgatherv(mpiCells.data(),mpiCells.size(),MPI_INT,mpiCells_proc.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
+    MPI_Allgatherv(mpiLocF.data(),mpiLocF.size(),MPI_INT,mpiLocF_proc.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
   }
 
   // For overset meshes, can have an overset face *also* be an MPI face known only to one of the processes
@@ -623,8 +633,7 @@ void geo::matchMPIFaces(void)
     for (int i=0; i<nMpiFaces; i++)
       mpiIblank[i] = iblankCell[f2c(mpiFaces[i],0)];
       //mpiIblank[i] = iblankFace[mpiFaces[i]];
-
-    MPI_Allgather(mpiIblank.data(), nMpiFaces, MPI_INT, mpiIblank_proc.getData(), maxNMpiFaces, MPI_INT, gridComm);
+    MPI_Allgatherv(mpiIblank.data(), nMpiFaces, MPI_INT, mpiIblank_proc.getData(), recvCnts.data(), recvDisp.data(), MPI_INT, gridComm);
   }
 
   // Now that we have each processor's boundary nodes, start matching faces
@@ -2340,7 +2349,7 @@ void geo::partitionMesh(void)
 #endif
 }
 
-void geo::moveMesh(void)
+void geo::moveMesh(double rkVal)
 {
 #pragma omp parallel for collapse(2)
   for (int iv=0; iv<nVerts; iv++) {
@@ -2349,15 +2358,17 @@ void geo::moveMesh(void)
     }
   }
 
+  double rkTime = params->time + params->dt*rkVal;
+
   switch (params->motion) {
     case 1: {
       #pragma omp parallel for
       for (int iv=0; iv<nVerts; iv++) {
         /// Taken from Kui, AIAA-2010-5031-661
-        xv_new[iv].x = xv0[iv].x + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*params->rkTime/10.);
-        xv_new[iv].y = xv0[iv].y + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*params->rkTime/10.);
-        gridVel(iv,0) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*params->rkTime/10.);
-        gridVel(iv,1) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*params->rkTime/10.);
+        xv_new[iv].x = xv0[iv].x + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*rkTime/10.);
+        xv_new[iv].y = xv0[iv].y + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*rkTime/10.);
+        gridVel(iv,0) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*rkTime/10.);
+        gridVel(iv,1) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*rkTime/10.);
       }
       break;
     }
@@ -2367,22 +2378,22 @@ void geo::moveMesh(void)
         #pragma omp parallel for
         for (int iv=0; iv<nVerts; iv++) {
           /// Taken from Liang-Miyaji
-          xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(4*pi*params->rkTime/t0);
-          xv_new[iv].y = xv0[iv].y + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(8*pi*params->rkTime/t0);
-          gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*cos(4*pi*params->rkTime/t0);
-          gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*cos(8*pi*params->rkTime/t0);
+          xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(4*pi*rkTime/t0);
+          xv_new[iv].y = xv0[iv].y + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(8*pi*rkTime/t0);
+          gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*cos(4*pi*rkTime/t0);
+          gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*cos(8*pi*rkTime/t0);
         }
       }
       else {
         #pragma omp parallel for
         for (int iv=0; iv<nVerts; iv++) {
           /// Taken from Liang-Miyaji
-          xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*params->rkTime/t0);
-          xv_new[iv].y = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(8*pi*params->rkTime/t0);
-          xv_new[iv].z = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*params->rkTime/t0);
-          gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(4*pi*params->rkTime/t0);
-          gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(8*pi*params->rkTime/t0);
-          gridVel(iv,2) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(4*pi*params->rkTime/t0);
+          xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*rkTime/t0);
+          xv_new[iv].y = xv0[iv].y + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(8*pi*rkTime/t0);
+          xv_new[iv].z = xv0[iv].z + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*rkTime/t0);
+          gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(4*pi*rkTime/t0);
+          gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(8*pi*rkTime/t0);
+          gridVel(iv,2) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(4*pi*rkTime/t0);
         }
       }
       break;
@@ -2394,10 +2405,10 @@ void geo::moveMesh(void)
         double width = 5.;
         #pragma omp parallel for
         for (int iv=0; iv<nVerts; iv++) {
-          xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*sin(4*pi*params->rkTime/t0);
-          xv_new[iv].y = xv0[iv].y + sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*sin(8*pi*params->rkTime/t0);
-          gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*cos(4*pi*params->rkTime/t0);
-          gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*cos(8*pi*params->rkTime/t0);
+          xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*sin(4*pi*rkTime/t0);
+          xv_new[iv].y = xv0[iv].y + sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*sin(8*pi*rkTime/t0);
+          gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*cos(4*pi*rkTime/t0);
+          gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*cos(8*pi*rkTime/t0);
         }
       }
       break;
@@ -2408,10 +2419,10 @@ void geo::moveMesh(void)
         double A = .5; // Amplitude  (m)
         double f = .2; // Frequency  (Hz)
         for (int iv=0; iv<nVerts; iv++) {
-          xv_new[iv].x = xv0[iv].x + A*sin(2.*pi*f*params->rkTime);
-          xv_new[iv].y = xv0[iv].y - A*(1-cos(2.*pi*f*params->rkTime));
-          gridVel(iv,0) = 2.*pi*f*A*cos(2.*pi*f*params->rkTime);
-          gridVel(iv,1) = 2.*pi*f*A*sin(2.*pi*f*params->rkTime);
+          xv_new[iv].x = xv0[iv].x + A*sin(2.*pi*f*rkTime);
+          xv_new[iv].y = xv0[iv].y + A*(1-cos(2.*pi*f*rkTime));
+          gridVel(iv,0) = 2.*pi*f*A*cos(2.*pi*f*rkTime);
+          gridVel(iv,1) = 2.*pi*f*A*sin(2.*pi*f*rkTime);
         }
       }
     }

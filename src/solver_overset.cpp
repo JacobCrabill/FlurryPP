@@ -34,15 +34,24 @@ void solver::setupOverset(void)
   OComm->matchOversetPoints(eles,overFaces,Geo->c2ac,Geo->eleMap,Geo->centroid,Geo->extents);
 }
 
-void solver::updateOversetConnectivity(void)
+void solver::updateOversetConnectivity(bool doBlanking)
 {
-  Geo->updateOversetConnectivity();
+  if (doBlanking) {
+    // Remove blanks found during previous iteration
+    Geo->removeBlanks(eles,faces,mpiFaces,overFaces);
 
-  Geo->setupUnblankElesFaces(eles,faces,mpiFaces,overFaces);
+    // Find unblanks needed for this iteration, and blanks to remove at next step
+    Geo->updateOversetConnectivity();
+
+    // Setup unblanks for this iteration
+    Geo->setupUnblankElesFaces(eles,faces,mpiFaces,overFaces);
+  }
 
   OComm->matchOversetPoints(eles,overFaces,Geo->c2ac,Geo->eleMap,Geo->centroid,Geo->extents);
 
-  OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->c2c,Geo->eleMap,params->order);
+  if (doBlanking) {
+    OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->c2c,Geo->eleMap,params->order);
+  }
 }
 
 /* ---- Basic Tioga-Based Overset-Grid Functions ---- */

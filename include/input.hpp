@@ -117,6 +117,8 @@ public:
   int restartIter;
   int restart;
   int restart_freq;
+  int nRKSteps;
+  vector<double> RKa, RKb;
 
   int iter;
 

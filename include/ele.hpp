@@ -58,11 +58,11 @@ public:
 
   void setup(input *inParams, geo *inGeo);
 
-  void move(int step);
+  void move(bool doTransforms = true);
 
   void calcGridVelocity(void);
 
-  void calcTransforms(int initial = 0);
+  void calcTransforms(bool moving = false);
 
   point calcPos(const point &loc);
 
@@ -237,7 +237,7 @@ public:
   matrix<double> gridVel_fpts;         //! Mesh velocity at flux points
   matrix<double> gridVel_nodes;        //! Mesh velocity at mesh (corner) points
   matrix<double> gridVel_mpts;         //! Mesh velocity at ALL mesh points (corners + edges in 3D)
-  vector<vector<point>> nodesRK; //! Location of mesh nodes in physical space
+  vector<point> nodesRK;               //! Location of mesh nodes in physical space
 
   // Geometry Variables
   vector<point> pos_spts;     //! Position of solution points in physical space

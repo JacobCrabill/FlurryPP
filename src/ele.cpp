@@ -158,10 +158,7 @@ void ele::setupArrays(void)
   gridVel_fpts.initializeToZero();
 
   if (params->motion != 0) {
-    nodesRK.resize(nRKSteps);
-    for (auto &vec:nodesRK) {
-      vec = nodes;
-    }
+    nodesRK = nodes;
   }
 
   if (params->viscous) {
@@ -194,14 +191,22 @@ void ele::setupAllGeometry(void) {
   setPpts();
 }
 
-void ele::move(int step=0)
+void ele::move(bool doTransforms)
 {
   for (int i=0; i<nNodes; i++) {
-    nodesRK[0][i] = point(Geo->xv_new[Geo->c2v(ID,i)]);
+    nodesRK[i] = point(Geo->xv_new[Geo->c2v(ID,i)]);
   }
 
-  calcTransforms(step+1);
-  calcGridVelocity();
+  if (params->meshType == OVERSET_MESH) {
+    // Only needed for overset connectivity purposes [also called from output.cpp]
+    updatePosSpts();
+    updatePosFpts();
+  }
+
+  if (doTransforms) {
+    calcTransforms(true);
+    calcGridVelocity();
+  }
 }
 
 void ele::calcGridVelocity(void)
@@ -403,13 +408,13 @@ void ele::setTransformedNormals_fpts(void)
   }
 }
 
-void ele::calcTransforms(int initial)
+void ele::calcTransforms(bool moving)
 {
   /* --- Calculate Transformation at Solution Points --- */
   for (int spt=0; spt<nSpts; spt++) {
     Jac_spts[spt].initializeToZero();
 
-    if (initial == 0) {
+    if (!moving) {
       for (int i=0; i<nNodes; i++)
         for (int dim1=0; dim1<nDims; dim1++)
           for (int dim2=0; dim2<nDims; dim2++)
@@ -419,7 +424,7 @@ void ele::calcTransforms(int initial)
       for (int i=0; i<nNodes; i++)
         for (int dim1=0; dim1<nDims; dim1++)
           for (int dim2=0; dim2<nDims; dim2++)
-            Jac_spts[spt](dim1,dim2) += dShape_spts[spt](i,dim2)*nodesRK[0][i][dim1];
+            Jac_spts[spt](dim1,dim2) += dShape_spts[spt](i,dim2)*nodesRK[i][dim1];
     }
 
 
@@ -447,7 +452,7 @@ void ele::calcTransforms(int initial)
   for (int fpt=0; fpt<nFpts; fpt++) {
     // Calculate transformation Jacobian matrix - [dx/dr, dx/ds; dy/dr, dy/ds]
     Jac_fpts[fpt].initializeToZero();
-    if (initial == 0) {
+    if (!moving) {
       for (int i=0; i<nNodes; i++)
         for (int dim1=0; dim1<nDims; dim1++)
           for (int dim2=0; dim2<nDims; dim2++)
@@ -457,7 +462,7 @@ void ele::calcTransforms(int initial)
       for (int i=0; i<nNodes; i++)
         for (int dim1=0; dim1<nDims; dim1++)
           for (int dim2=0; dim2<nDims; dim2++)
-            Jac_fpts[fpt][dim1][dim2] += dShape_fpts[fpt][i][dim2]*nodesRK[0][i][dim1];
+            Jac_fpts[fpt][dim1][dim2] += dShape_fpts[fpt][i][dim2]*nodesRK[i][dim1];
     }
 
 
@@ -521,7 +526,7 @@ point ele::calcPos(const point &loc)
   else {
     for (int iv=0; iv<nNodes; iv++)
       for (int dim=0; dim<nDims; dim++)
-        pt[dim] += shape[iv]*nodesRK[0][iv][dim];
+        pt[dim] += shape[iv]*nodesRK[iv][dim];
   }
 
   return pt;
@@ -540,7 +545,7 @@ vector<double> ele::getBoundingBox(void)
     }
   }
   else {
-    for (auto &pt:nodesRK[0]) {
+    for (auto &pt:nodesRK) {
       for (int dim=0; dim<nDims; dim++) {
         minPt[dim] = min(minPt[dim],pt[dim]);
         maxPt[dim] = max(maxPt[dim],pt[dim]);
@@ -808,7 +813,7 @@ void ele::updatePosSpts(void)
     pos_spts[spt].zero();
     for (int iv=0; iv<nNodes; iv++) {
       for (int dim=0; dim<nDims; dim++) {
-        pos_spts[spt][dim] += shape_spts(spt,iv)*nodesRK[0][iv][dim];
+        pos_spts[spt][dim] += shape_spts(spt,iv)*nodesRK[iv][dim];
       }
     }
   }
@@ -820,7 +825,7 @@ void ele::updatePosFpts(void)
     pos_fpts[fpt].zero();
     for (int iv=0; iv<nNodes; iv++) {
       for (int dim=0; dim<nDims; dim++) {
-        pos_fpts[fpt][dim] += shape_fpts(fpt,iv)*nodesRK[0][iv][dim];
+        pos_fpts[fpt][dim] += shape_fpts(fpt,iv)*nodesRK[iv][dim];
       }
     }
   }
@@ -1800,10 +1805,10 @@ void ele::setPpts(void)
 
     // Get mesh (corner) points
     if (params->motion != 0) {
-      pos_ppts[0*nPts1D+0]               = nodesRK[0][0];
-      pos_ppts[0*nPts1D+order+2]         = nodesRK[0][1];
-      pos_ppts[(order+2)*nPts1D+0]       = nodesRK[0][3];
-      pos_ppts[(order+2)*nPts1D+order+2] = nodesRK[0][2];
+      pos_ppts[0*nPts1D+0]               = nodesRK[0];
+      pos_ppts[0*nPts1D+order+2]         = nodesRK[1];
+      pos_ppts[(order+2)*nPts1D+0]       = nodesRK[3];
+      pos_ppts[(order+2)*nPts1D+order+2] = nodesRK[2];
     }
     else {
       pos_ppts[0*nPts1D+0]               = nodes[0];
@@ -1836,15 +1841,15 @@ void ele::setPpts(void)
 
     // Get mesh (corner) points
     if (params->motion != 0) {
-      pos_ppts[0*nPts1D+0]               = nodesRK[0][0];
-      pos_ppts[0*nPts1D+order+2]         = nodesRK[0][1];
-      pos_ppts[(order+2)*nPts1D+0]       = nodesRK[0][3];
-      pos_ppts[(order+2)*nPts1D+order+2] = nodesRK[0][2];
+      pos_ppts[0*nPts1D+0]               = nodesRK[0];
+      pos_ppts[0*nPts1D+order+2]         = nodesRK[1];
+      pos_ppts[(order+2)*nPts1D+0]       = nodesRK[3];
+      pos_ppts[(order+2)*nPts1D+order+2] = nodesRK[2];
 
-      pos_ppts[(order+2)*P22 + 0*nPts1D+0]               = nodesRK[0][4];
-      pos_ppts[(order+2)*P22 + 0*nPts1D+order+2]         = nodesRK[0][5];
-      pos_ppts[(order+2)*P22 + (order+2)*nPts1D+0]       = nodesRK[0][7];
-      pos_ppts[(order+2)*P22 + (order+2)*nPts1D+order+2] = nodesRK[0][6];
+      pos_ppts[(order+2)*P22 + 0*nPts1D+0]               = nodesRK[4];
+      pos_ppts[(order+2)*P22 + 0*nPts1D+order+2]         = nodesRK[5];
+      pos_ppts[(order+2)*P22 + (order+2)*nPts1D+0]       = nodesRK[7];
+      pos_ppts[(order+2)*P22 + (order+2)*nPts1D+order+2] = nodesRK[6];
     }
     else {
       pos_ppts[0*nPts1D+0]               = nodes[0];

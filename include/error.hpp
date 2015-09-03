@@ -4,6 +4,7 @@
 #include <execinfo.h>
 #include <stdio.h>
 #include <iostream>
+#include <unistd.h>
 
 //! Prints the error message, the source file and line number, and exits
 #define FatalError(s) {                                             \

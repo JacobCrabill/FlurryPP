@@ -80,8 +80,6 @@ public:
 
   int nGrids, gridID, gridRank, nprocPerGrid;
 
-  vector<double> RKa, RKb;
-
   /* === Setup Functions === */
 
   solver();
@@ -232,7 +230,7 @@ public:
   void setupOverset();
 
   //! For moving grids, update the overset connectivity (including adding/removing cells/faces)
-  void updateOversetConnectivity();
+  void updateOversetConnectivity(bool doBlanking = true);
 
   /*!
    * \brief Initialize overset-related data storage

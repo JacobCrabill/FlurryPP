@@ -1209,13 +1209,12 @@ void MeshBlock::search(void)
   double xmin[3];
   double xmax[3];
 
-  // form the bounding box of the
-  // query points
-  //
-  if (nsearch == 0) {
-    donorCount=0;
-    return;
-  }
+  // form the bounding box of the query points
+  /* --- For Flurry: Must have access to the ADT for all ranks, so don't return! --- */
+//  if (nsearch == 0) {
+//    donorCount=0;
+//    return;
+//  }
 
   obq=(OBB *) malloc(sizeof(OBB));
   findOBB(xsearch,obq->xc,obq->dxc,obq->vec,nsearch);

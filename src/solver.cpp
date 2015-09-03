@@ -70,19 +70,7 @@ void solver::setup(input *params, geo *Geo)
   /* Additional Setup */
 
   // Time advancement setup
-  switch (params->timeType) {
-    case 0:
-      nRKSteps = 1;
-      RKb = {1};
-      break;
-    case 4:
-      nRKSteps = 4;
-      RKa = {.5, .5, 1.};
-      RKb = {1./6., 1./3., 1./3., 1./6.};
-      break;
-    default:
-      FatalError("Time-Stepping type not supported.");
-  }
+  nRKSteps = params->nRKSteps;
 
 #ifndef _NO_MPI
   finishMpiSetup();
@@ -101,10 +89,7 @@ void solver::update(void)
 
   for (int step=0; step<nRKSteps-1; step++) {
 
-    if (step == 0)
-      params->rkTime = params->time;
-    else
-      params->rkTime = params->time + RKa[step-1]*params->dt;
+    params->rkTime = params->time + params->RKa[step]*params->dt;
 
     moveMesh(step);
 
@@ -229,21 +214,19 @@ void solver::calcDt(void)
   params->dt = dt;
 }
 
-
 void solver::timeStepA(int step)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    eles[i]->timeStepA(step,RKa[step]);
+    eles[i]->timeStepA(step,params->RKa[step]);
   }
 }
-
 
 void solver::timeStepB(int step)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    eles[i]->timeStepB(step,RKb[step]);
+    eles[i]->timeStepB(step,params->RKb[step]);
   }
 }
 
@@ -511,15 +494,34 @@ void solver::moveMesh(int step)
 {
   if (!params->motion) return;
 
-  Geo->moveMesh();
+  if (params->meshType == OVERSET_MESH) {
+    if (step==0) {
+      /* -- Take care of unblanks needed for next time step -- */
+      Geo->moveMesh(1.);
+
+      for (auto &e:eles) e->move(false);
+
+      updateOversetConnectivity(true);
+    }
+
+    /* -- Set the geometry to the current RK-stage time -- */
+
+    Geo->moveMesh(params->RKa[step]);
+
+    for (auto &e:eles) e->move(true);
+
+    updateOversetConnectivity(false);
+
+  } else {
+
+    Geo->moveMesh(params->RKa[step]);
 
 #pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    eles[i]->move(step);
+    for (uint i=0; i<eles.size(); i++) {
+      eles[i]->move(true);
+    }
   }
 
-  if (params->meshType == OVERSET_MESH)
-    updateOversetConnectivity();
 }
 
 vector<double> solver::computeWallForce(void)

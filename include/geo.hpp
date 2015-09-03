@@ -60,7 +60,7 @@ public:
   void setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec, vector<shared_ptr<overFace> >& overFacesVec);
 
   //! Update nodal positions and velocities for moving-grid cases
-  void moveMesh(void);
+  void moveMesh(double rkVal);
 
   /* === Helper Routines === */
 
@@ -94,6 +94,10 @@ public:
 
   void matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &donors);
 
+  //! Remove cells and faces which were tagged for blanking
+  void removeBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
+
+  //! Setup cells and faces which were tagged for un-blanking
   void setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
 
   int nDims, nFields;

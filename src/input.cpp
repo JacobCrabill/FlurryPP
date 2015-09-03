@@ -396,6 +396,20 @@ void input::readInputFile(char *filename)
     initIter = 0;
   }
 
+  switch (timeType) {
+    case 0:
+      nRKSteps = 1;
+      RKb = {1};
+      break;
+    case 4:
+      nRKSteps = 4;
+      RKa = {0., .5, .5, 1.};
+      RKb = {1./6., 1./3., 1./3., 1./6.};
+      break;
+    default:
+      FatalError("Time-Stepping type not supported.");
+  }
+
   if (squeeze) {
     // Entropy bound for polynomial squeezing
     exps0 = 0.0*pBound/(pow(rhoBound,gamma));

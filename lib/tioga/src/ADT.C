@@ -270,25 +270,17 @@ void ADT::buildADT(int d, int nelements,double *elementBbox)
 
 void ADT::searchADT(MeshBlock *mb, int *cellIndex,double *xsearch)
 {
-  int i;
-  int flag;
-  int rootNode;
-  //
-  // check if the given point is in the bounds of
-  // the ADT
-  //
-  rootNode=0;
+  int rootNode=0;
   *cellIndex=-1;
-  //
-  flag=1;
-  for(i=0;i<ndim/2;i++)
+
+  // check if the given point is in the bounds of the ADT
+  int flag=1;
+  for(int i=0;i<ndim/2;i++)
     flag = (flag && (xsearch[i] >= adtExtents[2*i]-TOL));
-  for(i=0;i<ndim/2;i++)
+  for(int i=0;i<ndim/2;i++)
     flag= (flag && (xsearch[i] <= adtExtents[2*i+1]+TOL));
-  //
-  // call recursive routine to check intersections with
-  // ADT nodes
-  //
+
+  // call recursive routine to check intersections with ADT nodes
   if (flag) searchIntersections(mb,cellIndex,adtIntegers,adtReals,
         coord,0,rootNode,xsearch,nelem,ndim);
 }

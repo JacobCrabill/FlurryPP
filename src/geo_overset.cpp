@@ -340,7 +340,7 @@ void geo::matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &d
 #endif
 }
 
-void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
+void geo::removeBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
 {
   /* --- Remove Newly-Blanked Elements --- */
 
@@ -355,59 +355,6 @@ cout << "Blanking cells!" << endl;
     // Update the map
     for (int k=ic+1; k<nEles; k++)
       eleMap[k]--;
-  }
-
-  /* --- Setup & Insert Unblanked Elements --- */
-
-  for (auto &ic:unblankCells) {
-    if (ic<0) continue;
-  cout << "Unblanking cells!" << endl;
-    // Find the next-lowest index
-    int ind = eleMap[ic];
-    if (ind>=0) FatalError("Should not have marked a non-hole cell for un-blanking!");
-    int j = 0;
-    while (ind < 0) {
-      ind = eleMap[ic-j];
-      j++;
-    }
-    ind++;
-
-    shared_ptr<ele> e = make_shared<ele>();
-    e->ID = ic;
-    if (nProcGrid>1)
-      e->IDg = ic2icg[ic];
-    else
-      e->IDg = ic;
-    e->eType = ctype[ic];
-    e->nNodes = c2nv[ic];
-    if (nDims == 2)
-      e->nMpts = 4;
-    else
-      e->nMpts = 8;
-
-    // Shape [mesh] nodes
-    e->nodeID.resize(c2nv[ic]);
-    e->nodes.resize(c2nv[ic]);
-    for (int iv=0; iv<c2nv[ic]; iv++) {
-      e->nodeID[iv] = c2v(ic,iv);
-      e->nodes[iv] = point(xv[c2v(ic,iv)]);
-    }
-
-    // Global face IDs for internal & boundary faces
-    e->faceID.resize(c2nf[ic]);
-    e->bndFace.resize(c2nf[ic]);
-    for (int k=0; k<c2nf[ic]; k++) {
-      e->bndFace[k] = c2b(ic,k);
-      e->faceID[k] = c2f(ic,k);
-    }
-
-    eles.insert(eles.begin()+ind,1,e);
-
-    // Update the map
-    eleMap[ic] = ind;
-    for (int k=ic+1; k<nEles; k++)
-      if (eleMap[k]>=0)
-        eleMap[k]++;
   }
 
   /* --- Remove Newly-Blanked Faces --- */
@@ -464,6 +411,64 @@ cout << "Blanking Faces!" << endl;
         faceMap[f2]--;
     }
   }
+}
+
+void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
+{
+  /* --- Setup & Insert Unblanked Elements --- */
+
+  for (auto &ic:unblankCells) {
+    if (ic<0) continue;
+  cout << "Unblanking cells!" << endl;
+    // Find the next-lowest index
+    int ind = eleMap[ic];
+    if (ind>=0) FatalError("Should not have marked a non-hole cell for un-blanking!");
+    int j = 0;
+    while (ind < 0) {
+      ind = eleMap[ic-j];
+      j++;
+    }
+    ind++;
+
+    shared_ptr<ele> e = make_shared<ele>();
+    e->ID = ic;
+    if (nProcGrid>1)
+      e->IDg = ic2icg[ic];
+    else
+      e->IDg = ic;
+    e->eType = ctype[ic];
+    e->nNodes = c2nv[ic];
+    if (nDims == 2)
+      e->nMpts = 4;
+    else
+      e->nMpts = 8;
+
+    // Shape [mesh] nodes
+    e->nodeID.resize(c2nv[ic]);
+    e->nodes.resize(c2nv[ic]);
+    for (int iv=0; iv<c2nv[ic]; iv++) {
+      e->nodeID[iv] = c2v(ic,iv);
+      e->nodes[iv] = point(xv[c2v(ic,iv)]);
+    }
+
+    // Global face IDs for internal & boundary faces
+    e->faceID.resize(c2nf[ic]);
+    e->bndFace.resize(c2nf[ic]);
+    for (int k=0; k<c2nf[ic]; k++) {
+      e->bndFace[k] = c2b(ic,k);
+      e->faceID[k] = c2f(ic,k);
+    }
+
+    e->setup(params,this);
+
+    eles.insert(eles.begin()+ind,1,e);
+
+    // Update the map
+    eleMap[ic] = ind;
+    for (int k=ic+1; k<nEles; k++)
+      if (eleMap[k]>=0)
+        eleMap[k]++;
+  }
 
   /* --- Create Newly-Unblanked Faces --- */
 
@@ -472,7 +477,8 @@ cout << "Blanking Faces!" << endl;
     if (ff<0) continue;
 
     if (faceType[ff] == INTERNAL)
-    {cout << "Unblanking int face!" << endl;
+    {
+      cout << "Unblanking int face!" << endl;
       shared_ptr<face> iface = make_shared<intFace>();
 
       int ic1 = f2c(ff,0);
@@ -514,7 +520,8 @@ cout << "Blanking Faces!" << endl;
         faceMap[faces[i]->ID] = i;
     }
     else if (faceType[ff] == BOUNDARY)
-    {cout << "Unblanking bound face!" << endl;
+    {
+      cout << "Unblanking bound face!" << endl;
       int ind = std::distance(bndFaces.begin(), std::find(bndFaces.begin(),bndFaces.end(),ff));
 
       if (bcType[ind] == OVERSET) {
@@ -561,7 +568,8 @@ cout << "Blanking Faces!" << endl;
       }
     }
     else if (faceType[ff] == MPI_FACE)
-    {cout << "Unblanking mpi face!" << endl;
+    {
+      cout << "Unblanking mpi face!" << endl;
       int ind = std::distance(mpiFaces.begin(), std::find(mpiFaces.begin(),mpiFaces.end(),ff));
 
       shared_ptr<mpiFace> mface = make_shared<mpiFace>();

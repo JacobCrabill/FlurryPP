@@ -72,7 +72,7 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_p
   foundLocs.resize(nproc);
   int offset = 0;
 
-  double eps = 1e-10;
+  /*double eps = 1e-10;
   point minPt, maxPt;
   minPt.x = centroid.x - extents.x/2. - eps;
   minPt.y = centroid.y - extents.y/2. - eps;
@@ -80,7 +80,7 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_p
 
   maxPt.x = centroid.x + extents.x/2. + eps;
   maxPt.y = centroid.y + extents.y/2. + eps;
-  maxPt.z = centroid.z + extents.z/2. + eps;
+  maxPt.z = centroid.z + extents.z/2. + eps;*/
 
   /*for (int p=0; p<nproc; p++) {
     if (p>0) offset += nPts_rank[p-1];
@@ -176,33 +176,33 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_p
       if (ic>=0 && eleMap[ic]>=0) {
         ic = eleMap[ic];
         point refLoc;
-        bool isInEle = eles[ic]->getRefLocNelderMeade(pt,refLoc);
+        eles[ic]->getRefLocNelderMeade(pt,refLoc);
         foundPts[p].push_back(i);
         foundEles[p].push_back(ic); // Local ele id for this grid
         foundLocs[p].push_back(refLoc);
       }
 
-//      // First, check that point even lies within bounding box of grid
-//      if ( (pt.x<minPt.x) || (pt.y<minPt.y) || (pt.z<minPt.z) ||
-//           (pt.x>maxPt.x) || (pt.y>maxPt.y) || (pt.z>maxPt.z) )
-//        continue;
-//
-//      // Check for containment in all eles on this rank of this grid
-//      int ic = 0;
-//      for (auto &e:eles) {
-//        // !! THIS IS HORRIBLY INEFFICIENT !! - should use c2c to march from an
-//        // initial guess to the neighboring cell nearest the point in question
-//        point refLoc;
-//        bool isInEle = e->getRefLocNelderMeade(pt,refLoc);
-//
-//        if (isInEle) {
-//          foundPts[p].push_back(i);
-//          foundEles[p].push_back(ic); // Local ele id for this grid
-//          foundLocs[p].push_back(refLoc);
-//          break;
-//        }
-//        ic++;
-//      }
+      /*// First, check that point even lies within bounding box of grid
+      if ( (pt.x<minPt.x) || (pt.y<minPt.y) || (pt.z<minPt.z) ||
+           (pt.x>maxPt.x) || (pt.y>maxPt.y) || (pt.z>maxPt.z) )
+        continue;
+
+      // Check for containment in all eles on this rank of this grid
+      int ic = 0;
+      for (auto &e:eles) {
+        // !! THIS IS HORRIBLY INEFFICIENT !! - should use c2c to march from an
+        // initial guess to the neighboring cell nearest the point in question
+        point refLoc;
+        bool isInEle = e->getRefLocNelderMeade(pt,refLoc);
+
+        if (isInEle) {
+          foundPts[p].push_back(i);
+          foundEles[p].push_back(ic); // Local ele id for this grid
+          foundLocs[p].push_back(refLoc);
+          break;
+        }
+        ic++;
+      }*/
     }
     //cout << "Grid,Rank = " << gridID << "," << rank << ": nFoundPts for rank" << p << " = " << foundPts[p].size() << endl;
   }
@@ -215,7 +215,7 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_p
     if (gridIdList[p] == gridID) continue;
     nPtsSend[p] = foundPts[p].size();
   }
-
+MPI_Barrier(MPI_COMM_WORLD);
   U_in.setup(nOverPts,nFields);
 #endif
 }
@@ -235,7 +235,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int> &unblan
     // Constraining this to just linear hexahedrons for the time being
     for (int j=0; j<8; j++) {
       for (int k=0; k<3; k++) {
-        ubCellNodes(i,j,k) = eles[ie]->nodesRK[0][j][k];
+        ubCellNodes(i,j,k) = eles[ie]->nodesRK[j][k];
       }
     }
     i++;
@@ -343,7 +343,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int> &unblan
         // Setup the donor cells [on this grid] for the unblanked cell [on other grid]
         foundCellDonors[p].insertRowUnsized(donorsIDs);
         for (int k=0; k<donorsIDs.size(); k++) {
-          donorPts.insertRow(eles[donorsIDs[k]]->nodesRK[0]);
+          donorPts.insertRow(eles[donorsIDs[k]]->nodesRK);
         }
         superMesh mesh(targetNodes,donorPts,quadOrder);
         donors.push_back(mesh);

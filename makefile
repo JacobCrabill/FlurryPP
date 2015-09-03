@@ -135,7 +135,7 @@ mpi2: $(TARGET)
 .PHONY: mpidebug
 mpidebug: CXX=$(MPICXX)
 mpidebug: LINK=$(MPILD)
-mpidebug: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_DEBUG) -D_MPI_DEBUG
+mpidebug: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_DEBUG) #-D_MPI_DEBUG
 mpidebug: FFLAGS=-g -O1 -rdynamic -fsanitize=address -fno-omit-frame-pointer
 mpidebug: LIBS+= -lmetis $(TIOGA_LIB) -lasan
 mpidebug: $(TARGET)
