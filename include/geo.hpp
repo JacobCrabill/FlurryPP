@@ -203,6 +203,9 @@ private:
   //! Using Tioga's nodal iblanks, set iblank values for all cells and faces
   void setCellFaceIblanks();
 
+  //! For 2D overset cases: set all iblank values
+  void setIblanks2D();
+
   //! Match up pairs of periodic boundary faces
   void processPeriodicBoundaries(void);
 

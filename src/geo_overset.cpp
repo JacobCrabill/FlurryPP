@@ -425,6 +425,10 @@ void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr
 {
   /* --- Setup & Insert Unblanked Elements --- */
 
+  /// TODO: Need to only unblank the faces belonging to these eles,
+  /// and must also blank any faces which are being replaced
+  /// (i.e. overset face replaced with internal face)
+
   for (auto &ic:unblankCells) {
     if (ic<0) continue;
   cout << "Unblanking cells!" << endl;
@@ -677,5 +681,42 @@ cout << "Unblanking OFaces!" << endl;
   for (auto &mface:mFaces) {
     if (unblankMFaces.count(mface->ID))
       mface->finishRightSetup();
+  }
+}
+
+void geo::setIblanks2D(void)
+{
+  // Use winding-number method to find hole points given wall faces
+
+  vector<matrix<double>> wallNodes; // get from overComm - physical posiitons of wall-boundary nodes on each rank
+  vector<matrix<int>> wallFaces;  // get from overComm - list of edge comprising wall bnds on each rank
+
+  double eps = 1e-3;
+  for (int i=0; i<nVerts; i++) {
+    point pt = point(xv[i]);
+
+    // NOTE: for >2 grids, use instead vector<double> wind(nGrids);
+    double wind = 0;
+    for (int p=0; p<nproc; p++) {
+      if (gridIdList[p] == gridID) continue;
+      bool inBox; // check pt in/out of bounding-box of wall face nodes
+      if (!inBox) continue;
+      for (int j=0; j<wallFaces[p].getDim0(); j++) {
+        point pt1 = point(wallNodes[p][wallFaces[p](j,0)]);
+        point pt2 = point(wallNodes[p][wallFaces[p](j,1)]);
+
+        Vec3 dx1 = pt1 - pt;  dx1 /= dx1.norm();
+        Vec3 dx2 = pt2 - pt;  dx2 /= dx2.norm();
+        Vec3 cross = dx2.cross(dx1);
+        double dot = min(max(dx1*dx2,-1),1);
+        if (cross.z > 0)
+          wind += std::acos(dot);
+        else
+          wind -= std::acos(dot);
+      }
+    }
+
+    if (abs(wind)-eps > 0)
+      iblank[i] = HOLE;
   }
 }

@@ -266,7 +266,6 @@ vector<tetra> superMesh::clipTet(tetra &tet, const vector<point> &clipFace, Vec3
     }
 
     case 3: {
-
       // The opposite of case 1; new tet is one corner of original tet
       int keep = -1;
       for (int i=0; i<4; i++) {
@@ -296,7 +295,7 @@ vector<tetra> superMesh::clipTet(tetra &tet, const vector<point> &clipFace, Vec3
     }
 
     case 4: {
-      //cout << "WARNING: input donor-cell tet is completely exterior to target cell!" << endl;
+      // Entire tet is beyond clipping face
       break;
     }
   }
@@ -323,6 +322,7 @@ void superMesh::setupQuadrature(void)
   getQuadRuleTet(order, qpts, weights);
 
   nQpts_tet = qpts.size();
+  nQpts = nQpts_tet*nTets;
 
   shapeQpts.setup(nQpts_tet,4);
   for (int i=0; i<nQpts_tet; i++) {
@@ -335,6 +335,18 @@ void superMesh::setupQuadrature(void)
       for (int k=0; k<4; k++) {
         tet.qpts[j] += tet.nodes[k]*shapeQpts(j,k);
       }
+    }
+  }
+}
+
+void superMesh::getQpts(vector<point> &qptPos, vector<int> &qptCell)
+{
+  qptPos.resize(0);
+  qptCell.resize(0);
+  for (int i=0; i<nTets; i++) {
+    for (int j=0; j<nQpts_tet; j++) {
+      qptPos.push_back(tets[i].qpts[j]);
+      qptCell.push_back(parents[i]);
     }
   }
 }
