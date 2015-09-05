@@ -232,6 +232,9 @@ public:
   //! For moving grids, update the overset connectivity (including adding/removing cells/faces)
   void updateOversetConnectivity(bool doBlanking = true);
 
+  void updateOversetConnectivity2D(bool doBlanking);
+  void updateOversetConnectivity3D(bool doBlanking);
+
   /*!
    * \brief Initialize overset-related data storage
    *

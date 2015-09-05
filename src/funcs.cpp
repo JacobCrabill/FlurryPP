@@ -369,25 +369,22 @@ Vec3 getFaceNormalQuad(vector<point> &facePts, point &xc)
 }
 
 
-void getBoundingBox(vector<point>& pts, point &cent, point &dx)
+void getBoundingBox(vector<point>& pts, point &minPt, point &maxPt)
 {
-  point minPt( INFINITY, INFINITY, INFINITY);
-  point maxPt(-INFINITY,-INFINITY,-INFINITY);
+  minPt = { INFINITY, INFINITY, INFINITY};
+  maxPt = {-INFINITY,-INFINITY,-INFINITY};
   for (auto &pt:pts) {
     for (int dim=0; dim<3; dim++) {
       minPt[dim] = min(minPt[dim],pt[dim]);
       maxPt[dim] = max(maxPt[dim],pt[dim]);
     }
   }
-
-  cent = (minPt + maxPt)*0.5;
-  dx = maxPt - minPt;
 }
 
-void getBoundingBox(matrix<double>& pts, point &cent, point &dx)
+void getBoundingBox(matrix<double>& pts, point &minPt, point &maxPt)
 {
-  point minPt( INFINITY, INFINITY, INFINITY);
-  point maxPt(-INFINITY,-INFINITY,-INFINITY);
+  minPt = { INFINITY, INFINITY, INFINITY};
+  maxPt = {-INFINITY,-INFINITY,-INFINITY};
   for (int i=0; i<pts.getDim0(); i++) {
     point pt = point(pts[i]);
     for (int dim=0; dim<3; dim++) {
@@ -395,7 +392,16 @@ void getBoundingBox(matrix<double>& pts, point &cent, point &dx)
       maxPt[dim] = max(maxPt[dim],pt[dim]);
     }
   }
+}
 
-  cent = (minPt + maxPt)*0.5;
-  dx = maxPt - minPt;
+void getBoundingBox(double *pts, int nPts, int nDims, point &minPt, point &maxPt)
+{
+  minPt = { INFINITY, INFINITY, INFINITY};
+  maxPt = {-INFINITY,-INFINITY,-INFINITY};
+  for (int i=0; i<nPts; i++) {
+    for (int dim=0; dim<3; dim++) {
+      minPt[dim] = min(minPt[dim],pts[i*nDims+dim]);
+      maxPt[dim] = max(maxPt[dim],pts[i*nDims+dim]);
+    }
+  }
 }

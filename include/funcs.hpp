@@ -60,5 +60,6 @@ Vec3 getFaceNormalTri(vector<point> &facePts, point &xc);
 Vec3 getFaceNormalQuad(vector<point> &facePts, point &xc);
 
 //! Given a list of points, get an axis-aligned bounding box defined by its centriod and dimensions
-void getBoundingBox(vector<point> &pts, point &cent, point &dx);
-void getBoundingBox(matrix<double> &pts, point &cent, point &dx);
+void getBoundingBox(vector<point> &pts, point &minPt, point &maxPt);
+void getBoundingBox(matrix<double> &pts, point &minPt, point &maxPt);
+void getBoundingBox(double *pts, int nPts, int nDims, point &minPt, point &maxPt);

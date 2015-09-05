@@ -26,6 +26,7 @@
 #include "ele.hpp"
 #include "face.hpp"
 #include "overFace.hpp"
+#include "overComm.hpp"
 #include "superMesh.hpp"
 
 #ifndef _NO_MPI
@@ -168,6 +169,53 @@ void geo::registerGridDataTIOGA(void)
 #endif
 }
 
+void geo::setupOverset2D(void)
+{
+  OComm = make_shared<overComm>();
+
+  OComm->setup(params,nGrids,gridID,gridRank,nProcGrid,gridIdList);
+
+  setNodeTypes2D();
+
+  OComm->setIblanks2D(xv,wallFaces,iblank);
+
+  // Now use new nodal iblanks to set cell and face iblanks
+  setCellFaceIblanks();
+}
+
+void geo::setNodeTypes2D(void)
+{
+  // Set node types for 'mandatory' blanking values, and get wall & overset nodes
+  iover.resize(0);
+  iwall.resize(0);
+  nodeType.assign(nVerts,NORMAL_NODE);
+  for (int ib=0; ib<nBounds; ib++) {
+    if (bcList[ib] == OVERSET) {
+      for (int iv=0; iv<nBndPts[ib]; iv++) {
+        iover.push_back(bndPts(ib,iv));
+        nodeType[bndPts(ib,iv)] = OVERSET_NODE;
+      }
+    }
+    else if (bcList[ib] == SLIP_WALL || bcList[ib] == ADIABATIC_NOSLIP || bcList[ib] == ISOTHERMAL_NOSLIP) {
+      for (int iv=0; iv<nBndPts[ib]; iv++) {
+        iwall.push_back(bndPts(ib,iv));
+        nodeType[bndPts(ib,iv)] = BOUNDARY_NODE;
+      }
+    }
+    else {
+      nodeType[bndPts(ib,ib)] = BOUNDARY_NODE;
+    }
+  }
+
+  wallFaces.setup(0,0);
+  for (int bf=0; bf<nBndFaces; bf++) {
+    if (bcType[bf] == SLIP_WALL || bcType[bf] == ADIABATIC_NOSLIP || bcType[bf] == ISOTHERMAL_NOSLIP) {
+      int ff = bndFaces[bf];
+      wallFaces.insertRow({f2v(ff,0),f2v(ff,1)});
+    }
+  }
+}
+
 void geo::updateOversetConnectivity(void)
 {
 #ifndef _NO_MPI
@@ -180,6 +228,17 @@ void geo::updateOversetConnectivity(void)
   // Only needed for debugging, really
   if (params->writeIBLANK)
     writeOversetConnectivity();
+
+  // Now use new nodal iblanks to set cell and face iblanks
+  setCellFaceIblanks();
+#endif
+}
+
+void geo::updateOversetConnectivity2D(void)
+{
+#ifndef _NO_MPI
+  // Set nodal iblanks based upon hole cutting
+  OComm->setIblanks2D(xv,wallFaces,iblank);
 
   // Now use new nodal iblanks to set cell and face iblanks
   setCellFaceIblanks();
@@ -328,8 +387,6 @@ void geo::setCellFaceIblanks()
     cout << "nBlankCells   = " << blankCells.size() << "  nBlakFaces   = " << blankFaces.size() << "  nBlankOfaces   = " << blankOFaces.size() << endl;
   if ((unblankCells.size()>0 || unblankFaces.size()>0 || unblankOFaces.size()>0) && params->iter != params->initIter)
     cout << "nUnBlankCells = " << unblankCells.size() << "  nUnBlakFaces = " << unblankFaces.size() << "  nUnBlankOfaces = " << unblankOFaces.size() << endl;
-
-
 }
 
 void geo::writeOversetConnectivity(void)
@@ -681,42 +738,5 @@ cout << "Unblanking OFaces!" << endl;
   for (auto &mface:mFaces) {
     if (unblankMFaces.count(mface->ID))
       mface->finishRightSetup();
-  }
-}
-
-void geo::setIblanks2D(void)
-{
-  // Use winding-number method to find hole points given wall faces
-
-  vector<matrix<double>> wallNodes; // get from overComm - physical posiitons of wall-boundary nodes on each rank
-  vector<matrix<int>> wallFaces;  // get from overComm - list of edge comprising wall bnds on each rank
-
-  double eps = 1e-3;
-  for (int i=0; i<nVerts; i++) {
-    point pt = point(xv[i]);
-
-    // NOTE: for >2 grids, use instead vector<double> wind(nGrids);
-    double wind = 0;
-    for (int p=0; p<nproc; p++) {
-      if (gridIdList[p] == gridID) continue;
-      bool inBox; // check pt in/out of bounding-box of wall face nodes
-      if (!inBox) continue;
-      for (int j=0; j<wallFaces[p].getDim0(); j++) {
-        point pt1 = point(wallNodes[p][wallFaces[p](j,0)]);
-        point pt2 = point(wallNodes[p][wallFaces[p](j,1)]);
-
-        Vec3 dx1 = pt1 - pt;  dx1 /= dx1.norm();
-        Vec3 dx2 = pt2 - pt;  dx2 /= dx2.norm();
-        Vec3 cross = dx2.cross(dx1);
-        double dot = min(max(dx1*dx2,-1),1);
-        if (cross.z > 0)
-          wind += std::acos(dot);
-        else
-          wind -= std::acos(dot);
-      }
-    }
-
-    if (abs(wind)-eps > 0)
-      iblank[i] = HOLE;
   }
 }

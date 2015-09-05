@@ -30,6 +30,7 @@ class tioga;
 #include "face.hpp"
 #include "mpiFace.hpp"
 #include "overFace.hpp"
+#include "overComm.hpp"
 #include "solver.hpp"
 #include "superMesh.hpp"
 
@@ -81,6 +82,9 @@ public:
    */
   void updateOversetConnectivity();
 
+  //! TIOGA doesn't support 2D, so use my own routines for blanking
+  void updateOversetConnectivity2D(void);
+
   //! Have TIOGA output the mesh along with nodal IBLANK values
   void writeOversetConnectivity();
 
@@ -114,8 +118,8 @@ public:
   vector<point> xv0;      //! Initial position of vertices [moving grids]
   matrix<double> gridVel; //! Grid velocity of vertices
 
-  point centroid;   //! Centroid of all vertices on grid partition
-  point extents;     //! Overall x,y,z extents (max-min) of grid partition
+  point minPt;   //! Centroid of all vertices on grid partition
+  point maxPt;     //! Overall x,y,z extents (max-min) of grid partition
 
   // Additional Connectivity Data
   matrix<int> c2e, c2b, e2c, e2v, v2e, v2v, v2c;
@@ -124,7 +128,7 @@ public:
   vector<int> intFaces, bndFaces, mpiFaces, overFaces, mpiCells;
   set<int> overCells;            //! List of all cells which have an overset-boundary-condition face
   vector<int> bcList;            //! List of boundary conditions for each boundary
-  vector<int> bcType;            //! Boundary condition for each boundary edge
+  vector<int> bcType;            //! Boundary condition for each boundary face
   matrix<int> bndPts;            //! List of node IDs on each boundary
   vector<int> nBndPts;           //! Number of points on each boudary
   vector<matrix<int> > bcFaces;  //! List of nodes on each face (edge) for each boundary condition
@@ -153,6 +157,8 @@ public:
   vector<int> iover;      //! List of nodes on overset boundaries
   vector<int> nodeType;   //! For each node: normal interior, normal boundary, or overset
 
+  matrix<int> wallFaces;  //! For 2D: All the wall-boundary faces for hole blanking
+
   vector<int> eleMap;     //! For overset meshes where some cells are blanked, map from 'ic' to 'eles' index
   vector<int> faceMap;    //! For overset meshes where some faces are blanked, map from 'ff' to faceType-vector index
   //vector<int> bfaceMap;
@@ -176,6 +182,7 @@ public:
   set<int> blankOFaces;   //! List of existing overset faces which, due to motion, must be blanked
 
 #ifndef _NO_MPI
+  shared_ptr<overComm> OComm;
   shared_ptr<tioga> tg;  //! Pointer to Tioga object for processing overset grids
 #endif
   int* nodesPerCell;   //! Pointer for Tioga to know # of nodes for each element type
@@ -199,12 +206,15 @@ private:
 
   void processConn2D(void);
   void processConn3D(void);
+  void processConnExtra(void);
+
+  void setupOverset2D(void);
 
   //! Using Tioga's nodal iblanks, set iblank values for all cells and faces
   void setCellFaceIblanks();
 
-  //! For 2D overset cases: set all iblank values
-  void setIblanks2D();
+  //! For 2D overset cases: pre-process node types
+  void setNodeTypes2D(void);
 
   //! Match up pairs of periodic boundary faces
   void processPeriodicBoundaries(void);

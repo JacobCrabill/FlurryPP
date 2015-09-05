@@ -674,17 +674,24 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   // Use the simple Nelder-Meade algorithm to find the reference location which
   // maps to the given physical position
 
-  int nPts = 4;
-  int nVars = 3;
-  vector<double> F(4);
-  matrix<double> X(4,3);
+  int nPts = nDims+1;
+  int nVars = nDims;
+  vector<double> F(nPts);
+  matrix<double> X(nPts,nVars);
 
   // Starting location for search
   double L = .75;
-  X(0,0) =-L*.5; X(0,1) =-L*.43301; X(0,2) =-L*.375;
-  X(1,0) = L*.5; X(1,1) =-L*.43301; X(1,2) =-L*.375;
-  X(2,0) = L*0;  X(2,1) = L*.43301; X(2,2) =-L*.375;
-  X(3,0) = L*0;  X(3,1) = L*0;      X(3,2) = L*.375;
+  if (nDims == 3) {
+    X(0,0) =-L*.5; X(0,1) =-L*.43301; X(0,2) =-L*.375;
+    X(1,0) = L*.5; X(1,1) =-L*.43301; X(1,2) =-L*.375;
+    X(2,0) = L*0;  X(2,1) = L*.43301; X(2,2) =-L*.375;
+    X(3,0) = L*0;  X(3,1) = L*0;      X(3,2) = L*.375;
+  }
+  else {
+    X(0,0) =-L*.5; X(0,1) =-L*.43301;
+    X(1,0) = L*.5; X(1,1) =-L*.43301;
+    X(2,0) = L*0;  X(2,1) = L*.43301;
+  }
 
   // Evaluate the 'function' at the initial 'points'
   for (int i=0; i<nPts; i++)

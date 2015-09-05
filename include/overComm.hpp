@@ -115,6 +115,8 @@ public:
 
   void setup(input *_params, int _nGrids, int _gridID, int _gridRank, int _nprocPerGrid, vector<int> &_gridIdList);
 
+  void setIblanks2D(matrix<double> &xv, matrix<int> &wallFaces, vector<int> &iblank);
+
   /*!
    * \brief Match up each overset-face flux point to its donor grid and element
    *
@@ -123,8 +125,9 @@ public:
    * @param[in] centroid: Centriod of current grid partition
    * @param[in] extents : x,y,z extents (max-min) of current grid partition
    */
-  void matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, matrix<int> &c2ac,
-                                    const vector<int> &eleMap, const point &centroid, const point &extents);
+  void matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap);
+
+  void matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const point &minPt, const point &maxPt);
 
   /*!
    * \brief Setup all communication for unblanked cells and faces
@@ -135,7 +138,7 @@ public:
    * For each unblanked face, add its points to the communicator
    *
    */
-  void matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int>& unblankCells, matrix<int>& c2c, vector<int>& eleMap, int quadOrder);
+  void matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int>& unblankCells, vector<int>& eleMap, int quadOrder);
 
   //! Perform the interpolation and communicate data across all grids
   void exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers);

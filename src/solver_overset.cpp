@@ -26,15 +26,31 @@ void solver::setupOverset(void)
 {
   if (gridRank == 0) cout << "Solver: Grid " << gridID << ": Setting up overset connectivity" << endl;
 
-  OComm = make_shared<overComm>();
+  if (Geo->nDims == 3) {
+    OComm = make_shared<overComm>();
 
-  OComm->setup(params,nGrids,gridID,gridRank,nprocPerGrid,Geo->gridIdList);
-  OComm->tg = Geo->tg;
+    OComm->setup(params,nGrids,gridID,gridRank,nprocPerGrid,Geo->gridIdList);
 
-  OComm->matchOversetPoints(eles,overFaces,Geo->c2ac,Geo->eleMap,Geo->centroid,Geo->extents);
+    OComm->tg = Geo->tg;
+
+    OComm->matchOversetPoints(eles,overFaces,Geo->eleMap);
+  }
+  else {
+    OComm = Geo->OComm;
+
+    OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
+  }
 }
 
 void solver::updateOversetConnectivity(bool doBlanking)
+{
+  if (Geo->nDims == 3)
+    updateOversetConnectivity3D(doBlanking);
+  else
+    updateOversetConnectivity2D(doBlanking);
+}
+
+void solver::updateOversetConnectivity3D(bool doBlanking)
 {
   if (doBlanking) {
     // Remove blanks found during previous iteration
@@ -52,10 +68,33 @@ void solver::updateOversetConnectivity(bool doBlanking)
     Geo->tg->performConnectivity();
   }
 
-  OComm->matchOversetPoints(eles,overFaces,Geo->c2ac,Geo->eleMap,Geo->centroid,Geo->extents);
+  OComm->matchOversetPoints(eles,overFaces,Geo->eleMap);
 
   if (doBlanking) {
-    OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->c2c,Geo->eleMap,params->order);
+    OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->order);
+  }
+}
+
+void solver::updateOversetConnectivity2D(bool doBlanking)
+{
+  if (doBlanking) {
+    // Remove blanks found during previous iteration
+    Geo->removeBlanks(eles,faces,mpiFaces,overFaces);
+
+    // Find unblanks needed for this iteration, and blanks to remove at next step
+    Geo->updateOversetConnectivity2D();
+
+    // Setup unblanks for this iteration
+    Geo->setupUnblankElesFaces(eles,faces,mpiFaces,overFaces);
+  }
+  else {
+    Geo->updateOversetConnectivity2D();
+  }
+
+  OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
+
+  if (doBlanking) {
+    //OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->order);
   }
 }
 

@@ -100,14 +100,22 @@ void geo::processConnectivity()
   else if (nDims == 3)
     processConn3D();
 
+  processConnExtra();
+
   processPeriodicBoundaries();
 
 #ifndef _NO_MPI
   /* --- Use TIOGA to find all hole nodes, then setup overset-face connectivity --- */
   if (meshType == OVERSET_MESH) {
-    registerGridDataTIOGA();
+    if (nDims == 3) {
+      registerGridDataTIOGA();
 
-    updateOversetConnectivity();
+      updateOversetConnectivity();
+    } else {
+      setupOverset2D();
+
+      updateOversetConnectivity2D();
+    }
 
     // Since this is initial pre-processing, clear blank/unblanks
     blankCells.clear();
@@ -465,7 +473,10 @@ void geo::processConn3D(void)
       }
     }
   }
+}
 
+void geo::processConnExtra(void)
+{
   c2ac.setup(nEles,26); // ALL cell surrounding each cell (all cells sharing at least 1 vertex)
   c2ac.initializeToValue(-1);
   for (int ic=0; ic<nEles; ic++) {
@@ -489,7 +500,7 @@ void geo::processConn3D(void)
     }
   }
 
-  getBoundingBox(xv,centroid,extents);
+  getBoundingBox(xv,minPt,maxPt);
 
   // Get vertex to vertex/edge connectivity
   vector<set<int>> v2v_tmp(nVerts);
@@ -523,7 +534,6 @@ void geo::processConn3D(void)
       j++;
     }
   }
-
 }
 
 void geo::matchMPIFaces(void)
