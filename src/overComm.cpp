@@ -344,7 +344,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int> &unblan
           donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
         }
 
-        superMesh mesh(targetNodes,donorPts,quadOrder);
+        superMesh mesh(targetNodes,donorPts,quadOrder, 3);
         donors.push_back(mesh);
       }
     }

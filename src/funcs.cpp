@@ -368,6 +368,23 @@ Vec3 getFaceNormalQuad(vector<point> &facePts, point &xc)
   return norm;
 }
 
+Vec3 getEdgeNormal(vector<point> &edge, point &xc)
+{
+  Vec3 dx = edge[1] - edge[0];
+  Vec3 norm = Vec3({-dx.y,dx.x,0});
+  norm /= norm.norm();
+
+  // Face centroid to cell centroid
+  Vec3 dxc = xc - (edge[0]+edge[1])/2.;
+
+  if (norm*dxc > 0) {
+    // Face normal is pointing into cell; flip
+    norm *= -1;
+  }
+
+  return norm;
+}
+
 
 void getBoundingBox(vector<point>& pts, point &minPt, point &maxPt)
 {

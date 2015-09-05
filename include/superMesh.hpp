@@ -24,11 +24,20 @@
 
 #include "matrix.hpp"
 
+// Possibility: use 'class Simplex'; 'class tetra: public Simplex'; 'vector<shared_ptr<Simplex>>' ...
+
 struct tetra
 {
   array<point,4> nodes;    //! Positions of nodes in tet
   vector<point> qpts;      //! Physical positions of quadrature points in tet
   //vector<double> weights;  //! Weights associated with each quadrature point
+  int donorID;             //! Donor-grid cell ID to which tetra belongs
+};
+
+struct triangle
+{
+  array<point,3> nodes;    //! Positions of nodes in tri
+  vector<point> qpts;      //! Physical positions of quadrature points in tri
   int donorID;             //! Donor-grid cell ID to which tetra belongs
 };
 
@@ -41,18 +50,20 @@ public:
   superMesh();
   ~superMesh();
 
-  superMesh(vector<point> &_target, Array2D<point> &_donors, int _order);
+  superMesh(vector<point> &_target, Array2D<point> &_donors, int _order, int _nDims);
 
   /* ---- Member Variables ---- */
 
-  vector<point> target;     //! Target cell's node positions for which to create local supermesh
+  vector<point> target;   //! Target cell's node positions for which to create local supermesh
   Array2D<point> donors;  //! Node positions of cells from donor grid which overlap target cell
 
-  int nTets;      //! Total number of tets comprising the supermesh
+  int nSimps;     //! Total number of simplices comprising the supermesh
+  int nv_simp;    //! Number of vertices in simplex (3 or 4)
   int nQpts;      //! Total number of quadrature points in the whole supermesh
   int order;      //! Order of quadrature rule to use
-  int nQpts_tet;  //! Number of quadrature points per tet (based on order)
+  int nQpts_simp; //! Number of quadrature points per tet (based on order)
   int nDonors;    //! Number of donor cells
+  int nDims;      //! Dimension of the problem: 2D or 3D
 
   Array2D<point> faces;  //! Face points of target cell for use as clipping planes
   vector<Vec3> normals;  //! Outward face normals for target cell (for clipping)
@@ -61,12 +72,13 @@ public:
   vector<double> weights;   //! Quadrature weights
   matrix<double> shapeQpts; //! Values of tetrahedron nodal shape basis at quadrature points [nQpts x 4]
 
-  vector<tetra> tets;  //! Tetrahedra comprising the supermesh
-  vector<int> parents; //! Parent donor-cell ID for each tet [range 0:(nDonors-1)]
+  vector<tetra> tets;    //! Tetrahedrons comprising the supermesh [for 3D]
+  vector<triangle> tris; //! triangles comprising the supermesh [for 2D]
+  vector<int> parents;   //! Parent donor-cell ID for each tet [range 0:(nDonors-1)]
 
   /* ---- Member Functions ---- */
 
-  void setup(vector<point> &_target, Array2D<point> &_donors, int _order);
+  void setup(vector<point> &_target, Array2D<point> &_donors, int _order, int nDims);
 
   //! Using given grids and target cell, build the local supermesh
   void buildSuperMesh(void);
@@ -85,10 +97,21 @@ public:
 
 private:
 
-  //! Subdivide the given hexahedron into 5 tetrahedrons
-  vector<tetra> splitHexIntoTets(const vector<point> &hexNodes);
-
-  //! Use the given face and outward normal to clip the given tet and return the new set of tets
-  vector<tetra> clipTet(tetra &tet, const vector<point> &clipFace, Vec3 &norm);
+  void buildSuperMeshTri(void);
+  void buildSuperMeshTet(void);
 
 };
+
+/* --- Extra Helper Functions --- */
+
+//! Subdivide the given hexahedron into 5 tetrahedrons
+vector<tetra> splitHexIntoTets(const vector<point> &hexNodes);
+
+//! Subdivide the given quadrilateral into 2 triangles
+vector<triangle> splitQuadIntoTris(const vector<point> &quadNodes);
+
+//! Use the given face and outward normal to clip the given tet and return the new set of tets
+vector<tetra> clipTet(tetra &tet, const vector<point> &clipFace, Vec3 &norm);
+
+//! Use the given face and outward normal to clip the given triangle and return the new set of tris
+vector<triangle> clipTri(triangle &tri, const vector<point> &clipFace, Vec3 &norm);

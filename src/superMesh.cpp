@@ -42,14 +42,15 @@
  *              `3                                    `3
  */
 
+
 superMesh::superMesh()
 {
 
 }
 
-superMesh::superMesh(vector<point> &_target, Array2D<point> &_donors, int _order)
+superMesh::superMesh(vector<point> &_target, Array2D<point> &_donors, int _order, int _nDims)
 {
-  setup(_target,_donors,_order);
+  setup(_target,_donors,_order,_nDims);
 }
 
 superMesh::~superMesh()
@@ -57,11 +58,14 @@ superMesh::~superMesh()
 
 }
 
-void superMesh::setup(vector<point> &_target, Array2D<point> &_donors, int _order)
+void superMesh::setup(vector<point> &_target, Array2D<point> &_donors, int _order, int _nDims)
 {
   target = _target;
   donors = _donors;
   order = _order;
+  nDims = _nDims;
+
+  nv_simp = nDims+1;
 
   nDonors = donors.getDim0();
 
@@ -69,6 +73,64 @@ void superMesh::setup(vector<point> &_target, Array2D<point> &_donors, int _orde
 }
 
 void superMesh::buildSuperMesh(void)
+{
+  if (nDims==2)
+    buildSuperMeshTri();
+  else
+    buildSuperMeshTet();
+}
+
+void superMesh::buildSuperMeshTri(void)
+{
+  // Step 1: Split the donor hexahedrons into tets to prepare for clipping
+  tris.resize(0);
+  parents.resize(0);
+  for (int i=0; i<nDonors; i++) {
+    auto tmpTris = splitQuadIntoTris(donors.getRow(i));
+    tris.insert(tris.end(),tmpTris.begin(),tmpTris.end());
+    parents.insert(parents.end(),tmpTris.size(),i);
+  }
+
+  // Step 2: Get the clipping planes from the target-cell faces
+  normals.resize(4);
+
+  point xc;
+  for (auto &pt:target)
+    xc += pt;
+  xc /= target.size();
+
+  vector<point> facePts = {target[0],target[1]};
+  faces.insertRow(facePts);
+  normals[0] = getEdgeNormal(facePts,xc);
+
+  facePts = {target[1],target[2]};
+  faces.insertRow(facePts);
+  normals[1] = getEdgeNormal(facePts,xc);
+
+  facePts = {target[2],target[3]};
+  faces.insertRow(facePts);
+  normals[2] = getEdgeNormal(facePts,xc);
+
+  facePts = {target[3],target[0]};
+  faces.insertRow(facePts);
+  normals[3] = getEdgeNormal(facePts,xc);
+
+  // Step 3: Use the faces to clip the tets
+  for (uint i=0; i<faces.getDim0(); i++) {
+    vector<triangle> newTris;
+    vector<int> newParents;
+    for (uint j=0; j<tris.size(); j++) {
+      triangle tri = tris[j];
+      auto tmpTris = clipTri(tri, faces.getRow(i), normals[i]);
+      newTris.insert(newTris.end(),tmpTris.begin(),tmpTris.end());
+      newParents.insert(newParents.end(),tmpTris.size(),parents[j]);
+    }
+    tris = newTris;
+    parents = newParents;
+  }
+}
+
+void superMesh::buildSuperMeshTet(void)
 {
   // Step 1: Split the donor hexahedrons into tets to prepare for clipping
   tets.resize(0);
@@ -126,7 +188,70 @@ void superMesh::buildSuperMesh(void)
   }
 }
 
-vector<tetra> superMesh::splitHexIntoTets(const vector<point> &hexNodes)
+double superMesh::integrate(vector<double> &data)
+{
+  if ((int)data.size() != nQpts) FatalError("To integrate over supermesh, data must lie at its quadrature nodes.");
+
+  double val = 0;
+  for (int i=0; i<nSimps; i++) {
+    for (int j=0; j<nQpts_simp; j++) {
+      val += data[i*nQpts_simp+j]*weights[j];
+    }
+  }
+
+  return val;
+}
+
+void superMesh::setupQuadrature(void)
+{
+  getQuadRuleTet(order, qpts, weights);
+
+  nQpts_simp = qpts.size();
+  nQpts = nQpts_simp*nSimps;
+
+  shapeQpts.setup(nQpts_simp,nv_simp);
+  if (nDims==2) {
+    for (int i=0; i<nQpts_simp; i++)
+      shape_tet(qpts[i],shapeQpts[i]);
+  } else {
+    for (int i=0; i<nQpts_simp; i++)
+      shape_tri(qpts[i],shapeQpts[i]);
+  }
+
+  if (nDims==2) {
+    for (auto &tri:tris) {
+      tri.qpts.resize(nQpts_simp);
+      for (int j=0; j<nQpts_simp; j++) {
+        for (int k=0; k<nv_simp; k++) {
+          tri.qpts[j] += tri.nodes[k]*shapeQpts(j,k);
+        }
+      }
+    }
+  } else {
+    for (auto &tet:tets) {
+      tet.qpts.resize(nQpts_simp);
+      for (int j=0; j<nQpts_simp; j++) {
+        for (int k=0; k<nv_simp; k++) {
+          tet.qpts[j] += tet.nodes[k]*shapeQpts(j,k);
+        }
+      }
+    }
+  }
+}
+
+void superMesh::getQpts(vector<point> &qptPos, vector<int> &qptCell)
+{
+  qptPos.resize(0);
+  qptCell.resize(0);
+  for (int i=0; i<nSimps; i++) {
+    for (int j=0; j<nQpts_simp; j++) {
+      qptPos.push_back(tets[i].qpts[j]);
+      qptCell.push_back(parents[i]);
+    }
+  }
+}
+
+vector<tetra> splitHexIntoTets(const vector<point> &hexNodes)
 {
   vector<tetra> newTets(5);
 
@@ -139,7 +264,7 @@ vector<tetra> superMesh::splitHexIntoTets(const vector<point> &hexNodes)
   return newTets;
 }
 
-vector<tetra> superMesh::clipTet(tetra &tet, const vector<point> &clipFace, Vec3 &norm)
+vector<tetra> clipTet(tetra &tet, const vector<point> &clipFace, Vec3 &norm)
 {
   /* --- WARNING: Assuming a linear, planar face --- */
 
@@ -303,50 +428,14 @@ vector<tetra> superMesh::clipTet(tetra &tet, const vector<point> &clipFace, Vec3
   return outTets;
 }
 
-double superMesh::integrate(vector<double> &data)
+
+vector<triangle> clipTri(triangle &tri, const vector<point> &clipFace, Vec3 &norm)
 {
-  if ((int)data.size() != nQpts) FatalError("To integrate over supermesh, data must lie at its quadrature nodes.");
-
-  double val = 0;
-  for (int i=0; i<nTets; i++) {
-    for (int j=0; j<nQpts_tet; j++) {
-      val += data[i*nQpts_tet+j]*weights[j];
-    }
-  }
-
-  return val;
+  // TODO
 }
 
-void superMesh::setupQuadrature(void)
+
+vector<triangle> splitQuadIntoTris(const vector<point> &quadNodes)
 {
-  getQuadRuleTet(order, qpts, weights);
-
-  nQpts_tet = qpts.size();
-  nQpts = nQpts_tet*nTets;
-
-  shapeQpts.setup(nQpts_tet,4);
-  for (int i=0; i<nQpts_tet; i++) {
-    shape_tet(qpts[i],shapeQpts[i]);
-  }
-
-  for (auto &tet:tets) {
-    tet.qpts.resize(nQpts_tet);
-    for (int j=0; j<nQpts_tet; j++) {
-      for (int k=0; k<4; k++) {
-        tet.qpts[j] += tet.nodes[k]*shapeQpts(j,k);
-      }
-    }
-  }
-}
-
-void superMesh::getQpts(vector<point> &qptPos, vector<int> &qptCell)
-{
-  qptPos.resize(0);
-  qptCell.resize(0);
-  for (int i=0; i<nTets; i++) {
-    for (int j=0; j<nQpts_tet; j++) {
-      qptPos.push_back(tets[i].qpts[j]);
-      qptCell.push_back(parents[i]);
-    }
-  }
+  // TODO
 }
