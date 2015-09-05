@@ -63,15 +63,17 @@ void overComm::setIblanks2D(matrix<double>& xv, matrix<int>& wallFaces, vector<i
   vector<int> nFace_rank;
   vector<double> wallNodes_rank; // get from overComm - physical posiitons of wall-boundary nodes on each rank
 
-  gatherData(nVerts, 4, wallNodes.getData(), nFace_rank, wallNodes_rank);
+  gatherData(nFaces, 4, wallNodes.getData(), nFace_rank, wallNodes_rank);
 
   // Use winding-number method to find hole points given wall faces
 
-  iblank.resize(nVerts);
+  iblank.assign(nVerts,NORMAL);
 
   double eps = 1e-3;
   for (int i=0; i<nVerts; i++) {
-    point pt = point(xv[i]);
+    point pt;
+    pt.x = xv(i,0);
+    pt.y = xv(i,1);
 
     // NOTE: for >2 grids, use instead vector<double> wind(nGrids);
     double wind = 0;
@@ -84,6 +86,8 @@ void overComm::setIblanks2D(matrix<double>& xv, matrix<int>& wallFaces, vector<i
       // First, check that point even lies within bounding box of wall boundary
       if ( (pt.x<minPt.x) || (pt.y<minPt.y) || (pt.x>maxPt.x) || (pt.y>maxPt.y) )
         continue;
+
+      //cout << "point " << i << ": " << pt.x << "," << pt.y << endl;
 
       for (int i=0; i<nFace_rank[p]; i++) {
         point pt1, pt2;
@@ -104,9 +108,16 @@ void overComm::setIblanks2D(matrix<double>& xv, matrix<int>& wallFaces, vector<i
       }
     }
 
-    if (abs(wind)-eps > 0)
+    if (std::abs(wind)-eps > 0)
       iblank[i] = HOLE;
   }
+
+  int nhole = 0;
+  for (auto &I:iblank) {
+    if (I==HOLE)
+      nhole++;
+  }
+  cout << "nhole = " << nhole << "/" << nVerts << endl;
 }
 
 void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap)
@@ -184,7 +195,6 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_p
     if (gridIdList[p] == gridID) continue;
     nPtsSend[p] = foundPts[p].size();
   }
-MPI_Barrier(MPI_COMM_WORLD);
   U_in.setup(nOverPts,nFields);
 #endif
 }
@@ -226,8 +236,8 @@ void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared
       point pt = point(&interpPtsPhys[3*(offset+i)]);
 
       // First, check that point even lies within bounding box of grid
-      if ( (pt.x<minPt.x) || (pt.y<minPt.y) || (pt.z<minPt.z) ||
-           (pt.x>maxPt.x) || (pt.y>maxPt.y) || (pt.z>maxPt.z) )
+      if ( (pt.x<minPt.x) || (pt.y<minPt.y) ||
+           (pt.x>maxPt.x) || (pt.y>maxPt.y) )
         continue;
 
       // Check for containment in all eles on this rank of this grid [no ADT currently for 2D meshes]
@@ -255,7 +265,6 @@ void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared
     if (gridIdList[p] == gridID) continue;
     nPtsSend[p] = foundPts[p].size();
   }
-MPI_Barrier(MPI_COMM_WORLD);
   U_in.setup(nOverPts,nFields);
 #endif
 }

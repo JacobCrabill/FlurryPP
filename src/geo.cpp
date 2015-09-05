@@ -113,8 +113,6 @@ void geo::processConnectivity()
       updateOversetConnectivity();
     } else {
       setupOverset2D();
-
-      updateOversetConnectivity2D();
     }
 
     // Since this is initial pre-processing, clear blank/unblanks
@@ -234,7 +232,9 @@ void geo::processConn2D(void)
 
   c2f.setup(nEles,getMax(c2nf));
   c2b.setup(nEles,getMax(c2nf));
+  c2c.setup(nEles,getMax(c2nf));
   c2b.initializeToZero();
+  c2c.initializeToValue(-1);
   f2c.setup(nFaces,2);
   f2c.initializeToValue(-1);
 
@@ -278,6 +278,12 @@ void geo::processConn2D(void)
       }else{
         // Put cell on right
         f2c(ie0,1) = ic;
+        // Update c2c for both cells
+        int ic2 = f2c(ie0,0);
+        vector<int> cellFaces(c2f[ic2],c2f[ic2]+c2nf[ic2]);
+        int fid2 = findFirst(cellFaces,ie0);
+        c2c(ic,j)     = ic2;
+        c2c(ic2,fid2) = ic;
       }
     }
   }
@@ -505,13 +511,26 @@ void geo::processConnExtra(void)
   // Get vertex to vertex/edge connectivity
   vector<set<int>> v2v_tmp(nVerts);
   vector<set<int>> v2e_tmp(nVerts);
-  for (int ie=0; ie<nEdges; ie++) {
-    int iv1 = e2v(ie,0);
-    int iv2 = e2v(ie,1);
-    v2v_tmp[iv1].insert(iv2);
-    v2v_tmp[iv2].insert(iv1);
-    v2e_tmp[iv1].insert(ie);
-    v2e_tmp[iv2].insert(ie);
+  if (nDims == 2) {
+    // Faces are the edges
+    for (int ie=0; ie<nFaces; ie++) {
+      int iv1 = f2v(ie,0);
+      int iv2 = f2v(ie,1);
+      v2v_tmp[iv1].insert(iv2);
+      v2v_tmp[iv2].insert(iv1);
+      v2e_tmp[iv1].insert(ie);
+      v2e_tmp[iv2].insert(ie);
+    }
+  } else {
+    // Edges were processed separately for 3D
+    for (int ie=0; ie<nEdges; ie++) {
+      int iv1 = e2v(ie,0);
+      int iv2 = e2v(ie,1);
+      v2v_tmp[iv1].insert(iv2);
+      v2v_tmp[iv2].insert(iv1);
+      v2e_tmp[iv1].insert(ie);
+      v2e_tmp[iv2].insert(ie);
+    }
   }
 
   v2nv.resize(nVerts);

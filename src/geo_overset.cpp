@@ -177,6 +177,10 @@ void geo::setupOverset2D(void)
 
   setNodeTypes2D();
 
+  iblank.resize(nVerts);
+  iblankCell.resize(nEles);
+  iblankFace.resize(nFaces);
+
   OComm->setIblanks2D(xv,wallFaces,iblank);
 
   // Now use new nodal iblanks to set cell and face iblanks

@@ -63,6 +63,7 @@ void solver::updateOversetConnectivity3D(bool doBlanking)
     Geo->setupUnblankElesFaces(eles,faces,mpiFaces,overFaces);
   }
   else {
+    // Needed to update Tioga's ADT, used in matchOversetPoints()
     Geo->tg->profile();
 
     Geo->tg->performConnectivity();
@@ -86,9 +87,6 @@ void solver::updateOversetConnectivity2D(bool doBlanking)
 
     // Setup unblanks for this iteration
     Geo->setupUnblankElesFaces(eles,faces,mpiFaces,overFaces);
-  }
-  else {
-    Geo->updateOversetConnectivity2D();
   }
 
   OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);

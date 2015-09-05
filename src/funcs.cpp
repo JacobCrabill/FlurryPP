@@ -386,10 +386,9 @@ void getBoundingBox(matrix<double>& pts, point &minPt, point &maxPt)
   minPt = { INFINITY, INFINITY, INFINITY};
   maxPt = {-INFINITY,-INFINITY,-INFINITY};
   for (int i=0; i<pts.getDim0(); i++) {
-    point pt = point(pts[i]);
-    for (int dim=0; dim<3; dim++) {
-      minPt[dim] = min(minPt[dim],pt[dim]);
-      maxPt[dim] = max(maxPt[dim],pt[dim]);
+    for (int dim=0; dim<pts.getDim1(); dim++) {
+      minPt[dim] = min(minPt[dim],pts(i,dim));
+      maxPt[dim] = max(maxPt[dim],pts(i,dim));
     }
   }
 }

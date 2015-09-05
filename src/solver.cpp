@@ -482,14 +482,14 @@ void solver::moveMesh(int step)
   if (!params->motion) return;
 
   if (params->meshType == OVERSET_MESH) {
-    if (step==0) {
-      /* -- Take care of unblanks needed for next time step -- */
-      Geo->moveMesh(1.);
+//    if (step==0) {
+//      /* -- Take care of unblanks needed for next time step -- */
+//      Geo->moveMesh(1.);
 
-      for (auto &e:eles) e->move(false);
+//      for (auto &e:eles) e->move(false);
 
-      updateOversetConnectivity(true);
-    }
+//      updateOversetConnectivity(true);
+//    }
 
     /* -- Set the geometry to the current RK-stage time -- */
 
