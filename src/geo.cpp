@@ -784,7 +784,7 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
     e->nodes.resize(c2nv[ic]);
     for (int iv=0; iv<c2nv[ic]; iv++) {
       e->nodeID[iv] = c2v(ic,iv);
-      e->nodes[iv] = point(xv[c2v(ic,iv)]);
+      e->nodes[iv] = point(xv[c2v(ic,iv)],nDims);
     }
 
     // Global face IDs for internal & boundary faces

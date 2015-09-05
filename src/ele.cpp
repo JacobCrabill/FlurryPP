@@ -654,7 +654,7 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   double xmax, ymax, zmax;
   xmin = ymin = zmin =  1e15;
   xmax = ymax = zmax = -1e15;
-  double eps = 1e-12;
+  double eps = 1e-10;
   for (int i=0; i<nNodes; i++) {
     xmin = min(nodes[i].x, xmin);
     ymin = min(nodes[i].y, ymin);
@@ -695,19 +695,19 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
 
   // Evaluate the 'function' at the initial 'points'
   for (int i=0; i<nPts; i++)
-    F[i] = getDxNelderMeade(point(X[i]),pos);
+    F[i] = getDxNelderMeade(point(X[i],nDims),pos);
 
-  double tol = 1e-10;
+  double tol = 1e-11;
   int iter = 0;
   while (iter < 300 && getMin(F)>tol) {
     auto ind = getOrder(F);
-    point Xn = point(X[ind[nPts-1]]);  // Point with the highest value of F
+    point Xn = point(X[ind[nPts-1]],nDims);  // Point with the highest value of F
     point X0;                          // Centroid of all other points
     point Xr;                          // Reflected point
 
     // Take centroid of all points besides Xn
     for (int j=0; j<nPts-1; j++)
-      X0 += point(X[ind[j]])/(nPts-1);
+      X0 += point(X[ind[j]],nDims)/(nPts-1);
     // Reflect Xn around X0
     Xr = X0 + (X0-Xn);
 
@@ -758,12 +758,12 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
       else {
         // Bringing this point in didn't work; shrink the simplex onto
         // the smallest-valued vertex
-        point X1 = point(X[ind[0]]);
+        point X1 = point(X[ind[0]],nDims);
         for (int i=1; i<nPts; i++) {
           for (int j=0; j<nVars; j++) {
             X(ind[i],j) = X1[j] + 0.5*(X(ind[i],j)-X1[j]);
           }
-          point xTmp = point(X[ind[i]]);
+          point xTmp = point(X[ind[i]],nDims);
           F[ind[i]] = getDxNelderMeade(xTmp,pos);
         }
       }
@@ -774,15 +774,50 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   }
 
   auto ind = getOrder(F);
-  loc = point(X[ind[nPts-1]]);
+  loc = point(X[ind[nPts-1]],nDims);
 
   // Check to see if final location lies within element or not
-  eps = 1e-10;
+  eps = 1e-9;
   if (std::abs(loc.x)-eps<=1 && std::abs(loc.y)-eps<=1 && std::abs(loc.z)-eps<=1 && !std::isnan(loc.norm()))
     return true;
   else
     return false;
 }
+
+//bool ele::getRefLocQuad(point pos, point &loc)
+//{
+//  // Check if pos lies within ele using ray tracing approach [LINEAR QUADS ONLY]
+
+//  // Side 1
+//  Vec3 dx1 = nodes[1] - nodes[0];
+//  Vec3 dx2 = pos - nodes[0];
+//  Vec3 cross = dx1.cross(dx2);
+//  if (cross.z < 0)
+//    return false;
+
+//  // Side 2
+//  dx1 = nodes[2] - nodes[1];
+//  dx2 = pos - nodes[1];
+//  cross = dx1.cross(dx2);
+//  if (cross.z < 0)
+//    return false;
+
+//  // Side 3
+//  dx1 = nodes[3] - nodes[2];
+//  dx2 = pos - nodes[2];
+//  cross = dx1.cross(dx2);
+//  if (cross.z < 0)
+//    return false;
+
+//  // Side 4
+//  dx1 = nodes[0] - nodes[3];
+//  dx2 = pos - nodes[3];
+//  cross = dx1.cross(dx2);
+//  if (cross.z < 0)
+//    return false;
+
+//  // Point must lie within element
+//}
 
 void ele::calcPosSpts(void)
 {

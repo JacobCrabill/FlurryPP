@@ -131,10 +131,13 @@ struct point
     z = _z;
   }
 
-  point(double* pt) {
+  point(double* pt, int nDims=3) {
     x = pt[0];
     y = pt[1];
-    z = pt[2];
+    if (nDims==3)
+      z = pt[2];
+    else
+      z = 0;
   }
 
   void zero() {

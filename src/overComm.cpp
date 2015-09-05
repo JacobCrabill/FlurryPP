@@ -49,45 +49,56 @@ void overComm::setIblanks2D(matrix<double>& xv, matrix<int>& wallFaces, vector<i
   int nFaces = wallFaces.getDim0();
 
   Array<double,3> wallNodes(nFaces,2,2);
-  point minPt, maxPt;
-  for (int i=0; i<nFaces; i++) {
-    for (int j=0; j<2; j++) {
-      for (int k=0; k<2; k++) {
+  for (int i=0; i<nFaces; i++)
+    for (int j=0; j<2; j++)
+      for (int k=0; k<2; k++)
         wallNodes(i,j,k) = xv(wallFaces(i,j),k);
-        minPt[k] = std::min(minPt[k],wallNodes(i,j,k));
-        maxPt[k] = std::max(maxPt[k],wallNodes(i,j,k));
-      }
-    }
-  }
 
   vector<int> nFace_rank;
   vector<double> wallNodes_rank; // get from overComm - physical posiitons of wall-boundary nodes on each rank
 
   gatherData(nFaces, 4, wallNodes.getData(), nFace_rank, wallNodes_rank);
 
-  // Use winding-number method to find hole points given wall faces
+  /* --- Get bounding box of wall nodes from all proccesses --- */
+
+  point minPt, maxPt;
+  int offset = 0;
+  for (int p=0; p<nproc; p++) {
+    if (p>0) offset += nFace_rank[p-1];
+
+    if (gridIdList[p] == gridID) continue;
+
+    for (int i=0; i<nFace_rank[p]; i++) {
+      for (int j=0; j<2; j++) {
+        for (int k=0; k<2; k++) {
+          minPt[k] = std::min(minPt[k],wallNodes_rank[4*(offset+i)+2*j+k]);
+          maxPt[k] = std::max(maxPt[k],wallNodes_rank[4*(offset+i)+2*j+k]);
+        }
+      }
+    }
+  }
+
+  /* --- Use winding-number method to find hole points given wall faces --- */
 
   iblank.assign(nVerts,NORMAL);
 
   double eps = 1e-3;
+  double tol = 1e-10;
   for (int i=0; i<nVerts; i++) {
     point pt;
     pt.x = xv(i,0);
     pt.y = xv(i,1);
 
-    // NOTE: for >2 grids, use instead vector<double> wind(nGrids);
-    double wind = 0;
     int offset = 0;
+    double wind = 0;
     for (int p=0; p<nproc; p++) {
       if (p>0) offset += nFace_rank[p-1];
 
       if (gridIdList[p] == gridID) continue;
 
       // First, check that point even lies within bounding box of wall boundary
-      if ( (pt.x<minPt.x) || (pt.y<minPt.y) || (pt.x>maxPt.x) || (pt.y>maxPt.y) )
+      if ( (pt.x<minPt.x-tol) || (pt.y<minPt.y-tol) || (pt.x>maxPt.x+tol) || (pt.y>maxPt.y+tol) )
         continue;
-
-      //cout << "point " << i << ": " << pt.x << "," << pt.y << endl;
 
       for (int i=0; i<nFace_rank[p]; i++) {
         point pt1, pt2;
@@ -107,17 +118,9 @@ void overComm::setIblanks2D(matrix<double>& xv, matrix<int>& wallFaces, vector<i
           wind -= std::acos(dot);
       }
     }
-
     if (std::abs(wind)-eps > 0)
       iblank[i] = HOLE;
   }
-
-  int nhole = 0;
-  for (auto &I:iblank) {
-    if (I==HOLE)
-      nhole++;
-  }
-  cout << "nhole = " << nhole << "/" << nVerts << endl;
 }
 
 void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap)
