@@ -16,11 +16,12 @@
 
 #include <iomanip>
 
-// Used for making sub-directories
-#ifndef _NO_MPI
+// Used for making sub-directories (for MPI and 'time-stamp' files)
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#ifndef _NO_MPI
 #include "mpi.h"
 #endif
 
@@ -247,11 +248,11 @@ void writeParaview(solver *Solver, input *params)
       Solver->checkEntropyPlot();
     }
 
-    if (params->calcEntropySensor)
+    if (params->calcEntropySensor) {
       Solver->calcEntropyErr_spts();
-
-    Solver->extrapolateSFpts();
-    Solver->extrapolateSMpts();
+      Solver->extrapolateSFpts();
+      Solver->extrapolateSMpts();
+    }
   }
 
   for (auto& e:Solver->eles) {

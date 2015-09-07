@@ -30,9 +30,9 @@ class overFace;
 #include "operators.hpp"
 #include "overFace.hpp"
 #include "superMesh.hpp"
-#include "tioga.h"
 
 #ifndef _NO_MPI
+#include "tioga.h"
 #include "mpi.h"
 #endif
 

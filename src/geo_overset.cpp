@@ -36,6 +36,7 @@
 
 void geo::splitGridProcs(void)
 {
+#ifndef _NO_MPI
   // Split the processes among the overset grids such that they are roughly balanced
 
   /* --- Read Number of Elements in Each Grid --- */
@@ -95,6 +96,7 @@ void geo::splitGridProcs(void)
 
   gridIdList.resize(nproc);
   MPI_Allgather(&gridID,1,MPI_INT,gridIdList.data(),1,MPI_INT,MPI_COMM_WORLD);
+#endif
 }
 
 void geo::registerGridDataTIOGA(void)
@@ -171,6 +173,7 @@ void geo::registerGridDataTIOGA(void)
 
 void geo::setupOverset2D(void)
 {
+#ifndef _NO_MPI
   OComm = make_shared<overComm>();
 
   OComm->setup(params,nGrids,gridID,gridRank,nProcGrid,gridIdList);
@@ -185,6 +188,7 @@ void geo::setupOverset2D(void)
 
   // Now use new nodal iblanks to set cell and face iblanks
   setCellFaceIblanks();
+#endif
 }
 
 void geo::setNodeTypes2D(void)
@@ -640,6 +644,7 @@ void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr
           faceMap[faces[i]->ID] = i;
       }
     }
+#ifndef _NO_MPI
     else if (faceType[ff] == MPI_FACE)
     {
       cout << "Unblanking mpi face!" << endl;
@@ -695,6 +700,7 @@ void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr
       for (int i=ind+1; i<mFaces.size(); i++)
         faceMap[mFaces[i]->ID] = i;
     }
+#endif
   }
 
   /* --- Setup Newly-Unblanked Overset Faces --- */

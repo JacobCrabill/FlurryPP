@@ -454,6 +454,7 @@ void overComm::gatherData(int nPieces, int stride, T *values, vector<int>& nPiec
 
 void overComm::setupNPieces(vector<int> &nPiecesIn, vector<int> &nPiecesOut)
 {
+#ifndef _NO_MPI
   nPiecesOut.resize(nproc);
 
   vector<MPI_Request> sends(nproc);
@@ -470,6 +471,7 @@ void overComm::setupNPieces(vector<int> &nPiecesIn, vector<int> &nPiecesOut)
     MPI_Wait(&recvs[p], &status);
     MPI_Wait(&sends[p], &status);
   }
+#endif
 }
 
 template<typename T>

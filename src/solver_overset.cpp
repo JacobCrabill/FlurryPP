@@ -24,6 +24,7 @@ void solver::oversetInterp(void)
 
 void solver::setupOverset(void)
 {
+#ifndef _NO_MPI
   if (gridRank == 0) cout << "Solver: Grid " << gridID << ": Setting up overset connectivity" << endl;
 
   if (Geo->nDims == 3) {
@@ -40,6 +41,7 @@ void solver::setupOverset(void)
 
     OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
   }
+#endif
 }
 
 void solver::updateOversetConnectivity(bool doBlanking)
@@ -52,6 +54,7 @@ void solver::updateOversetConnectivity(bool doBlanking)
 
 void solver::updateOversetConnectivity3D(bool doBlanking)
 {
+#ifndef _NO_MPI
   if (doBlanking) {
     // Remove blanks found during previous iteration
     Geo->removeBlanks(eles,faces,mpiFaces,overFaces);
@@ -74,6 +77,7 @@ void solver::updateOversetConnectivity3D(bool doBlanking)
   if (doBlanking) {
     OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->order);
   }
+#endif
 }
 
 void solver::updateOversetConnectivity2D(bool doBlanking)

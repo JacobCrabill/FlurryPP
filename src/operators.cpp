@@ -724,7 +724,7 @@ void oper::setupFilterMatrix(void)
     matrix<double> filterWeights(nSpts,nSpts);
     matrix<double> tempMatrix(nSpts,nSpts);
     filterMatrix.setup(nSpts,nSpts);
-    double exponent = 1;     // Governs filter strength - Take as input?
+    double exponent = .1;     // Governs filter strength - Take as input?
 
     // create the filter weights matrix as a diagonal matrix
     for (uint i=0; i<nSpts; i++)

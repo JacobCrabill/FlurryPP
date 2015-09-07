@@ -170,9 +170,14 @@ void ele::setupArrays(void)
     for (auto &du:dU_fpts) du.setup(nFpts,nFields);
   }
 
-  S_spts.setup(nSpts,1);
-  S_fpts.setup(nFpts,1);
-  S_mpts.setup(nMpts,1);
+  if (params->scFlag)
+    sensor = 0;
+
+  if (params->calcEntropySensor) {
+    S_spts.setup(nSpts,1);
+    S_fpts.setup(nFpts,1);
+    S_mpts.setup(nMpts,1);
+  }
 
   tempF.setup(nDims,nFields);
   tempU.assign(nFields,0);
