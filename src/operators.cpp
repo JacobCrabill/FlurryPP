@@ -817,10 +817,10 @@ void oper::applyCorrectGradU(matrix<double> &dUc_fpts, vector<matrix<double>> &d
   if (nDims == 2) {
     for (uint spt=0; spt<nSpts; spt++) {
       double invDet = 1./detJac_spts[spt];
-      double rx = JGinv_spts[spt](0,0)/invDet;
-      double ry = JGinv_spts[spt](0,1)/invDet;
-      double sx = JGinv_spts[spt](1,0)/invDet;
-      double sy = JGinv_spts[spt](1,1)/invDet;
+      double rx = JGinv_spts[spt](0,0)*invDet;
+      double ry = JGinv_spts[spt](0,1)*invDet;
+      double sx = JGinv_spts[spt](1,0)*invDet;
+      double sy = JGinv_spts[spt](1,1)*invDet;
       for (uint k=0; k<nFields; k++) {
         double ur = dU_spts[0](spt,k);
         double us = dU_spts[1](spt,k);
@@ -832,15 +832,15 @@ void oper::applyCorrectGradU(matrix<double> &dUc_fpts, vector<matrix<double>> &d
   else {
     for (uint spt=0; spt<nSpts; spt++) {
       double invDet = 1./detJac_spts[spt];
-      double rx = JGinv_spts[spt](0,0)/invDet;
-      double ry = JGinv_spts[spt](0,1)/invDet;
-      double rz = JGinv_spts[spt](0,2)/invDet;
-      double sx = JGinv_spts[spt](1,0)/invDet;
-      double sy = JGinv_spts[spt](1,1)/invDet;
-      double sz = JGinv_spts[spt](1,2)/invDet;
-      double tx = JGinv_spts[spt](2,0)/invDet;
-      double ty = JGinv_spts[spt](2,1)/invDet;
-      double tz = JGinv_spts[spt](2,2)/invDet;
+      double rx = JGinv_spts[spt](0,0)*invDet;
+      double ry = JGinv_spts[spt](0,1)*invDet;
+      double rz = JGinv_spts[spt](0,2)*invDet;
+      double sx = JGinv_spts[spt](1,0)*invDet;
+      double sy = JGinv_spts[spt](1,1)*invDet;
+      double sz = JGinv_spts[spt](1,2)*invDet;
+      double tx = JGinv_spts[spt](2,0)*invDet;
+      double ty = JGinv_spts[spt](2,1)*invDet;
+      double tz = JGinv_spts[spt](2,2)*invDet;
       for (uint k=0; k<nFields; k++) {
         double ur = dU_spts[0](spt,k);
         double us = dU_spts[1](spt,k);
