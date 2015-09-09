@@ -480,9 +480,4 @@ void input::nonDimensionalize(void)
   pIC = pBound;
   muIC = muBound;
   TIC = TBound;
-
-  cout << endl;
-  cout << "LDG_penFact = " << penFact << endl;
-  cout << "LDG_tau     = " << tau << endl;
-  cout << endl;
 }
