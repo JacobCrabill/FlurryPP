@@ -27,8 +27,11 @@ public:
   /*! Assign boundary-condition type */
   void setupRightState(void);
 
-  /*! Apply boundary conditions to the solution */
+  /*! Apply invisic boundary conditions to the solution */
   void applyBCs(void);
+
+  /*! Apply viscous boundary conditions to the solution */
+  void applyViscousBCs(void);
 
   /*! Call applyBCs */
   void getRightState(void);

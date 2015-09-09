@@ -146,15 +146,15 @@ void face::calcInviscidFlux(void)
     laxFriedrichsFlux();
   }
   else if (params->equation == NAVIER_STOKES) {
-    if (params->riemannType==0) {
-      if (isBnd) {
-        centralFluxBound();
-      } else {
+    if (isBnd) {
+      centralFluxBound();
+    } else {
+      if (params->riemannType==0) {
         rusanovFlux();
       }
-    }
-    else if (params->riemannType==1) {
-      roeFlux();
+      else if (params->riemannType==1) {
+        roeFlux();
+      }
     }
   }
 

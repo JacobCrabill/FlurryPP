@@ -45,8 +45,11 @@ void boundFace::getRightState(void)
 
 void boundFace::getRightGradient(void)
 {
-  // Re-Set the boundary condition [store in UR]
+  // Re-Set the inviscid boundary condition [on UR]
   applyBCs();
+
+  // Set the viscous boundary condition [on gradUR]
+  applyViscousBCs();
 }
 
 
@@ -80,7 +83,7 @@ void boundFace::applyBCs(void)
         vSq += (vL[i]*vL[i]);
 
       // --------- For PID b.c. controller -----------
-      if (UR(fpt,0)==0) {
+      if (params->slipPenalty && UR(fpt,0)==0) {
         UR(fpt,0)= UL(fpt,0);
         UR(fpt,1) = UL(fpt,1);
         UR(fpt,2) = UL(fpt,2);
@@ -191,7 +194,6 @@ void boundFace::applyBCs(void)
 
       // Isothermal, no-slip wall (fixed)
       else if(bcType == ISOTHERMAL_NOSLIP) {
-        // Set state for the right side
         // extrapolate pressure
         pR = pL;
 
@@ -203,12 +205,12 @@ void boundFace::applyBCs(void)
 
         // no-slip
         for (uint i=0; i<nDims; i++)
-          vR[i] = 0.; //vG[i];
+          vR[i] = vG[i];
 
         // energy
         vSq = 0.;
-//        for (uint i=0; i<nDims; i++)
-//          vSq += (vR[i]*vR[i]);
+        for (uint i=0; i<nDims; i++)
+          vSq += (vR[i]*vR[i]);
 
         ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
       }
@@ -223,12 +225,12 @@ void boundFace::applyBCs(void)
 
         // no-slip
         for (uint i=0; i<nDims; i++)
-          vR[i] = 0.; //vG[i];
+          vR[i] = vG[i];
 
         // energy
         vSq = 0.;
-//        for (uint i=0; i<nDims; i++)
-//          vSq += (vR[i]*vR[i]);
+        for (uint i=0; i<nDims; i++)
+          vSq += (vR[i]*vR[i]);
 
         ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
       }
@@ -308,6 +310,43 @@ void boundFace::applyBCs(void)
   }
 }
 
+void boundFace::applyViscousBCs(void)
+{
+  /* Apply the adiabatic-wall boundary condition to the energy gradient
+   * (by removing ALL temparture gradients). TODO: remove ONLY normal comp. */
+  if (bcType == ADIABATIC_NOSLIP) {
+    gradUR = gradUL;
+
+    for (int fpt=0; fpt<nFptsL; fpt++) {
+      double rhovSq = 0.;
+      for (int dim=0; dim<nDims; dim++)
+        rhovSq += UL(fpt,dim+1)*UL(fpt,dim+1);
+      double pL = (params->gamma-1.)*(UL(fpt,nDims+1) - 0.5*rhovSq/UL(fpt,0));
+
+      // Extrapolate pressure; calculate internal energy
+      double pR = pL;
+      double e = pR/((params->gamma-1.)*UR(fpt,0));
+
+      // Get velocity gradients
+      matrix<double> gradVel(nDims,nDims);
+      for (int dim1=0; dim1<nDims; dim1++)
+        for (int dim2=0; dim2<nDims; dim2++)
+          gradVel(dim1,dim2) = (gradUR[fpt](dim1,dim2+1) - gradUR[fpt](dim1,0)*UR(fpt,dim2+1)/UR(fpt,0))/UR(fpt,0);
+
+      // Set energy gradient (set gradT = 0) (TODO: only remove dT_d[wall normal])
+      double vSq = 0.;
+      for (int dim=0; dim<nDims; dim++)
+        vSq += UR(fpt,dim+1)*UR(fpt,dim+1)/(UR(fpt,0)*UR(fpt,0));
+
+      for (int dim1=0; dim1<nDims; dim1++) {
+        gradUR[fpt](dim1,nDims+1) = (e+0.5*vSq)*gradUR[fpt](dim1,0);
+        for (int dim2=0; dim2<nDims; dim2++) {
+          gradUR[fpt](dim1,nDims+1) += UR(fpt,dim2+1)*gradVel(dim2,dim1);
+        }
+      }
+    }
+  }
+}
 
 void boundFace::setRightStateFlux(void)
 {
