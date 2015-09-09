@@ -32,8 +32,11 @@ public:
   //! Setup arrays to handle getting/setting data from Solver
   void setupRightState(void);
 
-  //! Get the interpolated overset data from the Solver
+  //! Get the interpolated overset solution data from the Solver
   void getRightState(void);
+
+  //! Get the interpolated overset gradient data from the Solver
+  void getRightGradient(void);
 
   //! Do nothing [right state is non-existant]
   void setRightStateFlux(void);

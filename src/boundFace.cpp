@@ -43,6 +43,13 @@ void boundFace::getRightState(void)
   applyBCs();
 }
 
+void boundFace::getRightGradient(void)
+{
+  // Re-Set the boundary condition [store in UR]
+  applyBCs();
+}
+
+
 void boundFace::applyBCs(void)
 {
   uint nDims = params->nDims;
@@ -54,6 +61,10 @@ void boundFace::applyBCs(void)
       array<double,3> vL = {0,0,0};
       array<double,3> vR = {0,0,0};
       array<double,3> vG = {0,0,0};
+      if (params->motion) {
+        for (int dim=0; dim<nDims; dim++)
+          vG[dim] = Vg(fpt,dim);
+      }
       array<double,3> vBound = {params->uBound,params->vBound,params->wBound};
 
       double gamma = params->gamma;
@@ -192,12 +203,12 @@ void boundFace::applyBCs(void)
 
         // no-slip
         for (uint i=0; i<nDims; i++)
-          vR[i] = vG[i];
+          vR[i] = 0.; //vG[i];
 
         // energy
         vSq = 0.;
-        for (uint i=0; i<nDims; i++)
-          vSq += (vR[i]*vR[i]);
+//        for (uint i=0; i<nDims; i++)
+//          vSq += (vR[i]*vR[i]);
 
         ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
       }
@@ -212,12 +223,12 @@ void boundFace::applyBCs(void)
 
         // no-slip
         for (uint i=0; i<nDims; i++)
-          vR[i] = vG[i];
+          vR[i] = 0.; //vG[i];
 
         // energy
         vSq = 0.;
-        for (uint i=0; i<nDims; i++)
-          vSq += (vR[i]*vR[i]);
+//        for (uint i=0; i<nDims; i++)
+//          vSq += (vR[i]*vR[i]);
 
         ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
       }
@@ -280,14 +291,6 @@ void boundFace::applyBCs(void)
           ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
         }
       }
-//      else if (bcType == OVERSET) {
-//        // Temporary hack: Just set equal to left state.
-//        // Future versions will interpolate from other grid...?
-//        rhoR = rhoL;
-//        for (uint i=0; i<nDims; i++)
-//          vR[i] = vL[i];
-//        ER = eL;
-//      }
       else {
         cout << "Boundary Condition: " << bcType << endl;
         FatalError("Boundary condition not recognized.");

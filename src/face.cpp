@@ -111,15 +111,24 @@ void face::getLeftState()
       detJacL[fpt] = (eL->detJac_fpts[i]);
     }
 
+    if (params->motion) {
+      for (int dim=0; dim<nDims; dim++)
+        Vg(fpt,dim) = eL->gridVel_fpts(i,dim);
+    }
+
+    fpt++;
+  }
+}
+
+void face::getLeftGradient()
+{
+  // Get data from left element
+  int fpt = 0;
+  for (int i=fptStartL; i<fptEndL; i++) {
     if (params->viscous) {
       for (int dim=0; dim<nDims; dim++)
         for (int j=0; j<nFields; j++)
           gradUL[fpt](dim,j) = (eL->dU_fpts[dim](i,j));
-    }
-
-    if (params->motion) {
-      for (int dim=0; dim<nDims; dim++)
-        Vg(fpt,dim) = eL->gridVel_fpts(i,dim);
     }
 
     fpt++;
@@ -138,34 +147,16 @@ void face::calcInviscidFlux(void)
   }
   else if (params->equation == NAVIER_STOKES) {
     if (params->riemannType==0) {
-      rusanovFlux();
+      if (isBnd) {
+        centralFluxBound();
+      } else {
+        rusanovFlux();
+      }
     }
     else if (params->riemannType==1) {
       roeFlux();
     }
   }
-
-//  if (Fn.checkNan()) {
-//    cout << "NaN in calcInviscidFlux Fn!" << endl;
-//
-//    for (int i=0; i<nFptsL; i++) {
-//      cout << "  UL: ";
-//      for (int k=0; k<nFields; k++) {
-//        cout << UL(i,k) << ", ";
-//      }
-//      cout << endl;
-//    }
-//    cout << endl;
-//
-//    for (int i=0; i<nFptsL; i++) {
-//      cout << "  UR: ";
-//      for (int k=0; k<nFields; k++) {
-//        cout << UR(i,k) << ", ";
-//      }
-//      cout << endl;
-//    }
-//    cout << endl;
-//  }
 
   // Transform normal flux using edge Jacobian and put into ele's memory
   for (int i=0; i<nFptsL; i++) {
@@ -196,23 +187,24 @@ void face::calcInviscidFlux(void)
 void face::calcViscousFlux(void)
 {
   if (params->equation == NAVIER_STOKES) {
-
-    if (isBnd) this->getRightState(); // Re-apply boundary conditions
+    if (!isMPI)
+      getLeftGradient();
+    this->getRightState(); // TODO: update all faces to getRightGradient();
 
     for (int fpt=0; fpt<nFptsL; fpt++) {
       // Calculate discontinuous viscous flux at flux points
       viscousFlux(UL[fpt], gradUL[fpt], tempFL, params);
-      viscousFlux(UR[fpt], gradUR[fpt], tempFR, params);
 
-      // Calculte common viscous flux at flux points
+      // Calculte common viscous flux at flux points [LDG numerical flux]
       matrix<double> Fc(nDims,nFields);
 
       if (isBnd) {
-        if (isBnd > 1) {
+        if (isBnd > 1) {          
           // Adiabatic wall boundary condition (Neumann-type BC)
+          viscousFlux(UR[fpt], gradUR[fpt], tempFR, params);
           for (int dim=0; dim<nDims; dim++) {
             for (int k=0; k<nFields; k++) {
-              Fc(dim,k) = tempFR(dim,fpt) + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
+              Fc(dim,k) = tempFR(dim,k) + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
             }
           }
         }
@@ -220,13 +212,14 @@ void face::calcViscousFlux(void)
           // All other boundary conditions (Dirichlet-type BC)
           for (int dim=0; dim<nDims; dim++) {
             for (int k=0; k<nFields; k++) {
-              Fc(dim,k) = tempFL(dim,fpt) + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
+              Fc(dim,k) = tempFL(dim,k) + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
             }
           }
         }
       }
       else {
         // All general interior-type faces (interior, MPI, overset)
+        viscousFlux(UR[fpt], gradUR[fpt], tempFR, params);
         double penFact = params->penFact;
         if (nDims == 2) {
           if ( normL(fpt,0)+normL(fpt,1) < 0 )
@@ -486,6 +479,67 @@ void face::laxFriedrichsFlux(void)
     else if (params->equation == NAVIER_STOKES) {
       FatalError("Lax-Friedrichs not supported for Navier-Stokes simulations - use Rusanov or Roe.");
     }
+  }
+}
+
+void face::centralFluxBound(void)
+{
+  for (int fpt=0; fpt<nFptsL; fpt++) {
+    inviscidFlux(UL[fpt],tempFL,params);
+    inviscidFlux(UR[fpt],tempFR,params);
+
+    double tempFnL[5] = {0,0,0,0,0};
+    double tempFnR[5] = {0,0,0,0,0};
+
+    // Get primitive variables
+    double rhoL = UL(fpt,0);     double rhoR = UR(fpt,0);
+    double uL = UL(fpt,1)/rhoL;  double uR = UR(fpt,1)/rhoR;
+    double vL = UL(fpt,2)/rhoL;  double vR = UR(fpt,2)/rhoR;
+
+    double wL, pL, vnL=0.;
+    double wR, pR, vnR=0.;
+    double vgn=0.;
+
+    // Calculate pressure
+    if (params->nDims==2) {
+      pL = (params->gamma-1.0)*(UL(fpt,3)-rhoL*(uL*uL+vL*vL));
+      pR = (params->gamma-1.0)*(UR(fpt,3)-rhoR*(uR*uR+vR*vR));
+    }
+    else {
+      wL = UL(fpt,3)/rhoL;   wR = UR(fpt,3)/rhoR;
+      pL = (params->gamma-1.0)*(UL(fpt,4)-rhoL*(uL*uL+vL*vL+wL*wL));
+      pR = (params->gamma-1.0)*(UR(fpt,4)-rhoR*(uR*uR+vR*vR+wR*wR));
+    }
+
+    // Get normal fluxes, normal velocities
+    for (int dim=0; dim<params->nDims; dim++) {
+      vnL += normL(fpt,dim)*UL(fpt,dim+1)/rhoL;
+      vnR += normL(fpt,dim)*UR(fpt,dim+1)/rhoR;
+      if (params->motion)
+        vgn += normL(fpt,dim)*Vg(fpt,dim);
+      for (int i=0; i<params->nFields; i++) {
+        tempFnL[i] += normL(fpt,dim)*tempFL(dim,i);
+        tempFnR[i] += normL(fpt,dim)*tempFR(dim,i);
+      }
+    }
+
+    // Get maximum eigenvalue for diffusion coefficient
+    double csqL = max(params->gamma*pL/rhoL,0.0);
+    double csqR = max(params->gamma*pR/rhoR,0.0);
+    double eigL = std::fabs(vnL) + sqrt(csqL);
+    double eigR = std::fabs(vnR) + sqrt(csqR);
+
+    // Calculate Rusanov flux
+    for (int i=0; i<params->nFields; i++) {
+      Fn(fpt,i) = 0.5*(tempFnL[i]+tempFnR[i]);
+    }
+
+    // Store wave speed for calculation of allowable dt
+    if (params->motion) {
+      eigL = std::fabs(vnL-vgn) + sqrt(csqL);
+      eigR = std::fabs(vnR-vgn) + sqrt(csqR);
+    }
+    *waveSp[fpt] = max(eigL,eigR);
   }
 }
 

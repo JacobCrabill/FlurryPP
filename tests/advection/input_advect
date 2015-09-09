@@ -3,9 +3,11 @@ order         2    # Polynomial order to use
 dt            .002  # Time step size
 
 riemannType  0    # Advection: use 0; N-S: 0: Rusanov, 1: Roe
+viscous      1
 
 advectVx      1    # Advection wave speed, x-component
 advectVy      1    # Advection wave speed, y-component
+diffD        .1
 
 # Initial Condition
 #   Advection: 0-Gaussian, 1-u=x+y test case

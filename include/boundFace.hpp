@@ -33,6 +33,9 @@ public:
   /*! Call applyBCs */
   void getRightState(void);
 
+  /*! Call applyBCs */
+  void getRightGradient(void);
+
   /*! No right element at a boundary - do nothing. */
   void setRightStateFlux(void);
 

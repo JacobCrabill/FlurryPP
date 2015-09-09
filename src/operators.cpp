@@ -586,7 +586,6 @@ void oper::setupCorrectGradU(void)
           opp_correctU[dim](spt,fpt) = opp_correction(spt,fpt) * tNorm[dim];
         }
       }
-
     }
   }
   else if (eType == HEX) {

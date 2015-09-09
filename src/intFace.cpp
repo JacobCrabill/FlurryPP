@@ -120,6 +120,18 @@ void intFace::getRightState(void)
   }
 }
 
+void intFace::getRightGradient(void)
+{
+  // Get data from right element [order reversed to match left ele]
+  for (int fpt=0; fpt<nFptsL; fpt++) {
+    if (params->viscous) {
+      for (int dim=0; dim<nDims; dim++)
+        for (int j=0; j<nFields; j++)
+          gradUR[fpt](dim,j) = (eR->dU_fpts[dim](fptR[fpt],j));
+    }
+  }
+}
+
 void intFace::setRightStateFlux(void)
 {
   for (int i=0; i<nFptsR; i++)

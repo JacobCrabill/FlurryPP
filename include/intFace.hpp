@@ -29,6 +29,9 @@ public:
   //! Get data from the right element
   void getRightState(void);
 
+  //! For viscous cases, get the solution gradient from the right element
+  void getRightGradient(void);
+
   //! Put the calculated interface flux into the right element's memory
   void setRightStateFlux(void);
 

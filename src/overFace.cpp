@@ -37,6 +37,18 @@ void overFace::getRightState(void)
   }
 }
 
+void overFace::getRightGradient(void)
+{
+  // Note: fptOffset must be set by Solver during overset setup
+//  for (int i=0; i<nFptsL; i++) {
+//    for (int dim=0; dim<nDims; dim++) {
+//      for (int k=0; k<nFields; k++) {
+//        gradUR(i,dim,k) = OComm->gradU_in(fptOffset+i,dim,k);
+//      }
+//    }
+//  }
+}
+
 void overFace::setRightStateFlux(void)
 {
 

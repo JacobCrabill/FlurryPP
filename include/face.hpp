@@ -67,8 +67,14 @@ public:
   /*! Get the values of the solution to the left of the face */
   void getLeftState(void);
 
+  /*! For viscous cases, get solution gradient to the left of the face */
+  void getLeftGradient(void);
+
   /*! Get the values of the solution to the right of the face */
   virtual void getRightState(void) =0;
+
+  /*! For viscous cases, get the solution gradient to the right of the face */
+  virtual void getRightGradient(void) =0;
 
   /*! For all internal faces, put the normal flux into the right ele
    *  Either put directly into ele's memory, or send across MPI boundary */
@@ -95,6 +101,9 @@ public:
 
   /*! Calculate the common flux using the Lax-Friedrichs method [scalar advection] */
   void laxFriedrichsFlux(void);
+
+  /*! For boundary faces, use a central flux (no added dissipation) */
+  void centralFluxBound(void);
 
   /*! Calculate a biased-average solution for LDG viscous flux */
   void ldgSolution(void);

@@ -41,6 +41,9 @@ public:
   //! Receive the right-state data from the opposite processor
   void getRightState(void);
 
+  //! For viscous cases, receive the solution gradient from the opposite processor
+  void getRightGradient(void);
+
   //! Do nothing [handled sparately via comminicate()]
   void setRightStateFlux(void);
 

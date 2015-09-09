@@ -304,14 +304,14 @@ void input::readInputFile(char *filename)
 
     opts.getScalarValue("TWall",TWall,300.);
     opts.getScalarValue("TBound",TBound,300.);
-    opts.getScalarValue("MachBound",MachBound,1.);
+    opts.getScalarValue("MachBound",MachBound);
     opts.getScalarValue("nxBound",nxBound,1.);
     opts.getScalarValue("nyBound",nyBound,0.);
     opts.getScalarValue("nzBound",nzBound,0.);
 
     /* --- LDG Flux Parameters --- */
-    opts.getScalarValue("LDG_penFact",penFact,0.5);
-    opts.getScalarValue("LDG_tau",tau,.0);
+    opts.getScalarValue("LDG_penFact",penFact,0.0);
+    opts.getScalarValue("LDG_tau",tau,1.);
   }
 
   opts.getScalarValue("restart",restart,0);
@@ -459,6 +459,8 @@ void input::nonDimensionalize(void)
   mu_inf = muGas / muRef;
   rt_inf = TGas * RGas / (UBound*UBound);
 
+  RGas = RGas * TBound / (UBound*UBound);
+
   // Set up the dimensionless conditions at free-stream boundaries
 
   rhoBound = 1.;
@@ -469,6 +471,8 @@ void input::nonDimensionalize(void)
   TtBound = (TBound/Tref) * (1. + 0.5*(gamma-1.)*MachBound*MachBound);
   PtBound = pBound * pow(1. + 0.5*(gamma-1.)*MachBound*MachBound, gamma/(gamma-1.));
 
+  TWall = TWall / Tref;
+
   rhoIC = rhoBound;
   vxIC = uBound;
   vyIC = vBound;
@@ -476,4 +480,9 @@ void input::nonDimensionalize(void)
   pIC = pBound;
   muIC = muBound;
   TIC = TBound;
+
+  cout << endl;
+  cout << "LDG_penFact = " << penFact << endl;
+  cout << "LDG_tau     = " << tau << endl;
+  cout << endl;
 }

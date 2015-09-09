@@ -154,6 +154,13 @@ void mpiFace::getRightState(void)
 #endif
 }
 
+void mpiFace::getRightGradient(void)
+{
+#ifndef _NO_MPI
+
+#endif
+}
+
 void mpiFace::setRightStateFlux(void)
 {
 #ifndef _NO_MPI

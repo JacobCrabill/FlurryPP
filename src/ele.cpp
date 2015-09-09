@@ -1035,6 +1035,15 @@ void ele::calcViscousFlux_spts()
     else if (params->equation == ADVECTION_DIFFUSION)
       viscousFluxAD(tempDU, tempF, params);
 
+//    if (ID==0) {
+//      cout << "spt " << spt << ": ";
+//      cout.precision(2);
+//      cout << "(x,y) = " << pos_spts[spt].x << ", " << pos_spts[spt].y << " | ";
+//      for (int i=0; i<nFields; i++)
+//        cout << tempF(0,i) << ", ";
+//      cout << endl;
+//    }
+
     if (params->motion) {
       /* --- Don't transform yet; that will be handled later --- */
       for (int i=0; i<nDims; i++) {
@@ -1103,6 +1112,20 @@ void ele::calcDeltaFn(void)
       dFn_fpts(fpt,k) = Fn_fpts(fpt,k) - disFn_fpts(fpt,k);
     }
   }
+
+//  if (ID==0) {
+//    cout.setf(ios::fixed);
+//    cout.precision(4);
+//    for (int fpt=0; fpt<nFpts; fpt++) {
+//      //if (fpt>2 && fpt<9) continue;
+//      cout << "fpt = " << fpt << ": ";
+//      cout << "(x,y) = " << pos_fpts[fpt].x << ", " << pos_fpts[fpt].y << " | deltaFn = ";
+//      for (int k=0; k<nFields; k++) {
+//        cout << setw(8) << dFn_fpts(fpt,k) << ", ";
+//      }
+//      cout << endl;
+//    }
+//  }
 }
 
 
