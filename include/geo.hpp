@@ -157,7 +157,8 @@ public:
   vector<int> iover;      //! List of nodes on overset boundaries
   vector<int> nodeType;   //! For each node: normal interior, normal boundary, or overset
 
-  matrix<int> wallFaces;  //! For 2D: All the wall-boundary faces for hole blanking
+  matrix<int> wallFaceNodes;  //! For 2D: All the wall-boundary faces for hole cutting
+  matrix<int> overFaceNodes;  //! For 2D: All the input-specified overset-boundary faces for hole cutting
 
   vector<int> eleMap;     //! For overset meshes where some cells are blanked, map from 'ic' to 'eles' index
   vector<int> faceMap;    //! For overset meshes where some faces are blanked, map from 'ff' to faceType-vector index

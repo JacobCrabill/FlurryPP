@@ -115,7 +115,7 @@ public:
 
   void setup(input *_params, int _nGrids, int _gridID, int _gridRank, int _nprocPerGrid, vector<int> &_gridIdList);
 
-  void setIblanks2D(matrix<double> &xv, matrix<int> &wallFaces, vector<int> &iblank);
+  void setIblanks2D(matrix<double> &xv, matrix<int>& overFaces, matrix<int> &wallFaces, vector<int> &iblank);
 
   /*!
    * \brief Match up each overset-face flux point to its donor grid and element

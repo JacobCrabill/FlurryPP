@@ -635,10 +635,12 @@ void writeResidual(solver *Solver, input *params)
         histFile << setw(colW) << left << "CLinv";
         if (params->nDims == 3)
           histFile << setw(colW) << left << "CNinv";
-        histFile << setw(colW) << left << "CDvis";
-        histFile << setw(colW) << left << "CLvis";
-        if (params->nDims == 3)
-          histFile << setw(colW) << left << "CNvis";
+        if (params->viscous) {
+          histFile << setw(colW) << left << "CDvis";
+          histFile << setw(colW) << left << "CLvis";
+          if (params->nDims == 3)
+            histFile << setw(colW) << left << "CNvis";
+        }
         histFile << setw(colW) << left << "CDtot";
         histFile << setw(colW) << left << "CLtot";
         if (params->nDims == 3)
@@ -662,8 +664,9 @@ void writeResidual(solver *Solver, input *params)
     if (params->equation == NAVIER_STOKES) {
       for (int dim=0; dim<params->nDims; dim++)
         histFile << setw(colW) << left << force[dim];              // Convective force coeffs.
-      for (int dim=0; dim<params->nDims; dim++)
-        histFile << setw(colW) << left << force[3+dim];            // Viscous force coeffs.
+      if (params->viscous)
+        for (int dim=0; dim<params->nDims; dim++)
+          histFile << setw(colW) << left << force[3+dim];          // Viscous force coeffs.
       for (int dim=0; dim<params->nDims; dim++)
         histFile << setw(colW) << left << force[dim]+force[3+dim]; // Total force coeffs.
     }
@@ -676,8 +679,6 @@ void writeResidual(solver *Solver, input *params)
 
 void writeMeshTecplot(solver* Solver, input* params)
 {
-  if (params->nDims == 2) return;
-
   ofstream dataFile;
 
   char fileNameC[100];
@@ -695,7 +696,6 @@ void writeMeshTecplot(solver* Solver, input* params)
 
   if (params->rank == 0)
     cout << "Writing Tecplot mesh file " << string(fileNameC) << "...  " << flush;
-  //cout << "Writing Tecplot mesh file " << string(fileNameC) << "...  " << endl;
 
 #ifndef _NO_MPI
   /* --- Write folder for output mesh files --- */
@@ -719,8 +719,6 @@ void writeMeshTecplot(solver* Solver, input* params)
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-  //cout << "rank " << params->rank << ": Opening file for writing" << endl;
-
   dataFile.open(fileNameC);
   dataFile.precision(16);
 
@@ -731,27 +729,33 @@ void writeMeshTecplot(solver* Solver, input* params)
 
   int gridID = Geo->gridID;
 
-  //cout << "nNodesWall = " << nNodesWall << ", nNodesOver = " << nNodesOver << ", gridID = " << gridID << endl;
-
   int nPrism = 0;
   int nNodes = Geo->nVerts;
   int nCells = Geo->nEles;
   int nHex = nCells;
 
-  //cout << "nNodes = " << nNodes << ", nEles = " << nCells << endl;
-
   dataFile << "# " << nPrism << " " << nHex << " " << nNodes << " " << nCells << " " << nNodesWall << " " << nNodesOver << endl;
   dataFile << "TITLE = \"" << fileName << "\"" << endl;
   dataFile << "VARIABLES = \"X\", \"Y\", \"Z\", \"bodyTag\", \"IBLANK\"" << endl;
-  dataFile << "ZONE T = \"VOL_MIXED\", N=" << nNodes << ", E=" << nCells << ", ET=BRICK, F=FEPOINT" << endl;
+  string ET;
+  if (params->nDims==2)
+    ET = "QUADRILATERAL";
+  else
+    ET = "BRICK";
+  dataFile << "ZONE T = \"VOL_MIXED\", N=" << nNodes << ", E=" << nCells << ", ET=" << ET << ", F=FEPOINT" << endl;
 
   for (int iv=0; iv<nNodes; iv++) {
-    //cout << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " " << Geo->xv(iv,2) << " " << gridID << endl;
-    dataFile << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " " << Geo->xv(iv,2) << " " << gridID << " " << Geo->iblank[iv] << endl;
+    dataFile << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " ";
+    if (params->nDims==2)
+      dataFile << 0.0;
+    else
+      dataFile << Geo->xv(iv,2);
+    dataFile << " " << gridID << " " << Geo->iblank[iv] << endl;
   }
 
+  int nv = (params->nDims==2) ? 4 : 8; // Ignoring edge nodes for quadratic elements
   for (int ic=0; ic<nCells; ic++) {
-    for (int j=0; j<8; j++) {
+    for (int j=0; j<nv; j++) {
       dataFile << Geo->c2v(ic,j)+1 << " ";
     }
     dataFile << endl;

@@ -184,7 +184,7 @@ void geo::setupOverset2D(void)
   iblankCell.resize(nEles);
   iblankFace.resize(nFaces);
 
-  OComm->setIblanks2D(xv,wallFaces,iblank);
+  OComm->setIblanks2D(xv,overFaceNodes,wallFaceNodes,iblank);
 
   // Now use new nodal iblanks to set cell and face iblanks
   setCellFaceIblanks();
@@ -215,11 +215,16 @@ void geo::setNodeTypes2D(void)
     }
   }
 
-  wallFaces.setup(0,0);
+  overFaceNodes.setup(0,0);
+  wallFaceNodes.setup(0,0);
   for (int bf=0; bf<nBndFaces; bf++) {
     if (bcType[bf] == SLIP_WALL || bcType[bf] == ADIABATIC_NOSLIP || bcType[bf] == ISOTHERMAL_NOSLIP) {
       int ff = bndFaces[bf];
-      wallFaces.insertRow({f2v(ff,0),f2v(ff,1)});
+      wallFaceNodes.insertRow({f2v(ff,0),f2v(ff,1)});
+    }
+    else if (bcType[bf] == OVERSET) {
+      int ff = bndFaces[bf];
+      overFaceNodes.insertRow({f2v(ff,0),f2v(ff,1)});
     }
   }
 }
@@ -246,7 +251,7 @@ void geo::updateOversetConnectivity2D(void)
 {
 #ifndef _NO_MPI
   // Set nodal iblanks based upon hole cutting
-  OComm->setIblanks2D(xv,wallFaces,iblank);
+  OComm->setIblanks2D(xv,overFaceNodes,wallFaceNodes,iblank);
 
   // Now use new nodal iblanks to set cell and face iblanks
   setCellFaceIblanks();

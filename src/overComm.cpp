@@ -43,36 +43,56 @@ void overComm::setup(input* _params, int _nGrids, int _gridID, int _gridRank, in
 #endif
 }
 
-void overComm::setIblanks2D(matrix<double>& xv, matrix<int>& wallFaces, vector<int>& iblank)
+void overComm::setIblanks2D(matrix<double>& xv, matrix<int> &overFaces, matrix<int>& wallFaces, vector<int>& iblank)
 {
   int nVerts = xv.getDim0();
-  int nFaces = wallFaces.getDim0();
+  int nWallFaces = wallFaces.getDim0();
+  int nOverFaces = overFaces.getDim0();
 
-  Array<double,3> wallNodes(nFaces,2,2);
-  for (int i=0; i<nFaces; i++)
+  Array<double,3> wallNodes(nWallFaces,2,2);
+  for (int i=0; i<nWallFaces; i++)
     for (int j=0; j<2; j++)
       for (int k=0; k<2; k++)
         wallNodes(i,j,k) = xv(wallFaces(i,j),k);
 
-  vector<int> nFace_rank;
-  vector<double> wallNodes_rank; // get from overComm - physical posiitons of wall-boundary nodes on each rank
+  Array<double,3> overNodes(nOverFaces,2,2);
+  for (int i=0; i<nOverFaces; i++)
+    for (int j=0; j<2; j++)
+      for (int k=0; k<2; k++)
+        overNodes(i,j,k) = xv(overFaces(i,j),k);
 
-  gatherData(nFaces, 4, wallNodes.getData(), nFace_rank, wallNodes_rank);
+  vector<int> nWallFace_rank, nOverFace_rank;
+  vector<double> wallNodes_rank, overNodes_rank;
 
-  /* --- Get bounding box of wall nodes from all proccesses --- */
+  gatherData(nWallFaces, 4, wallNodes.getData(), nWallFace_rank, wallNodes_rank);
+  gatherData(nOverFaces, 4, overNodes.getData(), nOverFace_rank, overNodes_rank);
 
-  point minPt, maxPt;
-  int offset = 0;
+  /* --- Get bounding box of wall and overset nodes from all proccesses --- */
+
+  point minPtW, maxPtW, minPtO, maxPtO;
+  int offsetW = 0, offsetO = 0;
   for (int p=0; p<nproc; p++) {
-    if (p>0) offset += nFace_rank[p-1];
+    if (p>0) {
+      offsetW += nWallFace_rank[p-1];
+      offsetO += nOverFace_rank[p-1];
+    }
 
     if (gridIdList[p] == gridID) continue;
 
-    for (int i=0; i<nFace_rank[p]; i++) {
+    for (int i=0; i<nWallFace_rank[p]; i++) {
       for (int j=0; j<2; j++) {
         for (int k=0; k<2; k++) {
-          minPt[k] = std::min(minPt[k],wallNodes_rank[4*(offset+i)+2*j+k]);
-          maxPt[k] = std::max(maxPt[k],wallNodes_rank[4*(offset+i)+2*j+k]);
+          minPtW[k] = std::min(minPtW[k],wallNodes_rank[4*(offsetW+i)+2*j+k]);
+          maxPtW[k] = std::max(maxPtW[k],wallNodes_rank[4*(offsetW+i)+2*j+k]);
+        }
+      }
+    }
+
+    for (int i=0; i<nOverFace_rank[p]; i++) {
+      for (int j=0; j<2; j++) {
+        for (int k=0; k<2; k++) {
+          minPtO[k] = std::min(minPtO[k],overNodes_rank[4*(offsetO+i)+2*j+k]);
+          maxPtO[k] = std::max(maxPtO[k],overNodes_rank[4*(offsetO+i)+2*j+k]);
         }
       }
     }
@@ -89,37 +109,49 @@ void overComm::setIblanks2D(matrix<double>& xv, matrix<int>& wallFaces, vector<i
     pt.x = xv(i,0);
     pt.y = xv(i,1);
 
-    int offset = 0;
-    double wind = 0;
+    int offsetW = 0;
+    int offsetO = 0;
+    double windW = 0;
+    double windO = 0;
     for (int p=0; p<nproc; p++) {
-      if (p>0) offset += nFace_rank[p-1];
+      if (p>0) {
+        offsetW += nWallFace_rank[p-1];
+        offsetO += nOverFace_rank[p-1];
+      }
 
       if (gridIdList[p] == gridID) continue;
 
-      // First, check that point even lies within bounding box of wall boundary
-      if ( (pt.x<minPt.x-tol) || (pt.y<minPt.y-tol) || (pt.x>maxPt.x+tol) || (pt.y>maxPt.y+tol) )
-        continue;
+      if ( (pt.x>minPtW.x-tol) && (pt.y>minPtW.y-tol) && (pt.x<maxPtW.x+tol) && (pt.y<maxPtW.y+tol) ) {
+        // Point lies within bounding box of wall boundary, so calculate winding number
+        for (int i=0; i<nWallFace_rank[p]; i++) {
+          point pt1 = point(&wallNodes_rank[4*(offsetW+i)+0],2);
+          point pt2 = point(&wallNodes_rank[4*(offsetW+i)+2],2);
 
-      for (int i=0; i<nFace_rank[p]; i++) {
-        point pt1, pt2;
-        pt1.x = wallNodes_rank[4*(offset+i)+0];
-        pt1.y = wallNodes_rank[4*(offset+i)+1];
+          Vec3 dx1 = pt1 - pt;  dx1 /= dx1.norm();
+          Vec3 dx2 = pt2 - pt;  dx2 /= dx2.norm();
+          double dot = min(max(dx1*dx2,-1.),1.);
+          windW += std::abs(std::acos(dot));
+        }
+      }
 
-        pt2.x = wallNodes_rank[4*(offset+i)+2];
-        pt2.y = wallNodes_rank[4*(offset+i)+3];
+      if ( (pt.x>minPtO.x+tol) && (pt.y>minPtO.y+tol) && (pt.x<maxPtO.x-tol) && (pt.y<maxPtO.y-tol) ) {
+        // Point lies within bounding box of overset boundary, minus tolerance, so calculate winding number
+        for (int i=0; i<nOverFace_rank[p]; i++) {
+          point pt1 = point(&overNodes_rank[4*(offsetO+i)+0],2);
+          point pt2 = point(&overNodes_rank[4*(offsetO+i)+2],2);
 
-        Vec3 dx1 = pt1 - pt;  dx1 /= dx1.norm();
-        Vec3 dx2 = pt2 - pt;  dx2 /= dx2.norm();
-        Vec3 cross = dx2.cross(dx1);
-        double dot = min(max(dx1*dx2,-1.),1.);
-        if (cross.z > 0)
-          wind += std::acos(dot);
-        else
-          wind -= std::acos(dot);
+          Vec3 dx1 = pt1 - pt;  dx1 /= dx1.norm();
+          Vec3 dx2 = pt2 - pt;  dx2 /= dx2.norm();
+          double dot = min(max(dx1*dx2,-1.),1.);
+          windO += std::abs(std::acos(dot));
+        }
       }
     }
-    if (std::abs(wind)-eps > 0)
+    if (std::abs(windW)+eps >= 2.*PI)
       iblank[i] = HOLE;
+
+    if (std::abs(windO)+eps >= 2.*PI && iblank[i]!=HOLE)
+      iblank[i] = FRINGE;
   }
 }
 
