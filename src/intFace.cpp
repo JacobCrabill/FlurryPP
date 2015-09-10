@@ -149,6 +149,6 @@ void intFace::setRightStateSolution(void)
 vector<double> intFace::computeWallForce()
 {
   // Not a wall boundary - return 0
-  vector<double> force = {0,0,0};
+  vector<double> force = {0,0,0,0,0,0};
   return force;
 }

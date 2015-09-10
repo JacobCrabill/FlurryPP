@@ -13,9 +13,11 @@
  *
  */
 
-#include "../include/boundFace.hpp"
+#include "boundFace.hpp"
 
 #include <array>
+
+#include "flux.hpp"
 
 void boundFace::setupRightState(void)
 {
@@ -360,43 +362,45 @@ void boundFace::setRightStateSolution(void)
 
 vector<double> boundFace::computeWallForce(void)
 {
-  vector<double> force = {0,0,0};
+  vector<double> force = {0,0,0,0,0,0};
 
-  if (bcType == SLIP_WALL) {
-    if (params->nDims == 2) {
-      auto weights = getQuadratureWeights1D(nFptsL-1);
+  if (bcType == SLIP_WALL || bcType == ADIABATIC_NOSLIP || bcType == ISOTHERMAL_NOSLIP) {
+    int order;
+    if (params->nDims == 2)
+      order = nFptsL-1;
+    else
+      order = sqrt(nFptsL)-1;
 
-      for (int fpt=0; fpt<nFptsL; fpt++) {
-        double rho = UL(fpt,0);
+    auto weights = getQuadratureWeights1D(order);
 
-        double vMagSq = 0;
-        for (int dim=0; dim<nDims; dim++)
-          vMagSq += UL(fpt,dim+1)*UL(fpt,dim+1)/(rho*rho);
-
-        double p = (params->gamma-1)*(UL(fpt,nDims+1) - 0.5*rho*vMagSq);
-
-        for (int dim=0; dim<nDims; dim++)
-          force[dim] += p*normL(fpt,dim)*dAL[fpt]*weights[fpt];
-      }
-    }
-    else {
-      int order = sqrt(nFptsL)-1;
-      auto weights = getQuadratureWeights1D(order);
-
-      for (int fpt=0; fpt<nFptsL; fpt++) {
+    for (int fpt=0; fpt<nFptsL; fpt++) {
+      double weight;
+      if (nDims==2) {
+        weight = weights[fpt];
+      } else {
         int ifpt = fpt%(order+1);
         int jfpt = floor(fpt/(order+1));
+        weight = weights[ifpt]*weights[jfpt];
+      }
 
-        double rho = UL(fpt,0);
+      double rho = UL(fpt,0);
 
-        double vMagSq = 0;
-        for (int dim=0; dim<nDims; dim++)
-          vMagSq += UL(fpt,dim+1)*UL(fpt,dim+1)/(rho*rho);
+      double vMagSq = 0;
+      for (int dim=0; dim<nDims; dim++)
+        vMagSq += UL(fpt,dim+1)*UL(fpt,dim+1)/(rho*rho);
 
-        double p = (params->gamma-1)*(UL(fpt,nDims+1) - 0.5*rho*vMagSq);
+      double p = (params->gamma-1)*(UL(fpt,nDims+1) - 0.5*rho*vMagSq);
 
-        for (int dim=0; dim<nDims; dim++)
-          force[dim] += p*normL(fpt,dim)*dAL[fpt]*weights[ifpt]*weights[jfpt];
+      // Convective forces
+      for (int dim=0; dim<nDims; dim++)
+        force[dim] += p*normL(fpt,dim)*dAL[fpt]*weight;
+
+      // Viscous forces
+      if (params->viscous) {
+        auto tau = viscousStressTensor(UL[fpt],gradUL[fpt],params);
+        for (int dim1=0; dim1<nDims; dim1++)
+          for (int dim2=0; dim2<nDims; dim2++)
+            force[3+dim1] -= tau(dim1,dim2)*normL(fpt,dim2)*dAL[fpt]*weight;
       }
     }
   }

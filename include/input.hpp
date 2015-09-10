@@ -100,8 +100,8 @@ public:
   double SGas;
   double rt_inf;   //! For Sutherland's Law
   double mu_inf;   //! For Sutherland's Law
-  double fix_vis;  //! Use Sutherland's Law or fixed (constant) viscosity?
   double c_sth;    //! For Sutherland's Law
+  int fixVis;  //! Use Sutherland's Law or fixed (constant) viscosity?
 
   /* --- Simulation Run Parameters --- */
   int nFields;

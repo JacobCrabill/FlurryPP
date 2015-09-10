@@ -301,6 +301,7 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("SGas",SGas,120.);
     opts.getScalarValue("TGas",TGas,291.15);
     opts.getScalarValue("RGas",RGas,286.9);
+    opts.getScalarValue("fixVis",fixVis,0);
 
     opts.getScalarValue("TWall",TWall,300.);
     opts.getScalarValue("TBound",TBound,300.);
@@ -430,6 +431,8 @@ void input::nonDimensionalize(void)
 {
   /* --- Calculate Reference / Freestream Non-Dimensionalized Values --- */
 
+  if (nDims==2) nzBound = 0;
+
   // Normalize the boundary flow direction
   double nMag = sqrt(nxBound*nxBound+nyBound*nyBound+nzBound*nzBound);
   nxBound /= nMag;
@@ -470,6 +473,8 @@ void input::nonDimensionalize(void)
   pBound = pBound / pRef;
   TtBound = (TBound/Tref) * (1. + 0.5*(gamma-1.)*MachBound*MachBound);
   PtBound = pBound * pow(1. + 0.5*(gamma-1.)*MachBound*MachBound, gamma/(gamma-1.));
+
+  Uinf = sqrt(uBound*uBound+vBound*vBound+wBound*wBound);
 
   TWall = TWall / Tref;
 

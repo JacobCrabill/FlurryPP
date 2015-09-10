@@ -12,9 +12,10 @@
  * Copyright (C) 2014 Jacob Crabill.
  *
  */
-#include "../include/output.hpp"
+#include "output.hpp"
 
 #include <iomanip>
+#include <string>
 
 // Used for making sub-directories (for MPI and 'time-stamp' files)
 #include <sys/types.h>
@@ -521,18 +522,24 @@ void writeResidual(solver *Solver, input *params)
     }
   }
 
-  vector<double> force(params->nDims);
+  vector<double> force(6);
   if (params->equation == NAVIER_STOKES) {
     auto fTmp = Solver->computeWallForce();
 #ifndef _NO_MPI
-    MPI_Reduce(fTmp.data(), force.data(), params->nDims, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(fTmp.data(), force.data(), 6, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+#else
+    force = fTmp;
 #endif
     for (auto &f:force) f /= (0.5*params->rhoBound*params->Uinf*params->Uinf);
 
-    double alpha = std::atan(params->vBound/params->uBound);
+    double alpha = std::atan2(params->vBound,params->uBound);
     fTmp = force;
     force[0] = fTmp[0]*cos(alpha) + fTmp[1]*sin(alpha);  // Rotate to align with freestream
     force[1] = fTmp[1]*cos(alpha) - fTmp[0]*sin(alpha);
+    if (params->viscous) {
+      force[3] = fTmp[3]*cos(alpha) + fTmp[4]*sin(alpha);
+      force[4] = fTmp[4]*cos(alpha) - fTmp[3]*sin(alpha);
+    }
   }
 
 #ifndef _NO_MPI
@@ -553,6 +560,8 @@ void writeResidual(solver *Solver, input *params)
     if (params->resType == 2) {
       for (auto& R:res) R = sqrt(R);
     }
+
+    /* --- Print the residual and force coefficients in the terminal --- */
 
     int colW = 16;
     cout.precision(6);
@@ -589,14 +598,78 @@ void writeResidual(solver *Solver, input *params)
     if (params->dtType == 1)
       cout << setw(colW) << left << params->dt;
 
-    // Print wall forces
+    // Print wall force coefficients
     if (params->equation == NAVIER_STOKES) {
       for (int dim=0; dim<params->nDims; dim++) {
-        cout << setw(colW) << left << force[dim];
+        cout << setw(colW) << left << force[dim]+force[3+dim];
       }
     }
 
     cout << endl;
+
+    /* --- Write the residual and force coefficients to the history file --- */
+
+    ofstream histFile;
+    string fileName = params->dataFileName + ".hist";
+    histFile.open(fileName.c_str(),ofstream::app);
+
+    colW = 14;
+    histFile.precision(5);
+    histFile.setf(ios::scientific, ios::floatfield);
+    if (iter==params->initIter+1 || (iter/params->monitorResFreq)%25==0) {
+      histFile << endl;
+      histFile << setw(8) << left << "Iter";
+      histFile << setw(colW) << left << "Time";
+      if (params->equation == ADVECTION_DIFFUSION) {
+        histFile << " Residual " << endl;
+      }else if (params->equation == NAVIER_STOKES) {
+        histFile << setw(colW) << left << "rho";
+        histFile << setw(colW) << left << "rhoU";
+        histFile << setw(colW) << left << "rhoV";
+        if (params->nDims == 3)
+          histFile << setw(colW) << left << "rhoW";
+        histFile << setw(colW) << left << "rhoE";
+        if (params->dtType == 1)
+          histFile << setw(colW) << left << "deltaT";
+        histFile << setw(colW) << left << "CDinv";
+        histFile << setw(colW) << left << "CLinv";
+        if (params->nDims == 3)
+          histFile << setw(colW) << left << "CNinv";
+        histFile << setw(colW) << left << "CDvis";
+        histFile << setw(colW) << left << "CLvis";
+        if (params->nDims == 3)
+          histFile << setw(colW) << left << "CNvis";
+        histFile << setw(colW) << left << "CDtot";
+        histFile << setw(colW) << left << "CLtot";
+        if (params->nDims == 3)
+          histFile << setw(colW) << left << "CNtot";
+      }
+      histFile << endl;
+    }
+
+    // Write residuals
+    histFile << setw(8) << left << iter;
+    histFile << setw(colW) << left << params->time;
+    for (int i=0; i<params->nFields; i++) {
+      histFile << setw(colW) << left << res[i];
+    }
+
+    // Write time step (for CFL time-stepping)
+    if (params->dtType == 1)
+      histFile << setw(colW) << left << params->dt;
+
+    // Write inviscid wall force coefficients
+    if (params->equation == NAVIER_STOKES) {
+      for (int dim=0; dim<params->nDims; dim++)
+        histFile << setw(colW) << left << force[dim];              // Convective force coeffs.
+      for (int dim=0; dim<params->nDims; dim++)
+        histFile << setw(colW) << left << force[3+dim];            // Viscous force coeffs.
+      for (int dim=0; dim<params->nDims; dim++)
+        histFile << setw(colW) << left << force[dim]+force[3+dim]; // Total force coeffs.
+    }
+
+    histFile << endl;
+    histFile.close();
   }
 }
 

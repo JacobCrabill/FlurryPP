@@ -25,6 +25,9 @@ void inviscidFlux(double* U, matrix<double> &F, input *params);
 /*! Calculate the viscous portion of the Navier-Stokes flux vector at a point */
 void viscousFlux(double *U, matrix<double> &gradU, matrix<double> &Fvis, input *params);
 
+/*! Calculate the viscous shear-stress tensor at a point */
+matrix<double> viscousStressTensor(double* U, matrix<double> &gradU, input *params);
+
 /*! Calculate the viscous flux for Advection-Diffusion */
 void viscousFluxAD(matrix<double> &gradU, matrix<double> &Fvis, input *params);
 

@@ -110,11 +110,12 @@ void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *
   }
 
   /* --- Calculate Viscosity --- */
-  double rt_ratio = (params->gamma-1.0)*e/(params->rt_inf);
-  double mu = (params->mu_inf)*pow(rt_ratio,1.5)*(1.+(params->c_sth))/(rt_ratio+(params->c_sth));
-         mu+= params->fix_vis*(params->mu_inf - mu);
-
-  double mu_t = 0.;
+  double mu = params->mu_inf;
+  if (!params->fixVis) {
+    // Use Sutherland's Law
+    double rt_ratio = (params->gamma-1.0)*e/(params->rt_inf);
+    mu *= pow(rt_ratio,1.5)*(1.+(params->c_sth))/(rt_ratio+(params->c_sth));
+  }
 
   /* --- Calculate Gradients --- */
   double du_dx = (dRhoU_dx-dRho_dx*u)/rho;
@@ -156,18 +157,18 @@ void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *
 
   double diag = (du_dx + dv_dy + dw_dz)/3.0;
 
-  double tauxx = 2.0*(mu+mu_t)*(du_dx-diag);
-  double tauyy = 2.0*(mu+mu_t)*(dv_dy-diag);
+  double tauxx = 2.0*mu*(du_dx-diag);
+  double tauyy = 2.0*mu*(dv_dy-diag);
 
-  double tauxy = (mu+mu_t)*(du_dy + dv_dx);
+  double tauxy = mu*(du_dy + dv_dx);
 
   double tauxz = 0;
   double tauyz = 0;
   double tauzz = 0;
   if (nDims == 3) {
-    tauxz = (mu+mu_t)*(du_dz + dv_dx);
-    tauyz = (mu+mu_t)*(du_dz + dv_dy);
-    tauzz = 2.0*(mu+mu_t)*(dw_dz-diag);
+    tauxz = mu*(du_dz + dv_dx);
+    tauyz = mu*(du_dz + dv_dy);
+    tauzz = 2.0*mu*(dw_dz-diag);
   }
 
   /* --- Calculate Viscous Flux --- */
@@ -191,6 +192,137 @@ void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *
     Fvis(2,3) = -tauzz;
     Fvis(2,4) = -(u*tauxz+v*tauyz+w*tauzz+(mu/params->prandtl)*(params->gamma)*de_dz);
   }
+}
+
+matrix<double> viscousStressTensor(double* U, matrix<double> &gradU, input *params)
+{
+  int nDims = params->nDims;
+
+  matrix<double> tau(nDims,nDims);
+
+  /* --- Calculate Primitives --- */
+  double rho = U[0];
+  double u   = U[1]/rho;
+  double v   = U[2]/rho;
+  double e   = U[nDims+1]/rho - 0.5*(u*u+v*v);
+
+  double w;
+  if (nDims == 3) {
+    w = U[3]/rho;
+    e -= 0.5*(w*w);
+  }
+  else {
+    w = 0.;
+  }
+
+  /* --- Get Gradients --- */
+  double dRho_dx  = gradU(0,0);
+  double dRhoU_dx = gradU(0,1);
+  double dRhoV_dx = gradU(0,2);
+  double dE_dx    = gradU(0,nDims+1);
+
+  double dRho_dy  = gradU(1,0);
+  double dRhoU_dy = gradU(1,1);
+  double dRhoV_dy = gradU(1,2);
+  double dE_dy	  = gradU(1,nDims+1);
+
+  // 3D Derivatives
+  double dRho_dz  = 0;
+  double dRhoU_dz = 0;
+  double dRhoV_dz = 0;
+  double dRhoW_dx = 0;
+  double dRhoW_dy = 0;
+  double dRhoW_dz = 0;
+  double dE_dz    = 0;
+  if (nDims == 3) {
+    dRho_dz	 = gradU(2,0);
+    dRhoU_dz = gradU(2,1);
+    dRhoV_dz = gradU(2,2);
+    dRhoW_dx = gradU(0,3);
+    dRhoW_dy = gradU(1,3);
+    dRhoW_dz = gradU(2,3);
+    dE_dz	   = gradU(2,4);
+  }
+
+  /* --- Calculate Viscosity --- */
+  double mu = params->mu_inf;
+  if (!params->fixVis) {
+    // Use Sutherland's Law
+    double rt_ratio = (params->gamma-1.0)*e/(params->rt_inf);
+    mu *= pow(rt_ratio,1.5)*(1.+(params->c_sth))/(rt_ratio+(params->c_sth));
+  }
+
+  /* --- Calculate Gradients --- */
+  double du_dx = (dRhoU_dx-dRho_dx*u)/rho;
+  double du_dy = (dRhoU_dy-dRho_dy*u)/rho;
+
+  double dv_dx = (dRhoV_dx-dRho_dx*v)/rho;
+  double dv_dy = (dRhoV_dy-dRho_dy*v)/rho;
+
+  // 3D Derivatives
+  double du_dz=0, dv_dz=0;
+  double dw_dx=0, dw_dy=0;
+  double dw_dz = 0;
+  if (nDims == 3) {
+    du_dz = (dRhoU_dz-dRho_dz*u)/rho;
+    dv_dz = (dRhoV_dz-dRho_dz*v)/rho;
+
+    dw_dx = (dRhoW_dx-dRho_dx*w)/rho;
+    dw_dy = (dRhoW_dy-dRho_dy*w)/rho;
+    dw_dz = (dRhoW_dz-dRho_dz*w)/rho;
+  }
+
+  double dK_dx, dK_dy, dK_dz;
+  if (nDims == 2) {
+    dK_dx = 0.5*(u*u+v*v)*dRho_dx+rho*(u*du_dx+v*dv_dx);
+    dK_dy = 0.5*(u*u+v*v)*dRho_dy+rho*(u*du_dy+v*dv_dy);
+    dK_dz = 0;
+  }
+  else {
+    dK_dx = 0.5*(u*u+v*v+w*w)*dRho_dx+rho*(u*du_dx+v*dv_dx+w*dw_dx);
+    dK_dy = 0.5*(u*u+v*v+w*w)*dRho_dy+rho*(u*du_dy+v*dv_dy+w*dw_dy);
+    dK_dz = 0.5*(u*u+v*v+w*w)*dRho_dz+rho*(u*du_dz+v*dv_dz+w*dw_dz);
+  }
+
+  double de_dx = (dE_dx-dK_dx-dRho_dx*e)/rho;
+  double de_dy = (dE_dy-dK_dy-dRho_dy*e)/rho;
+  double de_dz = 0;
+  if (nDims == 3)
+    de_dz = (dE_dz-dK_dz-dRho_dz*e)/rho;
+
+  double diag = (du_dx + dv_dy + dw_dz)/3.0;
+
+  for (int i=0; i<nDims; i++)
+    tau(i,i) = diag;
+
+  double tauxx = 2.0*mu*(du_dx-diag);
+  double tauyy = 2.0*mu*(dv_dy-diag);
+
+  tau(0,0) = tauxx;
+  tau(1,1) = tauyy;
+
+  double tauxy = mu*(du_dy + dv_dx);
+
+  tau(0,1) = tauxy;
+  tau(1,0) = tauxy;
+
+  double tauxz = 0;
+  double tauyz = 0;
+  double tauzz = 0;
+  if (nDims == 3) {
+    tauxz = mu*(du_dz + dv_dx);
+    tauyz = mu*(du_dz + dv_dy);
+    tauzz = 2.0*mu*(dw_dz-diag);
+
+    tau(0,2) = tauxz;
+    tau(1,2) = tauyz;
+    tau(2,2) = tauzz;
+
+    tau(2,0) = tauxz;
+    tau(2,1) = tauyz;
+  }
+
+  return tau;
 }
 
 void viscousFluxAD(matrix<double> &gradU, matrix<double> &Fvis, input *params)

@@ -513,13 +513,13 @@ void solver::moveMesh(int step)
 
 vector<double> solver::computeWallForce(void)
 {
-  vector<double> force(params->nDims);
+  vector<double> force = {0,0,0,0,0,0};
 
   for (uint i=0; i<faces.size(); i++) {
     auto fTmp = faces[i]->computeWallForce();
 
-    for (int dim=0; dim<params->nDims; dim++)
-      force[dim] += fTmp[dim];
+    for (int j=0; j<6; j++)
+      force[j] += fTmp[j];
   }
 
   return force;

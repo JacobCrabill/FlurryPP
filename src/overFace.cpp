@@ -62,7 +62,7 @@ void overFace::setRightStateSolution(void)
 vector<double> overFace::computeWallForce()
 {
   // Not a wall boundary - return 0
-  vector<double> force = {0,0,0};
+  vector<double> force = {0,0,0,0,0,0};
   return force;
 }
 
