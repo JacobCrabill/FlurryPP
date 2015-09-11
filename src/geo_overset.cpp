@@ -258,6 +258,58 @@ void geo::updateOversetConnectivity2D(void)
 #endif
 }
 
+void geo::setCellIblanks(void)
+{
+  // Use the TIOGA-supplied nodal iblank values, set iblank values for all cells and faces
+
+  // Only needed for moving grids: List of current hole cells
+  holeCells.clear();
+  blankCells.clear();
+  unblankCells.clear();
+  for (int ic=0; ic<nEles; ic++)
+    if (iblankCell[ic] == HOLE)
+      holeCells.insert(ic);
+
+  iblankCell.assign(nEles,NORMAL);
+
+  // First, blank any fringe vertices which should be treated as hole vertices
+
+  for (int iv=0; iv<nVerts; iv++) {
+    if (iblank[iv] == FRINGE) {
+      int nfringe = 0;
+      for (int j=0; j<v2nv[iv]; j++) {
+        if ((iblank[v2v(iv,j)] == FRINGE && nodeType[v2v(iv,j)] == NORMAL_NODE) || iblank[v2v(iv,j)] == HOLE ) {
+          nfringe++;
+        }
+      }
+      if (nfringe == v2nv[iv])
+        iblank[iv] = HOLE;
+    }
+  }
+
+  // Next, blank all cells which contain a hole node
+
+  for (int ic=0; ic<nEles; ic++) {
+    for (int j=0; j<c2nv[ic]; j++) {
+      int iv = c2v(ic,j);
+      if (iblank[iv] == HOLE) {
+        iblankCell[ic] = HOLE;
+
+        // Only needed for moving grids: Existing cells which must be removed from solver
+        if (!holeCells.count(ic))
+          blankCells.insert(ic);
+
+        break;
+      }
+    }
+  }
+
+  // Only needed for moving grids: Get cells which  must be 'un-blanked'
+  for (auto &ic:holeCells)
+    if (iblankCell[ic] == NORMAL)
+      unblankCells.insert(ic);
+}
+
 void geo::setCellFaceIblanks()
 {
   // Use the TIOGA-supplied nodal iblank values, set iblank values for all cells and faces
@@ -287,10 +339,9 @@ void geo::setCellFaceIblanks()
     }
   }
 
-  // First, blank all cells which contain a hole node
+  // Next, blank all cells which contain a hole node
 
   for (int ic=0; ic<nEles; ic++) {
-//    int nfringe = 0;
     for (int j=0; j<c2nv[ic]; j++) {
       int iv = c2v(ic,j);
       if (iblank[iv] == HOLE) {
@@ -302,13 +353,7 @@ void geo::setCellFaceIblanks()
 
         break;
       }
-//      else if (iblank[iv] == FRINGE && nodeType[iv]==NORMAL_NODE) {
-//        nfringe++;
-//      }
     }
-//    if (nfringe == c2nv[ic]) {
-//      iblankCell[ic] = HOLE;
-//    }
   }
 
   // Only needed for moving grids: Get cells which  must be 'un-blanked'
@@ -333,6 +378,12 @@ void geo::setCellFaceIblanks()
   iblankFace.assign(nFaces,NORMAL);
 
   // Next, get the new overset faces & set all hole faces
+
+  // !!! NEW ALGORITHM !!!
+  for (auto &ic:unblankCells) {
+
+  }
+  // !!! END NEW ALGORITHM
 
   for (int ic=0; ic<nEles; ic++) {
     if (iblankCell[ic] == HOLE) {
@@ -493,6 +544,76 @@ cout << "Blanking Faces!" << endl;
 
 void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
 {
+  /* --- Set Unblank/Blank Faces for All Unblank Elements --- */
+
+  set<int> ubIntFaces, ubMpiFaces, ubOFaces;
+  for (auto &ic:unblankCells) {
+    for (int j=0; j<c2nf[ic]; j++) {
+      if (c2c(ic,j)>0) {
+        if (iblankCell[c2c(ic,j)]==NORMAL || unblankCells.count(c2c(ic,j)))
+          ubIntFaces.insert(c2f(ic,j));
+      }
+      else {
+        // Boundary or MPI face
+        if (faceType(c2f(ic,j))==MPI_FACE)
+          ubMpiFaces.insert(c2f(ic,j));
+        else
+          ubOFaces.insert(c2f(ic,j));
+      }
+    }
+  }
+
+  // Figure out whether MPI faces are to be unblanked as MPI or as overset
+  vector<int> ubMpi;
+  for (auto &ff:ubMpiFaces) ubMpi.push_back(ff);
+
+  int nUbMPI = ubMpi.size();
+  vector<int> nubMpi_rank(nProcGrid);
+  MPI_Allgather(&nUbMPI,1,MPI_INT,nubMpi_rank.data(),1,MPI_INT,gridComm);
+
+  int sum = 0;
+  vector<int> recvCnts(nProcGrid);
+  vector<int> recvDisp(nProcGrid);
+  for (int i=0; i<nProcGrid; i++) {
+    recvCnts[i] = nubMpi_rank[i];
+    if (i>0)
+      recvDisp[i] = recvDisp[i-1]+recvCnts[i-1];
+    sum += recvCnts[i];
+  }
+  vector<int> ubMpi_rank(sum);
+  MPI_Allgatherv(ubMpi.data(),ubMpi.size(),MPI_INT,ubMpi_rank.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
+
+  for (int F=0; F<nMpiFaces; F++) {
+    int ff = mpiFaces[F];
+    if (ubMpiFaces.count(ff)) {
+      int p = procR[F];
+      int f2 = faceID_R[F];
+      // If MPI face is unblanked on both sides, keep as MPI face
+      bool isUnblanked = false;
+      for (int j=0; j<recvCnts[p]; j++) {
+        if (ubMpi_rank[recvDisp[p]+j]==f2) {
+          isUnblanked = true;
+          break;
+        }
+      }
+      // If not unblanked on other rank, move to overFaces
+      if (!isUnblanked) {
+        ubMpiFaces.erase(ff);
+        ubOFaces.insert(ff);
+      }
+    }
+  }
+
+  // Now, figure out what faces must be removed due to being replaced by other type
+
+  for (auto &ff:ubIntFaces)
+    if (findFirst(overFaces,ff) != -1)
+      blankOFaces.insert(ff);
+
+  for (auto &ff:ubMpiFaces)
+    if (findFirst(overFaces,ff) != -1)
+      blankOFaces.insert(ff);
+
   /* --- Setup & Insert Unblanked Elements --- */
 
   /// TODO: Need to only unblank the faces belonging to these eles,
@@ -500,7 +621,7 @@ void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr
   /// (i.e. overset face replaced with internal face)
 
   for (auto &ic:unblankCells) {
-    if (ic<0) continue;
+    //if (ic<0) continue; // <-- this shouldn't be needed; should never have an ic<0
   cout << "Unblanking cells!" << endl;
     // Find the next-lowest index
     int ind = eleMap[ic];
@@ -552,11 +673,18 @@ void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr
         eleMap[k]++;
   }
 
-  /* --- Create Newly-Unblanked Faces --- */
+  /* --- Create Newly-Unblanked Faces Corresponding to Unblanked Eles --- */
 
   set<int> unblankMFaces;
+  set<int> ubFacesTmp;
   for (auto &ff:unblankFaces) {
     if (ff<0) continue;
+
+    if (!unblankCells.count(f2c(ff,0)) && !unblankCells.count(f2c(ff,1))) {
+      // Face does not yet need to be unblanked
+      ubFacesTmp.insert(ff);
+      continue;
+    }
 
     if (faceType[ff] == INTERNAL)
     {
@@ -708,10 +836,21 @@ void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr
 #endif
   }
 
+  unblankFaces.clear();
+  unblankFaces = ubFacesTmp;
+
   /* --- Setup Newly-Unblanked Overset Faces --- */
 
+  set<int> ubOFacesTmp;
   for (auto &ff:unblankOFaces) {
     if (ff<0) continue;
+
+    if (!unblankCells.count(f2c(ff,0)) && !unblankCells.count(f2c(ff,1))) {
+      // Face does not yet need to be unblanked
+      ubOFacesTmp.insert(ff);
+      continue;
+    }
+
 cout << "Unblanking OFaces!" << endl;
     shared_ptr<overFace> oface = make_shared<overFace>();
 
