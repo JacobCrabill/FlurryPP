@@ -44,62 +44,6 @@ void solver::setupOverset(void)
 #endif
 }
 
-void solver::updateOversetConnectivity(bool doBlanking)
-{
-  if (Geo->nDims == 3)
-    updateOversetConnectivity3D(doBlanking);
-  else
-    updateOversetConnectivity2D(doBlanking);
-}
-
-void solver::updateOversetConnectivity3D(bool doBlanking)
-{
-#ifndef _NO_MPI
-  if (doBlanking) {
-    // Remove blanks found during previous iteration
-    Geo->removeBlanks(eles,faces,mpiFaces,overFaces);
-
-    // Find unblanks needed for this iteration, and blanks to remove at next step
-    Geo->updateOversetConnectivity();
-
-    // Setup unblanks for this iteration
-    Geo->setupUnblankElesFaces(eles,faces,mpiFaces,overFaces);
-  }
-  else {
-    // Needed to update Tioga's ADT, used in matchOversetPoints()
-    Geo->tg->profile();
-
-    Geo->tg->performConnectivity();
-  }
-
-  OComm->matchOversetPoints(eles,overFaces,Geo->eleMap);
-
-  if (doBlanking) {
-    OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->order);
-  }
-#endif
-}
-
-void solver::updateOversetConnectivity2D(bool doBlanking)
-{
-  if (doBlanking) {
-    // Remove blanks found during previous iteration
-    Geo->removeBlanks(eles,faces,mpiFaces,overFaces);
-
-    // Find unblanks needed for this iteration, and blanks to remove at next step
-    Geo->updateOversetConnectivity2D();
-
-    // Setup unblanks for this iteration
-    Geo->setupUnblankElesFaces(eles,faces,mpiFaces,overFaces);
-  }
-
-  OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
-
-  if (doBlanking) {
-    //OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->order);
-  }
-}
-
 /* ---- Basic Tioga-Based Overset-Grid Functions ---- */
 
 //void solver::setupOverset(void)

@@ -187,7 +187,7 @@ void geo::setupOverset2D(void)
   OComm->setIblanks2D(xv,overFaceNodes,wallFaceNodes,iblank);
 
   // Now use new nodal iblanks to set cell and face iblanks
-  setCellFaceIblanks();
+  setCellIblanks();
 #endif
 }
 
@@ -229,32 +229,29 @@ void geo::setNodeTypes2D(void)
   }
 }
 
+void geo::updateADT(void)
+{
+  if (nDims == 3) {
+    // Pre-process the grids
+    tg->profile();
+
+    // Have TIOGA perform the nodal overset connectivity (set nodal iblanks)
+    tg->performConnectivity();
+  }
+}
+
 void geo::updateOversetConnectivity(void)
 {
 #ifndef _NO_MPI
-  // Pre-process the grids
-  tg->profile();
-
-  // Have TIOGA perform the nodal overset connectivity (set nodal iblanks)
-  tg->performConnectivity();
-
-  // Only needed for debugging, really
-  if (params->writeIBLANK)
-    writeOversetConnectivity();
+  if (nDims == 3) {
+    updateADT();
+  } else {
+    // Set nodal iblanks based upon hole cutting
+    OComm->setIblanks2D(xv,overFaceNodes,wallFaceNodes,iblank);
+  }
 
   // Now use new nodal iblanks to set cell and face iblanks
-  setCellFaceIblanks();
-#endif
-}
-
-void geo::updateOversetConnectivity2D(void)
-{
-#ifndef _NO_MPI
-  // Set nodal iblanks based upon hole cutting
-  OComm->setIblanks2D(xv,overFaceNodes,wallFaceNodes,iblank);
-
-  // Now use new nodal iblanks to set cell and face iblanks
-  setCellFaceIblanks();
+  setCellIblanks();
 #endif
 }
 
@@ -310,157 +307,6 @@ void geo::setCellIblanks(void)
       unblankCells.insert(ic);
 }
 
-void geo::setCellFaceIblanks()
-{
-  // Use the TIOGA-supplied nodal iblank values, set iblank values for all cells and faces
-
-  // Only needed for moving grids: List of current hole cells
-  holeCells.clear();
-  blankCells.clear();
-  unblankCells.clear();
-  for (int ic=0; ic<nEles; ic++)
-    if (iblankCell[ic] == HOLE)
-      holeCells.insert(ic);
-
-  iblankCell.assign(nEles,NORMAL);
-
-  // First, blank any fringe vertices which should be treated as hole vertices
-
-  for (int iv=0; iv<nVerts; iv++) {
-    if (iblank[iv] == FRINGE) {
-      int nfringe = 0;
-      for (int j=0; j<v2nv[iv]; j++) {
-        if ((iblank[v2v(iv,j)] == FRINGE && nodeType[v2v(iv,j)] == NORMAL_NODE) || iblank[v2v(iv,j)] == HOLE ) {
-          nfringe++;
-        }
-      }
-      if (nfringe == v2nv[iv])
-        iblank[iv] = HOLE;
-    }
-  }
-
-  // Next, blank all cells which contain a hole node
-
-  for (int ic=0; ic<nEles; ic++) {
-    for (int j=0; j<c2nv[ic]; j++) {
-      int iv = c2v(ic,j);
-      if (iblank[iv] == HOLE) {
-        iblankCell[ic] = HOLE;
-
-        // Only needed for moving grids: Existing cells which must be removed from solver
-        if (!holeCells.count(ic))
-          blankCells.insert(ic);
-
-        break;
-      }
-    }
-  }
-
-  // Only needed for moving grids: Get cells which  must be 'un-blanked'
-  for (auto &ic:holeCells)
-    if (iblankCell[ic] == NORMAL)
-      unblankCells.insert(ic);
-
-  // Only needed for moving grids: List of current hole faces
-  holeFaces.clear();
-  fringeFaces;
-  blankFaces.clear();
-  blankOFaces.clear();
-  unblankFaces.clear();
-  unblankOFaces.clear();
-  for (int ff=0; ff<nFaces; ff++) {
-    if (iblankFace[ff] == HOLE)
-      holeFaces.insert(ff);
-    else if (iblankFace[ff] == FRINGE)
-      fringeFaces.insert(ff);
-  }
-
-  iblankFace.assign(nFaces,NORMAL);
-
-  // Next, get the new overset faces & set all hole faces
-
-  // !!! NEW ALGORITHM !!!
-  for (auto &ic:unblankCells) {
-
-  }
-  // !!! END NEW ALGORITHM
-
-  for (int ic=0; ic<nEles; ic++) {
-    if (iblankCell[ic] == HOLE) {
-      for (int j=0; j<c2nf[ic]; j++) {
-        int ff = c2f(ic,j);
-        int ic2 = c2c(ic,j);
-        if (ic2>0) {
-          // Cell exists
-          if (iblankCell[ic2]==NORMAL) {
-            iblankFace[ff] = FRINGE;
-          }
-          else {
-            iblankFace[ff] = HOLE;
-          }
-        }
-        else {
-          // Cell doesn't exist (on this rank, at least)
-          if (iblankFace[ff] == NORMAL) {
-            // If not set yet, assume fringe (overset), but set to hole if any hole nodes
-            iblankFace[ff] = FRINGE;
-            for (int k=0; k<f2nv[ff]; k++) {
-              int iv = f2v(ff,k);
-              if (iblank[iv] == HOLE) {
-                iblankFace[ff] = HOLE;
-                break;
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // Figure out which faces need to be removed from where
-  // ('Normal' face going to either 'fringe' or 'hole', or 'fringe' faces going to 'hole')
-  for (int ff=0; ff<nFaces; ff++) {
-    if (!holeFaces.count(ff)) {
-      // Not a hole face, so it exists somewhere
-      if (!fringeFaces.count(ff)) {
-        // Not a fringe face either; 'normal' face (int, bound, or mpi)
-        if (iblankFace[ff] != NORMAL)
-          blankFaces.insert(ff);
-      }
-      else {
-        // Fringe face; if no longer fringe, must be removed so mark as such
-        if (iblankFace[ff] != FRINGE)
-          blankOFaces.insert(ff);
-      }
-    }
-  }
-
-  // Only needed for moving grids: Get faces which  must be 'un-blanked'
-  for (auto &ff:holeFaces) {
-    if (iblankFace[ff] == NORMAL) {
-      // Face will be created as an int, bound, or mpi face
-      unblankFaces.insert(ff);
-    }
-    else if (iblankFace[ff] == FRINGE) {
-      // Face will be created as an overset face
-      unblankOFaces.insert(ff);
-    }
-  }
-
-  if ((blankCells.size()>0 || blankFaces.size()>0) && params->iter != params->initIter)
-    cout << "nBlankCells   = " << blankCells.size() << "  nBlakFaces   = " << blankFaces.size() << "  nBlankOfaces   = " << blankOFaces.size() << endl;
-  if ((unblankCells.size()>0 || unblankFaces.size()>0 || unblankOFaces.size()>0) && params->iter != params->initIter)
-    cout << "nUnBlankCells = " << unblankCells.size() << "  nUnBlakFaces = " << unblankFaces.size() << "  nUnBlankOfaces = " << unblankOFaces.size() << endl;
-}
-
-void geo::writeOversetConnectivity(void)
-{
-#ifndef _NO_MPI
-  // Write out only the mesh with IBLANK info (no solution data)
-  tg->writeData(0,NULL,0);
-#endif
-}
-
 void geo::matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &donors)
 {
 #ifndef _NO_MPI
@@ -468,81 +314,12 @@ void geo::matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &d
 #endif
 }
 
-void geo::removeBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
+void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
 {
-  /* --- Remove Newly-Blanked Elements --- */
 
-  for (auto &ic:blankCells) {
-    if (ic<0) continue;
-cout << "Blanking cells!" << endl;
-    int ind = eleMap[ic];
-    if (ind<0) FatalError("Should not have marked a hole cell for blanking!");
-    eles.erase(eles.begin()+ind,eles.begin()+ind+1);
-    eleMap[ic] = -1;
-
-    // Update the map
-    for (int k=ic+1; k<nEles; k++)
-      eleMap[k]--;
-  }
-
-  /* --- Remove Newly-Blanked Faces --- */
-
-  // NOTE: faceType refers to the original face type as read from mesh file
-  //       (Before overset connectivity processing)
-
-  for (auto &ff:blankFaces) {
-    if (ff<0) continue;
-cout << "Blanking Faces!" << endl;
-    int ind = faceMap[ff];
-    int fType = faceType[ff];
-
-    if (fType == INTERNAL || fType == BOUNDARY) {
-      faces.erase(faces.begin()+ind,faces.begin()+ind+1);
-
-      faceMap[ff] = -1;
-      for (int f2=ff+1; f2<nFaces; f2++) {
-        if (!fringeFaces.count(f2) && (faceType[f2] == INTERNAL || faceType[f2] == BOUNDARY)) {
-          faceMap[f2]--;
-        }
-      }
-
-      if (fType == INTERNAL)
-        nIntFaces--;
-      else
-        nBndFaces--;
-    }
-    else if (fType == MPI_FACE) {
-      mFaces.erase(mFaces.begin()+ind,mFaces.begin()+ind+1);
-
-      faceMap[ff] = -1;
-      for (int f2=ff+1; f2<nFaces; f2++) {
-        if (!fringeFaces.count(f2) && faceType[f2] == fType) {
-          faceMap[f2]--;
-        }
-      }
-    }
-    else {
-      FatalError("Face does not have a proper type assigned!");
-    }
-  }
-
-  for (auto &ff:blankOFaces) {
-    if (ff<0) continue;
-    int ind = faceMap[ff];
-    if (ind<0) continue;
-  cout << "Blanking OFaces!" << endl;
-    oFaces.erase(oFaces.begin()+ind,oFaces.begin()+ind+1);
-
-    // Update the map
-    faceMap[ff] = -1;
-    for (auto &f2:fringeFaces) {
-      if (f2 > ff)
-        faceMap[f2]--;
-    }
-  }
 }
 
-void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
+void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
 {
   /* --- Set Unblank/Blank Faces for All Unblank Elements --- */
 
@@ -555,7 +332,7 @@ void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr
       }
       else {
         // Boundary or MPI face
-        if (faceType(c2f(ic,j))==MPI_FACE)
+        if (faceType[c2f(ic,j)]==MPI_FACE)
           ubMpiFaces.insert(c2f(ic,j));
         else
           ubOFaces.insert(c2f(ic,j));
@@ -581,7 +358,7 @@ void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr
     sum += recvCnts[i];
   }
   vector<int> ubMpi_rank(sum);
-  MPI_Allgatherv(ubMpi.data(),ubMpi.size(),MPI_INT,ubMpi_rank.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
+  MPI_Allgatherv(ubMpi.data(),ubMpi.size(),MPI_INT,ubMpi_rank.data(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
 
   for (int F=0; F<nMpiFaces; F++) {
     int ff = mpiFaces[F];
@@ -605,6 +382,7 @@ void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr
   }
 
   // Now, figure out what faces must be removed due to being replaced by other type
+  // For cell unblanking, the only possibility for face blanking is overset faces
 
   for (auto &ff:ubIntFaces)
     if (findFirst(overFaces,ff) != -1)
@@ -614,18 +392,44 @@ void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr
     if (findFirst(overFaces,ff) != -1)
       blankOFaces.insert(ff);
 
+  set<int> blankIFaces, blankMFaces;
+
+  insertEles(eles,unblankCells);
+  insertFaces(eles,faces,mFaces,oFaces,ubIntFaces,ubMpiFaces,ubOFaces);
+  removeFaces(faces,mFaces,oFaces,blankIFaces,blankMFaces,blankOFaces);
+
+  // Initialize the solution in the new elements using local Galerkin projection
+
+  //OComm->matchUnblankCells(eles,unblankCells,eleMap,params->order);
+}
+
+void geo::removeEles(vector<shared_ptr<ele>> &eles, set<int> &blankEles)
+{
+  /* --- Remove Newly-Blanked Elements --- */
+
+  for (auto &ic:blankEles) {
+    if (ic<0) continue;
+cout << "Blanking cells!" << endl;
+    int ind = eleMap[ic];
+    if (ind<0) FatalError("Should not have marked a hole cell for blanking!");
+    eles.erase(eles.begin()+ind,eles.begin()+ind+1);
+    eleMap[ic] = -1;
+
+    // Update the map
+    for (int k=ic+1; k<nEles; k++)
+      eleMap[k]--;
+  }
+}
+
+void geo::insertEles(vector<shared_ptr<ele>> &eles, set<int> &ubEles)
+{
   /* --- Setup & Insert Unblanked Elements --- */
 
-  /// TODO: Need to only unblank the faces belonging to these eles,
-  /// and must also blank any faces which are being replaced
-  /// (i.e. overset face replaced with internal face)
-
   for (auto &ic:unblankCells) {
-    //if (ic<0) continue; // <-- this shouldn't be needed; should never have an ic<0
   cout << "Unblanking cells!" << endl;
     // Find the next-lowest index
     int ind = eleMap[ic];
-    if (ind>=0) FatalError("Should not have marked a non-hole cell for un-blanking!");
+    if (ind>=0) FatalError("Should not have marked a non-hole cell for un-blanking! Is eleMap wrong?");
     int j = 0;
     while (ind < 0) {
       ind = eleMap[ic-j];
@@ -672,19 +476,15 @@ void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr
       if (eleMap[k]>=0)
         eleMap[k]++;
   }
+}
 
+void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,
+                      set<int> &ubIFaces, set<int> &ubMFaces, set<int> &ubOFaces)
+{
   /* --- Create Newly-Unblanked Faces Corresponding to Unblanked Eles --- */
 
-  set<int> unblankMFaces;
-  set<int> ubFacesTmp;
-  for (auto &ff:unblankFaces) {
+  for (auto &ff:ubIFaces) {
     if (ff<0) continue;
-
-    if (!unblankCells.count(f2c(ff,0)) && !unblankCells.count(f2c(ff,1))) {
-      // Face does not yet need to be unblanked
-      ubFacesTmp.insert(ff);
-      continue;
-    }
 
     if (faceType[ff] == INTERNAL)
     {
@@ -777,79 +577,69 @@ void geo::setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr
           faceMap[faces[i]->ID] = i;
       }
     }
-#ifndef _NO_MPI
-    else if (faceType[ff] == MPI_FACE)
-    {
-      cout << "Unblanking mpi face!" << endl;
-      int ind = std::distance(mpiFaces.begin(), std::find(mpiFaces.begin(),mpiFaces.end(),ff));
-
-      shared_ptr<mpiFace> mface = make_shared<mpiFace>();
-
-      int ic = f2c(ff,0);
-      // Find local face ID of global face within element
-      int fid1;
-      vector<int> cellFaces;
-      if (nDims == 2) {
-        cellFaces.assign(c2f[ic],c2f[ic]+c2nf[ic]);
-        fid1 = findFirst(cellFaces,ff);
-      } else {
-        fid1 = mpiLocF[ind];
-      }
-
-      if (f2c(ff,1) != -1) {
-        FatalError("MPI face has a right element assigned.");
-      } else {
-        int relRot = 0;
-        if (nDims == 3) {
-          // Find the relative orientation (rotation) between left & right faces
-          relRot = compareOrientationMPI(ic,fid1,gIC_R[ind],mpiLocF_R[ind],mpiPeriodic[ind]);
-        }
-        struct faceInfo info;
-        info.IDR = faceID_R[ind];
-        info.relRot = relRot;
-        info.procL = gridRank;
-        info.procR = procR[ind];
-        info.isMPI = 1;
-        info.gridComm = gridComm;  // Note that this is equivalent to MPI_COMM_WORLD if non-overset (ngrids = 1)
-        ic = eleMap[ic];
-        if (ic<0) FatalError("Unblanking an MPI face, but ele remains blanked!");
-        shared_ptr<ele> nullEle;
-        mface->initialize(eles[ic],nullEle,ff,fid1,info,params);
-        mface->setupFace();
-        unblankMFaces.insert(ff);
-      }
-      // Find the next-lowest index for insertion into vector
-      ind = 0;
-      for (int f2=ff-1; f2>=0; f2--) {
-        ind = faceMap[f2];
-        if ( ind>0 && (faceType[f2] == MPI_FACE) && mFaces[ind]->ID < ff) {
-          ind++;
-          break;
-        }
-      }
-      ind = max(ind,0);
-      mFaces.insert(mFaces.begin()+ind,1,mface);
-      faceMap[ff] = ind;
-      for (int i=ind+1; i<mFaces.size(); i++)
-        faceMap[mFaces[i]->ID] = i;
-    }
-#endif
   }
 
-  unblankFaces.clear();
-  unblankFaces = ubFacesTmp;
+#ifndef _NO_MPI
+  for (auto &ff:ubMFaces) {
+    cout << "Unblanking mpi face!" << endl;
+    int ind = std::distance(mpiFaces.begin(), std::find(mpiFaces.begin(),mpiFaces.end(),ff));
+
+    shared_ptr<mpiFace> mface = make_shared<mpiFace>();
+
+    int ic = f2c(ff,0);
+    // Find local face ID of global face within element
+    int fid1;
+    vector<int> cellFaces;
+    if (nDims == 2) {
+      cellFaces.assign(c2f[ic],c2f[ic]+c2nf[ic]);
+      fid1 = findFirst(cellFaces,ff);
+    } else {
+      fid1 = mpiLocF[ind];
+    }
+
+    if (f2c(ff,1) != -1) {
+      FatalError("MPI face has a right element assigned.");
+    } else {
+      int relRot = 0;
+      if (nDims == 3) {
+        // Find the relative orientation (rotation) between left & right faces
+        relRot = compareOrientationMPI(ic,fid1,gIC_R[ind],mpiLocF_R[ind],mpiPeriodic[ind]);
+      }
+      struct faceInfo info;
+      info.IDR = faceID_R[ind];
+      info.relRot = relRot;
+      info.procL = gridRank;
+      info.procR = procR[ind];
+      info.isMPI = 1;
+      info.gridComm = gridComm;  // Note that this is equivalent to MPI_COMM_WORLD if non-overset (ngrids = 1)
+      ic = eleMap[ic];
+      if (ic<0) FatalError("Unblanking an MPI face, but ele remains blanked!");
+      shared_ptr<ele> nullEle;
+      mface->initialize(eles[ic],nullEle,ff,fid1,info,params);
+      mface->setupFace();
+      ubMFaces.insert(ff);
+    }
+    // Find the next-lowest index for insertion into vector
+    ind = 0;
+    for (int f2=ff-1; f2>=0; f2--) {
+      ind = faceMap[f2];
+      if ( ind>0 && (faceType[f2] == MPI_FACE) && mFaces[ind]->ID < ff) {
+        ind++;
+        break;
+      }
+    }
+    ind = max(ind,0);
+    mFaces.insert(mFaces.begin()+ind,1,mface);
+    faceMap[ff] = ind;
+    for (int i=ind+1; i<mFaces.size(); i++)
+      faceMap[mFaces[i]->ID] = i;
+  }
+#endif
 
   /* --- Setup Newly-Unblanked Overset Faces --- */
 
-  set<int> ubOFacesTmp;
-  for (auto &ff:unblankOFaces) {
+  for (auto &ff:ubOFaces) {
     if (ff<0) continue;
-
-    if (!unblankCells.count(f2c(ff,0)) && !unblankCells.count(f2c(ff,1))) {
-      // Face does not yet need to be unblanked
-      ubOFacesTmp.insert(ff);
-      continue;
-    }
 
 cout << "Unblanking OFaces!" << endl;
     shared_ptr<overFace> oface = make_shared<overFace>();
@@ -859,8 +649,9 @@ cout << "Unblanking OFaces!" << endl;
       if (f2c(ff,1) == -1 || iblankCell[f2c(ff,1)] == HOLE) {
         // This happens when a fringe face is ALSO an MPI-boundary face
         // Since the other processor has the non-blanked cell, just ignore the face here
-        //ff = -1; // to remove from vector later
-        continue;
+        // But, this should never happen during unblanking... right?
+        //continue;
+        FatalError("Something went wrong in determining MPI/Overset face unblanking.");
       }
       ic = f2c(ff,1);
     }
@@ -890,7 +681,65 @@ cout << "Unblanking OFaces!" << endl;
 
   // Finish the setup of all unblanked MPI faces (need L/R ranks to be ready)
   for (auto &mface:mFaces) {
-    if (unblankMFaces.count(mface->ID))
+    if (ubMFaces.count(mface->ID))
       mface->finishRightSetup();
+  }
+}
+
+void geo::removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,
+                      set<int> &blankIFaces, set<int> &blankMFaces, set<int> &blankOFaces)
+{
+  // NOTE: faceType refers to the original face type as read from mesh file
+  //       (Before overset connectivity processing)
+
+  for (auto &ff:blankIFaces) {
+    if (ff<0) continue;
+cout << "Blanking Faces!" << endl;
+    int ind = faceMap[ff];
+    int fType = faceType[ff];
+
+    if (fType == INTERNAL || fType == BOUNDARY) {
+      faces.erase(faces.begin()+ind,faces.begin()+ind+1);
+
+      faceMap[ff] = -1;
+      for (int f2=ff+1; f2<nFaces; f2++) {
+        if (!fringeFaces.count(f2) && (faceType[f2] == INTERNAL || faceType[f2] == BOUNDARY)) {
+          faceMap[f2]--;
+        }
+      }
+
+      if (fType == INTERNAL)
+        nIntFaces--;
+      else
+        nBndFaces--;
+    }
+    else if (fType == MPI_FACE) {
+      mFaces.erase(mFaces.begin()+ind,mFaces.begin()+ind+1);
+
+      faceMap[ff] = -1;
+      for (int f2=ff+1; f2<nFaces; f2++) {
+        if (!fringeFaces.count(f2) && faceType[f2] == fType) {
+          faceMap[f2]--;
+        }
+      }
+    }
+    else {
+      FatalError("Face does not have a proper type assigned!");
+    }
+  }
+
+  for (auto &ff:blankOFaces) {
+    if (ff<0) continue;
+    int ind = faceMap[ff];
+    if (ind<0) continue;
+  cout << "Blanking OFaces!" << endl;
+    oFaces.erase(oFaces.begin()+ind,oFaces.begin()+ind+1);
+
+    // Update the map
+    faceMap[ff] = -1;
+    for (auto &f2:fringeFaces) {
+      if (f2 > ff)
+        faceMap[f2]--;
+    }
   }
 }

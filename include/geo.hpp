@@ -104,6 +104,20 @@ public:
   //! Setup cells and faces which were tagged for un-blanking
   void setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
 
+  //! Create and insert elements into the eles vector
+  void insertEles(vector<shared_ptr<ele>> &eles, set<int> &uEles);
+
+  //! Create and insert faces into the face vectors
+  void insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,
+                   set<int> &ubIFaces, set<int> &ubMFaces, set<int> &ubOFaces);
+
+  //! Remove elements from the eles vector
+  void removeEles(vector<shared_ptr<ele>> &eles, set<int> &blankEles);
+
+  //! Remove faces from the face vectors
+  void removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,
+                      set<int> &blankIFaces, set<int> &blankMFaces, set<int> &blankOFaces);
+
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces, nOverFaces;
   int nBounds;  //! Number of boundaries
@@ -213,6 +227,7 @@ private:
 
   //! Using Tioga's nodal iblanks, set iblank values for all cells and faces
   void setCellFaceIblanks();
+  void setCellIblanks();
 
   //! For 2D overset cases: pre-process node types
   void setNodeTypes2D(void);

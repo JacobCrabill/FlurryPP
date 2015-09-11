@@ -482,14 +482,17 @@ void solver::moveMesh(int step)
   if (!params->motion) return;
 
   if (params->meshType == OVERSET_MESH) {
-//    if (step==0) {
-//      /* -- Take care of unblanks needed for next time step -- */
-//      Geo->moveMesh(1.);
+    /* -- Remove blanks tagged during previous iteration and
+     *    find new blanks/unblanks -- */
+    if (step==0) {
+      Geo->removeBlanks(eles,faces,mpiFaces,overFaces);
 
-//      for (auto &e:eles) e->move(false);
+      Geo->moveMesh(1.);
 
-//      updateOversetConnectivity(true);
-//    }
+      for (auto &e:eles) e->move(false);
+
+      Geo->updateBlanking();
+    }
 
     /* -- Set the geometry to the current RK-stage time -- */
 
@@ -497,7 +500,16 @@ void solver::moveMesh(int step)
 
     for (auto &e:eles) e->move(true);
 
-    updateOversetConnectivity(false);
+    Geo->updateADT();
+
+    /* -- Setup unblanks needed for this time step -- */
+    if (step==0)
+      Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
+
+    if (params->nDims==3)
+      OComm->matchOversetPoints(eles,overFaces,Geo->eleMap);
+    else
+      OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
 
   } else {
 
