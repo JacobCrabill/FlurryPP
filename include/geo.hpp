@@ -80,29 +80,23 @@ public:
    * Called once during pre-processing by default; re-call each iteration
    * for moving-mesh cases
    */
-  void updateOversetConnectivity();
-
-  //! TIOGA doesn't support 2D, so use my own routines for blanking
-  void updateOversetConnectivity2D(void);
-
-  //! Have TIOGA output the mesh along with nodal IBLANK values
-  void writeOversetConnectivity();
+  void updateADT();
 
   /* ---- My Overset Functions ---- */
-
-  //! Setup the 'connectivity' between the overset interpolation points & donor grids/cells
-  void matchOversetPoints(vector<shared_ptr<ele>> &eles, struct dataExchange& exchange);
 
   //! Send / Receive interpolated data to proper grid and rank
   void exchangeOversetData(struct dataExchange &exchange);
 
   void matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &donors);
 
+  //! Update nodal and cell iblank values using current mesh
+  void updateBlanking(void);
+
   //! Remove cells and faces which were tagged for blanking
-  void removeBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
+  void processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
 
   //! Setup cells and faces which were tagged for un-blanking
-  void setupUnblankElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
+  void processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
 
   //! Create and insert elements into the eles vector
   void insertEles(vector<shared_ptr<ele>> &eles, set<int> &uEles);
@@ -190,11 +184,7 @@ public:
   set<int> holeFaces;     //! List of faces in mesh which are currently blanked
   set<int> fringeFaces;   //! List of faces in mesh which are currently fringe faces
   set<int> unblankCells;  //! List of non-existing cells which, due to motion, must be un-blanked
-  set<int> unblankFaces;  //! List of non-existing faces which, due to motion, must be un-blanked
-  set<int> unblankOFaces; //! List of non-existing faces which, due to motion, must be un-blanked as overset faces
   set<int> blankCells;    //! List of existing cells which, due to motion, must be blanked
-  set<int> blankFaces;    //! List of existing faces which, due to motion, must be blanked
-  set<int> blankOFaces;   //! List of existing overset faces which, due to motion, must be blanked
 
 #ifndef _NO_MPI
   shared_ptr<overComm> OComm;

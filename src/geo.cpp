@@ -110,19 +110,14 @@ void geo::processConnectivity()
     if (nDims == 3) {
       registerGridDataTIOGA();
 
-      updateOversetConnectivity();
+      updateBlanking();
     } else {
       setupOverset2D();
     }
 
     // Since this is initial pre-processing, clear blank/unblanks
     blankCells.clear();
-    blankOFaces.clear();
-    blankFaces.clear();
-
     unblankCells.clear();
-    unblankOFaces.clear();
-    unblankFaces.clear();
   }
 
   /* --- Setup MPI Processor Boundary Faces --- */

@@ -35,3 +35,6 @@ vector<double> getQptWeights1D(int order);
 
 //! Get quadrature rule (points & weights) for a tetrahedron for a given order
 void getQuadRuleTet(int order, vector<point> &locQpts, vector<double> &weights);
+
+//! Get quadrature rule (points & weights) for a triangle for a given order
+void getQuadRuleTri(int order, vector<point> &locQpts, vector<double> &weights);

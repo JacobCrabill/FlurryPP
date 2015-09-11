@@ -847,3 +847,8 @@ void getQuadRuleTet(int order, vector<point> &locQpts, vector<double> &weights)
     }
   }
 }
+
+void getQuadRuleTri(int order, vector<point> &locQpts, vector<double> &weights)
+{
+  // TODO
+}

@@ -204,7 +204,10 @@ double superMesh::integrate(vector<double> &data)
 
 void superMesh::setupQuadrature(void)
 {
-  getQuadRuleTet(order, qpts, weights);
+  if (nDims==2)
+    getQuadRuleTri(order, qpts, weights);
+  else
+    getQuadRuleTet(order, qpts, weights);
 
   nQpts_simp = qpts.size();
   nQpts = nQpts_simp*nSimps;
@@ -429,13 +432,97 @@ vector<tetra> clipTet(tetra &tet, const vector<point> &clipFace, Vec3 &norm)
 }
 
 
-vector<triangle> clipTri(triangle &tri, const vector<point> &clipFace, Vec3 &norm)
+vector<triangle> clipTri(triangle &tri, const vector<point> &clipEdge, Vec3 &norm)
 {
-  // TODO
+  /* --- WARNING: Assuming a linear edge --- */
+
+  vector<triangle> outTris;
+
+  // Get face centroid
+  point xc = clipEdge[0];
+  xc += clipEdge[1];
+  xc /= 2.;
+
+  set<int> deadPts;
+  for (int i=0; i<3; i++) {
+    // Check each point of triangle to see which must be removed
+    Vec3 dx = tri.nodes[i] - xc;
+    double dot = dx*norm;
+    if (dot > 0) // Point lies on cut-side of clipping plane
+      deadPts.insert(i);
+  }
+
+  /*
+   * Perform the clipping and subdivide the new volume into new tris
+   */
+  switch (deadPts.size()) {
+    case 0: {
+      // No intersection.
+      outTris.push_back(tri);
+    }
+    case 1: {
+      // Removing one corner of tri
+      int kill = *(deadPts.begin());  // The point to remove
+
+      // Get the points being kept; map to a 'standard' triangle
+      map<int,array<int,2>> flipTri;
+      flipTri[0] = {{1,2}};  flipTri[1] = {{2,0}}; flipTri[2] = {{0,1}};
+      array<int,2> ePts = flipTri[kill];
+
+      // Find the cutting-plane intersection points
+      Vec3 ab = tri.nodes[ePts[0]] - tri.nodes[kill];
+      Vec3 ac = xc - tri.nodes[kill];
+      point newPt1 = ab*(norm*ac)/(norm*ab) + tri.nodes[kill];
+
+      ab = tri.nodes[ePts[1]] - tri.nodes[kill];
+      point newPt2 = ab*(norm*ac)/(norm*ab) + tri.nodes[kill];
+
+      outTris.resize(2);
+      outTris[0].nodes = {{tri.nodes[ePts[0]],tri.nodes[ePts[0]],newPt1}};
+      outTris[1].nodes = {{tri.nodes[ePts[1]],newPt2,newPt1}};
+      break;
+    }
+    case 2: {
+      // Keeping one corner of tri
+      int keep = -1;
+      for (int i=0; i<3; i++) {
+        if (!deadPts.count(i)) {
+          keep = i;
+          break;
+        }
+      }
+
+      map<int,array<int,2>> flipTri;
+      flipTri[0] = {{1,2}};  flipTri[1] = {{2,0}}; flipTri[2] = {{0,1}};
+      array<int,2> ePts = flipTri[keep];
+
+      // Setup outgoing tri; node 2 is the 'kept' node
+      // Find the intersection points
+      outTris.resize(1);
+      outTris[0].nodes[2] = tri.nodes[keep];
+      for (int i=0; i<2; i++) {
+        Vec3 ab = tri.nodes[ePts[i]] - tri.nodes[keep];
+        Vec3 ac = xc - tri.nodes[keep];
+        outTris[0].nodes[i] = ab*((norm*ac)/(norm*ab)) + tri.nodes[keep];
+      }
+      break;
+    }
+    case 3: {
+      // Entire tri is beyond clipping face
+      break;
+    }
+  }
+
+  return outTris;
 }
 
 
 vector<triangle> splitQuadIntoTris(const vector<point> &quadNodes)
 {
-  // TODO
+  vector<triangle> newTris(2);
+
+  newTris[0].nodes = {{quadNodes[0],quadNodes[1],quadNodes[3]}};
+  newTris[1].nodes = {{quadNodes[1],quadNodes[2],quadNodes[3]}};
+
+  return newTris;
 }

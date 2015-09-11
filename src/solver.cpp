@@ -485,7 +485,7 @@ void solver::moveMesh(int step)
     /* -- Remove blanks tagged during previous iteration and
      *    find new blanks/unblanks -- */
     if (step==0) {
-      Geo->removeBlanks(eles,faces,mpiFaces,overFaces);
+      Geo->processBlanks(eles,faces,mpiFaces,overFaces);
 
       Geo->moveMesh(1.);
 

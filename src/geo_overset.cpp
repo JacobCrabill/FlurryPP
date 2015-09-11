@@ -231,6 +231,7 @@ void geo::setNodeTypes2D(void)
 
 void geo::updateADT(void)
 {
+#ifndef _NO_MPI
   if (nDims == 3) {
     // Pre-process the grids
     tg->profile();
@@ -238,21 +239,20 @@ void geo::updateADT(void)
     // Have TIOGA perform the nodal overset connectivity (set nodal iblanks)
     tg->performConnectivity();
   }
+#endif
 }
 
-void geo::updateOversetConnectivity(void)
+void geo::updateBlanking(void)
 {
-#ifndef _NO_MPI
-  if (nDims == 3) {
-    updateADT();
-  } else {
-    // Set nodal iblanks based upon hole cutting
+  updateADT();
+
+  if (nDims == 2) {
+    // TIOGA only for 3D, so use my own 2D hole-cutting implementation
     OComm->setIblanks2D(xv,overFaceNodes,wallFaceNodes,iblank);
   }
 
   // Now use new nodal iblanks to set cell and face iblanks
   setCellIblanks();
-#endif
 }
 
 void geo::setCellIblanks(void)
@@ -316,7 +316,71 @@ void geo::matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &d
 
 void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
 {
+#ifndef _NO_MPI
+  /* --- Set blank/unblank faces for all elements to be blanked --- */
 
+  set<int> blankIFaces, blankMFaces, blankOFaces, ubOFaces;
+  for (auto &ic:blankCells) {
+    for (int j=0; j<c2nf[ic]; j++) {
+      if (c2c(ic,j)>0) {
+        if (iblankCell[c2c(ic,j)]==NORMAL || blankCells.count(c2c(ic,j)))
+          blankIFaces.insert(c2f(ic,j));
+        else
+          blankOFaces.insert(c2f(ic,j));
+      } else {
+        // Boundary or MPI face
+        if (findFirst(overFaces,c2f(ic,j))>0)
+          blankOFaces.insert(c2f(ic,j));
+        else if (findFirst(mpiFaces,c2f(ic,j))>0)
+          blankMFaces.insert(c2f(ic,j));
+      }
+    }
+  }
+
+  // Figure out whether any other MPI faces must be replaced with overset faces
+  vector<int> blankMpi;
+  for (auto &ff:blankMFaces) blankMpi.push_back(ff);
+
+  int nblankMpi = blankMpi.size();
+  vector<int> nblankMpi_rank(nProcGrid);
+  MPI_Allgather(&nblankMpi,1,MPI_INT,nblankMpi_rank.data(),1,MPI_INT,gridComm);
+
+  int sum = 0;
+  vector<int> recvCnts(nProcGrid);
+  vector<int> recvDisp(nProcGrid);
+  for (int i=0; i<nProcGrid; i++) {
+    recvCnts[i] = nblankMpi_rank[i];
+    if (i>0)
+      recvDisp[i] = recvDisp[i-1]+recvCnts[i-1];
+    sum += recvCnts[i];
+  }
+  vector<int> blankMpi_rank(sum);
+  MPI_Allgatherv(blankMpi.data(),blankMpi.size(),MPI_INT,blankMpi_rank.data(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
+
+  for (int F=0; F<nMpiFaces; F++) {
+    int ff = mpiFaces[F];
+    int p = procR[F];
+    int f2 = faceID_R[F];
+
+    bool isBlanked = false;
+    for (int j=0; j<recvCnts[p]; j++) {
+      if (blankMpi_rank[recvDisp[p]+j]==f2) {
+        isBlanked = true;
+        break;
+      }
+    }
+
+    // If MPI face is blanked on other side but not this one, must replace with an overFace
+    if (isBlanked && !blankMFaces.count(ff))
+      ubOFaces.insert(ff);
+  }
+
+  set<int> ubIFaces, ubMFaces;
+
+  removeEles(eles,blankCells);
+  removeFaces(faces,mFaces,oFaces,blankIFaces,blankMFaces,blankOFaces);
+  insertFaces(eles,faces,mFaces,oFaces,ubIFaces,ubMFaces,ubOFaces);
+#endif
 }
 
 void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
@@ -329,13 +393,14 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
       if (c2c(ic,j)>0) {
         if (iblankCell[c2c(ic,j)]==NORMAL || unblankCells.count(c2c(ic,j)))
           ubIntFaces.insert(c2f(ic,j));
-      }
-      else {
+        else
+          ubOFaces.insert(c2f(ic,j));
+      } else {
         // Boundary or MPI face
         if (faceType[c2f(ic,j)]==MPI_FACE)
           ubMpiFaces.insert(c2f(ic,j));
         else
-          ubOFaces.insert(c2f(ic,j));
+          ubIntFaces.insert(c2f(ic,j));
       }
     }
   }
@@ -384,6 +449,8 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
   // Now, figure out what faces must be removed due to being replaced by other type
   // For cell unblanking, the only possibility for face blanking is overset faces
 
+  set<int> blankIFaces, blankMFaces, blankOFaces;
+
   for (auto &ff:ubIntFaces)
     if (findFirst(overFaces,ff) != -1)
       blankOFaces.insert(ff);
@@ -391,8 +458,6 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
   for (auto &ff:ubMpiFaces)
     if (findFirst(overFaces,ff) != -1)
       blankOFaces.insert(ff);
-
-  set<int> blankIFaces, blankMFaces;
 
   insertEles(eles,unblankCells);
   insertFaces(eles,faces,mFaces,oFaces,ubIntFaces,ubMpiFaces,ubOFaces);
@@ -536,7 +601,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
 
       if (bcType[ind] == OVERSET) {
         // Boundary face is actually an overset-boundary face
-        unblankOFaces.insert(ff);
+        ubOFaces.insert(ff);
       }
       else {
         // Just a normal boundary face
@@ -640,7 +705,6 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
 
   for (auto &ff:ubOFaces) {
     if (ff<0) continue;
-
 cout << "Unblanking OFaces!" << endl;
     shared_ptr<overFace> oface = make_shared<overFace>();
 
@@ -677,13 +741,21 @@ cout << "Unblanking OFaces!" << endl;
     faceMap[ff] = ind;
     for (int i=ind+1; i<oFaces.size(); i++)
       faceMap[oFaces[i]->ID] = i;
+
+    // Add this face to list of overFaces (while keeping list sorted)
+    auto it = std::find_if(overFaces.begin(),overFaces.end(), [=](int fid){return fid>=ff;} );
+    if (it!=overFaces.end()) {
+      if (*it!=ff)
+        overFaces.insert(it,1,ff);
+    } else {
+      overFaces.push_back(ff);
+    }
   }
 
   // Finish the setup of all unblanked MPI faces (need L/R ranks to be ready)
-  for (auto &mface:mFaces) {
+  for (auto &mface:mFaces)
     if (ubMFaces.count(mface->ID))
       mface->finishRightSetup();
-  }
 }
 
 void geo::removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,
@@ -741,5 +813,7 @@ cout << "Blanking Faces!" << endl;
       if (f2 > ff)
         faceMap[f2]--;
     }
+
+    overFaces.erase(std::remove(overFaces.begin(), overFaces.end(), ff), overFaces.end());
   }
 }
