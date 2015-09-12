@@ -828,7 +828,7 @@ void getQuadRuleTet(int order, vector<point> &locQpts, vector<double> &weights)
       locQpts[6].x = loc1; locQpts[6].y = loc2; locQpts[6].z = loc1;
       locQpts[7].x = loc1; locQpts[7].y = loc1; locQpts[7].z = loc2;
       loc1 = .0455037041256497;
-      loc1 = 1-0.5*loc1;
+      loc2 = 1-0.5*loc1;
       locQpts[8].x  = loc1; locQpts[8].y  = loc1; locQpts[8].z = loc2;
       locQpts[9].x  = loc1; locQpts[9].y  = loc1; locQpts[9].z = loc1;
       locQpts[10].x = loc1; locQpts[10].y = loc2; locQpts[10].z = loc2;
@@ -850,5 +850,229 @@ void getQuadRuleTet(int order, vector<point> &locQpts, vector<double> &weights)
 
 void getQuadRuleTri(int order, vector<point> &locQpts, vector<double> &weights)
 {
-  // TODO
+  /* Linbo Zhang, Tau Cui and Hui Liu, "A Set of Symmetric Quadrature Rules on
+   * Triangles and Tetrahedra." J. Comp. Math., 2009.
+   * See also lsec.cc.ac.cn/phg to obtain source files containing explicit
+   * quadrature rules. */
+  switch(order) {
+    case 1: {
+      locQpts = {point({1./3.,1./3.,0.})};
+      weights = {1.};
+      break;
+    }
+    case 2: {
+      locQpts.resize(3);
+      locQpts[0] = point({2./3.,1./3.,0});
+      locQpts[1] = point({1./3.,2./3.,0});
+      locQpts[2] = point({1./3.,1./3.,0});
+      weights = {1./3.,1./3.,1./3.};
+      break;
+    }
+    case 3: {
+      locQpts.resize(6);
+      double loc1 = .1628828503958919;
+      double loc2 = 1-2.*loc1;
+      locQpts[0] = point({loc2, loc1, 0.});
+      locQpts[1] = point({loc1, loc2, 0.});
+      locQpts[2] = point({loc1, loc1, 0.});
+      loc1 = .4779198835675637;
+      loc2 = 1-2.*loc1;
+      locQpts[3] = point({loc2, loc1, 0.});
+      locQpts[4] = point({loc1, loc2, 0.});
+      locQpts[5] = point({loc1, loc1, 0.});
+      double wt1 = .2811498024409796;
+      double wt2 = .0521835308923537;
+      weights = {wt1,wt1,wt1,wt2,wt2,wt2};
+      break;
+    }
+    case 4: {
+      locQpts.resize(6);
+      double loc1 = .4459484909159649; // = (8-sqrt(10)+sqrt(38-44*sqrt(2/5))) / 18
+      double loc2 = 1-2.*loc1;
+      locQpts[0] = point({loc2, loc1, 0.});
+      locQpts[1] = point({loc1, loc2, 0.});
+      locQpts[2] = point({loc1, loc1, 0.});
+      loc1 = .0915762135097707;        // = (8-sqrt(10)-sqrt(38-44*sqrt(2/5))) / 18
+      loc2 = 1-2.*loc1;
+      locQpts[3] = point({loc2, loc1, 0.});
+      locQpts[4] = point({loc1, loc2, 0.});
+      locQpts[5] = point({loc1, loc1, 0.});
+      double wt1 = .2233815896780115; // = (620 + sqrt(213125 - 53320 * sqrt(10))) / 3720
+      double wt2 = .1099517436553219; // = (620 - sqrt(213125 - 53320 * sqrt(10))) / 3720
+      weights = {wt1,wt1,wt1,wt2,wt2,wt2};
+      break;
+    }
+    case 5: {
+      locQpts.resize(7);
+      double loc1 = .1012865073234563;
+      double loc2 = 1-2.*loc1;
+      locQpts[0] = point({loc2, loc1, 0.});
+      locQpts[1] = point({loc1, loc2, 0.});
+      locQpts[2] = point({loc1, loc1, 0.});
+      loc1 = .4701420641051151;
+      loc2 = 1-2.*loc1;
+      locQpts[3] = point({loc2, loc1, 0.});
+      locQpts[4] = point({loc1, loc2, 0.});
+      locQpts[5] = point({loc1, loc1, 0.});
+      loc1 = 1./3.;
+      locQpts[6] = point({loc1, loc1, 0.});
+      double wt1 = .1259391805448272; // = (155 - sqrt(15)) / 1200
+      double wt2 = .1323941527885062; // = (155 + sqrt(15)) / 1200
+      double wt3 = 9./40.;
+      weights = {wt1,wt1,wt1,wt2,wt2,wt2,wt3};
+      break;
+    }
+    case 6: {
+      locQpts.resize(12);
+      double loc1 = .0630890144915022;
+      double loc2 = 1-2.*loc1;
+      locQpts[0] = point({loc2, loc1, 0.});
+      locQpts[1] = point({loc1, loc2, 0.});
+      locQpts[2] = point({loc1, loc1, 0.});
+      loc1 = .2492867451709104;
+      loc2 = 1-2.*loc1;
+      locQpts[3] = point({loc2, loc1, 0.});
+      locQpts[4] = point({loc1, loc2, 0.});
+      locQpts[5] = point({loc1, loc1, 0.});
+      loc1 = .0531450498448169;
+      loc2 = .3103524510337844;
+      double loc3 = 1-loc1-loc2;
+      locQpts[6]  = point({loc1, loc2, 0.});
+      locQpts[7]  = point({loc1, loc3, 0.});
+      locQpts[8]  = point({loc2, loc1, 0.});
+      locQpts[9]  = point({loc2, loc3, 0.});
+      locQpts[10] = point({loc3, loc1, 0.});
+      locQpts[11] = point({loc3, loc2, 0.});
+      double wt1 = .0508449063702068;
+      double wt2 = .1167862757263794;
+      double wt3 = .0828510756183736;
+      weights = {wt1,wt1,wt1,wt2,wt2,wt2,wt3,wt3,wt3,wt3,wt3,wt3};
+      break;
+    }
+    case 7: {
+      locQpts.resize(15);
+      double loc1 = .0282639241560763;
+      double loc2 = 1-2.*loc1;
+      locQpts[0] = point({loc2, loc1, 0.});
+      locQpts[1] = point({loc1, loc2, 0.});
+      locQpts[2] = point({loc1, loc1, 0.});
+      loc1 = .4743113232672226;
+      loc2 = 1-2.*loc1;
+      locQpts[3] = point({loc2, loc1, 0.});
+      locQpts[4] = point({loc1, loc2, 0.});
+      locQpts[5] = point({loc1, loc1, 0.});
+      loc1 = .2411433258498488;
+      loc2 = 1-2.*loc1;
+      locQpts[6] = point({loc2, loc1, 0.});
+      locQpts[7] = point({loc1, loc2, 0.});
+      locQpts[8] = point({loc1, loc1, 0.});
+      loc1 = .7612227480245238;
+      loc2 = .0462708777988089;
+      double loc3 = 1-loc1-loc2;
+      locQpts[9]  = point({loc1, loc2, 0.});
+      locQpts[10] = point({loc1, loc3, 0.});
+      locQpts[11] = point({loc2, loc1, 0.});
+      locQpts[12] = point({loc2, loc3, 0.});
+      locQpts[13] = point({loc3, loc1, 0.});
+      locQpts[14] = point({loc3, loc2, 0.});
+      double wt1 = .0135338625156656;
+      double wt2 = .0789512544320110;
+      double wt3 = .1286079278189061;
+      double wt4 = .0561201442833754;
+      weights = {wt1,wt1,wt1,wt2,wt2,wt2,wt3,wt3,wt3,wt4,wt4,wt4,wt4,wt4,wt4};
+      break;
+    }
+    case 8: {
+      locQpts.resize(16);
+      locQpts[0] = point({1./3., 1./3., 0.});
+      double loc1 = .1705693077517602;
+      double loc2 = 1-2.*loc1;
+      locQpts[1] = point({loc2, loc1, 0.});
+      locQpts[2] = point({loc1, loc2, 0.});
+      locQpts[3] = point({loc1, loc1, 0.});
+      loc1 = .0505472283170310;
+      loc2 = 1-2.*loc1;
+      locQpts[4] = point({loc2, loc1, 0.});
+      locQpts[5] = point({loc1, loc2, 0.});
+      locQpts[6] = point({loc1, loc1, 0.});
+      loc1 = .4592925882927232;
+      loc2 = 1-2.*loc1;
+      locQpts[7] = point({loc2, loc1, 0.});
+      locQpts[8] = point({loc1, loc2, 0.});
+      locQpts[9] = point({loc1, loc1, 0.});
+      loc1 = .2631128296346381;
+      loc2 = .00839477740995761;
+      double loc3 = 1-loc1-loc2;
+      locQpts[10] = point({loc1, loc2, 0.});
+      locQpts[11] = point({loc1, loc3, 0.});
+      locQpts[12] = point({loc2, loc1, 0.});
+      locQpts[13] = point({loc2, loc3, 0.});
+      locQpts[14] = point({loc3, loc1, 0.});
+      locQpts[15] = point({loc3, loc2, 0.});
+      double wt0 = .1443156076777872;
+      double wt1 = .1032173705347183;
+      double wt2 = .0324584976231981;
+      double wt3 = .0950916342672846;
+      double wt4 = .0272303141744350;
+      weights = {wt0,wt1,wt1,wt1,wt2,wt2,wt2,wt3,wt3,wt3,wt4,wt4,wt4,wt4,wt4,wt4};
+      break;
+    }
+    case 10: {
+      locQpts.resize(25);
+      locQpts[0] = point({1./3., 1./3., 0.});
+      double loc1 = .4272731788467755;
+      double loc2 = 1-2.*loc1;
+      locQpts[1] = point({loc2, loc1, 0.});
+      locQpts[2] = point({loc1, loc2, 0.});
+      locQpts[3] = point({loc1, loc1, 0.});
+      loc1 = .1830992224486750;
+      loc2 = 1-2.*loc1;
+      locQpts[4] = point({loc2, loc1, 0.});
+      locQpts[5] = point({loc1, loc2, 0.});
+      locQpts[6] = point({loc1, loc1, 0.});
+      loc1 = .4904340197011306;
+      loc2 = 1-2.*loc1;
+      locQpts[7] = point({loc2, loc1, 0.});
+      locQpts[8] = point({loc1, loc2, 0.});
+      locQpts[9] = point({loc1, loc1, 0.});
+      loc1 = .0125724455515805;
+      loc2 = 1-2.*loc1;
+      locQpts[10] = point({loc2, loc1, 0.});
+      locQpts[11] = point({loc1, loc2, 0.});
+      locQpts[12] = point({loc1, loc1, 0.});
+      loc1 = .65426866792006614;
+      loc2 = .30804600168524770;
+      double loc3 = 1-loc1-loc2;
+      locQpts[13] = point({loc1, loc2, 0.});
+      locQpts[14] = point({loc1, loc3, 0.});
+      locQpts[15] = point({loc2, loc1, 0.});
+      locQpts[16] = point({loc2, loc3, 0.});
+      locQpts[17] = point({loc3, loc1, 0.});
+      locQpts[18] = point({loc3, loc2, 0.});
+      loc1 = .12280457706855927;
+      loc2 = .03337183373930477;
+      loc3 = 1-loc1-loc2;
+      locQpts[19] = point({loc1, loc2, 0.});
+      locQpts[20] = point({loc1, loc3, 0.});
+      locQpts[21] = point({loc2, loc1, 0.});
+      locQpts[22] = point({loc2, loc3, 0.});
+      locQpts[23] = point({loc3, loc1, 0.});
+      locQpts[24] = point({loc3, loc2, 0.});
+      double wt0 = .08093742879762288;
+      double wt1 = .07729858800296312;
+      double wt2 = .07845763861237173;
+      double wt3 = .01746916799592949;
+      double wt4 = .004292374184832828;
+      double wt5 = .03746885821046764;
+      double wt6 = .02694935259187996;
+      weights = {wt0,wt1,wt1,wt1,wt2,wt2,wt2,wt3,wt3,wt3,wt4,wt4,wt4,
+                     wt5,wt5,wt5,wt5,wt5,wt5,wt6,wt6,wt6,wt6,wt6,wt6};
+      break;
+    }
+    default:  {
+      stringstream ss; ss << order;
+      string errMsg = "Triangle quadrature rules for order " + ss.str() + " not implemented.";
+      FatalError(errMsg.c_str());
+    }
+  }
 }

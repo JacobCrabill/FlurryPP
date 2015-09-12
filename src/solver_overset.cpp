@@ -34,7 +34,7 @@ void solver::setupOverset(void)
 
     OComm->tg = Geo->tg;
 
-    OComm->matchOversetPoints(eles,overFaces,Geo->eleMap);
+    OComm->matchOversetPoints3D(eles,overFaces,Geo->eleMap);
   }
   else {
     OComm = Geo->OComm;

@@ -155,7 +155,7 @@ void overComm::setIblanks2D(matrix<double>& xv, matrix<int> &overFaces, matrix<i
   }
 }
 
-void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap)
+void overComm::matchOversetPoints3D(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap)
 {
 #ifndef _NO_MPI
   /* ---- Gather all interpolation point data on each grid ---- */

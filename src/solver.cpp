@@ -507,7 +507,7 @@ void solver::moveMesh(int step)
       Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
 
     if (params->nDims==3)
-      OComm->matchOversetPoints(eles,overFaces,Geo->eleMap);
+      OComm->matchOversetPoints3D(eles,overFaces,Geo->eleMap);
     else
       OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
 

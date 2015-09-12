@@ -125,7 +125,7 @@ public:
    * @param[in] centroid: Centriod of current grid partition
    * @param[in] extents : x,y,z extents (max-min) of current grid partition
    */
-  void matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap);
+  void matchOversetPoints3D(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap);
 
   void matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const point &minPt, const point &maxPt);
 
