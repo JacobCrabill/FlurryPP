@@ -117,6 +117,9 @@ public:
 
   void setIblanks2D(matrix<double> &xv, matrix<int>& overFaces, matrix<int> &wallFaces, vector<int> &iblank);
 
+  //! Find all elements from eles which overlap with target bounding-box
+  set<int> findCellDonors2D(vector<shared_ptr<ele>> &eles, const vector<double> &targetBox);
+
   /*!
    * \brief Match up each overset-face flux point to its donor grid and element
    *

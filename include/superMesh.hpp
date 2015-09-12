@@ -91,6 +91,7 @@ public:
    * with which donor-grid cell they lie within
    */
   void getQpts(vector<point> &qptPos, vector<int> &qptCell);
+  void getQpts(matrix<double> &qptPos, vector<int> &qptCell);
 
   //! Get the quadrature point locations and weights, and find physical positions of all qpts
   void setupQuadrature(void);

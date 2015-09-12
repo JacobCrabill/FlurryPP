@@ -204,10 +204,13 @@ double superMesh::integrate(vector<double> &data)
 
 void superMesh::setupQuadrature(void)
 {
-  if (nDims==2)
+  if (nDims==2) {
     getQuadRuleTri(order, qpts, weights);
-  else
+    for (auto &wt:weights) wt /= 2.; // Area of ref. triangle = 1/2
+  } else {
     getQuadRuleTet(order, qpts, weights);
+    for (auto &wt:weights) wt /= 6.; // Volume of ref. tetrahedron = 1/6
+  }
 
   nQpts_simp = qpts.size();
   nQpts = nQpts_simp*nSimps;
@@ -249,6 +252,18 @@ void superMesh::getQpts(vector<point> &qptPos, vector<int> &qptCell)
   for (int i=0; i<nSimps; i++) {
     for (int j=0; j<nQpts_simp; j++) {
       qptPos.push_back(tets[i].qpts[j]);
+      qptCell.push_back(parents[i]);
+    }
+  }
+}
+
+void superMesh::getQpts(matrix<double> &qptPos, vector<int> &qptCell)
+{
+  qptPos.setup(0,0);
+  qptCell.resize(0);
+  for (int i=0; i<nSimps; i++) {
+    for (int j=0; j<nQpts_simp; j++) {
+      qptPos.insertRow({tets[i].qpts[j].x,tets[i].qpts[j].y,tets[i].qpts[j].z});
       qptCell.push_back(parents[i]);
     }
   }

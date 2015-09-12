@@ -209,6 +209,8 @@ void dshape_hex(const point &in_rst, matrix<double> &out_dshape, int nNodes)
 
 void shape_tri(const point &in_rs, vector<double> &out_shape)
 {
+  // NOTE: Reference triangle is defined in interval [0,1]^2
+
   // For the shape function for a general N-noded triangle, refer
   // to Finite Element Methods by Hughes, p. 166
   out_shape.resize(3); // nNodes
@@ -246,6 +248,8 @@ void shape_tet(const point &in_rs, vector<double> &out_shape)
 
 void shape_tet(const point &in_rs, double* out_shape)
 {
+  // NOTE: Reference tetrahedron is defined in interval [0,1]^3
+
   out_shape[0] = in_rs.x;
   out_shape[1] = in_rs.y;
   out_shape[2] = in_rs.z;

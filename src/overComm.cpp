@@ -155,6 +155,22 @@ void overComm::setIblanks2D(matrix<double>& xv, matrix<int> &overFaces, matrix<i
   }
 }
 
+set<int> overComm::findCellDonors2D(vector<shared_ptr<ele>> &eles, const vector<double> &targetBox)
+{
+  // Find all eles which overlap with targetBox
+  set<int> hitCells;
+  for (auto &e:eles) {
+    auto box = e->getBoundingBox();
+    bool hit = true;
+    for (int dim=0; dim<2; dim++) {
+      hit = hit && (targetBox[dim+3] >= box[dim]);
+      hit = hit && (targetBox[dim] <= box[dim+3]);
+    }
+    if (hit)
+      hitCells.insert(e->ID);
+  }
+}
+
 void overComm::matchOversetPoints3D(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap)
 {
 #ifndef _NO_MPI
@@ -313,13 +329,16 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int> &unblan
 
   nUnblanks = unblankCells.size();
 
-  Array<double,3> ubCellNodes(nUnblanks,8,3);
+  int nDims = params->nDims;
+  int nv = (nDims==2) ? 4 : 8;
+
+  Array<double,3> ubCellNodes(nUnblanks,nv,nDims);
   int i = 0;
   for (auto &ic:unblankCells) {
     int ie = eleMap[ic];
-    // Constraining this to just linear hexahedrons for the time being
-    for (int j=0; j<8; j++) {
-      for (int k=0; k<3; k++) {
+    // Constraining this to just linear hexahedrons/quadrilaterals for the time being
+    for (int j=0; j<nv; j++) {
+      for (int k=0; k<nDims; k++) {
         ubCellNodes(i,j,k) = eles[ie]->nodesRK[j][k];
       }
     }
@@ -328,7 +347,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int> &unblan
 
   /* ---- Gather all cell bounding-box data on each grid ---- */
 
-  int stride = 24;
+  int stride = nv*nDims;
   vector<int> nCells_rank;
   vector<double> ubNodes_rank;
   gatherData(nUnblanks, stride, ubCellNodes.getData(), nCells_rank, ubNodes_rank);
@@ -348,17 +367,21 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int> &unblan
       // Get requested cell's bounding box [min & max extents]
       vector<double> targetBox = {1e15, 1e15, 1e15, -1e15, -1e15, -1e15};
       vector<point> targetNodes;
-      for (int j=0; j<8; j++) {
-        point pt = point(&ubNodes_rank[(offset+i)*stride+3*j]);
+      for (int j=0; j<nv; j++) {
+        point pt = point(&ubNodes_rank[(offset+i)*stride+nDims*j]);
         targetNodes.push_back(pt);
-        for (int dim=0; dim<3; dim++) {
+        for (int dim=0; dim<nDims; dim++) {
           targetBox[dim]   = min(pt[dim],targetBox[dim]);
           targetBox[dim+3] = max(pt[dim],targetBox[dim+3]);
         }
       }
 
-      // Find all possible donors using Tioga's ADT search
-      set<int> cellIDs = tg->findCellDonors(targetBox.data());
+      // Find all possible donors using Tioga's ADT search (3D) or my brute-force search (2D)
+      set<int> cellIDs;
+      if (nDims == 2)
+        cellIDs = findCellDonors2D(eles,targetBox);
+      else
+        cellIDs = tg->findCellDonors(targetBox.data());
 
       if (cellIDs.size() > 0) {
         vector<int> donorsIDs;
@@ -376,7 +399,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int> &unblan
           donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
         }
 
-        superMesh mesh(targetNodes,donorPts,quadOrder, 3);
+        superMesh mesh(targetNodes,donorPts,quadOrder,nDims);
         donors.push_back(mesh);
       }
     }
@@ -388,9 +411,24 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int> &unblan
   for (auto &mesh:donors)
     mesh.setupQuadrature();
 
-  // Next Up: Match the new overset-face points in a separate set of data arrays,
-  // remove the 'blanked' overset face points from the original data arrays, then
-  // interlace the new data into the original data
+  // Get the locations of the quadrature points for each target cell
+
+  // Get the reference locations of all quadrature points within the
+  // foundCellDonors for each foundCell from other grid
+
+  // Exchange the donor cells among the grids
+
+  // Pass the quadrature point locations back to the target-cells' grid
+
+  // Send/recv target cells' data to donor grid(s)
+
+  // Using target cell data and nodes, get basis-function and solution values
+  // at all quadrature points
+
+  // Perform integration for each target cell
+
+  // Send/recv the final target-cell data
+
 #endif
 }
 
