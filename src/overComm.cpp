@@ -412,6 +412,20 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int> &unblan
     mesh.setupQuadrature();
 
   // Get the locations of the quadrature points for each target cell
+  vector<matrix<double>> qpts(nproc);
+  vector<vector<int>> parentID(nproc);
+  int offset = 0;
+  for (int p=0; p<nproc; p++) {
+    if (p>0) offset += foundCells[p-1].size();
+    for (int i=0; i<foundCells.size(); i++) {
+      vector<int> parents_tmp;
+      matrix<double> qpts_tmp;
+      donors[offset+i].getQpts(qpts_tmp,parents_tmp);
+      for (int j=0; j<parents_tmp.size(); j++) {
+      qpts[p].insertRow({qpts_tmp[j].x,qpts_tmp[j].y,qpts_tmp[j].z});
+      parentID[p].push_back(foundCellDonors[p](i,parents_tmp[j]));
+    }
+  }
 
   // Get the reference locations of all quadrature points within the
   // foundCellDonors for each foundCell from other grid
