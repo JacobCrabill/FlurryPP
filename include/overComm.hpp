@@ -108,6 +108,9 @@ public:
   vector<int> nCellsSend;         //! Number of points outgoing to each grid (across interComm)
   vector<vector<int>> recvCells;  //! Cell IDs which will be received from each grid (across interComm) (counter to foundPts)
 
+  vector<int> nQptsSend;
+  vector<int> nQptsRecv;
+
   //! Local supermesh of donor elements for each cell needing to be unblanked
   vector<superMesh> donors;
 
@@ -141,7 +144,7 @@ public:
    * For each unblanked face, add its points to the communicator
    *
    */
-  void matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int>& unblankCells, vector<int>& eleMap, int quadOrder);
+  void matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int, map<int, oper> >& opers, set<int>& unblankCells, vector<int>& eleMap, int quadOrder);
 
   //! Perform the interpolation and communicate data across all grids
   void exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers);

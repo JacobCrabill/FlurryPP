@@ -321,7 +321,7 @@ void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared
 }
 
 
-void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int> &unblankCells, vector<int> &eleMap, int quadOrder)
+void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, set<int> &unblankCells, vector<int> &eleMap, int quadOrder)
 {
 #ifndef _NO_MPI
 
@@ -332,10 +332,12 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int> &unblan
   int nDims = params->nDims;
   int nv = (nDims==2) ? 4 : 8;
 
+  vector<int> ubCells;
   Array<double,3> ubCellNodes(nUnblanks,nv,nDims);
   int i = 0;
   for (auto &ic:unblankCells) {
     int ie = eleMap[ic];
+    ubCells.push_back(ie);
     // Constraining this to just linear hexahedrons/quadrilaterals for the time being
     for (int j=0; j<nv; j++) {
       for (int k=0; k<nDims; k++) {
@@ -411,33 +413,66 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, set<int> &unblan
   for (auto &mesh:donors)
     mesh.setupQuadrature();
 
-  // Get the locations of the quadrature points for each target cell
-  vector<matrix<double>> qpts(nproc);
-  vector<vector<int>> parentID(nproc);
+  // Get the locations of the quadrature points for each target cell, and
+  // the reference location of the points within the donor cells
+  vector<matrix<double>> qpts(nproc), qpts_ref(nproc);
+  vector<vector<int>> parentID(nproc), targetID(nproc);
   int offset = 0;
   for (int p=0; p<nproc; p++) {
     if (p>0) offset += foundCells[p-1].size();
-    for (int i=0; i<foundCells.size(); i++) {
+    for (int i=0; i<foundCells[p].size(); i++) {
       vector<int> parents_tmp;
       matrix<double> qpts_tmp;
       donors[offset+i].getQpts(qpts_tmp,parents_tmp);
+
       for (int j=0; j<parents_tmp.size(); j++) {
-      qpts[p].insertRow({qpts_tmp[j].x,qpts_tmp[j].y,qpts_tmp[j].z});
-      parentID[p].push_back(foundCellDonors[p](i,parents_tmp[j]));
+        qpts[p].insertRow({qpts_tmp[j].x,qpts_tmp[j].y,qpts_tmp[j].z});
+        parentID[p].push_back(foundCellDonors[p](i,parents_tmp[j]));
+        targetID[p].push_back(foundCells[p][i]);
+        int ic = eleMap[parentID[p].back()];
+        eles[ic]->getRefLocNelderMeade(qpts_tmp[j],refLoc);
+        qpts_ref[p].insertRow({refLoc.x,refLoc.x,refLoc.z});
+      }
     }
   }
 
-  // Get the reference locations of all quadrature points within the
-  // foundCellDonors for each foundCell from other grid
-
-  // Exchange the donor cells among the grids
-
-  // Pass the quadrature point locations back to the target-cells' grid
+  // Exchange the number of donor-cell quadrature points among the grids
+  nQptsSend.resize(nproc);
+  for (int p=0; p<nproc; p++) {
+    if (gridIdList[p] == gridID) continue;
+    nQptsSend[p] = qpts[p].getDim0();
+  }
+  setupNPieces(nQptsSend,nQptsRecv);
 
   // Send/recv target cells' data to donor grid(s)
+  vector<matrix<double>> qpts_recv(nproc);
+  for (int p=0; p<nproc; p++) {
+    if (gridIdList[p] == gridID) continue;
+    qpts_recv[p].setup(nCellsRecv[p],3);
+  }
+  sendRecvData(nQptsSend,nQptsRecv,targetID,recvInds,qpts,qpts_recv,3,1);
 
   // Using target cell data and nodes, get basis-function and solution values
   // at all quadrature points
+  for (int p=0; p<nproc; p++) {
+    if (gridIdList[p] == gridID) continue;
+
+    for (int i=0; i<nQptsRecv[p]; i++) {
+      int ie = ubCells[recvInds[p][i]];
+
+      // Transform physical qpt location to cell's reference location
+      point refLoc;
+      point pos = point(qpts_recv[p][i],nDims);
+      eles[ie]->getRefLocNelderMeade(pos,refLoc);
+      qpts_recv[p](i,0) = refLoc.x;
+      qpts_recv[p](i,1) = refLoc.y;
+      qpts_recv[p](i,2) = refLoc.z;
+
+      //opers[eles[ie]->eType][eles[ie]->order].getNodalBasis(refLoc);
+      //vector<double> u_qpt_tmp;
+      //opers[eles[ie]->eType][eles[ie]->order].interpToPoint(eles[ie]->u_spts,refLoc,u_qpt_tmp);
+    }
+  }
 
   // Perform integration for each target cell
 

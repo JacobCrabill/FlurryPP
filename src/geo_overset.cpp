@@ -465,7 +465,7 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
 
   // Initialize the solution in the new elements using local Galerkin projection
 
-  //OComm->matchUnblankCells(eles,unblankCells,eleMap,params->order);
+  //OComm->matchUnblankCells(eles,opers,unblankCells,eleMap,params->order);
 }
 
 void geo::removeEles(vector<shared_ptr<ele>> &eles, set<int> &blankEles)
