@@ -188,7 +188,7 @@ void superMesh::buildSuperMeshTet(void)
   }
 }
 
-double superMesh::integrate(vector<double> &data)
+double superMesh::integrate(const vector<double> &data)
 {
   if ((int)data.size() != nQpts) FatalError("To integrate over supermesh, data must lie at its quadrature nodes.");
 
@@ -196,6 +196,40 @@ double superMesh::integrate(vector<double> &data)
   for (int i=0; i<nSimps; i++) {
     for (int j=0; j<nQpts_simp; j++) {
       val += data[i*nQpts_simp+j]*weights[j];
+    }
+  }
+
+  return val;
+}
+
+vector<double> superMesh::integrateByDonor(const vector<double> &data)
+{
+  if ((int)data.size() != nQpts) FatalError("To integrate over supermesh, data must lie at its quadrature nodes.");
+
+  vector<double> val(nDonors);
+  for (int i=0; i<nSimps; i++) {
+    int id = parents[i];
+    for (int j=0; j<nQpts_simp; j++) {
+      val[id] += data[i*nQpts_simp+j]*weights[j];
+    }
+  }
+
+  return val;
+}
+
+matrix<double> superMesh::integrateByDonor(matrix<double> &data)
+{
+  if ((int)data.getDim0() != nQpts) FatalError("To integrate over supermesh, data must lie at its quadrature nodes.");
+
+  int nFields = data.getDim1();
+
+  matrix<double> val(nDonors,nFields);
+  for (int i=0; i<nSimps; i++) {
+    int id = parents[i];
+    for (int j=0; j<nQpts_simp; j++) {
+      for (int k=0; k<nFields; k++) {
+        val(id,k) += data(i*nQpts_simp+j,k)*weights[j];
+      }
     }
   }
 

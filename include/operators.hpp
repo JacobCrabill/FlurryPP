@@ -57,7 +57,8 @@ public:
   void interpolateFluxToPoint(vector<matrix<double>> &F_spts, matrix<double> &F_ipt, point &loc_ipt);
 
   //! Get interpolation weights at given point
-  void getInterpWeights(double* loc_ipt, double* weights);
+  void getBasisValues(point &ipt, vector<double> &weights);
+  void getBasisValues(double* loc_ipt, double* weights);
 
   void setupCorrectGradU(void);
 

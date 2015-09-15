@@ -128,7 +128,7 @@ void solver::donorWeights(int* cellID, double* xyz, int* nWeights, int* iNode, d
   for (int i=0; i<(*nWeights); i++)
     iNode[i] = iStart + i;
 
-  opers[eles[ic]->eType][eles[ic]->order].getInterpWeights(rst,weights);
+  opers[eles[ic]->eType][eles[ic]->order].getBasisValues(rst,weights);
 }
 
 void solver::convertToModal(int* cellID, int* nPtsIn, double* uIn, int* nPtsOut, int* iStart, double* uOut)

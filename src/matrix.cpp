@@ -265,6 +265,18 @@ void matrix<T>::timesVector(vector<T> &A, vector<T> &B)
 }
 
 template<typename T>
+void Array2D<T>::appendRows(Array2D<T> &mat)
+{
+  if (this->dims[1]!= 0 && mat.getDim1()!=this->dims[1])
+    FatalErrorST("Attempting to append rows of wrong size to matrix.");
+
+  this->data.insert(this->data.end(),mat.getData(),mat.getData()+mat.getSize());
+
+  if (this->dims[1]==0) this->dims[1]=mat.getDim1();
+  this->dims[0]+=mat.getDim0();
+}
+
+template<typename T>
 void Array2D<T>::insertRow(const vector<T> &vec, int rowNum)
 {
   if (this->dims[1]!= 0 && vec.size()!=this->dims[1])

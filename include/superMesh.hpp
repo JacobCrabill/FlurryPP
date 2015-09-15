@@ -84,7 +84,13 @@ public:
   void buildSuperMesh(void);
 
   //! Integrate a quantity over the superMesh (given at quadrature points of supermesh tets)
-  double integrate(vector<double> &data);
+  double integrate(const vector<double> &data);
+
+  //! Integrate the given data over each donor individually
+  vector<double> integrateByDonor(const vector<double> &data);
+
+  //! Integrate each field of the given data over each donor individually
+  matrix<double> integrateByDonor(matrix<double> &data);
 
   /*!
    * Returns the physical(?) positions of the quadrature points, along
@@ -92,6 +98,8 @@ public:
    */
   void getQpts(vector<point> &qptPos, vector<int> &qptCell);
   void getQpts(matrix<double> &qptPos, vector<int> &qptCell);
+
+  int getNQpts(void) {return nQpts; };
 
   //! Get the quadrature point locations and weights, and find physical positions of all qpts
   void setupQuadrature(void);

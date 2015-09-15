@@ -175,7 +175,13 @@ public:
    * @param[in] matchInds   : Whether each rank needs to receive recvInds for its data or not
    */
   template<typename T>
-  void sendRecvData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<vector<int>> &sendInds, vector<vector<int>> &recvInds, vector<matrix<T>> &sendVals, matrix<T> &recvVals, int stride, int matchInds);
+  void sendRecvData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<vector<int>> &sendInds, vector<vector<int>> &recvInds, vector<matrix<T>> &sendVals, matrix<T> &recvVals, int stride, bool matchInds);
+
+  template<typename T>
+  void sendRecvData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<vector<int>> &sendInds, vector<vector<int>> &recvInds, vector<matrix<T>> &sendVals, vector<matrix<T>> &recvVals, int stride);
+
+  template<typename T>
+  void sendRecvData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<matrix<T>> &sendVals, vector<matrix<T>> &recvVals, int stride);
 
   //! Using nPiecesIn, resize nPiecesOut for each rank
   void setupNPieces(vector<int> &nPiecesIn, vector<int> &nPiecesOut);

@@ -407,17 +407,20 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
     }
   }
 
-  /* ---- Now that we have the local superMesh for each target, setup points for
-   *      use with Galerkin projection ---- */
+  /* --- Setup & Exchange Quadrature-Point Data --- */
 
+  // Now that we have the local superMesh for each target, setup points for
+  // use with Galerkin projection
   for (auto &mesh:donors)
     mesh.setupQuadrature();
 
   // Get the locations of the quadrature points for each target cell, and
   // the reference location of the points within the donor cells
-  vector<matrix<double>> qpts(nproc), qpts_ref(nproc);
-  vector<vector<int>> parentID(nproc), targetID(nproc);
-  int offset = 0;
+  vector<matrix<double>> qpts(nproc), qptsD_ref(nproc), donorBasis(nproc), donorU(nproc);
+  vector<vector<int>> targetID(nproc), donorID(nproc);
+  int nSpts = (params->order+1)*(params->order+1);
+  if (nDims == 3) nSpts *= (params->order+1);
+  offset = 0;
   for (int p=0; p<nproc; p++) {
     if (p>0) offset += foundCells[p-1].size();
     for (int i=0; i<foundCells[p].size(); i++) {
@@ -426,17 +429,28 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
       donors[offset+i].getQpts(qpts_tmp,parents_tmp);
 
       for (int j=0; j<parents_tmp.size(); j++) {
-        qpts[p].insertRow({qpts_tmp[j].x,qpts_tmp[j].y,qpts_tmp[j].z});
-        parentID[p].push_back(foundCellDonors[p](i,parents_tmp[j]));
+        qpts[p].insertRow(qpts_tmp[j],3,INSERT_AT_END);
+        donorID[p].push_back(foundCellDonors[p](i,parents_tmp[j]));
         targetID[p].push_back(foundCells[p][i]);
-        int ic = eleMap[parentID[p].back()];
+        int ic = eleMap[donorID[p].back()];
+        point refLoc;
         eles[ic]->getRefLocNelderMeade(qpts_tmp[j],refLoc);
-        qpts_ref[p].insertRow({refLoc.x,refLoc.x,refLoc.z});
+        qptsD_ref[p].insertRow({refLoc.x,refLoc.x,refLoc.z});
+
+        vector<double> basisTmp;
+        opers[eles[ic]->eType][eles[ic]->order].getBasisValues(refLoc,basisTmp);
+        donorBasis[p].insertRow(basisTmp);
+      }
+
+      for (int id=0; id<foundCellNDonors[p][i]; id++) {
+        int ic = eleMap[foundCellDonors[p](i,id)];
+        for (int spt=0; spt<nSpts; spt++)
+          donorU[p].insertRow(eles[ic]->U_spts[spt],params->nFields,INSERT_AT_END);
       }
     }
   }
 
-  // Exchange the number of donor-cell quadrature points among the grids
+  // Exchange superMesh quadrature points among the grids
   nQptsSend.resize(nproc);
   for (int p=0; p<nproc; p++) {
     if (gridIdList[p] == gridID) continue;
@@ -444,23 +458,26 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   }
   setupNPieces(nQptsSend,nQptsRecv);
 
-  // Send/recv target cells' data to donor grid(s)
+  vector<vector<int>> unblankID(nproc);
   vector<matrix<double>> qpts_recv(nproc);
-  for (int p=0; p<nproc; p++) {
-    if (gridIdList[p] == gridID) continue;
-    qpts_recv[p].setup(nCellsRecv[p],3);
-  }
-  sendRecvData(nQptsSend,nQptsRecv,targetID,recvInds,qpts,qpts_recv,3,1);
+  sendRecvData(nQptsSend,nQptsRecv,targetID,unblankID,qpts,qpts_recv,3);
+
+  /* --- Perform the Galerkin Projection --- */
 
   // Using target cell data and nodes, get basis-function and solution values
   // at all quadrature points
+
+  vector<matrix<double>> sendBasis(nproc); // Basis function values to be sent back to donor grid
+  vector<matrix<double>> sendU(nproc);     // Solution values to be sent back to donor grid
+  offset = 0;
   for (int p=0; p<nproc; p++) {
+    if (p>0) offset += nQptsRecv[p-1];
     if (gridIdList[p] == gridID) continue;
 
-    for (int i=0; i<nQptsRecv[p]; i++) {
-      int ie = ubCells[recvInds[p][i]];
+    for (int i=0; i<nQptsRecv[p]; p++) {
+      int ii = unblankID[p][i];
+      int ie = ubCells[ii];
 
-      // Transform physical qpt location to cell's reference location
       point refLoc;
       point pos = point(qpts_recv[p][i],nDims);
       eles[ie]->getRefLocNelderMeade(pos,refLoc);
@@ -468,16 +485,74 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
       qpts_recv[p](i,1) = refLoc.y;
       qpts_recv[p](i,2) = refLoc.z;
 
-      //opers[eles[ie]->eType][eles[ie]->order].getNodalBasis(refLoc);
-      //vector<double> u_qpt_tmp;
-      //opers[eles[ie]->eType][eles[ie]->order].interpToPoint(eles[ie]->u_spts,refLoc,u_qpt_tmp);
+      vector<double> rloc = {refLoc.x, refLoc.y, refLoc.z};
+      vector<double> basisTmp;
+      opers[eles[ie]->eType][eles[ie]->order].getBasisValues(refLoc,basisTmp);
+
+      vector<double> UTmp(params->nFields);
+      for (int j=0; j<nSpts; j++) {
+        for (int k=0; k<params->nFields; k++) {
+          UTmp[k] += basisTmp[j] * eles[ie]->U_spts(j,k);
+        }
+      }
+
+      sendBasis[p].insertRow(basisTmp);
+      sendU[p].insertRow(UTmp);
     }
   }
 
+  vector<matrix<double>> recvBasis(nproc);
+  stride = nSpts;
+  sendRecvData(nQptsRecv,nQptsSend,sendBasis,recvBasis,stride);
+
   // Perform integration for each target cell
+  vector<matrix<double>> finalU(nproc);
+  offset = 0;
+  for (int p=0; p<nproc; p++) {
+    if (p>0) offset += foundCells[p-1].size();
+    int offsetQ = 0;
+    int offsetD = 0;
+    for (int i=0; i<foundCells[p].size(); i++) {
+      if (i>0) {
+        offsetQ += donors[offset+i-1].getNQpts();
+        offsetD += nSpts*foundCellNDonors[p][i-1];
+      }
+
+      matrix<double> RHS(nSpts,params->nFields);
+      int nQpts = donors[offset+i].getNQpts();
+
+      for (int ispt=0; ispt<nSpts; ispt++) {
+        matrix<double> basisMesh(nQpts,nSpts);
+        for (int qpt=0; qpt<nQpts; qpt++) {
+          for (int jspt=0; jspt<nSpts; jspt++) {
+            basisMesh(qpt,jspt) = recvBasis[p](offsetQ+qpt,ispt) * donorBasis[p](offsetQ+qpt,jspt);
+          }
+        }
+
+        auto massMatRow = donors[offset+i].integrateByDonor(basisMesh);
+        for (int id=0; id<foundCellNDonors[p][i]; id++)
+          for (int jspt=0; jspt<nSpts; jspt++)
+            for (int k=0; k<nFields; k++)
+              RHS(ispt,k) += massMatRow(id,jspt) * donorU[p](offsetD+id*nSpts+jspt,k);
+      }
+
+      finalU[p].appendRows(RHS);
+    }
+  }
 
   // Send/recv the final target-cell data
+  stride = nSpts*nFields;
+  matrix<double> unblankU(nUnblanks,stride);
+  vector<vector<int>> recvInds;
+  sendRecvData(nCellsSend,nCellsRecv,foundCells,recvInds,finalU,unblankU,stride,true);
 
+  // Apply the new values to the unblank ele objects
+  for (int i=0; i<nUnblanks; i++) {
+    int ic = ubCells[i];
+    for (int spt=0; spt<nSpts; spt++)
+      for (int k=0; k<nFields; k++)
+        eles[ic]->U_spts(spt,k) = unblankU(i,spt*nFields+k);
+  }
 #endif
 }
 
@@ -595,18 +670,73 @@ void overComm::setupNPieces(vector<int> &nPiecesIn, vector<int> &nPiecesOut)
 
 template<typename T>
 void overComm::sendRecvData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<vector<int>> &sendInds, vector<vector<int>> &recvInds,
-                            vector<matrix<T>> &sendVals, matrix<T> &recvVals, int stride, int matchInds=0)
+                            vector<matrix<T>> &sendVals, matrix<T> &recvVals, int stride, bool matchInds=false)
+{
+  // Do basic send/receive, keeping receive values in destination arrays from each rank
+  vector<matrix<T>> tmpRecvVals;
+  if (matchInds)
+    sendRecvData(nPiecesSend,nPiecesRecv,sendInds,recvInds,sendVals,tmpRecvVals,stride);
+  else
+    sendRecvData(nPiecesSend,nPiecesRecv,sendVals,tmpRecvVals,stride);
+
+  // Rearrange data into final storage matrix  [NOTE: U_in must be pre-sized]
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    for (int i=0; i<nPtsRecv[p]; i++) {
+      for (int k=0; k<stride; k++) {
+        recvVals(recvInds[p][i],k) = tmpRecvVals[p](i,k);
+      }
+    }
+  }
+}
+
+template<typename T>
+void overComm::sendRecvData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<matrix<T>> &sendVals, vector<matrix<T>> &recvVals, int stride)
 {
 #ifndef _NO_MPI
   MPI_Datatype T_TYPE = getMpiDatatype<T>();
 
   MPI_Status status;
 
-  vector<matrix<T>> tmpRecvVals(nproc);
+  recvVals.resize(nproc);
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    recvVals[p].setup(nPiecesRecv[p],stride);
+  }
+
+  vector<MPI_Request> ValsRecvs(nproc);
+  vector<MPI_Request> ValsSends(nproc);
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    if (nPiecesRecv[p]>0)
+      MPI_Irecv(recvVals[p].getData(),nPiecesRecv[p]*stride,T_TYPE,p,p,MPI_COMM_WORLD,&ValsRecvs[p]);
+    if (nPiecesSend[p]>0)
+      MPI_Isend(sendVals[p].getData(),nPiecesSend[p]*stride,T_TYPE,p,rank,MPI_COMM_WORLD,&ValsSends[p]);
+  }
 
   for (int p=0; p<nproc; p++) {
     if (p==rank) continue;
-    tmpRecvVals[p].setup(nPtsRecv[p],stride);
+    if (nPiecesRecv[p]>0)
+      MPI_Wait(&ValsRecvs[p], &status);
+    if (nPiecesSend[p]>0)
+      MPI_Wait(&ValsSends[p], &status);
+  }
+#endif
+}
+
+template<typename T>
+void overComm::sendRecvData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<vector<int>> &sendInds, vector<vector<int>> &recvInds,
+                            vector<matrix<T>> &sendVals, vector<matrix<T>> &recvVals, int stride)
+{
+#ifndef _NO_MPI
+  MPI_Datatype T_TYPE = getMpiDatatype<T>();
+
+  MPI_Status status;
+
+  recvVals.resize(nproc);
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    recvVals[p].setup(nPiecesRecv[p],stride);
   }
 
   vector<MPI_Request> IndsRecvs(nproc);
@@ -616,17 +746,11 @@ void overComm::sendRecvData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, 
   for (int p=0; p<nproc; p++) {
     if (p==rank) continue;
     if (nPiecesRecv[p]>0) {
-      if (matchInds) {
-        // If needed, receive the local array indices which the data is matched with
-        MPI_Irecv(recvInds[p].data(),nPiecesRecv[p],MPI_INT,p,p,MPI_COMM_WORLD,&IndsRecvs[p]);
-      }
-      MPI_Irecv(tmpRecvVals[p].getData(),nPiecesRecv[p]*stride,T_TYPE,p,p,MPI_COMM_WORLD,&ValsRecvs[p]);
+      MPI_Irecv(recvInds[p].data(),nPiecesRecv[p],MPI_INT,p,p,MPI_COMM_WORLD,&IndsRecvs[p]);
+      MPI_Irecv(recvVals[p].getData(),nPiecesRecv[p]*stride,T_TYPE,p,p,MPI_COMM_WORLD,&ValsRecvs[p]);
     }
     if (nPiecesSend[p]>0) {
-      if (matchInds) {
-        // If needed, send the destination indices which the data is matched with
-        MPI_Isend(sendInds[p].data(),nPiecesSend[p],MPI_INT,p,rank,MPI_COMM_WORLD,&IndsSends[p]);
-      }
+      MPI_Isend(sendInds[p].data(),nPiecesSend[p],MPI_INT,p,rank,MPI_COMM_WORLD,&IndsSends[p]);
       MPI_Isend(sendVals[p].getData(),nPiecesSend[p]*stride,T_TYPE,p,rank,MPI_COMM_WORLD,&ValsSends[p]);
     }
   }
@@ -642,15 +766,85 @@ void overComm::sendRecvData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, 
       MPI_Wait(&ValsSends[p], &status);
     }
   }
-
-  // Rearrange data into final storage matrix  [NOTE: U_in must be pre-sized]
-  for (int p=0; p<nproc; p++) {
-    if (p==rank) continue;
-    for (int i=0; i<nPtsRecv[p]; i++) {
-      for (int k=0; k<stride; k++) {
-        recvVals(recvInds[p][i],k) = tmpRecvVals[p](i,k);
-      }
-    }
-  }
 #endif
 }
+
+//template<typename T>
+//void overComm::sendRecvData2(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, vector<vector<int>> &sendInds, vector<vector<int>> &recvInds,
+//                            vector<vector<int>> &nSendInd, vector<int> &nRecvInd, vector<matrix<T>> &sendVals, vector<matrix<T>> &recvVals, int stride)
+//{
+//#ifndef _NO_MPI
+//  MPI_Datatype T_TYPE = getMpiDatatype<T>();
+//
+//  MPI_Status status;
+//
+//  vector<matrix<T>> tmpRecvVals(nproc);
+//  vector<vector<int>> tmpRecvNInd(nproc);
+//
+//  for (int p=0; p<nproc; p++) {
+//    if (p==rank) continue;
+//    tmpRecvVals[p].setup(nPtsRecv[p],stride);
+//    tmpRecvNInd[p].resize(nPtsRecv[p]);
+//  }
+//
+//  vector<MPI_Request> IndsRecvs(nproc);
+//  vector<MPI_Request> nIndRecvs(nproc);
+//  vector<MPI_Request> IndsSends(nproc);
+//  vector<MPI_Request> nIndSends(nproc);
+//  vector<MPI_Request> ValsRecvs(nproc);
+//  vector<MPI_Request> ValsSends(nproc);
+//  for (int p=0; p<nproc; p++) {
+//    if (p==rank) continue;
+//    if (nPiecesRecv[p]>0) {
+//      MPI_Irecv(recvInds[p].data(),nPiecesRecv[p],MPI_INT,p,p,MPI_COMM_WORLD,&IndsRecvs[p]);
+//      MPI_Irecv(tmpRecvNInd[p].data(),nPiecesRecv[p],MPI_INT,p,p,MPI_COMM_WORLD,&nIndRecvs[p]);
+//      MPI_Irecv(tmpRecvVals[p].getData(),nPiecesRecv[p]*stride,T_TYPE,p,p,MPI_COMM_WORLD,&ValsRecvs[p]);
+//    }
+//    if (nPiecesSend[p]>0) {
+//      MPI_Isend(sendInds[p].data(),nPiecesSend[p],MPI_INT,p,rank,MPI_COMM_WORLD,&IndsSends[p]);
+//      MPI_Irecv(nSendInd[p].data(),nPiecesRecv[p],MPI_INT,p,p,MPI_COMM_WORLD,&nIndSends[p]);
+//      MPI_Isend(sendVals[p].getData(),nPiecesSend[p]*stride,T_TYPE,p,rank,MPI_COMM_WORLD,&ValsSends[p]);
+//    }
+//  }
+//
+//  for (int p=0; p<nproc; p++) {
+//    if (p==rank) continue;
+//    if (nPiecesRecv[p]>0) {
+//      MPI_Wait(&IndsRecvs[p], &status);
+//      MPI_Wait(&nIndRecvs[p], &status);
+//      MPI_Wait(&ValsRecvs[p], &status);
+//    }
+//    if (nPiecesSend[p]>0) {
+//      MPI_Wait(&IndsSends[p], &status);
+//      MPI_Wait(&nIndSends[p], &status);
+//      MPI_Wait(&ValsSends[p], &status);
+//    }
+//  }
+//
+//  // Rearrange data into final storage matrix  [NOTE: U_in must be pre-sized]
+//
+//  for (int p=0; p<nproc; p++) {
+//    if (p==rank) continue;
+//    for (int i=0; i<nPtsRecv[p]; i++) {
+//
+//    }
+//  }
+//
+//  vector<int> disp(nRecvInd.size());
+//  for (int i=1; i<nRecvInd.size(); i++) {
+//    disp[i] = disp[i-1] + nRecvInd[i-1];
+//  }
+//
+//  for (int p=0; p<nproc; p++) {
+//    if (p==rank) continue;
+//    for (int i=0; i<nPtsRecv[p]; i++) {
+//      int ii = recvInds[p][i];
+//      int j = disp[ii];
+//      disp[ii]++;
+//      for (int k=0; k<stride; k++) {
+//        recvVals(j,k) = tmpRecvVals[p](i,k);
+//      }
+//    }
+//  }
+//#endif
+//}

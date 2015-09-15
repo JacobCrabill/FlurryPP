@@ -96,6 +96,9 @@ public:
   /*! Standard (i,j) access operator */
   T &operator()(int i, int j=0);
 
+  /*! Append the input Array as rows at the end of the current Array */
+  void appendRows(Array2D<T> &mat);
+
   /*! Insert a row into the Array at location rowNum [zero-indexed], with the default being at the end */
   void insertRow(const vector<T> &vec, int rowNum = -1);
 

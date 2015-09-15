@@ -244,16 +244,21 @@ matrix<double> oper::setupInterpolateSptsIpts(matrix<double> &loc_ipts)
   return opp_interp;
 }
 
-void oper::getInterpWeights(double* loc_ipt, double* weights)
+void oper::getBasisValues(point &ipt, vector<double> &weights)
+{
+  double loc_ipt[] = {ipt.x, ipt.y, ipt.z};
+  weights.resize(nSpts);
+}
+
+void oper::getBasisValues(double* loc_ipt, double* weights)
 {
   // loc_ipt contains [x,y,z] in reference coordinates
-  point pt = point(loc_ipt);
-
   // Note: 'weights' should be pre-size to nSpts
 
   switch(eType) {
     case TRI: {
       // Use the orthogonal 2D Dubiner basis for triangular elements
+      point pt = point(loc_ipt,2);
       for (uint spt=0; spt<nSpts; spt++)
         weights[spt] = eval_dubiner_basis_2d(pt,spt,order);
       break;
@@ -265,7 +270,7 @@ void oper::getInterpWeights(double* loc_ipt, double* weights)
         uint ispt = spt%(nSpts/(order+1));
         uint jspt = floor(spt/(order+1));
         // 3D Tensor-Product Lagrange Interpolation
-        weights[spt] =  Lagrange(locSpts1D,pt.x,ispt) * Lagrange(locSpts1D,pt.y,jspt);
+        weights[spt] =  Lagrange(locSpts1D,loc_ipt[0],ispt) * Lagrange(locSpts1D,loc_ipt[1],jspt);
       }
       break;
     }
@@ -277,7 +282,7 @@ void oper::getInterpWeights(double* loc_ipt, double* weights)
         uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
         uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
         // 3D Tensor-Product Lagrange Interpolation
-        weights[spt] =  Lagrange(locSpts1D,pt.x,ispt) * Lagrange(locSpts1D,pt.y,jspt) * Lagrange(locSpts1D,pt.z,kspt);
+        weights[spt] =  Lagrange(locSpts1D,loc_ipt[0],ispt) * Lagrange(locSpts1D,loc_ipt[1],jspt) * Lagrange(locSpts1D,loc_ipt[2],kspt);
       }
       break;
     }
