@@ -503,8 +503,12 @@ void solver::moveMesh(int step)
     Geo->updateADT();
 
     /* -- Setup unblanks needed for this time step -- */
-    if (step==0)
+    if (step==0) {
       Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
+
+      // Initialize the solution in the new elements using local Galerkin projection
+      OComm->matchUnblankCells(eles,opers,Geo->unblankCells,Geo->eleMap,params->order);
+    }
 
     if (params->nDims==3)
       OComm->matchOversetPoints3D(eles,overFaces,Geo->eleMap);

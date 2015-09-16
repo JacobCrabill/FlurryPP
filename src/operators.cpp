@@ -248,6 +248,7 @@ void oper::getBasisValues(point &ipt, vector<double> &weights)
 {
   double loc_ipt[] = {ipt.x, ipt.y, ipt.z};
   weights.resize(nSpts);
+  getBasisValues(loc_ipt, weights.data());
 }
 
 void oper::getBasisValues(double* loc_ipt, double* weights)
