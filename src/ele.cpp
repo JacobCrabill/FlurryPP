@@ -97,16 +97,7 @@ void ele::setupArrays(void)
   Fn_fpts.setup(nFpts,nFields);
   Fn_fpts.initializeToZero();
 
-  switch (params->timeType) {
-    case 0:
-      nRKSteps = 1;
-      break;
-    case 4:
-      nRKSteps = 4;
-      break;
-    default:
-      FatalError("Time-advancement time not recognized.");
-  }
+  nRKSteps = params->nRKSteps;
   divF_spts.resize(nRKSteps);
   for (auto& dF:divF_spts) dF.setup(nSpts,nFields);
 

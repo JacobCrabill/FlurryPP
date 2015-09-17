@@ -16,6 +16,10 @@
 
 #include <set>
 
+#ifndef _NO_MPI
+#include "mpi.h"
+#endif
+
 template<typename T, uint N>
 Array<T,N>::Array()
 {
@@ -156,6 +160,11 @@ T& Array2D<T>::operator()(int i, int j)
     return this->data[j+this->dims[1]*i];
   }
   else {
+    #ifndef _NO_MPI
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+    cout << "RANK = " << rank << ": " << flush;
+    #endif
     cout << "i=" << i << ", dim0=" << this->dims[0] << ", j=" << j << ", dim1=" << this->dims[1] << endl;
     FatalErrorST("Attempted out-of-bounds access in matrix.");
   }

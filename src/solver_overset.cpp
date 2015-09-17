@@ -38,7 +38,7 @@ void solver::setupOverset(void)
   }
   else {
     OComm = Geo->OComm;
-cout << "rank " << params->rank << ", noverfaces = " << overFaces.size() << endl;
+
     OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
   }
 #endif

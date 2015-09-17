@@ -1,10 +1,10 @@
-NX = 21;
-NY = 21;
+NX = 16;
+NY = 16;
 
-xmin = -2.5;
-xmax = 2.5;
-ymin = -2.5;
-ymax = 2.5;
+xmin = -2.51;
+xmax = 2.51;
+ymin = -2.51;
+ymax = 2.51;
 
 Point(1) = {xmin,ymin,0};
 Point(2) = {xmax,ymin,0};

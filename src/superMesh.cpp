@@ -246,16 +246,17 @@ void superMesh::setupQuadrature(void)
     for (auto &wt:weights) wt /= 6.; // Volume of ref. tetrahedron = 1/6
   }
 
+  nSimps = (nDims==2) ? tris.size() : tets.size();
   nQpts_simp = qpts.size();
   nQpts = nQpts_simp*nSimps;
 
   shapeQpts.setup(nQpts_simp,nv_simp);
   if (nDims==2) {
     for (int i=0; i<nQpts_simp; i++)
-      shape_tet(qpts[i],shapeQpts[i]);
+      shape_tri(qpts[i],shapeQpts[i]);
   } else {
     for (int i=0; i<nQpts_simp; i++)
-      shape_tri(qpts[i],shapeQpts[i]);
+      shape_tet(qpts[i],shapeQpts[i]);
   }
 
   vol.resize(0);
@@ -287,10 +288,19 @@ void superMesh::getQpts(vector<point> &qptPos, vector<int> &qptCell)
 {
   qptPos.resize(0);
   qptCell.resize(0);
-  for (int i=0; i<nSimps; i++) {
-    for (int j=0; j<nQpts_simp; j++) {
-      qptPos.push_back(tets[i].qpts[j]);
-      qptCell.push_back(parents[i]);
+  if (nDims == 2) {
+    for (int i=0; i<nSimps; i++) {
+      for (int j=0; j<nQpts_simp; j++) {
+        qptPos.push_back(tris[i].qpts[j]);
+        qptCell.push_back(parents[i]);
+      }
+    }
+  } else {
+    for (int i=0; i<nSimps; i++) {
+      for (int j=0; j<nQpts_simp; j++) {
+        qptPos.push_back(tets[i].qpts[j]);
+        qptCell.push_back(parents[i]);
+      }
     }
   }
 }
@@ -299,10 +309,19 @@ void superMesh::getQpts(matrix<double> &qptPos, vector<int> &qptCell)
 {
   qptPos.setup(0,0);
   qptCell.resize(0);
-  for (int i=0; i<nSimps; i++) {
-    for (int j=0; j<nQpts_simp; j++) {
-      qptPos.insertRow({tets[i].qpts[j].x,tets[i].qpts[j].y,tets[i].qpts[j].z});
-      qptCell.push_back(parents[i]);
+  if (nDims == 2) {
+    for (int i=0; i<nSimps; i++) {
+      for (int j=0; j<nQpts_simp; j++) {
+        qptPos.insertRow({tris[i].qpts[j].x,tris[i].qpts[j].y,tris[i].qpts[j].z});
+        qptCell.push_back(parents[i]);
+      }
+    }
+  } else {
+    for (int i=0; i<nSimps; i++) {
+      for (int j=0; j<nQpts_simp; j++) {
+        qptPos.insertRow({tets[i].qpts[j].x,tets[i].qpts[j].y,tets[i].qpts[j].z});
+        qptCell.push_back(parents[i]);
+      }
     }
   }
 }

@@ -79,10 +79,6 @@ void solver::setup(input *params, geo *Geo)
 
 void solver::update(void)
 {
-  // For RK time-stepping, store the starting solution values
-  if (nRKSteps>1)
-    copyUspts_U0();
-
   /* Intermediate residuals for Runge-Kutta time integration */
 
   if (params->dtType == 1) calcDt();
@@ -92,6 +88,8 @@ void solver::update(void)
     params->rkTime = params->time + params->RKa[step]*params->dt;
 
     moveMesh(step);
+
+    if (step == 0) copyUspts_U0(); // Store starting values for RK method
 
     calcResidual(step);
 

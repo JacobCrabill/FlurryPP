@@ -180,7 +180,7 @@ public:
   /* --- Moving-Overset-Grid-Related Variables --- */
   set<int> holeCells;     //! List of cells in mesh which are currently blanked
   set<int> holeFaces;     //! List of faces in mesh which are currently blanked
-  set<int> fringeFaces;   //! List of faces in mesh which are currently fringe faces
+  //set<int> fringeFaces;   //! List of faces in mesh which are currently fringe faces
   set<int> unblankCells;  //! List of non-existing cells which, due to motion, must be un-blanked
   set<int> blankCells;    //! List of existing cells which, due to motion, must be blanked
 
