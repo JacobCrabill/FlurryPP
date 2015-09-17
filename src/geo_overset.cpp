@@ -322,18 +322,40 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
   set<int> blankIFaces, blankMFaces, blankOFaces, ubOFaces;
   for (auto &ic:blankCells) {
     for (int j=0; j<c2nf[ic]; j++) {
-      if (c2c(ic,j)>0) {
-        if (iblankCell[c2c(ic,j)]==NORMAL || blankCells.count(c2c(ic,j)))
+      int ftype = currFaceType[c2f(ic,j)];
+      switch (ftype) {
+        case INTERNAL:
           blankIFaces.insert(c2f(ic,j));
-        else
-          blankOFaces.insert(c2f(ic,j));
-      } else {
-        // Boundary or MPI face
-        if (findFirst(overFaces,c2f(ic,j))>0)
-          blankOFaces.insert(c2f(ic,j));
-        else if (findFirst(mpiFaces,c2f(ic,j))>0)
+          break;
+        case BOUNDARY:
+          blankIFaces.insert(c2f(ic,j));
+          break;
+        case MPI_FACE:
           blankMFaces.insert(c2f(ic,j));
+          break;
+        case OVER_FACE:
+          blankOFaces.insert(c2f(ic,j));
+          break;
+        case HOLE_FACE:
+          //FatalError("Face of blankCell is already blanked.");
+          break;
+        default:
+          FatalError("Face of blankCell has unknown currFaceType.");
+          break;
       }
+
+//      if (c2c(ic,j)>0) {
+//        if (iblankCell[c2c(ic,j)]==NORMAL || blankCells.count(c2c(ic,j)))
+//          blankIFaces.insert(c2f(ic,j));
+//        else
+//          blankOFaces.insert(c2f(ic,j));
+//      } else {
+//        // Boundary or MPI face
+//        if (findFirst(overFaces,c2f(ic,j))>0)
+//          blankOFaces.insert(c2f(ic,j));
+//        else if (findFirst(mpiFaces,c2f(ic,j))>0)
+//          blankMFaces.insert(c2f(ic,j));
+//      }
     }
   }
 
@@ -587,6 +609,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
       ind = max(ind,0);
       faces.insert(faces.begin()+ind,1,iface);
       faceMap[ff] = ind;
+      currFaceType[ff] = INTERNAL;
       for (int i=ind+1; i<faces.size(); i++)
         faceMap[faces[i]->ID] = i;
     }
@@ -626,7 +649,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
         int ind = 0;
         for (int f2=ff-1; f2>=0; f2--) {
           ind = faceMap[f2];
-          if ( ind>0 && (faceType[f2] == INTERNAL || faceType[f2] == BOUNDARY) && faces[ind]->ID < ff) {
+          if ( ind>0 && (currFaceType[f2] == INTERNAL || currFaceType[f2] == BOUNDARY) && faces[ind]->ID < ff) {
             ind++;
             break;
           }
@@ -634,6 +657,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
         ind = max(ind,0);
         faces.insert(faces.begin()+ind,1,bface);
         faceMap[ff] = ind;
+        currFaceType[ff] = BOUNDARY;
         for (int i=ind+1; i<faces.size(); i++)
           faceMap[faces[i]->ID] = i;
       }
@@ -684,7 +708,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
     ind = 0;
     for (int f2=ff-1; f2>=0; f2--) {
       ind = faceMap[f2];
-      if ( ind>0 && (faceType[f2] == MPI_FACE) && mFaces[ind]->ID < ff) {
+      if ( ind>0 && (currFaceType[f2] == MPI_FACE) && mFaces[ind]->ID < ff) {
         ind++;
         break;
       }
@@ -692,6 +716,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
     ind = max(ind,0);
     mFaces.insert(mFaces.begin()+ind,1,mface);
     faceMap[ff] = ind;
+    currFaceType[ff] = MPI_FACE;
     for (int i=ind+1; i<mFaces.size(); i++)
       faceMap[mFaces[i]->ID] = i;
   }
@@ -735,6 +760,7 @@ cout << "Unblanking OFaces!" << endl;
     }
     oFaces.insert(oFaces.begin()+ind,1,oface);
     faceMap[ff] = ind;
+    currFaceType[ff] = OVER_FACE;
     for (int i=ind+1; i<oFaces.size(); i++)
       faceMap[oFaces[i]->ID] = i;
 
@@ -765,13 +791,16 @@ void geo::removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace
 cout << "Blanking Faces!" << endl;
     int ind = faceMap[ff];
     int fType = faceType[ff];
+cout << "ff = " << ff << ", ind = " << ind << endl;
+    if (ind<0) FatalError("invalid blankIFace!");
 
     if (fType == INTERNAL || fType == BOUNDARY) {
       faces.erase(faces.begin()+ind,faces.begin()+ind+1);
 
       faceMap[ff] = -1;
+      currFaceType[ff] = HOLE_FACE;
       for (int f2=ff+1; f2<nFaces; f2++) {
-        if (!fringeFaces.count(f2) && (faceType[f2] == INTERNAL || faceType[f2] == BOUNDARY)) {
+        if (!fringeFaces.count(f2) && (currFaceType[f2] == INTERNAL || currFaceType[f2] == BOUNDARY)) {
           faceMap[f2]--;
         }
       }
@@ -805,6 +834,7 @@ cout << "Blanking Faces!" << endl;
 
     // Update the map
     faceMap[ff] = -1;
+    currFaceType[ff] = HOLE_FACE;
     for (auto &f2:fringeFaces) {
       if (f2 > ff)
         faceMap[f2]--;

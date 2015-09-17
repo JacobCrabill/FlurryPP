@@ -195,7 +195,7 @@ double superMesh::integrate(const vector<double> &data)
   double val = 0;
   for (int i=0; i<nSimps; i++) {
     for (int j=0; j<nQpts_simp; j++) {
-      val += data[i*nQpts_simp+j]*weights[j];
+      val += data[i*nQpts_simp+j]*weights[j]*vol[i];
     }
   }
 
@@ -210,7 +210,7 @@ vector<double> superMesh::integrateByDonor(const vector<double> &data)
   for (int i=0; i<nSimps; i++) {
     int id = parents[i];
     for (int j=0; j<nQpts_simp; j++) {
-      val[id] += data[i*nQpts_simp+j]*weights[j];
+      val[id] += data[i*nQpts_simp+j]*weights[j]*vol[i];
     }
   }
 
@@ -228,7 +228,7 @@ matrix<double> superMesh::integrateByDonor(matrix<double> &data)
     int id = parents[i];
     for (int j=0; j<nQpts_simp; j++) {
       for (int k=0; k<nFields; k++) {
-        val(id,k) += data(i*nQpts_simp+j,k)*weights[j];
+        val(id,k) += data(i*nQpts_simp+j,k)*weights[j]*vol[i];
       }
     }
   }
@@ -258,8 +258,11 @@ void superMesh::setupQuadrature(void)
       shape_tri(qpts[i],shapeQpts[i]);
   }
 
+  vol.resize(0);
+
   if (nDims==2) {
     for (auto &tri:tris) {
+      vol.push_back(getAreaTri(tri.nodes));
       tri.qpts.resize(nQpts_simp);
       for (int j=0; j<nQpts_simp; j++) {
         for (int k=0; k<nv_simp; k++) {
@@ -269,6 +272,7 @@ void superMesh::setupQuadrature(void)
     }
   } else {
     for (auto &tet:tets) {
+      vol.push_back(getVolumeTet(tet.nodes));
       tet.qpts.resize(nQpts_simp);
       for (int j=0; j<nQpts_simp; j++) {
         for (int k=0; k<nv_simp; k++) {
@@ -574,4 +578,23 @@ vector<triangle> splitQuadIntoTris(const vector<point> &quadNodes)
   newTris[1].nodes = {{quadNodes[1],quadNodes[2],quadNodes[3]}};
 
   return newTris;
+}
+
+double getAreaTri(std::array<point,3> &nodes)
+{
+  Vec3 dx1 = nodes[1] - nodes[0];
+  Vec3 dx2 = nodes[2] - nodes[0];
+  Vec3 cross = dx1.cross(dx2);
+
+  return 1./2.*std::abs(cross.z);
+}
+
+double getVolumeTet(std::array<point,4> &nodes)
+{
+  Vec3 dx1 = nodes[1] - nodes[0];
+  Vec3 dx2 = nodes[2] - nodes[0];
+  Vec3 dx3 = nodes[3] - nodes[0];
+  Vec3 cross = dx1.cross(dx2);
+
+  return 1./6.*std::abs(dx3*cross);
 }

@@ -75,6 +75,7 @@ public:
   vector<tetra> tets;    //! Tetrahedrons comprising the supermesh [for 3D]
   vector<triangle> tris; //! triangles comprising the supermesh [for 2D]
   vector<int> parents;   //! Parent donor-cell ID for each tet [range 0:(nDonors-1)]
+  vector<double> vol;    //! Volume of each simplex
 
   /* ---- Member Functions ---- */
 
@@ -99,7 +100,7 @@ public:
   void getQpts(vector<point> &qptPos, vector<int> &qptCell);
   void getQpts(matrix<double> &qptPos, vector<int> &qptCell);
 
-  int getNQpts(void) {return nQpts; };
+  int getNQpts(void) { return nQpts; }
 
   //! Get the quadrature point locations and weights, and find physical positions of all qpts
   void setupQuadrature(void);
@@ -124,3 +125,7 @@ vector<tetra> clipTet(tetra &tet, const vector<point> &clipFace, Vec3 &norm);
 
 //! Use the given face and outward normal to clip the given triangle and return the new set of tris
 vector<triangle> clipTri(triangle &tri, const vector<point> &clipFace, Vec3 &norm);
+
+double getAreaTri(std::array<point,3> &nodes);
+
+double getVolumeTet(std::array<point,4> &nodes);

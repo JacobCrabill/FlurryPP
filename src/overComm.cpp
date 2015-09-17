@@ -541,6 +541,13 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   }
 
   // Send/recv the final target-cell data
+  nCellsSend.resize(nproc);
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    nCellsSend[p] = foundCells[p].size();
+  }
+  setupNPieces(nCellsSend,nCellsRecv);
+
   stride = nSpts*nFields;
   matrix<double> unblankU(nUnblanks,stride);
   vector<vector<int>> recvInds;
@@ -682,7 +689,7 @@ void overComm::sendRecvData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, 
   // Rearrange data into final storage matrix  [NOTE: U_in must be pre-sized]
   for (int p=0; p<nproc; p++) {
     if (p==rank) continue;
-    for (int i=0; i<nPtsRecv[p]; i++) {
+    for (int i=0; i<nPiecesRecv[p]; i++) {
       for (int k=0; k<stride; k++) {
         recvVals(recvInds[p][i],k) = tmpRecvVals[p](i,k);
       }

@@ -819,7 +819,7 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
   }
 
   faceMap.assign(nFaces,-1);
-  faceType.assign(nFaces,HOLE_FACE);
+  currFaceType.assign(nFaces,HOLE_FACE);
 
   // Internal Faces
   for (auto &ff: intFaces) {
@@ -850,6 +850,7 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
 
     faces.push_back(iface);
     faceMap[ff] = faces.size();
+    currFaceType[ff] = INTERNAL;
   }
   // New # of internal faces (after excluding blanked faces)
   nIntFaces = faces.size();
@@ -888,6 +889,7 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
 
     faces.push_back(bface);
     faceMap[ff] = faces.size();
+    currFaceType[ff] = BOUNDARY;
   }
   // New # of boundary faces (after excluding blanked faces)
   nBndFaces = faces.size() - nIntFaces;
@@ -943,6 +945,7 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
 
       mpiFacesVec.push_back(mface);
       faceMap[ff] = mpiFacesVec.size();
+      currFaceType[ff] = MPI_FACE;
     }
     // New # of boundary faces (after excluding blanked faces)
     nMpiFaces = mpiFacesVec.size();
@@ -979,6 +982,8 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
       oface->initialize(eles[ic],nullEle,ff,fid,info,params);
 
       overFacesVec.push_back(oface);
+      faceMap[ff] = overFacesVec.size();
+      currFaceType[ff] = OVER_FACE;
     }
   }
   overFaces.erase(std::remove(overFaces.begin(), overFaces.end(), -1), overFaces.end());

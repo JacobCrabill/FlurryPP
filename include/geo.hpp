@@ -170,6 +170,7 @@ public:
 
   vector<int> eleMap;     //! For overset meshes where some cells are blanked, map from 'ic' to 'eles' index
   vector<int> faceMap;    //! For overset meshes where some faces are blanked, map from 'ff' to faceType-vector index
+  vector<int> currFaceType; //! Current face class type for each face in mesh [internal, boundary, mpi, overset, hole]
   //vector<int> bfaceMap;
   //vector<int> mFaceMap;
   //vector<int> oFaceMap;
