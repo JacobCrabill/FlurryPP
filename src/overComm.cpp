@@ -407,6 +407,8 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
     }
   }
 
+  cout << "rank = " << rank << ": nUnblanksFound = " << donors.size() << endl;
+
   /* --- Setup & Exchange Quadrature-Point Data --- */
 
   // Now that we have the local superMesh for each target, setup points for
@@ -468,7 +470,6 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   // at all quadrature points
 
   vector<matrix<double>> sendBasis(nproc); // Basis function values to be sent back to donor grid
-  vector<matrix<double>> sendU(nproc);     // Solution values to be sent back to donor grid
   offset = 0;
   for (int p=0; p<nproc; p++) {
     if (p>0) offset += nQptsRecv[p-1];
@@ -489,15 +490,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
       vector<double> basisTmp;
       opers[eles[ie]->eType][eles[ie]->order].getBasisValues(refLoc,basisTmp);
 
-      vector<double> UTmp(params->nFields);
-      for (int j=0; j<nSpts; j++) {
-        for (int k=0; k<params->nFields; k++) {
-          UTmp[k] += basisTmp[j] * eles[ie]->U_spts(j,k);
-        }
-      }
-
       sendBasis[p].insertRow(basisTmp);
-      sendU[p].insertRow(UTmp);
     }
   }
 
@@ -548,16 +541,28 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   setupNPieces(nCellsSend,nCellsRecv);
 
   stride = nSpts*nFields;
-  matrix<double> unblankU(nUnblanks,stride);
+  vector<matrix<double>> tmpUnblankU(nproc);
   vector<vector<int>> recvInds;
-  sendRecvData(nCellsSend,nCellsRecv,foundCells,recvInds,finalU,unblankU,stride,true);
+  sendRecvData(nCellsSend,nCellsRecv,foundCells,recvInds,finalU,tmpUnblankU,stride);
+
+  // Add contributions from superMeshes on each rank
+  matrix<double> unblankU(nUnblanks,stride);
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    for (int i=0; i<nCellsRecv[p]; i++) {
+      for (int k=0; k<stride; k++) {
+        unblankU(recvInds[p][i],k) += tmpUnblankU[p](i,k);
+      }
+    }
+  }
 
   // Apply the new values to the unblank ele objects
   for (int i=0; i<nUnblanks; i++) {
     int ic = ubCells[i];
+    eles[ic]->U_spts.initializeToZero();
     for (int spt=0; spt<nSpts; spt++)
       for (int k=0; k<nFields; k++)
-        eles[ic]->U_spts(spt,k) = unblankU(i,spt*nFields+k);
+        eles[ic]->U_spts(spt,k) += unblankU(i,spt*nFields+k);
   }
 #endif
 }

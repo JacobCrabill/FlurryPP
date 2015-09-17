@@ -42,7 +42,8 @@
  *              `3                                    `3
  */
 
-
+//#include <fstream>
+//#include "mpi.h"
 superMesh::superMesh()
 {
 
@@ -82,7 +83,7 @@ void superMesh::buildSuperMesh(void)
 
 void superMesh::buildSuperMeshTri(void)
 {
-  // Step 1: Split the donor hexahedrons into tets to prepare for clipping
+  // Step 1: Split the donor hexahedrons into triangles to prepare for clipping
   tris.resize(0);
   parents.resize(0);
   for (int i=0; i<nDonors; i++) {
@@ -115,6 +116,16 @@ void superMesh::buildSuperMeshTri(void)
   faces.insertRow(facePts);
   normals[3] = getEdgeNormal(facePts,xc);
 
+//    // !! DEBUGGING !!
+//  int rank;
+//  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+//  if (rank==0) {
+//    cout << " --- FACES ---" << endl;
+//    for (int i=0; i<normals.size(); i++)
+//      cout << faces(i,0).x << ", " << faces(i,0).y << "; " << faces(i,1).x << ", " << faces(i,1).y << endl;
+//    cout << endl;
+//  }
+
   // Step 3: Use the faces to clip the tets
   for (uint i=0; i<faces.getDim0(); i++) {
     vector<triangle> newTris;
@@ -122,12 +133,50 @@ void superMesh::buildSuperMeshTri(void)
     for (uint j=0; j<tris.size(); j++) {
       triangle tri = tris[j];
       auto tmpTris = clipTri(tri, faces.getRow(i), normals[i]);
+//      if (i==0 && rank==0) {
+//        cout << "ntris = " << tmpTris.size() << "for tri " << j << endl;
+//        cout << faces(i,0).x << ", " << faces(i,0).y << "; " << faces(i,1).x << ", " << faces(i,1).y << endl;
+//        cout << normals[i].x << ", " << normals[i].y << endl;
+//        cout << endl;
+//        cout << tri.nodes[0].x << ", " << tri.nodes[0].y << endl;
+//        cout << tri.nodes[1].x << ", " << tri.nodes[1].y << endl;
+//        cout << tri.nodes[2].x << ", " << tri.nodes[2].y << endl;
+//        cout << endl;
+//        for (int k=0; k<tmpTris.size(); k++)
+//          for (int m=0; m<3; m++)
+//            cout << tmpTris[k].nodes[m].x << ", " << tmpTris[k].nodes[m].y << ", " << tmpTris[k].nodes[m].z << endl;
+//        cout << endl;
+//      }
       newTris.insert(newTris.end(),tmpTris.begin(),tmpTris.end());
       newParents.insert(newParents.end(),tmpTris.size(),parents[j]);
     }
     tris = newTris;
     parents = newParents;
   }
+
+//  // !! DEBUGGING !!
+//  if (rank==0) {
+//    ofstream trifile("SuperMeshNodes.csv");
+//    trifile << "TARGET ELEMENT" << endl;
+//    for (int i=0; i<target.size(); i++) {
+//      trifile << i << ", " << target[i].x << ", " << target[i].y << ", " << target[i].z << endl;
+//    }
+//    trifile << endl;
+//    trifile << "INPUT DONORS" << endl;
+//    trifile << "ind, x, y, z" << endl;
+//    for (int i=0; i<nDonors; i++) {
+//      for (int j=0; j<4; j++)
+//        trifile << i << ", " << donors(i,j).x << ", " << donors(i,j).y << ", " << donors(i,j).z << endl;
+//    }
+//    trifile << endl;
+//    trifile << "SUPERMESH TRIANGLES" << endl;
+//    trifile << "ind, x, y, z" << endl;
+//    for (int i=0; i<tris.size(); i++) {
+//      for (int j=0; j<3; j++)
+//        trifile << i << ", " << tris[i].nodes[j].x << ", " << tris[i].nodes[j].y << ", " << tris[i].nodes[j].z << endl;
+//    }
+//    trifile.close();
+//  }
 }
 
 void superMesh::buildSuperMeshTet(void)
@@ -233,6 +282,12 @@ matrix<double> superMesh::integrateByDonor(matrix<double> &data)
     }
   }
 
+  //!!DEBUGGING
+  if (data.checkNan()) FatalError("NaN data in superMesh::integrateByDonor()");
+//  cout << endl;
+//  val.print(6);
+//  cout << endl;
+
   return val;
 }
 
@@ -282,6 +337,9 @@ void superMesh::setupQuadrature(void)
       }
     }
   }
+
+  //!!DEBUGGING
+  if (checkNaN(vol)) FatalError("NaN volume in superMesh!");
 }
 
 void superMesh::getQpts(vector<point> &qptPos, vector<int> &qptCell)
@@ -531,6 +589,7 @@ vector<triangle> clipTri(triangle &tri, const vector<point> &clipEdge, Vec3 &nor
     case 0: {
       // No intersection.
       outTris.push_back(tri);
+      break;
     }
     case 1: {
       // Removing one corner of tri

@@ -368,19 +368,6 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
           FatalError("Face of blankCell has unknown currFaceType.");
           break;
       }
-
-//      if (c2c(ic,j)>0) {
-//        if (iblankCell[c2c(ic,j)]==NORMAL || blankCells.count(c2c(ic,j)))
-//          blankIFaces.insert(c2f(ic,j));
-//        else
-//          blankOFaces.insert(c2f(ic,j));
-//      } else {
-//        // Boundary or MPI face
-//        if (findFirst(overFaces,c2f(ic,j))>0)
-//          blankOFaces.insert(c2f(ic,j));
-//        else if (findFirst(mpiFaces,c2f(ic,j))>0)
-//          blankMFaces.insert(c2f(ic,j));
-//      }
     }
   }
 
@@ -517,7 +504,7 @@ void geo::removeEles(vector<shared_ptr<ele>> &eles, set<int> &blankEles)
 
   for (auto &ic:blankEles) {
     if (ic<0) continue;
-cout << "Blanking cells!" << endl;
+
     int ind = eleMap[ic];
     if (ind<0) FatalError("Should not have marked a hole cell for blanking!");
     eles.erase(eles.begin()+ind,eles.begin()+ind+1);
@@ -535,7 +522,6 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, set<int> &ubEles)
   /* --- Setup & Insert Unblanked Elements --- */
 
   for (auto &ic:unblankCells) {
-  cout << "Unblanking cells!" << endl;
     // Find the next-lowest index
     int ind = eleMap[ic];
     if (ind>=0) FatalError("Should not have marked a non-hole cell for un-blanking! Is eleMap wrong?");
@@ -740,14 +726,6 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
         break;
       }
     }
-//    for (int f2=ff-1; f2>=0; f2--) {
-//      ind = faceMap[f2];
-//      if ( ind>0 && (currFaceType[f2] == MPI_FACE) && mFaces[ind]->ID < ff) {
-//        ind++;
-//        break;
-//      }
-//    }
-//    ind = max(ind,0);
     mFaces.insert(mFaces.begin()+ind,1,mface);
     faceMap[ff] = ind;
     currFaceType[ff] = MPI_FACE;
@@ -760,7 +738,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
 
   for (auto &ff:ubOFaces) {
     if (ff<0) continue;
-cout << "Unblanking OFaces!" << endl;
+
     shared_ptr<overFace> oface = make_shared<overFace>();
 
     int ic = f2c(ff,0);
@@ -822,7 +800,7 @@ void geo::removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace
 
   for (auto &ff:blankIFaces) {
     if (ff<0) continue;
-cout << "Blanking Faces!" << endl;
+
     int ind = faceMap[ff];
     int fType = currFaceType[ff];
     if (ind<0) FatalError("invalid blankIFace!");
@@ -865,7 +843,7 @@ cout << "Blanking Faces!" << endl;
     if (ff<0) continue;
     int ind = faceMap[ff];
     if (ind<0) continue;
-  cout << "Blanking OFaces!" << endl;
+
     oFaces.erase(oFaces.begin()+ind,oFaces.begin()+ind+1);
 
     // Update the map

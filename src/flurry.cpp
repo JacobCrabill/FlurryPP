@@ -105,13 +105,13 @@ int main(int argc, char *argv[]) {
 
   /* --- Calculation Loop --- */
   for (params.iter=params.initIter+1; params.iter<=params.iterMax; params.iter++) {
-if (rank==0)
-cout << "iter = " << params.iter << endl;
+
     Solver.update();
 
-    if ((params.iter)%params.monitorResFreq == 0 || params.iter==params.initIter+1) writeResidual(&Solver,&params);
+    //if ((params.iter)%params.monitorResFreq == 0 || params.iter==params.initIter+1) writeResidual(&Solver,&params);
     if ((params.iter)%params.plotFreq == 0) writeData(&Solver,&params);
-
+MPI_Barrier(MPI_COMM_WORLD);
+if ((params.iter)%params.monitorResFreq == 0 || params.iter==params.initIter+1) writeResidual(&Solver,&params);
   }
 
   // Get simulation wall time

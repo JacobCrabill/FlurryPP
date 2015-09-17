@@ -498,7 +498,7 @@ void writeResidual(solver *Solver, input *params)
       if(checkNaN(resTmp)) {
         cout << "rank " << params->rank << ", ele " << e << ": ";
         auto box = Solver->eles[e]->getBoundingBox();
-        cout << " centriod = " << box[0] << "," << box[1] << "," << box[2] << endl;
+        cout << " minPt = " << box[0] << "," << box[1] << "," << box[2] << ", maxPt = " << box[3] << "," << box[4] << "," << box[5] << endl;
         FatalError("NaN Encountered in Solution Residual!");
       }
 
@@ -513,7 +513,7 @@ void writeResidual(solver *Solver, input *params)
       if(checkNaN(resTmp)) {
         cout << "rank " << params->rank << ", ele " << e << ": " << flush;
         auto box = Solver->eles[e]->getBoundingBox();
-        cout << " centriod = " << box[0] << "," << box[1] << "," << box[2] << endl;
+        cout << " minPt = " << box[0] << "," << box[1] << "," << box[2] << ", maxPt = " << box[3] << "," << box[4] << "," << box[5] << endl;
         FatalError("NaN Encountered in Solution Residual!");
       }
 

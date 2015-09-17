@@ -177,7 +177,7 @@ public:
   void vecToMatrixResize(vector<T> &A);
 
   /*! Prints the contents of the Array to the console */
-  void print(void);
+  void print(int prec=8);
 
   /*! Check the matrix for NaN values */
   bool checkNan(void);

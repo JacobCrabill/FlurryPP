@@ -190,7 +190,7 @@ void ele::setupAllGeometry(void) {
 void ele::move(bool doTransforms)
 {
   for (int i=0; i<nNodes; i++) {
-    nodesRK[i] = point(Geo->xv[Geo->c2v(ID,i)]);
+    nodesRK[i] = point(Geo->xv[Geo->c2v(ID,i)],nDims);
   }
 
   if (params->meshType == OVERSET_MESH) {
@@ -533,7 +533,7 @@ vector<double> ele::getBoundingBox(void)
   vector<double> bbox = {INFINITY,INFINITY,INFINITY,-INFINITY,-INFINITY,-INFINITY};
   if (params->motion == 0) {
     for (auto &pt:nodes) {
-      for (int dim=0; dim<nDims; dim++) {
+      for (int dim=0; dim<3; dim++) {
         bbox[dim]   = min(bbox[dim],  pt[dim]);
         bbox[dim+3] = max(bbox[dim+3],pt[dim]);
       }
@@ -541,7 +541,7 @@ vector<double> ele::getBoundingBox(void)
   }
   else {
     for (auto &pt:nodesRK) {
-      for (int dim=0; dim<nDims; dim++) {
+      for (int dim=0; dim<3; dim++) {
         bbox[dim]   = min(bbox[dim],  pt[dim]);
         bbox[dim+3] = max(bbox[dim+3],pt[dim]);
       }

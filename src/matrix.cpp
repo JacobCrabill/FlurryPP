@@ -414,12 +414,13 @@ vector<T> Array2D<T>::getCol(int col)
 }
 
 template<typename T>
-void matrix<T>::print()
+void matrix<T>::print(int prec)
 {
-  cout.precision(8);
+  cout.setf(ios::fixed, ios::floatfield);
+  cout.precision(prec);
   for (uint i=0; i<this->dims[0]; i++) {
     for (uint j=0; j<this->dims[1]; j++) {
-      cout << setw(10) << left << this->data[i*this->dims[1]+j] << " ";
+      cout << setw(prec+4) << left << this->data[i*this->dims[1]+j] << " ";
     }
     cout << endl;
   }
