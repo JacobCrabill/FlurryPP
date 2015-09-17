@@ -199,7 +199,7 @@ void ele::setupAllGeometry(void) {
 void ele::move(bool doTransforms)
 {
   for (int i=0; i<nNodes; i++) {
-    nodesRK[i] = point(Geo->xv_new[Geo->c2v(ID,i)]);
+    nodesRK[i] = point(Geo->xv[Geo->c2v(ID,i)]);
   }
 
   if (params->meshType == OVERSET_MESH) {

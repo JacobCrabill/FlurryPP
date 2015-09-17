@@ -209,9 +209,9 @@ void overComm::matchOversetPoints3D(vector<shared_ptr<ele>> &eles, vector<shared
       point pt = point(&interpPtsPhys[3*(offset+i)]);
       int ic = tg->findPointDonor(&interpPtsPhys[3*(offset+i)]);
       if (ic>=0 && eleMap[ic]>=0) {
-        ic = eleMap[ic];
+        int ie = eleMap[ic];
         point refLoc;
-        eles[ic]->getRefLocNelderMeade(pt,refLoc);
+        eles[ie]->getRefLocNelderMeade(pt,refLoc);
 //        if (!isInEle) {
 //          auto bbox = eles[ic]->getBoundingBox();
 //          cout << endl;
@@ -292,18 +292,18 @@ void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared
         continue;
 
       // Check for containment in all eles on this rank of this grid [no ADT currently for 2D meshes]
-      int ic = 0;
+//      int ic = 0;
       for (auto &e:eles) {
         point refLoc;
         bool isInEle = e->getRefLocNelderMeade(pt,refLoc);
 
         if (isInEle) {
           foundPts[p].push_back(i);
-          foundEles[p].push_back(ic); // Local ele id for this grid
+          foundEles[p].push_back(e->ID); // Local ele id for this grid
           foundLocs[p].push_back(refLoc);
           break;
         }
-        ic++;
+//        ic++;
       }
     }
   }
@@ -563,7 +563,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
 #endif
 }
 
-void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers)
+void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap)
 {
 #ifndef _NO_MPI
 
@@ -573,7 +573,11 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
     if (gridIdList[p] == gridID) continue;
     for (int i=0; i<foundPts[p].size(); i++) {
       point refPos = foundLocs[p][i];
-      int ic = foundEles[p][i];
+      int ic = eleMap[foundEles[p][i]];
+      if (ic<0 || ic>eles.size()) {
+        cout << "!!!! ic = " << ic << " !!!!" << endl;
+        FatalError("bad value of ic!");
+      }
       opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, U_out[p][i], refPos);
     }
   }

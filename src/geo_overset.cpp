@@ -94,6 +94,8 @@ void geo::splitGridProcs(void)
   MPI_Comm_rank(gridComm,&gridRank);
   MPI_Comm_size(gridComm,&nProcGrid);
 
+  cout << "rank " << rank << ", gridRank " << gridRank << ", gridID " << gridID << endl;
+
   gridIdList.resize(nproc);
   MPI_Allgather(&gridID,1,MPI_INT,gridIdList.data(),1,MPI_INT,MPI_COMM_WORLD);
 #endif
@@ -307,6 +309,29 @@ void geo::setCellIblanks(void)
       unblankCells.insert(ic);
 }
 
+void geo::setFaceIblanks(void)
+{
+  iblankFace.assign(nFaces,NORMAL);
+
+  for (int ic=0; ic<nEles; ic++) {
+    if (iblankCell[ic]!=HOLE) continue;
+
+    for (int j=0; j<c2nf[ic]; j++) {
+      if (c2c(ic,j)>0) {
+        // Internal face
+        if (iblankCell[c2c(ic,j)] == HOLE) {
+          iblankFace[c2f(ic,j)] = HOLE;
+        } else if (iblankCell[c2c(ic,j)] == NORMAL) {
+          iblankFace[c2f(ic,j)] = FRINGE;
+        }
+      } else {
+        // Boundary or MPI face
+        iblankFace[c2f(ic,j)] = HOLE;
+      }
+    }
+  }
+}
+
 void geo::matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &donors)
 {
 #ifndef _NO_MPI
@@ -500,7 +525,8 @@ cout << "Blanking cells!" << endl;
 
     // Update the map
     for (int k=ic+1; k<nEles; k++)
-      eleMap[k]--;
+      if (eleMap[k]>=0)
+        eleMap[k]--;
   }
 }
 

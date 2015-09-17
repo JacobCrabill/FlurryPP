@@ -84,9 +84,6 @@ public:
 
   /* ---- My Overset Functions ---- */
 
-  //! Send / Receive interpolated data to proper grid and rank
-  void exchangeOversetData(struct dataExchange &exchange);
-
   void matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &donors);
 
   //! Update nodal and cell iblank values using current mesh
@@ -217,8 +214,8 @@ private:
   void setupOverset2D(void);
 
   //! Using Tioga's nodal iblanks, set iblank values for all cells and faces
-  void setCellFaceIblanks();
   void setCellIblanks();
+  void setFaceIblanks();
 
   //! For 2D overset cases: pre-process node types
   void setNodeTypes2D(void);

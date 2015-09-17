@@ -115,6 +115,8 @@ void geo::processConnectivity()
       setupOverset2D();
     }
 
+    setFaceIblanks();
+
     // Since this is initial pre-processing, clear blank/unblanks
     blankCells.clear();
     unblankCells.clear();
@@ -126,9 +128,9 @@ void geo::processConnectivity()
   /* --- Additional setup for moving grids --- */
   if (params->motion) {
     xv0.resize(nVerts);
-    xv_new.resize(nVerts);
+//    xv_new.resize(nVerts);
     for (int i=0; i<nVerts; i++) xv0[i] = point(xv[i]);
-    for (int i=0; i<nVerts; i++) xv_new[i] = point(xv[i]);
+//    for (int i=0; i<nVerts; i++) xv_new[i] = point(xv[i]);
     gridVel.setup(nVerts,nDims);
   }
 #endif
@@ -845,6 +847,7 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
       info.relRot = relRot;
       ic1 = eleMap[ic1];
       ic2 = eleMap[ic2];
+      if (ic2==-1) FatalError("Internal face has right cell blanked.");
       iface->initialize(eles[ic1],eles[ic2],ff,fid1,info,params);
     }
 
@@ -954,7 +957,6 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
 #endif
 
   // Overset Faces
-  // Internal Faces
   if (meshType == OVERSET_MESH) {
     for (auto &ff: overFaces) {
       iblankFace[ff] = FRINGE; // To ensure consistency
@@ -966,6 +968,7 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
         if (f2c(ff,1) == -1 || iblankCell[f2c(ff,1)] == HOLE) {
           // This happens when a fringe face is ALSO an MPI-boundary face
           // Since the other processor has the non-blanked cell, just ignore the face here
+          iblankFace[ff] = HOLE;
           ff = -1; // to remove from vector later
           continue;
         }
@@ -2380,12 +2383,12 @@ void geo::partitionMesh(void)
 
 void geo::moveMesh(double rkVal)
 {
-#pragma omp parallel for collapse(2)
-  for (int iv=0; iv<nVerts; iv++) {
-    for (int dim=0; dim<nDims; dim++) {
-      xv(iv,dim) = xv_new[iv][dim];
-    }
-  }
+//#pragma omp parallel for collapse(2)
+//  for (int iv=0; iv<nVerts; iv++) {
+//    for (int dim=0; dim<nDims; dim++) {
+//      xv(iv,dim) = xv_new[iv][dim];
+//    }
+//  }
 
   double rkTime = params->time + params->dt*rkVal;
 
@@ -2394,8 +2397,8 @@ void geo::moveMesh(double rkVal)
       #pragma omp parallel for
       for (int iv=0; iv<nVerts; iv++) {
         /// Taken from Kui, AIAA-2010-5031-661
-        xv_new[iv].x = xv0[iv].x + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*rkTime/10.);
-        xv_new[iv].y = xv0[iv].y + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*rkTime/10.);
+        xv(iv,0) = xv0[iv].x + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*rkTime/10.);
+        xv(iv,1) = xv0[iv].y + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*rkTime/10.);
         gridVel(iv,0) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*rkTime/10.);
         gridVel(iv,1) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*rkTime/10.);
       }
@@ -2407,8 +2410,8 @@ void geo::moveMesh(double rkVal)
         #pragma omp parallel for
         for (int iv=0; iv<nVerts; iv++) {
           /// Taken from Liang-Miyaji
-          xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(4*pi*rkTime/t0);
-          xv_new[iv].y = xv0[iv].y + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(8*pi*rkTime/t0);
+          xv(iv,0) = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(4*pi*rkTime/t0);
+          xv(iv,1) = xv0[iv].y + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(8*pi*rkTime/t0);
           gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*cos(4*pi*rkTime/t0);
           gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*cos(8*pi*rkTime/t0);
         }
@@ -2417,9 +2420,9 @@ void geo::moveMesh(double rkVal)
         #pragma omp parallel for
         for (int iv=0; iv<nVerts; iv++) {
           /// Taken from Liang-Miyaji
-          xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*rkTime/t0);
-          xv_new[iv].y = xv0[iv].y + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(8*pi*rkTime/t0);
-          xv_new[iv].z = xv0[iv].z + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*rkTime/t0);
+          xv(iv,0) = xv0[iv].x + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*rkTime/t0);
+          xv(iv,1) = xv0[iv].y + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(8*pi*rkTime/t0);
+          xv(iv,2) = xv0[iv].z + sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*sin(4*pi*rkTime/t0);
           gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(4*pi*rkTime/t0);
           gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(8*pi*rkTime/t0);
           gridVel(iv,2) = 4.*pi/t0*sin(pi*xv0[iv].x/5.)*sin(pi*xv0[iv].y/5.)*sin(pi*xv0[iv].z/5.)*cos(4*pi*rkTime/t0);
@@ -2434,8 +2437,8 @@ void geo::moveMesh(double rkVal)
         double width = 5.;
         #pragma omp parallel for
         for (int iv=0; iv<nVerts; iv++) {
-          xv_new[iv].x = xv0[iv].x + sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*sin(4*pi*rkTime/t0);
-          xv_new[iv].y = xv0[iv].y + sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*sin(8*pi*rkTime/t0);
+          xv(iv,0) = xv0[iv].x + sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*sin(4*pi*rkTime/t0);
+          xv(iv,1) = xv0[iv].y + sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*sin(8*pi*rkTime/t0);
           gridVel(iv,0) = 4.*pi/t0*sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*cos(4*pi*rkTime/t0);
           gridVel(iv,1) = 8.*pi/t0*sin(pi*xv0[iv].x/width)*sin(pi*xv0[iv].y/width)*cos(8*pi*rkTime/t0);
         }
@@ -2446,10 +2449,10 @@ void geo::moveMesh(double rkVal)
       /// Rigid oscillation in a circle
       if (params->meshType!=OVERSET_MESH || gridID==0) {
         double A = .5; // Amplitude  (m)
-        double f = .2; // Frequency  (Hz)
+        double f = .1; // Frequency  (Hz)
         for (int iv=0; iv<nVerts; iv++) {
-          xv_new[iv].x = xv0[iv].x + A*sin(2.*pi*f*rkTime);
-          xv_new[iv].y = xv0[iv].y + A*(1-cos(2.*pi*f*rkTime));
+          xv(iv,0) = xv0[iv].x + A*sin(2.*pi*f*rkTime);
+          xv(iv,1) = xv0[iv].y + A*(1-cos(2.*pi*f*rkTime));
           gridVel(iv,0) = 2.*pi*f*A*cos(2.*pi*f*rkTime);
           gridVel(iv,1) = 2.*pi*f*A*sin(2.*pi*f*rkTime);
         }

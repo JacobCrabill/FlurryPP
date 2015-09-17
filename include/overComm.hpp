@@ -147,7 +147,7 @@ public:
   void matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int, map<int, oper> >& opers, set<int>& unblankCells, vector<int>& eleMap, int quadOrder);
 
   //! Perform the interpolation and communicate data across all grids
-  void exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers);
+  void exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap);
 
   /*!
    * \brief Gather a distributed dataset so that every rank has the full, organized dataset
