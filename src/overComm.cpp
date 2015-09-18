@@ -293,7 +293,6 @@ void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared
         continue;
 
       // Check for containment in all eles on this rank of this grid [no ADT currently for 2D meshes]
-//      int ic = 0;
       for (auto &e:eles) {
         point refLoc;
         bool isInEle = e->getRefLocNelderMeade(pt,refLoc);
@@ -304,7 +303,6 @@ void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared
           foundLocs[p].push_back(refLoc);
           break;
         }
-//        ic++;
       }
     }
   }
@@ -372,7 +370,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
       for (int j=0; j<nv; j++) {
         point pt = point(&ubNodes_rank[(offset+i)*stride+nDims*j],nDims);
         targetNodes.push_back(pt);
-        for (int dim=0; dim<nDims; dim++) {
+        for (int dim=0; dim<3; dim++) {
           targetBox[dim]   = min(pt[dim],targetBox[dim]);
           targetBox[dim+3] = max(pt[dim],targetBox[dim+3]);
         }
@@ -436,7 +434,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
         targetID[p].push_back(foundCells[p][i]);
         int ic = eleMap[donorID[p].back()];
         point refLoc;
-        eles[ic]->getRefLocNelderMeade(qpts_tmp[j],refLoc);
+        eles[ic]->getRefLocNelderMeade(point(qpts_tmp[j],nDims),refLoc);
         qptsD_ref[p].insertRow({refLoc.x,refLoc.x,refLoc.z});
 
         vector<double> basisTmp;

@@ -42,8 +42,8 @@
  *              `3                                    `3
  */
 
-//#include <fstream>
-//#include "mpi.h"
+#include <fstream>
+#include "mpi.h"
 superMesh::superMesh()
 {
 
@@ -116,9 +116,9 @@ void superMesh::buildSuperMeshTri(void)
   faces.insertRow(facePts);
   normals[3] = getEdgeNormal(facePts,xc);
 
-//    // !! DEBUGGING !!
-//  int rank;
-//  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+    // !! DEBUGGING !!
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 //  if (rank==0) {
 //    cout << " --- FACES ---" << endl;
 //    for (int i=0; i<normals.size(); i++)
@@ -338,6 +338,20 @@ void superMesh::setupQuadrature(void)
     }
   }
 
+//  cout << "tri[0] nodes:" << endl;
+//  for (int i=0; i<3; i++)
+//    cout << tris[0].nodes[i].x << ", " << tris[0].nodes[i].y << endl;
+//  cout << "tri[0] qpts:" << endl;
+//  for (int i=0; i<3; i++)
+//    cout << tris[0].qpts[i].x << ", " << tris[0].qpts[i].y << endl;
+//  cout << "shape qpts:" << endl;
+//  for (int i=0; i<3; i++) {
+//    for (int j=0; j<3; j++) {
+//    cout << shapeQpts(i,j) << ", ";
+//    }
+//    cout << endl;
+//  }
+
   //!!DEBUGGING
   if (checkNaN(vol)) FatalError("NaN volume in superMesh!");
 }
@@ -370,7 +384,7 @@ void superMesh::getQpts(matrix<double> &qptPos, vector<int> &qptCell)
   if (nDims == 2) {
     for (int i=0; i<nSimps; i++) {
       for (int j=0; j<nQpts_simp; j++) {
-        qptPos.insertRow({tris[i].qpts[j].x,tris[i].qpts[j].y,tris[i].qpts[j].z});
+        qptPos.insertRow({tris[i].qpts[j].x,tris[i].qpts[j].y,0.});
         qptCell.push_back(parents[i]);
       }
     }

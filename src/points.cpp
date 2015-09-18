@@ -862,9 +862,11 @@ void getQuadRuleTri(int order, vector<point> &locQpts, vector<double> &weights)
     }
     case 2: {
       locQpts.resize(3);
-      locQpts[0] = point({2./3.,1./3.,0});
-      locQpts[1] = point({1./3.,2./3.,0});
-      locQpts[2] = point({1./3.,1./3.,0});
+      double loc1 = 1./6;
+      double loc2 = 1.-2.*loc1;
+      locQpts[0] = point({loc2,loc1,0});
+      locQpts[1] = point({loc1,loc2,0});
+      locQpts[2] = point({loc1,loc1,0});
       weights = {1./3.,1./3.,1./3.};
       break;
     }
