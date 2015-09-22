@@ -87,6 +87,9 @@ public:
   //! Integrate a quantity over the superMesh (given at quadrature points of supermesh tets)
   double integrate(const vector<double> &data);
 
+  //! Integrate a series of quantities over the superMesh (given at quadrature points of supermesh tets)
+  vector<double> integrate(matrix<double> &data);
+
   //! Integrate the given data over each donor individually
   vector<double> integrateByDonor(const vector<double> &data);
 
@@ -99,6 +102,8 @@ public:
    */
   void getQpts(vector<point> &qptPos, vector<int> &qptCell);
   void getQpts(matrix<double> &qptPos, vector<int> &qptCell);
+
+  vector<double> getWeights(void);
 
   int getNQpts(void) { return nQpts; }
 

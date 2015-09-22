@@ -7,7 +7,7 @@ timeType      0    (0: Forward Euler, 4: RK44)
 dtType        0    (0: Fixed, 1: CFL-based)
 CFL           .1
 dt            .001
-iterMax       100
+iterMax       33
 restart       1
 restartIter   30
 
@@ -32,12 +32,12 @@ diffD        .1   (Diffusion Coefficient)
 # =============================================================
 #   Advection: 0-Gaussian,     1-u=x+y+z test case,  2-u=cos(x)*cos(y)*cos(z) test case
 #   N-S:       0-Uniform flow, 1-Uniform+Vortex (Kui), 2-Uniform+Vortex (Liang)
-icType       2
+icType       0
 
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        1   (Frequency to write plot files)
+plotFreq        1  (Frequency to write plot files)
 monitorResFreq  1    (Frequency to print residual to terminal)
 resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    Box    (Filename prefix for output files)
@@ -88,7 +88,7 @@ mesh_bound   fluid    fluid
 # =============================================================
 # Inviscid Flows
 rhoBound 1
-uBound   2
+uBound   .2
 vBound   -.2
 wBound   0.
 pBound   .7142857143

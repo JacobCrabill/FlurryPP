@@ -108,10 +108,8 @@ int main(int argc, char *argv[]) {
 
     Solver.update();
 
-    //if ((params.iter)%params.monitorResFreq == 0 || params.iter==params.initIter+1) writeResidual(&Solver,&params);
+    if ((params.iter)%params.monitorResFreq == 0 || params.iter==params.initIter+1) writeResidual(&Solver,&params);
     if ((params.iter)%params.plotFreq == 0) writeData(&Solver,&params);
-MPI_Barrier(MPI_COMM_WORLD);
-if ((params.iter)%params.monitorResFreq == 0 || params.iter==params.initIter+1) writeResidual(&Solver,&params);
   }
 
   // Get simulation wall time

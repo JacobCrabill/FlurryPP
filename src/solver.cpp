@@ -47,7 +47,7 @@ void solver::setup(input *params, geo *Geo)
   params->time = 0.;
 
   /* Setup the FR elements & faces which will be computed on */
-  Geo->setupElesFaces(eles,faces,mpiFaces,overFaces); // REMOVE this LATER
+  Geo->setupElesFaces(eles,faces,mpiFaces,overFaces);
 
   nGrids = Geo->nGrids;
   gridID = Geo->gridID;
@@ -94,7 +94,6 @@ void solver::update(void)
     calcResidual(step);
 
     timeStepA(step);
-
   }
 
   /* Final Runge-Kutta time advancement step */

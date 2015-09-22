@@ -251,6 +251,27 @@ double superMesh::integrate(const vector<double> &data)
   return val;
 }
 
+vector<double> superMesh::integrate(matrix<double> &data)
+{
+  if ((int)data.getDim0() != nQpts) FatalError("To integrate over supermesh, data must lie at its quadrature nodes.");
+
+  int nFields = data.getDim1();
+
+  vector<double> vals(nFields);
+  for (int i=0; i<nSimps; i++)
+    for (int j=0; j<nQpts_simp; j++)
+      for (int k=0; k<nFields; k++)
+        vals[k] += data(i*nQpts_simp+j,k)*weights[j]*vol[i];
+
+  //!!DEBUGGING
+  if (data.checkNan()) FatalError("NaN data in superMesh::integrateByDonor()");
+//  cout << endl;
+//  val.print(6);
+//  cout << endl;
+
+  return vals;
+}
+
 vector<double> superMesh::integrateByDonor(const vector<double> &data)
 {
   if ((int)data.size() != nQpts) FatalError("To integrate over supermesh, data must lie at its quadrature nodes.");
@@ -396,6 +417,12 @@ void superMesh::getQpts(matrix<double> &qptPos, vector<int> &qptCell)
       }
     }
   }
+}
+
+vector<double> superMesh::getWeights(void)
+{
+  vector<double> wts = weights;
+  return wts;
 }
 
 vector<tetra> splitHexIntoTets(const vector<point> &hexNodes)
