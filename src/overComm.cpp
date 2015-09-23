@@ -494,7 +494,6 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
       qpts_recv[p](i,1) = refLoc.y;
       qpts_recv[p](i,2) = refLoc.z;
 
-//      vector<double> rloc = {refLoc.x, refLoc.y, refLoc.z};
       vector<double> basisTmp;
       opers[eles[ie]->eType][eles[ie]->order].getBasisValues(refLoc,basisTmp);
 
@@ -507,7 +506,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   sendRecvData(nQptsRecv,nQptsSend,sendBasis,targetBasis,stride);
 
   // Perform integration for each target cell
-  vector<matrix<double>> finalU(nproc);
+  vector<matrix<double>> LHS(nproc), RHS(nproc);
   offset = 0;
   for (int p=0; p<nproc; p++) {
     if (p>0) offset += foundCells[p-1].size();
@@ -519,9 +518,8 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
         offsetD += nSpts*foundCellNDonors[p][i-1];
       }
 
-      matrix<double> RHS(nSpts,params->nFields);
-      matrix<double> LHS;
-//      vector<double> LHS(nSpts);
+      matrix<double> rhs(nSpts,params->nFields);
+      matrix<double> lhs;
       int nQpts = donors[offset+i].getNQpts();
 
       for (int ispt=0; ispt<nSpts; ispt++) {
@@ -533,32 +531,18 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
           }
         }
 
-//        vector<double> basisTT(nQpts);
-//        for (int qpt=0; qpt<nQpts; qpt++)
-//          basisTT[qpt] = targetBasis[p](offsetQ+qpt,ispt) *targetBasis[p](offsetQ+qpt,ispt);
-//        LHS[ispt] = donors[offset+i].integrate(basisTT);
         auto massMatTTRow = donors[offset+i].integrate(basisTgtTgt);
-        LHS.insertRow(massMatTTRow);
+        lhs.insertRow(massMatTTRow);
 
         auto massMatTDRow = donors[offset+i].integrateByDonor(basisTgtDnr);
         for (int id=0; id<foundCellNDonors[p][i]; id++)
           for (int jspt=0; jspt<nSpts; jspt++)
             for (int k=0; k<nFields; k++)
-              RHS(ispt,k) += massMatTDRow(id,jspt) * donorU[p](offsetD+id*nSpts+jspt,k); // / LHS[ispt];
+              rhs(ispt,k) += massMatTDRow(id,jspt) * donorU[p](offsetD+id*nSpts+jspt,k);
       }
 
-//      //!!!! DEBUGGING !!!!
-//      cout << endl;
-//      cout << "LHS = " << endl;
-////      LHS.print();
-//      for (auto &val:LHS) cout << val << "  ";
-//      cout << endl;
-//      auto inv = LHS.invertMatrix();
-//      inv.print();
-      matrix<double> U_RHS = solveCholesky(LHS,RHS);
-//      inv.timesMatrix(RHS,U_RHS);
-
-      finalU[p].appendRows(U_RHS);
+      LHS[p].appendRows(lhs);
+      RHS[p].appendRows(rhs);
     }
   }
 
@@ -569,18 +553,28 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   }
   setupNPieces(nCellsSend,nCellsRecv);
 
-  stride = nSpts*nFields;
-  vector<matrix<double>> tmpUnblankU(nproc);
+  int strideR = nSpts*nFields;
+  int strideL = nSpts*nSpts;
+  vector<matrix<double>> tmpUbLHS(nproc), tmpUbRHS(nproc);
   vector<vector<int>> recvInds;
-  sendRecvData(nCellsSend,nCellsRecv,foundCells,recvInds,finalU,tmpUnblankU,stride);
+  sendRecvData(nCellsSend,nCellsRecv,foundCells,recvInds,LHS,tmpUbLHS,strideL);
+  sendRecvData(nCellsSend,nCellsRecv,foundCells,recvInds,RHS,tmpUbRHS,strideR);
 
   // Add contributions from superMeshes on each rank
-  matrix<double> unblankU(nUnblanks,stride);
+  vector<matrix<double>> ubLHS(nUnblanks), ubRHS(nUnblanks);
+  for (auto &lhs:ubLHS) lhs.setup(nSpts,nSpts);
+  for (auto &rhs:ubRHS) rhs.setup(nSpts,nFields);
+
   for (int p=0; p<nproc; p++) {
     if (p==rank) continue;
     for (int i=0; i<nCellsRecv[p]; i++) {
-      for (int k=0; k<stride; k++) {
-        unblankU(recvInds[p][i],k) += tmpUnblankU[p](i,k);
+      for (int j=0; j<nSpts; j++) {
+        for (int k=0; k<nSpts; k++) {
+          ubLHS[recvInds[p][i]](j,k) += tmpUbLHS[p](i,j*nSpts+k);
+        }
+        for (int k=0; k<nFields; k++) {
+          ubRHS[recvInds[p][i]](j,k) += tmpUbRHS[p](i,j*nFields+k);
+        }
       }
     }
   }
@@ -589,9 +583,10 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   for (int i=0; i<nUnblanks; i++) {
     int ic = ubCells[i];
     eles[ic]->U_spts.initializeToZero();
+    auto unblankU = solveCholesky(ubLHS[i],ubRHS[i]);
     for (int spt=0; spt<nSpts; spt++)
       for (int k=0; k<nFields; k++)
-        eles[ic]->U_spts(spt,k) += unblankU(i,spt*nFields+k);///(wts[spt]*eles[ic]->detJac_spts[spt]);
+        eles[ic]->U_spts(spt,k) += unblankU(spt,k);
   }
 #endif
 }
