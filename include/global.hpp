@@ -405,6 +405,19 @@ vector<T> operator*(const vector<T>& lhs, double rhs)
   return out;
 }
 
+template<typename T>
+vector<T> operator*(matrix<T>& mat, const vector<T> &vec)
+{
+  if (mat.getDim1() != vec.size()) FatalErrorST("Improper sizes for matrix*vector.");
+  vector<T> out(mat.getDim0());
+  for (int i=0; i<mat.getDim0(); i++) {
+    for (int j=0; j<mat.getDim1(); j++) {
+      out[i] += mat(i,j)*vec[j];
+    }
+  }
+  return out;
+}
+
 Vec3 operator*(matrix<double>& mat, Vec3 &vec);
 
 //----------Performance boost mod----------------------

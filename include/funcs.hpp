@@ -16,6 +16,12 @@
 
 #include "global.hpp"
 
+/* --- Linear-Algebra Routines --- */
+
+vector<double> solveCholesky(matrix<double> A, vector<double> b);
+
+matrix<double> solveCholesky(matrix<double> A, matrix<double> &B);
+
 /* ---- Nodal Shape Functions ---- */
 
 //! Shape function for linear or quadratic quad (TODO: Generalize to N-noded quad)

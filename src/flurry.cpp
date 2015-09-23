@@ -24,7 +24,7 @@
 #ifdef _MPI_DEBUG
 #include <unistd.h>  // for getpid()
 #endif
-
+#include "funcs.hpp"
 int main(int argc, char *argv[]) {
   input params;
   geo Geo;

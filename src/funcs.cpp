@@ -14,6 +14,102 @@
  */
 #include "funcs.hpp"
 
+vector<double> solveCholesky(matrix<double> A, vector<double> b)
+{
+  int m = A.getDim0();
+  int n = A.getDim1();
+  if (m!=n) FatalError("Cannot use Cholesky on non-square matrix.");
+
+  // Get the Cholesky factorization of A [A = G*G^T]
+  for (int j=0; j<n; j++) {
+    if (j>0) {
+      matrix<double> a = A.slice({j,n-1},{0,j-1});
+      vector<double> a1 = a.getRow(0);
+      a1 = a*a1;
+      for (int i=0; i<n-j; i++) A(j+i,j) -= a1[i];
+    }
+
+    if (A(j,j)<0) FatalError("Negative factor in Cholesky!");
+
+    double ajj = sqrt(A(j,j));
+    for (int i=j; i<n; i++)
+      A(i,j) /= ajj;
+  }
+
+  // Lower-Triangular Solve [G*y = b]
+  vector<double> y(n);
+  for (int i=0; i<n; i++) {
+    y[i] = b[i];
+    for (int j=0; j<i; j++) {
+      y[i] -= A(i,j)*y[j];
+    }
+    y[i] /= A(i,i);
+  }
+
+  // Upper-Triangular Solve [G^T*x = y]
+  vector<double> x(n);
+  for (int i=n-1; i>=0; i--) {
+    x[i] = y[i];
+    for (int j=i+1; j<n; j++) {
+      x[i] -= A(j,i)*x[j];
+    }
+    x[i] /= A(i,i);
+  }
+
+  return x;
+}
+
+matrix<double> solveCholesky(matrix<double> A, matrix<double> &B)
+{
+  int m = A.getDim0();
+  int n = A.getDim1();
+  int p = B.getDim1();
+  if (m!=n) FatalError("Cannot use Cholesky on non-square matrix.");
+
+  // Get the Cholesky factorization of A [A = G*G^T]
+  for (int j=0; j<n; j++) {
+    if (j>0) {
+      matrix<double> a = A.slice({j,n-1},{0,j-1});
+      vector<double> a1 = a.getRow(0);
+      a1 = a*a1;
+      for (int i=0; i<n-j; i++) A(j+i,j) -= a1[i];
+    }
+
+    if (A(j,j)<0) FatalError("Negative factor in Cholesky!");
+
+    double ajj = sqrt(A(j,j));
+    for (int i=j; i<n; i++) {
+      A(i,j) /= ajj;
+    }
+  }
+
+  // Lower-Triangular Solve [G*Y = B]
+  matrix<double> y(n,p);
+  for (int k=0; k<p; k++) {
+    for (int i=0; i<n; i++) {
+      y(i,k) = B(i,k);
+      for (int j=0; j<i; j++) {
+        y(i,k) -= A(i,j)*y(j,k);
+      }
+      y(i,k) /= A(i,i);
+    }
+  }
+
+  // Upper-Triangular Solve [G^T*X = Y]
+  matrix<double> x(n,p);
+  for (int k=0; k<p; k++) {
+    for (int i=n-1; i>=0; i--) {
+      x(i,k) = y(i,k);
+      for (int j=i+1; j<n; j++) {
+        x(i,k) -= A(j,i)*x(j,k);
+      }
+      x(i,k) /= A(i,i);
+    }
+  }
+
+  return x;
+}
+
 void shape_quad(const point &in_rs, vector<double> &out_shape, int nNodes)
 {
   out_shape.resize(nNodes);

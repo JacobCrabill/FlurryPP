@@ -66,6 +66,13 @@ matrix<T>::matrix(uint inNDim0, uint inNDim1)
   this->dims[1] = inNDim1;
 }
 
+template<typename T>
+matrix<T>::matrix(const Array2D<T> &inMatrix)
+{
+  this->data = inMatrix.data;
+  this->dims = inMatrix.dims;
+}
+
 template<typename T,uint N>
 Array<T,N>::Array(const Array<T,N> &inMatrix)
 {
@@ -414,8 +421,37 @@ vector<T> Array2D<T>::getCol(int col)
 }
 
 template<typename T>
+Array2D<T> Array2D<T>::transpose(void)
+{
+  Array2D<T> out(this->dims[1],this->dims[0]);
+  for (int i=0; i<this->dims[0]; i++) {
+    for (int j=0; j<this->dims[1]; j++) {
+      out(j,i) = this->operator()(i,j);
+    }
+  }
+  return out;
+}
+
+template<typename T>
+Array2D<T> Array2D<T>::slice(array<int,2> rows, array<int,2> cols)
+{
+  Array2D<T> out(rows[1]-rows[0]+1,cols[1]-cols[0]+1);
+  int ii=0;
+  for (int i=rows[0]; i<=rows[1]; i++) {
+    int jj = 0;
+    for (int j=cols[0]; j<=cols[1]; j++) {
+      out(ii,jj) = this->operator()(i,j);
+      jj++;
+    }
+    ii++;
+  }
+  return out;
+}
+
+template<typename T>
 void matrix<T>::print(int prec)
 {
+  cout << endl;
   cout.setf(ios::fixed, ios::floatfield);
   cout.precision(prec);
   for (uint i=0; i<this->dims[0]; i++) {
@@ -424,6 +460,7 @@ void matrix<T>::print(int prec)
     }
     cout << endl;
   }
+  cout << endl;
 }
 
 template<typename T>

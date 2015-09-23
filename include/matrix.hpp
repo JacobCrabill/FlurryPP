@@ -122,7 +122,11 @@ public:
   //! Return a sub-Array view of the Array using the rows in ind
   Array2D<T> getRows(vector<int> ind);
 
+  Array2D<T> slice(array<int, 2> rows, array<int, 2> cols);
+
   vector<T> getCol(int col);
+
+  Array2D<T> transpose(void);
 };
 
 template <typename T>
@@ -132,6 +136,8 @@ public:
   matrix();
 
   matrix(uint inDim0, uint inDim1);
+
+  matrix(const Array2D<T> &inMatrix);
 
   void initializeToZero(void);
 

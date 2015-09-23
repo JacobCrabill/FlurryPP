@@ -520,8 +520,8 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
       }
 
       matrix<double> RHS(nSpts,params->nFields);
-      //matrix<double> LHS;
-      vector<double> LHS(nSpts);
+      matrix<double> LHS;
+//      vector<double> LHS(nSpts);
       int nQpts = donors[offset+i].getNQpts();
 
       for (int ispt=0; ispt<nSpts; ispt++) {
@@ -529,22 +529,22 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
         for (int qpt=0; qpt<nQpts; qpt++) {
           for (int jspt=0; jspt<nSpts; jspt++) {
             basisTgtDnr(qpt,jspt) = targetBasis[p](offsetQ+qpt,ispt) * donorBasis[p](offsetQ+qpt,jspt);
-//            basisTgtTgt(qpt,jspt) = targetBasis[p](offsetQ+qpt,ispt) * targetBasis[p](offsetQ+qpt,jspt);
+            basisTgtTgt(qpt,jspt) = targetBasis[p](offsetQ+qpt,ispt) * targetBasis[p](offsetQ+qpt,jspt);
           }
         }
 
-        vector<double> basisTT(nQpts);
-        for (int qpt=0; qpt<nQpts; qpt++)
-          basisTT[qpt] = targetBasis[p](offsetQ+qpt,ispt) *targetBasis[p](offsetQ+qpt,ispt);
-        LHS[ispt] = donors[offset+i].integrate(basisTT);
-        //auto massMatTTRow = donors[offset+i].integrate(basisTgtTgt);
-        //LHS.insertRow(massMatTTRow);
+//        vector<double> basisTT(nQpts);
+//        for (int qpt=0; qpt<nQpts; qpt++)
+//          basisTT[qpt] = targetBasis[p](offsetQ+qpt,ispt) *targetBasis[p](offsetQ+qpt,ispt);
+//        LHS[ispt] = donors[offset+i].integrate(basisTT);
+        auto massMatTTRow = donors[offset+i].integrate(basisTgtTgt);
+        LHS.insertRow(massMatTTRow);
 
         auto massMatTDRow = donors[offset+i].integrateByDonor(basisTgtDnr);
         for (int id=0; id<foundCellNDonors[p][i]; id++)
           for (int jspt=0; jspt<nSpts; jspt++)
             for (int k=0; k<nFields; k++)
-              RHS(ispt,k) += massMatTDRow(id,jspt) * donorU[p](offsetD+id*nSpts+jspt,k) / LHS[ispt];
+              RHS(ispt,k) += massMatTDRow(id,jspt) * donorU[p](offsetD+id*nSpts+jspt,k); // / LHS[ispt];
       }
 
 //      //!!!! DEBUGGING !!!!
@@ -553,10 +553,12 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
 ////      LHS.print();
 //      for (auto &val:LHS) cout << val << "  ";
 //      cout << endl;
-////      auto inv = LHS.invertMatrix();
-////      inv.print();
+//      auto inv = LHS.invertMatrix();
+//      inv.print();
+      matrix<double> U_RHS = solveCholesky(LHS,RHS);
+//      inv.timesMatrix(RHS,U_RHS);
 
-      finalU[p].appendRows(RHS);
+      finalU[p].appendRows(U_RHS);
     }
   }
 
@@ -589,7 +591,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
     eles[ic]->U_spts.initializeToZero();
     for (int spt=0; spt<nSpts; spt++)
       for (int k=0; k<nFields; k++)
-        eles[ic]->U_spts(spt,k) += unblankU(i,spt*nFields+k)/(wts[spt]*eles[ic]->detJac_spts[spt]);
+        eles[ic]->U_spts(spt,k) += unblankU(i,spt*nFields+k);///(wts[spt]*eles[ic]->detJac_spts[spt]);
   }
 #endif
 }
