@@ -384,7 +384,7 @@ vector<double> superMesh::getWeights(void)
 
 void superMesh::printSuperMesh(int rank, int ID)
 {
-  string filename = "mesh_" + std::to_string(rank) + "_" + std::to_string(ID) + ".csv";
+  string filename = "mesh_" + std::to_string((long long)rank) + "_" + std::to_string((long long)ID) + ".csv";
   ofstream mesh(filename.c_str());
 
   mesh << "Parent,Triangle,x,y" << endl;

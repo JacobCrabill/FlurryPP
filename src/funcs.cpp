@@ -23,7 +23,7 @@ vector<double> solveCholesky(matrix<double> A, vector<double> b)
   // Get the Cholesky factorization of A [A = G*G^T]
   for (int j=0; j<n; j++) {
     if (j>0) {
-      matrix<double> a = A.slice({j,n-1},{0,j-1});
+      matrix<double> a = A.slice({{j,n-1}},{{0,j-1}});
       vector<double> a1 = a.getRow(0);
       a1 = a*a1;
       for (int i=0; i<n-j; i++) A(j+i,j) -= a1[i];
@@ -69,7 +69,7 @@ matrix<double> solveCholesky(matrix<double> A, matrix<double> &B)
   // Get the Cholesky factorization of A [A = G*G^T]
   for (int j=0; j<n; j++) {
     if (j>0) {
-      matrix<double> a = A.slice({j,n-1},{0,j-1});
+      matrix<double> a = A.slice({{j,n-1}},{{0,j-1}});
       vector<double> a1 = a.getRow(0);
       a1 = a*a1;
       for (int i=0; i<n-j; i++) A(j+i,j) -= a1[i];
