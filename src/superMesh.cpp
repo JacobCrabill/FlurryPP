@@ -136,7 +136,8 @@ void superMesh::buildSuperMeshTri(void)
     }
     tris = newTris;
     parents = newParents;
-printSuperMesh(rank,ID*10+i);
+//!! DEBUGGING
+//printSuperMesh(rank,ID*10+i);
   }
 }
 
@@ -263,6 +264,8 @@ matrix<double> superMesh::integrateByDonor(matrix<double> &data)
 
   //!!DEBUGGING
   if (data.checkNan()) FatalError("NaN data in superMesh::integrateByDonor()");
+//  auto vals_0 = data.getCol(0);
+//  printQuadPoints(vals_0);
 
   return val;
 }
@@ -313,22 +316,6 @@ void superMesh::setupQuadrature(void)
       }
     }
   }
-
-
-  cout << "Total superMesh Volume for rank " << rank << ", ID " << ID << " = " << getSum(vol) << endl;
-//  cout << "tri[0] nodes:" << endl;
-//  for (int i=0; i<3; i++)
-//    cout << tris[0].nodes[i].x << ", " << tris[0].nodes[i].y << endl;
-//  cout << "tri[0] qpts:" << endl;
-//  for (int i=0; i<3; i++)
-//    cout << tris[0].qpts[i].x << ", " << tris[0].qpts[i].y << endl;
-//  cout << "shape qpts:" << endl;
-//  for (int i=0; i<3; i++) {
-//    for (int j=0; j<3; j++) {
-//    cout << shapeQpts(i,j) << ", ";
-//    }
-//    cout << endl;
-//  }
 
   //!!DEBUGGING
   if (checkNaN(vol)) FatalError("NaN volume in superMesh!");
@@ -398,6 +385,26 @@ void superMesh::printSuperMesh(int rank, int ID)
     mesh << id << "," << i << "," << pt.x << "," << pt.y << endl;
 //    pt = tris[i].nodes[0];
 //    mesh << id << "," << i << "," << pt.x << "," << pt.y << endl;
+  }
+  mesh.close();
+}
+
+void superMesh::printQuadPoints(vector<double> &vals)
+{
+  string filename = "points_" + std::to_string((long long)rank) + "_" + std::to_string((long long)ID) + ".csv";
+  ofstream mesh(filename.c_str());
+
+  if (vals.size()!=nQpts) {
+    vals.assign(nQpts,1);
+  }
+
+  mesh << "Parent,Triangle,value,x,y" << endl;
+  for (int i=0; i<tris.size(); i++) {
+    int id = parents[i];
+    for (int j=0; j<nQpts_simp; j++) {
+      point pt = tris[i].qpts[j];
+      mesh << id << "," << i << "," << vals[i*nQpts_simp+j] << "," << pt.x << "," << pt.y << endl;
+    }
   }
   mesh.close();
 }

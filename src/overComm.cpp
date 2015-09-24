@@ -402,9 +402,8 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
         foundCellDonors[p].insertRowUnsized(donorsIDs);
 
         Array2D<point> donorPts;
-        for (auto &ic:donorsIDs) {
+        for (auto &ic:donorsIDs)
           donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
-        }
 
         superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,donors.size());
         donors.push_back(mesh);
@@ -418,8 +417,6 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   // use with Galerkin projection
   for (auto &mesh:donors)
     mesh.setupQuadrature();
-
-  //for (int i=0; i<donors.size(); i++) donors[i].printSuperMesh(rank,i);
 
   vector<point> locs;
   vector<double> wts;
@@ -448,7 +445,14 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
         targetID[p].push_back(foundCells[p][i]);
         int ic = eleMap[donorID[p].back()];
         point refLoc;
-        eles[ic]->getRefLocNelderMeade(point(qpts_tmp[j],nDims),refLoc);
+        bool isInEle = eles[ic]->getRefLocNelderMeade(point(qpts_tmp[j],nDims),refLoc);
+
+        if (!isInEle) {
+          cout << "qpt: " << qpts_tmp(j,0) << ", " << qpts_tmp(j,1) << endl;
+          auto box = eles[ic]->getBoundingBox();
+          cout << "ele box: " << box[0] << ", " << box[1] << "; " << box[3] << ", " << box[4] << endl;
+          FatalError("Quadrature Point Reference Location not found in ele!");
+        }
         qptsD_ref[p].insertRow({refLoc.x,refLoc.x,refLoc.z});
 
         vector<double> basisTmp;
@@ -493,7 +497,9 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
 
       point refLoc;
       point pos = point(qpts_recv[p][i],nDims);
-      eles[ie]->getRefLocNelderMeade(pos,refLoc);
+      bool isInEle = eles[ie]->getRefLocNelderMeade(pos,refLoc);
+      if (!isInEle) FatalError("Quadrature Point Reference Location not found in ele!");
+
       qpts_recv[p](i,0) = refLoc.x;
       qpts_recv[p](i,1) = refLoc.y;
       qpts_recv[p](i,2) = refLoc.z;
@@ -540,21 +546,11 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
 
         auto massMatTDRow = donors[offset+i].integrateByDonor(basisTgtDnr);
 
-//        //!!! DEBUGGING
-//        if (donors.size()>0) {
-//        vector<double> blah(nQpts);
-//        for (auto &val:blah) val = 1.;
-//        double intVal = donors[offset+i].integrate(blah);
-//        cout << "Should sum to 1/16:  " << intVal << endl;
-////        exit(0);
-//        }
-
         for (int id=0; id<foundCellNDonors[p][i]; id++)
           for (int jspt=0; jspt<nSpts; jspt++)
             for (int k=0; k<nFields; k++)
               rhs(ispt,k) += massMatTDRow(id,jspt) * donorU[p](offsetD+id*nSpts+jspt,k);
       }
-
       LHS[p].appendRows(lhs);
       RHS[p].appendRows(rhs);
     }

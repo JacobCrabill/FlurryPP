@@ -2383,13 +2383,6 @@ void geo::partitionMesh(void)
 
 void geo::moveMesh(double rkVal)
 {
-//#pragma omp parallel for collapse(2)
-//  for (int iv=0; iv<nVerts; iv++) {
-//    for (int dim=0; dim<nDims; dim++) {
-//      xv(iv,dim) = xv_new[iv][dim];
-//    }
-//  }
-
   double rkTime = params->time + params->dt*rkVal;
 
   switch (params->motion) {
@@ -2448,17 +2441,17 @@ void geo::moveMesh(double rkVal)
     case 4: {
       /// Rigid oscillation in a circle
       if (params->meshType!=OVERSET_MESH || gridID==0) {
-        double Ax = 0; // Amplitude  (m)
-        double Ay = 0.5; // Amplitude  (m)
-        double fx = .0; // Frequency  (Hz)
-        double fy = .1; // Frequency  (Hz)
+        double Ax = 0.5; // Amplitude  (m)
+        double Ay = 0.0; // Amplitude  (m)
+        double fx = 0.1; // Frequency  (Hz)
+        double fy = 0.1; // Frequency  (Hz)
         for (int iv=0; iv<nVerts; iv++) {
           xv(iv,0) = xv0[iv].x + Ax*sin(2.*pi*fx*rkTime);
-          xv(iv,1) = xv0[iv].y + Ay*sin(2.*pi*fy*rkTime);
-          //xv(iv,1) = xv0[iv].y + Ay*(1-cos(2.*pi*fy*rkTime));
+          //xv(iv,1) = xv0[iv].y + Ay*sin(2.*pi*fy*rkTime);
+          xv(iv,1) = xv0[iv].y + Ay*(1-cos(2.*pi*fy*rkTime));
           gridVel(iv,0) = 2.*pi*fx*Ax*cos(2.*pi*fx*rkTime);
-          gridVel(iv,1) = 2.*pi*fy*Ay*cos(2.*pi*fy*rkTime);
-          //gridVel(iv,1) = 2.*pi*fy*Ay*sin(2.*pi*fy*rkTime);
+          //gridVel(iv,1) = 2.*pi*fy*Ay*cos(2.*pi*fy*rkTime);
+          gridVel(iv,1) = 2.*pi*fy*Ay*sin(2.*pi*fy*rkTime);
         }
       }
     }

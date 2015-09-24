@@ -112,6 +112,10 @@ superMesh(vector<point> &_target, Array2D<point> &_donors, int _order, int _nDim
 
   //! Print the simplices of the superMesh to a CSV file
   void printSuperMesh(int rank, int ID);
+
+  //! Print out the x,y positions on all quadrature points, along with values at each point
+  void printQuadPoints(vector<double> &vals);
+
 int ID, rank;
 private:
 

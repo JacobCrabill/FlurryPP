@@ -451,16 +451,18 @@ Array2D<T> Array2D<T>::slice(array<int,2> rows, array<int,2> cols)
 template<typename T>
 void matrix<T>::print(int prec)
 {
-  cout << endl;
-  cout.setf(ios::fixed, ios::floatfield);
-  cout.precision(prec);
-  for (uint i=0; i<this->dims[0]; i++) {
-    for (uint j=0; j<this->dims[1]; j++) {
-      cout << setw(prec+4) << left << this->data[i*this->dims[1]+j] << " ";
+  if (this->data.size()>0) {
+    cout << endl;
+    cout.setf(ios::fixed, ios::floatfield);
+    cout.precision(prec);
+    for (uint i=0; i<this->dims[0]; i++) {
+      for (uint j=0; j<this->dims[1]; j++) {
+        cout << setw(prec+4) << left << this->data[i*this->dims[1]+j] << " ";
+      }
+      cout << endl;
     }
     cout << endl;
   }
-  cout << endl;
 }
 
 template<typename T>

@@ -317,7 +317,7 @@ void geo::setFaceIblanks(void)
     if (iblankCell[ic]!=HOLE) continue;
 
     for (int j=0; j<c2nf[ic]; j++) {
-      if (c2c(ic,j)>0) {
+      if (c2c(ic,j)>=0) {
         // Internal face
         if (iblankCell[c2c(ic,j)] == HOLE) {
           iblankFace[c2f(ic,j)] = HOLE;
@@ -424,7 +424,7 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
   set<int> ubIntFaces, ubMpiFaces, ubOFaces;
   for (auto &ic:unblankCells) {
     for (int j=0; j<c2nf[ic]; j++) {
-      if (c2c(ic,j)>0) {
+      if (c2c(ic,j)>=0) {
         if (iblankCell[c2c(ic,j)]==NORMAL || unblankCells.count(c2c(ic,j)))
           ubIntFaces.insert(c2f(ic,j));
         else
@@ -504,7 +504,6 @@ void geo::removeEles(vector<shared_ptr<ele>> &eles, set<int> &blankEles)
 
   for (auto &ic:blankEles) {
     if (ic<0) continue;
-
     int ind = eleMap[ic];
     if (ind<0) FatalError("Should not have marked a hole cell for blanking!");
     eles.erase(eles.begin()+ind,eles.begin()+ind+1);
@@ -525,8 +524,8 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, set<int> &ubEles)
     // Find the next-lowest index
     int ind = eleMap[ic];
     if (ind>=0) FatalError("Should not have marked a non-hole cell for un-blanking! Is eleMap wrong?");
-    int j = 0;
-    while (ind < 0) {
+    int j = 1;
+    while (ind < 0 && j<=ic) {
       ind = eleMap[ic-j];
       j++;
     }
@@ -604,7 +603,9 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
         info.relRot = relRot;
         ic1 = eleMap[ic1];
         ic2 = eleMap[ic2];
-        if (ic1<0 || ic2<0) FatalError("Unblanking an internal face, but an ele remains blanked!");
+        if (ic1<0 || ic2<0) {
+          FatalError("Unblanking an internal face, but an ele remains blanked!");
+        }
         iface->initialize(eles[ic1],eles[ic2],ff,fid1,info,params);
         iface->setupFace();
       }
@@ -628,7 +629,6 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
     }
     else if (faceType[ff] == BOUNDARY)
     {
-      //cout << "Unblanking bound face!" << endl;
       int ind = std::distance(bndFaces.begin(), std::find(bndFaces.begin(),bndFaces.end(),ff));
 
       if (bcType[ind] == OVERSET) {
@@ -726,11 +726,13 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
         break;
       }
     }
+    ind = max(ind,0);
     mFaces.insert(mFaces.begin()+ind,1,mface);
     faceMap[ff] = ind;
     currFaceType[ff] = MPI_FACE;
-    for (int i=ind+1; i<mFaces.size(); i++)
+    for (int i=ind+1; i<mFaces.size(); i++) {
       faceMap[mFaces[i]->ID] = i;
+    }
   }
 #endif
 

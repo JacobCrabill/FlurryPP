@@ -32,12 +32,12 @@ diffD        .1   (Diffusion Coefficient)
 # =============================================================
 #   Advection: 0-Gaussian,     1-u=x+y+z test case,  2-u=cos(x)*cos(y)*cos(z) test case
 #   N-S:       0-Uniform flow, 1-Uniform+Vortex (Kui), 2-Uniform+Vortex (Liang)
-icType       0
+icType       2
 
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        10  (Frequency to write plot files)
+plotFreq        50  (Frequency to write plot files)
 monitorResFreq  10    (Frequency to print residual to terminal)
 resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    Box    (Filename prefix for output files)

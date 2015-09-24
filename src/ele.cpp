@@ -164,7 +164,7 @@ void ele::setupArrays(void)
   if (params->scFlag)
     sensor = 0;
 
-  if (params->calcEntropySensor) {
+  if (params->equation == NAVIER_STOKES && params->calcEntropySensor) {
     S_spts.setup(nSpts,1);
     S_fpts.setup(nFpts,1);
     S_mpts.setup(nMpts,1);
@@ -651,15 +651,23 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   xmin = ymin = zmin =  1e15;
   xmax = ymax = zmax = -1e15;
   double eps = 1e-10;
-  for (int i=0; i<nNodes; i++) {
-    xmin = min(nodes[i].x, xmin);
-    ymin = min(nodes[i].y, ymin);
-    zmin = min(nodes[i].z, zmin);
 
-    xmax = max(nodes[i].x, xmax);
-    ymax = max(nodes[i].y, ymax);
-    zmax = max(nodes[i].z, zmax);
-  }
+  auto box = getBoundingBox();
+  xmin = box[0];
+  ymin = box[1];
+  zmin = box[2];
+  xmax = box[3];
+  ymax = box[4];
+  zmax = box[5];
+//  for (int i=0; i<nNodes; i++) {
+//    xmin = min(nodes[i].x, xmin);
+//    ymin = min(nodes[i].y, ymin);
+//    zmin = min(nodes[i].z, zmin);
+//
+//    xmax = max(nodes[i].x, xmax);
+//    ymax = max(nodes[i].y, ymax);
+//    zmax = max(nodes[i].z, zmax);
+//  }
   if (pos.x < xmin-eps || pos.y < ymin-eps || pos.z < zmin-eps ||
       pos.x > xmax+eps || pos.y > ymax+eps || pos.z > zmax+eps) {
     // Point does not lie within cell - return an obviously bad ref position
