@@ -484,7 +484,7 @@ void solver::moveMesh(int step)
     if (step==0) {
       Geo->processBlanks(eles,faces,mpiFaces,overFaces);
 
-      Geo->moveMesh(1.);
+      Geo->moveMesh(5.);
 
       for (auto &e:eles) e->move(false);
 

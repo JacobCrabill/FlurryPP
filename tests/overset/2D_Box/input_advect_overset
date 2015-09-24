@@ -1,15 +1,15 @@
 # =============================================================
 # Basic Options
 # =============================================================
-equation      1    (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
-order         1    (Polynomial order to use)
-timeType      0    (0: Forward Euler, 4: RK44)
+equation      0    (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
+order         2    (Polynomial order to use)
+timeType      4    (0: Forward Euler, 4: RK44)
 dtType        0    (0: Fixed, 1: CFL-based)
 CFL           .1
 dt            .001
-iterMax       1000
+iterMax       100
 restart       0
-restartIter   30
+restartIter   300
 
 viscous      0   (0: Inviscid, 1: Viscous)
 motion       4   (0: Static, 1: Perturbation test case)
@@ -37,10 +37,10 @@ icType       0
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        10  (Frequency to write plot files)
+plotFreq        20  (Frequency to write plot files)
 monitorResFreq  10    (Frequency to print residual to terminal)
 resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
-dataFileName    Box    (Filename prefix for output files)
+dataFileName    Adv    (Filename prefix for output files)
 entropySensor   0      (Calculate & plot entropy-error sensor)
 writeIBLANK     0      (Write cell iblank values in ParaView files)
 

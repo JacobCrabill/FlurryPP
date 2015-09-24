@@ -2448,13 +2448,17 @@ void geo::moveMesh(double rkVal)
     case 4: {
       /// Rigid oscillation in a circle
       if (params->meshType!=OVERSET_MESH || gridID==0) {
-        double A = .5; // Amplitude  (m)
-        double f = .1; // Frequency  (Hz)
+        double Ax = 0; // Amplitude  (m)
+        double Ay = 0.5; // Amplitude  (m)
+        double fx = .0; // Frequency  (Hz)
+        double fy = .1; // Frequency  (Hz)
         for (int iv=0; iv<nVerts; iv++) {
-          xv(iv,0) = xv0[iv].x + A*sin(2.*pi*f*rkTime);
-          xv(iv,1) = xv0[iv].y + A*(1-cos(2.*pi*f*rkTime));
-          gridVel(iv,0) = 2.*pi*f*A*cos(2.*pi*f*rkTime);
-          gridVel(iv,1) = 2.*pi*f*A*sin(2.*pi*f*rkTime);
+          xv(iv,0) = xv0[iv].x + Ax*sin(2.*pi*fx*rkTime);
+          xv(iv,1) = xv0[iv].y + Ay*sin(2.*pi*fy*rkTime);
+          //xv(iv,1) = xv0[iv].y + Ay*(1-cos(2.*pi*fy*rkTime));
+          gridVel(iv,0) = 2.*pi*fx*Ax*cos(2.*pi*fx*rkTime);
+          gridVel(iv,1) = 2.*pi*fy*Ay*cos(2.*pi*fy*rkTime);
+          //gridVel(iv,1) = 2.*pi*fy*Ay*sin(2.*pi*fy*rkTime);
         }
       }
     }

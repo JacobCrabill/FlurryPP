@@ -51,7 +51,7 @@ public:
   ~superMesh();
 
   superMesh(vector<point> &_target, Array2D<point> &_donors, int _order, int _nDims);
-
+superMesh(vector<point> &_target, Array2D<point> &_donors, int _order, int _nDims, int _rank, int _ID);
   /* ---- Member Variables ---- */
 
   vector<point> target;   //! Target cell's node positions for which to create local supermesh
@@ -110,6 +110,9 @@ public:
   //! Get the quadrature point locations and weights, and find physical positions of all qpts
   void setupQuadrature(void);
 
+  //! Print the simplices of the superMesh to a CSV file
+  void printSuperMesh(int rank, int ID);
+int ID, rank;
 private:
 
   void buildSuperMeshTri(void);

@@ -352,6 +352,8 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   vector<double> ubNodes_rank;
   gatherData(nUnblanks, stride, ubCellNodes.getData(), nCells_rank, ubNodes_rank);
 
+  if (getSum(nCells_rank)==0) return;
+
   /* ---- Check Every Unblanked Cell for Donor Cells on This Grid ---- */
 
   foundCells.resize(nproc);
@@ -404,7 +406,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
           donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
         }
 
-        superMesh mesh(targetNodes,donorPts,quadOrder,nDims);
+        superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,donors.size());
         donors.push_back(mesh);
       }
     }
@@ -416,6 +418,8 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   // use with Galerkin projection
   for (auto &mesh:donors)
     mesh.setupQuadrature();
+
+  //for (int i=0; i<donors.size(); i++) donors[i].printSuperMesh(rank,i);
 
   vector<point> locs;
   vector<double> wts;
@@ -535,6 +539,16 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
         lhs.insertRow(massMatTTRow);
 
         auto massMatTDRow = donors[offset+i].integrateByDonor(basisTgtDnr);
+
+//        //!!! DEBUGGING
+//        if (donors.size()>0) {
+//        vector<double> blah(nQpts);
+//        for (auto &val:blah) val = 1.;
+//        double intVal = donors[offset+i].integrate(blah);
+//        cout << "Should sum to 1/16:  " << intVal << endl;
+////        exit(0);
+//        }
+
         for (int id=0; id<foundCellNDonors[p][i]; id++)
           for (int jspt=0; jspt<nSpts; jspt++)
             for (int k=0; k<nFields; k++)
@@ -558,7 +572,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   vector<matrix<double>> tmpUbLHS(nproc), tmpUbRHS(nproc);
   vector<vector<int>> recvInds;
   sendRecvData(nCellsSend,nCellsRecv,foundCells,recvInds,LHS,tmpUbLHS,strideL);
-  sendRecvData(nCellsSend,nCellsRecv,foundCells,recvInds,RHS,tmpUbRHS,strideR);
+  sendRecvData(nCellsSend,nCellsRecv,RHS,tmpUbRHS,strideR);
 
   // Add contributions from superMeshes on each rank
   vector<matrix<double>> ubLHS(nUnblanks), ubRHS(nUnblanks);
