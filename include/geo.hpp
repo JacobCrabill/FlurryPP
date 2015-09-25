@@ -183,6 +183,7 @@ public:
   //set<int> fringeFaces;   //! List of faces in mesh which are currently fringe faces
   set<int> unblankCells;  //! List of non-existing cells which, due to motion, must be un-blanked
   set<int> blankCells;    //! List of existing cells which, due to motion, must be blanked
+  set<int> new_blankCells;    //! List of existing cells which, due to motion, must be blanked
 
 #ifndef _NO_MPI
   shared_ptr<overComm> OComm;

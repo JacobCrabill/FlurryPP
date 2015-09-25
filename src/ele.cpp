@@ -653,21 +653,9 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   double eps = 1e-10;
 
   auto box = getBoundingBox();
-  xmin = box[0];
-  ymin = box[1];
-  zmin = box[2];
-  xmax = box[3];
-  ymax = box[4];
-  zmax = box[5];
-//  for (int i=0; i<nNodes; i++) {
-//    xmin = min(nodes[i].x, xmin);
-//    ymin = min(nodes[i].y, ymin);
-//    zmin = min(nodes[i].z, zmin);
-//
-//    xmax = max(nodes[i].x, xmax);
-//    ymax = max(nodes[i].y, ymax);
-//    zmax = max(nodes[i].z, zmax);
-//  }
+  xmin = box[0];  ymin = box[1];  zmin = box[2];
+  xmax = box[3];  ymax = box[4];  zmax = box[5];
+
   if (pos.x < xmin-eps || pos.y < ymin-eps || pos.z < zmin-eps ||
       pos.x > xmax+eps || pos.y > ymax+eps || pos.z > zmax+eps) {
     // Point does not lie within cell - return an obviously bad ref position
@@ -2099,228 +2087,301 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
 
   // Move on to the first <DataArray>
 
-  matrix<double> tempV(nSpts,nDims);
-  vector<double> tempP(nSpts);
+  if (params->equation == NAVIER_STOKES) {
+    matrix<double> tempV(nSpts,nDims);
+    vector<double> tempP(nSpts);
 
-  bool foundRho = false;
-  bool foundV = false;
-  bool foundP = false;
+    bool foundRho = false;
+    bool foundV = false;
+    bool foundP = false;
 
-  while ( !(foundRho && foundV && foundP) ) {
+    while ( !(foundRho && foundV && foundP) ) {
 
-    while (getline(file,str)) {
-      ss.str(""); ss.clear();
+      while (getline(file,str)) {
+        ss.str(""); ss.clear();
+        ss.str(str);
+        ss >> str1;
+        if (str1.compare("<DataArray")==0) {
+          while (str1.find("Name=") == string::npos) {
+            ss >> str1;
+          }
+          break;
+        }
+      }
+
+      // Extract field name
+      ind = str1.find("\"");
+      str1.erase(0,ind+1);
+      ind = str1.find("\"");
+      str1.erase(ind,1);
+
+      // Get the data line
+      getline(file,str);
+      ss.str(""); ss.clear(); ss.precision(15);
       ss.str(str);
-      ss >> str1;
-      if (str1.compare("<DataArray")==0) {
-        while (str1.find("Name=") == string::npos) {
-          ss >> str1;
-        }
-        break;
-      }
-    }
-
-    // Extract field name
-    ind = str1.find("\"");
-    str1.erase(0,ind+1);
-    ind = str1.find("\"");
-    str1.erase(ind,1);
-
-    // Get the data line
-    getline(file,str);
-    ss.str(""); ss.clear(); ss.precision(15);
-    ss.str(str);
-    if (str1.compare("Density")==0) {
-      foundRho = true;
-      double tmp;
-      if (nDims == 2) {
-        // Skip the data at the mesh nodes and flux points along 'bottom' edge
-        for (int i=0; i<2+(order+1); i++) {
-          ss >> tmp;
-        }
-
-        // Get the data at the solution points
-        for (int i=0; i<(order+1); i++) {
-          ss >> tmp;
-          for (int j=0; j<(order+1); j++) {
-            ss >> U_spts(j+i*(order+1),0);
+      if (str1.compare("Density")==0) {
+        foundRho = true;
+        double tmp;
+        if (nDims == 2) {
+          // Skip the data at the mesh nodes and flux points along 'bottom' edge
+          for (int i=0; i<2+(order+1); i++) {
+            ss >> tmp;
           }
-          ss >> tmp;
-        }
-      }
-      else {
-        // Skip the data at the mesh nodes and flux points along 'bottom' face
-        for (int i=0; i<(order+3)*(order+3); i++)
-          ss >> tmp;
 
-        // Get the data at the solution points
-        for (int k=0; k<(order+1); k++) {
-          // Skip front-face nodes / flux points
-          for (int m=0; m<(order+3); m++)
+          // Get the data at the solution points
+          for (int i=0; i<(order+1); i++) {
             ss >> tmp;
-
-          for (int j=0; j<(order+1); j++) {
-            ss >> tmp;
-            for (int i=0; i<(order+1); i++) {
-              ss >> U_spts(i+(order+1)*(j+(order+1)*k),0);
+            for (int j=0; j<(order+1); j++) {
+              ss >> U_spts(j+i*(order+1),0);
             }
             ss >> tmp;
           }
-
-          // Skip back-face nodes / flux points
-          for (int m=0; m<(order+3); m++)
+        }
+        else {
+          // Skip the data at the mesh nodes and flux points along 'bottom' face
+          for (int i=0; i<(order+3)*(order+3); i++)
             ss >> tmp;
-        }
-      }
-    }
-    else if (str1.compare("Velocity")==0) {
-      foundV = true;
-      double tmp1, tmp2, tmp3;
-      if (nDims == 2) {
-        // Skip the data at the mesh nodes and flux points along 'bottom' edge
-        for (int i=0; i<2+(order+1); i++) {
-          ss >> tmp1 >> tmp2 >> tmp3;
-        }
 
-        // Get the data at the solution points; skip the flux points at
-        // either end of each row
-        for (int i=0; i<(order+1); i++) {
-          ss >> tmp1 >> tmp2 >> tmp3;
-          for (int j=0; j<(order+1); j++) {
-            ss >> tempV(j+i*(order+1),0);
-            ss >> tempV(j+i*(order+1),1);
-            ss >> tmp1;
+          // Get the data at the solution points
+          for (int k=0; k<(order+1); k++) {
+            // Skip front-face nodes / flux points
+            for (int m=0; m<(order+3); m++)
+              ss >> tmp;
+
+            for (int j=0; j<(order+1); j++) {
+              ss >> tmp;
+              for (int i=0; i<(order+1); i++) {
+                ss >> U_spts(i+(order+1)*(j+(order+1)*k),0);
+              }
+              ss >> tmp;
+            }
+
+            // Skip back-face nodes / flux points
+            for (int m=0; m<(order+3); m++)
+              ss >> tmp;
           }
-          ss >> tmp1 >> tmp2 >> tmp3;
         }
       }
-      else {
-        // Skip the data at the mesh nodes and flux points along 'bottom' face
-        for (int i=0; i<(order+3)*(order+3); i++)
-          ss >> tmp1 >> tmp2 >> tmp3;
-
-        // Get the data at the solution points
-        for (int k=0; k<(order+1); k++) {
-          // Skip front-face nodes / flux points
-          for (int m=0; m<(order+3); m++)
+      else if (str1.compare("Velocity")==0) {
+        foundV = true;
+        double tmp1, tmp2, tmp3;
+        if (nDims == 2) {
+          // Skip the data at the mesh nodes and flux points along 'bottom' edge
+          for (int i=0; i<2+(order+1); i++) {
             ss >> tmp1 >> tmp2 >> tmp3;
+          }
 
-          for (int j=0; j<(order+1); j++) {
+          // Get the data at the solution points; skip the flux points at
+          // either end of each row
+          for (int i=0; i<(order+1); i++) {
             ss >> tmp1 >> tmp2 >> tmp3;
-            for (int i=0; i<(order+1); i++) {
-              ss >> tempV(i+(order+1)*(j+(order+1)*k),0);
-              ss >> tempV(i+(order+1)*(j+(order+1)*k),1);
-              ss >> tempV(i+(order+1)*(j+(order+1)*k),2);
+            for (int j=0; j<(order+1); j++) {
+              ss >> tempV(j+i*(order+1),0);
+              ss >> tempV(j+i*(order+1),1);
+              ss >> tmp1;
             }
             ss >> tmp1 >> tmp2 >> tmp3;
           }
-
-          // Skip back-face nodes / flux points
-          for (int m=0; m<(order+3); m++)
+        }
+        else {
+          // Skip the data at the mesh nodes and flux points along 'bottom' face
+          for (int i=0; i<(order+3)*(order+3); i++)
             ss >> tmp1 >> tmp2 >> tmp3;
-        }
-      }
-    }
-    else if (str1.compare("Pressure")==0) {
-      foundP = true;
-      double tmp;
-      if (nDims == 2) {
-        // Skip the data at the mesh nodes and flux points along 'bottom' edge
-        for (int i=0; i<2+(order+1); i++) {
-          ss >> tmp;
-        }
 
-        // Get the data at the solution points
-        for (int i=0; i<(order+1); i++) {
-          ss >> tmp;
-          for (int j=0; j<(order+1); j++) {
-            ss >> tempP[j+i*(order+1)];
+          // Get the data at the solution points
+          for (int k=0; k<(order+1); k++) {
+            // Skip front-face nodes / flux points
+            for (int m=0; m<(order+3); m++)
+              ss >> tmp1 >> tmp2 >> tmp3;
+
+            for (int j=0; j<(order+1); j++) {
+              ss >> tmp1 >> tmp2 >> tmp3;
+              for (int i=0; i<(order+1); i++) {
+                ss >> tempV(i+(order+1)*(j+(order+1)*k),0);
+                ss >> tempV(i+(order+1)*(j+(order+1)*k),1);
+                ss >> tempV(i+(order+1)*(j+(order+1)*k),2);
+              }
+              ss >> tmp1 >> tmp2 >> tmp3;
+            }
+
+            // Skip back-face nodes / flux points
+            for (int m=0; m<(order+3); m++)
+              ss >> tmp1 >> tmp2 >> tmp3;
           }
-          ss >> tmp;
         }
       }
-      else {
-        // Skip the data at the mesh nodes and flux points along 'bottom' face
-        for (int i=0; i<(order+3)*(order+3); i++)
-          ss >> tmp;
-
-        // Get the data at the solution points
-        for (int k=0; k<(order+1); k++) {
-          // Skip front-face nodes / flux points
-          for (int m=0; m<(order+3); m++)
+      else if (str1.compare("Pressure")==0) {
+        foundP = true;
+        double tmp;
+        if (nDims == 2) {
+          // Skip the data at the mesh nodes and flux points along 'bottom' edge
+          for (int i=0; i<2+(order+1); i++) {
             ss >> tmp;
+          }
 
-          for (int j=0; j<(order+1); j++) {
+          // Get the data at the solution points
+          for (int i=0; i<(order+1); i++) {
             ss >> tmp;
-            for (int i=0; i<(order+1); i++) {
-              ss >> tempP[i+(order+1)*(j+(order+1)*k)];
+            for (int j=0; j<(order+1); j++) {
+              ss >> tempP[j+i*(order+1)];
             }
             ss >> tmp;
           }
-
-          // Skip back-face nodes / flux points
-          for (int m=0; m<(order+3); m++)
+        }
+        else {
+          // Skip the data at the mesh nodes and flux points along 'bottom' face
+          for (int i=0; i<(order+3)*(order+3); i++)
             ss >> tmp;
-        }
-      }
-    }
-    else if (str1.compare("EntropyErr")==0 && params->calcEntropySensor) {
-      double tmp;
-      if (nDims == 2) {
-        // Skip the data at the mesh nodes and flux points along 'bottom' edge
-        for (int i=0; i<2+(order+1); i++) {
-          ss >> tmp;
-        }
 
-        // Get the data at the solution points
-        for (int i=0; i<(order+1); i++) {
-          ss >> tmp;
-          for (int j=0; j<(order+1); j++) {
-            ss >> S_spts(j+i*(order+1));
+          // Get the data at the solution points
+          for (int k=0; k<(order+1); k++) {
+            // Skip front-face nodes / flux points
+            for (int m=0; m<(order+3); m++)
+              ss >> tmp;
+
+            for (int j=0; j<(order+1); j++) {
+              ss >> tmp;
+              for (int i=0; i<(order+1); i++) {
+                ss >> tempP[i+(order+1)*(j+(order+1)*k)];
+              }
+              ss >> tmp;
+            }
+
+            // Skip back-face nodes / flux points
+            for (int m=0; m<(order+3); m++)
+              ss >> tmp;
           }
-          ss >> tmp;
         }
       }
-      else {
-        // Skip the data at the mesh nodes and flux points along 'bottom' face
-        for (int i=0; i<(order+3)*(order+3); i++)
-          ss >> tmp;
-
-        // Get the data at the solution points
-        for (int k=0; k<(order+1); k++) {
-          // Skip front-face nodes / flux points
-          for (int m=0; m<(order+3); m++)
+      else if (str1.compare("EntropyErr")==0 && params->calcEntropySensor) {
+        double tmp;
+        if (nDims == 2) {
+          // Skip the data at the mesh nodes and flux points along 'bottom' edge
+          for (int i=0; i<2+(order+1); i++) {
             ss >> tmp;
+          }
 
-          for (int j=0; j<(order+1); j++) {
+          // Get the data at the solution points
+          for (int i=0; i<(order+1); i++) {
             ss >> tmp;
-            for (int i=0; i<(order+1); i++) {
-              ss >> S_spts(i+(order+1)*(j+(order+1)*k));
+            for (int j=0; j<(order+1); j++) {
+              ss >> S_spts(j+i*(order+1));
             }
             ss >> tmp;
           }
-
-          // Skip back-face nodes / flux points
-          for (int m=0; m<(order+3); m++)
+        }
+        else {
+          // Skip the data at the mesh nodes and flux points along 'bottom' face
+          for (int i=0; i<(order+3)*(order+3); i++)
             ss >> tmp;
+
+          // Get the data at the solution points
+          for (int k=0; k<(order+1); k++) {
+            // Skip front-face nodes / flux points
+            for (int m=0; m<(order+3); m++)
+              ss >> tmp;
+
+            for (int j=0; j<(order+1); j++) {
+              ss >> tmp;
+              for (int i=0; i<(order+1); i++) {
+                ss >> S_spts(i+(order+1)*(j+(order+1)*k));
+              }
+              ss >> tmp;
+            }
+
+            // Skip back-face nodes / flux points
+            for (int m=0; m<(order+3); m++)
+              ss >> tmp;
+          }
         }
       }
+      else {
+        // Not needed; ignore
+      }
     }
-    else {
-      // Not needed; ignore
+
+    // Convert primitive variables to conservative variables
+    for (int spt=0; spt<nSpts; spt++) {
+      U_spts(spt,1) = U_spts(spt,0)*tempV(spt,0);
+      U_spts(spt,2) = U_spts(spt,0)*tempV(spt,1);
+      double vSq = tempV(spt,0)*tempV(spt,0)+tempV(spt,1)*tempV(spt,1);
+      if (nDims == 3) {
+        U_spts(spt,3) = U_spts(spt,0)*tempV(spt,2);
+        vSq += tempV(spt,2)*tempV(spt,2);
+      }
+      U_spts(spt,nDims+1) = tempP[spt]/(params->gamma-1) + 0.5*U_spts(spt,0)*vSq;
     }
   }
+  else if (params->equation == ADVECTION_DIFFUSION) {
 
-  // Convert primitive variables to conservative variables
-  for (int spt=0; spt<nSpts; spt++) {
-    U_spts(spt,1) = U_spts(spt,0)*tempV(spt,0);
-    U_spts(spt,2) = U_spts(spt,0)*tempV(spt,1);
-    double vSq = tempV(spt,0)*tempV(spt,0)+tempV(spt,1)*tempV(spt,1);
-    if (nDims == 3) {
-      U_spts(spt,3) = U_spts(spt,0)*tempV(spt,2);
-      vSq += tempV(spt,2)*tempV(spt,2);
+    bool foundRho = false;
+    while (!foundRho) {
+      while (getline(file,str)) {
+        ss.str(""); ss.clear();
+        ss.str(str);
+        ss >> str1;
+        if (str1.compare("<DataArray")==0) {
+          while (str1.find("Name=") == string::npos) {
+            ss >> str1;
+          }
+          break;
+        }
+      }
+
+      // Extract field name
+      ind = str1.find("\"");
+      str1.erase(0,ind+1);
+      ind = str1.find("\"");
+      str1.erase(ind,1);
+
+      // Get the data line
+      getline(file,str);
+      ss.str(""); ss.clear(); ss.precision(15);
+      ss.str(str);
+      if (str1.compare("Density")==0) {
+        foundRho = true;
+        double tmp;
+        if (nDims == 2) {
+          // Skip the data at the mesh nodes and flux points along 'bottom' edge
+          for (int i=0; i<2+(order+1); i++) {
+            ss >> tmp;
+          }
+
+          // Get the data at the solution points
+          for (int i=0; i<(order+1); i++) {
+            ss >> tmp;
+            for (int j=0; j<(order+1); j++) {
+              ss >> U_spts(j+i*(order+1),0);
+            }
+            ss >> tmp;
+          }
+        }
+        else {
+          // Skip the data at the mesh nodes and flux points along 'bottom' face
+          for (int i=0; i<(order+3)*(order+3); i++)
+            ss >> tmp;
+
+          // Get the data at the solution points
+          for (int k=0; k<(order+1); k++) {
+            // Skip front-face nodes / flux points
+            for (int m=0; m<(order+3); m++)
+              ss >> tmp;
+
+            for (int j=0; j<(order+1); j++) {
+              ss >> tmp;
+              for (int i=0; i<(order+1); i++) {
+                ss >> U_spts(i+(order+1)*(j+(order+1)*k),0);
+              }
+              ss >> tmp;
+            }
+
+            // Skip back-face nodes / flux points
+            for (int m=0; m<(order+3); m++)
+              ss >> tmp;
+          }
+        }
+      }
     }
-    U_spts(spt,nDims+1) = tempP[spt]/(params->gamma-1) + 0.5*U_spts(spt,0)*vSq;
   }
 
   // Move to end of this element's data

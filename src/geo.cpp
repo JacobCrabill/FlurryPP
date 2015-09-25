@@ -2444,7 +2444,7 @@ void geo::moveMesh(double rkVal)
         double Ax = 0.5; // Amplitude  (m)
         double Ay = 0.0; // Amplitude  (m)
         double fx = 0.1; // Frequency  (Hz)
-        double fy = 0.1; // Frequency  (Hz)
+        double fy = 0.05; // Frequency  (Hz)
         for (int iv=0; iv<nVerts; iv++) {
           xv(iv,0) = xv0[iv].x + Ax*sin(2.*pi*fx*rkTime);
           //xv(iv,1) = xv0[iv].y + Ay*sin(2.*pi*fy*rkTime);

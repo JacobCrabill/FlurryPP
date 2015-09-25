@@ -213,26 +213,10 @@ void overComm::matchOversetPoints3D(vector<shared_ptr<ele>> &eles, vector<shared
       if (ic>=0 && eleMap[ic]>=0) {
         int ie = eleMap[ic];
         point refLoc;
-        eles[ie]->getRefLocNelderMeade(pt,refLoc);
-//        if (!isInEle) {
-//          auto bbox = eles[ic]->getBoundingBox();
-//          cout << endl;
-//          cout << "rank " << rank << ": p = " << p << ", i = " << i << ":" << endl;
-//          //cout << "point = " << pt.x << "," << pt.y << "," << pt.z << "; ";
-//          cout << "refLoc = " << refLoc.x << "," << refLoc.y << "," << refLoc.z << "; " << 1.-abs(refLoc.z) << endl;
-//          //cout << "ele bbox = " << bbox[0] << "," << bbox[1] << "," << bbox[2] << "; ";
-//          //cout << bbox[3] << "," << bbox[4] << "," << bbox[5] << endl;
-//          cout << endl;
-//          FatalError("Need to update ADT!");
-//        }
-//        else {
-//          cout << "rank " << rank << ": p = " << p << ", i = " << i << ": ";
-//          cout << "point = " << pt.x << "," << pt.y << "," << pt.z << "; ";
-//          cout << "refLoc = " << refLoc.x << "," << refLoc.y << "," << refLoc.z << "; ";
-//          auto bbox = eles[ic]->getBoundingBox();
-//          cout << "ele bbox = " << bbox[0] << "," << bbox[1] << "," << bbox[2] << "; ";
-//          cout << bbox[3] << "," << bbox[4] << "," << bbox[5] << endl;
-//        }
+        bool isInEle = eles[ie]->getRefLocNelderMeade(pt,refLoc);
+
+        if (!isInEle) FatalError("Unable to match fringe point!");
+
         foundPts[p].push_back(i);
         foundEles[p].push_back(ic); // Local ele id for this grid
         foundLocs[p].push_back(refLoc);
@@ -392,7 +376,6 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
 
       if (cellIDs.size() > 0) {
         vector<int> donorsIDs;
-        int ind = foundCells.size();
         foundCellNDonors[p].push_back(cellIDs.size());
         foundCells[p].push_back(i);
         for (auto &ic:cellIDs)
@@ -417,13 +400,6 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   // use with Galerkin projection
   for (auto &mesh:donors)
     mesh.setupQuadrature();
-
-  vector<point> locs;
-  vector<double> wts;
-  if (nDims == 2)
-    getQuadRuleTri(quadOrder,locs,wts);
-  else
-    getQuadRuleTet(quadOrder,locs,wts);
 
   // Get the locations of the quadrature points for each target cell, and
   // the reference location of the points within the donor cells
@@ -614,6 +590,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
       int ic = eleMap[foundEles[p][i]];
       if (ic<0 || ic>eles.size()) {
         cout << "!!!! ic = " << ic << " !!!!" << endl;
+        cout << "rank " << params->rank << ", cell " << foundEles[p][i] << endl;
         FatalError("bad value of ic!");
       }
       opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, U_out[p][i], refPos);

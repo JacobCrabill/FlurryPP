@@ -263,7 +263,7 @@ void geo::setCellIblanks(void)
 
   // Only needed for moving grids: List of current hole cells
   holeCells.clear();
-  blankCells.clear();
+  new_blankCells.clear();
   unblankCells.clear();
   for (int ic=0; ic<nEles; ic++)
     if (iblankCell[ic] == HOLE)
@@ -296,7 +296,7 @@ void geo::setCellIblanks(void)
 
         // Only needed for moving grids: Existing cells which must be removed from solver
         if (!holeCells.count(ic))
-          blankCells.insert(ic);
+          new_blankCells.insert(ic);
 
         break;
       }
@@ -414,6 +414,8 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
   removeEles(eles,blankCells);
   removeFaces(faces,mFaces,oFaces,blankIFaces,blankMFaces,blankOFaces);
   insertFaces(eles,faces,mFaces,oFaces,ubIFaces,ubMFaces,ubOFaces);
+
+  blankCells = new_blankCells;
 #endif
 }
 
@@ -582,7 +584,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
 
     if (faceType[ff] == INTERNAL)
     {
-      //cout << "Unblanking int face!" << endl;
+      cout << "Unblanking int face!" << endl;
       shared_ptr<face> iface = make_shared<intFace>();
 
       int ic1 = f2c(ff,0);
@@ -740,7 +742,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
 
   for (auto &ff:ubOFaces) {
     if (ff<0) continue;
-
+cout << "Unblanking overFace!!" << endl;
     shared_ptr<overFace> oface = make_shared<overFace>();
 
     int ic = f2c(ff,0);
