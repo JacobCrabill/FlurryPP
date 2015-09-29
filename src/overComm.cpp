@@ -206,6 +206,9 @@ void overComm::matchOversetPoints3D(vector<shared_ptr<ele>> &eles, vector<shared
 
     if (gridIdList[p] == gridID) continue;
 
+    foundPts[p].resize(0);
+    foundEles[p].resize(0);
+    foundLocs[p].resize(0);
     for (int i=0; i<nPts_rank[p]; i++) {
       // Get requested interpolation point
       point pt = point(&interpPtsPhys[3*(offset+i)]);
@@ -262,18 +265,22 @@ void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared
   foundEles.resize(nproc);
   foundLocs.resize(nproc);
   int offset = 0;
+  double tol = 1e-6;
   for (int p=0; p<nproc; p++) {
     if (p>0) offset += nPts_rank[p-1];
 
     if (gridIdList[p] == gridID) continue;
 
+    foundPts[p].resize(0);
+    foundEles[p].resize(0);
+    foundLocs[p].resize(0);
     for (int i=0; i<nPts_rank[p]; i++) {
       // Get requested interpolation point
       point pt = point(&interpPtsPhys[3*(offset+i)]);
 
       // First, check that point even lies within bounding box of grid
-      if ( (pt.x<minPt.x) || (pt.y<minPt.y) ||
-           (pt.x>maxPt.x) || (pt.y>maxPt.y) )
+      if ( (pt.x<minPt.x-tol) || (pt.y<minPt.y-tol) ||
+           (pt.x>maxPt.x+tol) || (pt.y>maxPt.y+tol) )
         continue;
 
       // Check for containment in all eles on this rank of this grid [no ADT currently for 2D meshes]
@@ -607,7 +614,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
   setupNPieces(nPtsSend,nPtsRecv);
 
   if (nOverPts > getSum(nPtsRecv)) {
-    cout << "rank " << rank << ", # Unmatched Points = " << nOverPts - getSum(nPtsRecv) << " out of " << nOverPts << endl;
+    cout << "rank " << params->rank << ", # Unmatched Points = " << nOverPts - getSum(nPtsRecv) << " out of " << nOverPts << endl;
     FatalError("Unmatched points remaining!");
   }
 

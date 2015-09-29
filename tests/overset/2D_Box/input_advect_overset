@@ -3,12 +3,12 @@
 # =============================================================
 equation      0    (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
 order         2    (Polynomial order to use)
-timeType      4    (0: Forward Euler, 4: RK44)
+timeType      0    (0: Forward Euler, 4: RK44)
 dtType        0    (0: Fixed, 1: CFL-based)
 CFL           .1
-dt            .002
+dt            .001
 iterMax       2500
-restart       1
+restart       0
 restartIter   1000
 
 viscous      0   (0: Inviscid, 1: Viscous)

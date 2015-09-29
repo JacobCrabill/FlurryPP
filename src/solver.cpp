@@ -509,8 +509,10 @@ void solver::moveMesh(int step)
 
     if (params->nDims==3)
       OComm->matchOversetPoints3D(eles,overFaces,Geo->eleMap);
-    else
+    else {
+      getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
       OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
+    }
 
   } else {
 

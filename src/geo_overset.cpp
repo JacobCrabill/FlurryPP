@@ -423,20 +423,41 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
 {
   /* --- Set Unblank/Blank Faces for All Unblank Elements --- */
 
+  ///!!! DEBUGGING !!!
+///!!  if (params->iter>30 && params->rank==4) {
+///!!    int i = 0;
+///!!    for (auto &ff:faces) {
+///!!      cout << "intFace ind " << i << ", faceMap = " << faceMap[ff->ID] << ", ID " << ff->ID <<  ", currFaceType = " << currFaceType[ff->ID] << endl;
+///!!      i++;
+///!!    }
+///!!    i = 0;
+///!!    for (auto &ff:mFaces) {
+///!!      cout << "mpiFace ind " << i << ", faceMap = " << faceMap[ff->ID] << ", ID " << ff->ID <<  ", currFaceType = " << currFaceType[ff->ID] << endl;
+///!!      i++;
+///!!    }
+///!!    i = 0;
+///!!    for (auto &ff:oFaces) {
+///!!      cout << "overFace ind " << i << ", faceMap = " << faceMap[ff->ID] << ", ID " << ff->ID <<  ", currFaceType = " << currFaceType[ff->ID] << endl;
+///!!      i++;
+///!!    }
+///!!  }
+
   set<int> ubIntFaces, ubMpiFaces, ubOFaces;
   for (auto &ic:unblankCells) {
     for (int j=0; j<c2nf[ic]; j++) {
-      if (c2c(ic,j)>=0) {
-        if (iblankCell[c2c(ic,j)]==NORMAL || unblankCells.count(c2c(ic,j)))
-          ubIntFaces.insert(c2f(ic,j));
+      int ic2 = c2c(ic,j);
+      int ff2 = c2f(ic,j);
+      if (ic2>=0) {
+        if (iblankCell[ic2]==NORMAL || unblankCells.count(ic2))
+          ubIntFaces.insert(ff2);
         else
-          ubOFaces.insert(c2f(ic,j));
+          ubOFaces.insert(ff2);
       } else {
         // Boundary or MPI face
-        if (faceType[c2f(ic,j)]==MPI_FACE)
-          ubMpiFaces.insert(c2f(ic,j));
+        if (faceType[ff2]==MPI_FACE)
+          ubMpiFaces.insert(ff2);
         else
-          ubIntFaces.insert(c2f(ic,j));
+          ubIntFaces.insert(ff2);
       }
     }
   }
@@ -482,6 +503,11 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
     }
   }
 
+///!!  if (params->rank==4 && params->iter>30) {
+///!!    for (auto &oface:oFaces) cout << "rank 4: current oface ID " << oface->ID << endl;
+///!!    for (auto &ff:ubOFaces) cout << "rank 4: ubOFace ID " << ff << endl;
+///!!  }
+
   // Now, figure out what faces must be removed due to being replaced by other type
   // For cell unblanking, the only possibility for face blanking is overset faces
 
@@ -522,7 +548,7 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, set<int> &ubEles)
 {
   /* --- Setup & Insert Unblanked Elements --- */
 
-  for (auto &ic:unblankCells) {
+  for (auto &ic:ubEles) {
     // Find the next-lowest index
     int ind = eleMap[ic];
     if (ind>=0) FatalError("Should not have marked a non-hole cell for un-blanking! Is eleMap wrong?");
@@ -584,7 +610,6 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
 
     if (faceType[ff] == INTERNAL)
     {
-      cout << "Unblanking int face!" << endl;
       shared_ptr<face> iface = make_shared<intFace>();
 
       int ic1 = f2c(ff,0);
@@ -682,7 +707,6 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
 
 #ifndef _NO_MPI
   for (auto &ff:ubMFaces) {
-    //cout << "Unblanking mpi face!" << endl;
     int ind = std::distance(mpiFaces.begin(), std::find(mpiFaces.begin(),mpiFaces.end(),ff));
 
     shared_ptr<mpiFace> mface = make_shared<mpiFace>();
@@ -742,7 +766,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
 
   for (auto &ff:ubOFaces) {
     if (ff<0) continue;
-cout << "Unblanking overFace!!" << endl;
+///!!cout << "rank " << params->rank << ": Unblanking overFace!!  ID " << ff << endl;
     shared_ptr<overFace> oface = make_shared<overFace>();
 
     int ic = f2c(ff,0);
@@ -771,8 +795,12 @@ cout << "Unblanking overFace!!" << endl;
 
     // Find the next-lowest index for insertion into vector
     int ind = 0;
+    if (params->rank==4)
+///!!cout << "oFace[" << ind << "]->ID = " << oFaces[ind]->ID << endl;
     while (ind+1<oFaces.size() && oFaces[ind+1]->ID < ff) {
       ind++;
+///!!      if (params->rank==4)
+///!!cout << "oFace[" << ind << "]->ID = " << oFaces[ind]->ID << endl;
     }
     oFaces.insert(oFaces.begin()+ind,1,oface);
     faceMap[ff] = ind;
@@ -804,7 +832,7 @@ void geo::removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace
 
   for (auto &ff:blankIFaces) {
     if (ff<0) continue;
-
+///!!cout << "rank " << params->rank << ": Removing intFace!" << endl;
     int ind = faceMap[ff];
     int fType = currFaceType[ff];
     if (ind<0) FatalError("invalid blankIFace!");
@@ -831,7 +859,7 @@ void geo::removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace
     if (ff<0) continue;
     int ind = faceMap[ff];
     if (ind<0) FatalError("Invalid balnkMFace!");
-
+///!!cout << "rank " << params->rank << ": Removing mpiFace!" << endl;
     mFaces.erase(mFaces.begin()+ind,mFaces.begin()+ind+1);
 
     faceMap[ff] = -1;
@@ -847,7 +875,7 @@ void geo::removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace
     if (ff<0) continue;
     int ind = faceMap[ff];
     if (ind<0) continue;
-
+///!!cout << "rank " << params->rank << ": Removing overFace!  " << ff << ", " << oFaces[ind]->ID << endl;
     oFaces.erase(oFaces.begin()+ind,oFaces.begin()+ind+1);
 
     // Update the map
