@@ -340,6 +340,10 @@ void face::rusanovFlux(void)
     }
     *waveSp[fpt] = max(eigL,eigR);
   }
+
+  if (params->rank==4 && params->iter>30) {
+    UR.print();
+  }
 }
 
 void face::roeFlux(void)

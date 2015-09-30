@@ -803,12 +803,8 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
     /* --- Get a unique, sorted list of all overset faces (either from Gmsh
      * boundary condition, or from TIOGA-based cell blanking) --- */
 
-    for (int ff=0; ff<nFaces; ff++) if (iblankFace[ff] == FRINGE) overFaces.push_back(ff);
-    for (int ff=0; ff<nBndFaces; ff++) if (bcType[ff] == OVERSET) overFaces.push_back(bndFaces[ff]);
-
-    std::sort(overFaces.begin(),overFaces.end());
-    auto it = std::unique(overFaces.begin(),overFaces.end());
-    overFaces.resize( std::distance(overFaces.begin(),it) );
+    for (int ff=0; ff<nFaces; ff++) if (iblankFace[ff] == FRINGE) overFaces.insert(ff);
+    for (int ff=0; ff<nBndFaces; ff++) if (bcType[ff] == OVERSET) overFaces.insert(bndFaces[ff]);
   }
 
   vector<int> cellFaces;
@@ -969,7 +965,8 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
           // This happens when a fringe face is ALSO an MPI-boundary face
           // Since the other processor has the non-blanked cell, just ignore the face here
           iblankFace[ff] = HOLE;
-          ff = -1; // to remove from vector later
+          overFaces.erase(ff);
+          //ff = -1; // to remove from vector later
           continue;
         }
         ic = f2c(ff,1);
@@ -989,9 +986,6 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
       currFaceType[ff] = OVER_FACE;
     }
   }
-  overFaces.erase(std::remove(overFaces.begin(), overFaces.end(), -1), overFaces.end());
-  // Final # of overset faces
-  nOverFaces = overFacesVec.size();
 }
 
 void geo::readGmsh(string fileName)

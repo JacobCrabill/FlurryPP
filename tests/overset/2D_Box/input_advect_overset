@@ -6,8 +6,8 @@ order         2    (Polynomial order to use)
 timeType      0    (0: Forward Euler, 4: RK44)
 dtType        0    (0: Fixed, 1: CFL-based)
 CFL           .1
-dt            .001
-iterMax       2500
+dt            .002
+iterMax       15000
 restart       0
 restartIter   1000
 
@@ -37,12 +37,12 @@ icType       0
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        50  (Frequency to write plot files)
-monitorResFreq  10    (Frequency to print residual to terminal)
+plotFreq        200  (Frequency to write plot files)
+monitorResFreq  50    (Frequency to print residual to terminal)
 resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    Adv    (Filename prefix for output files)
 entropySensor   0      (Calculate & plot entropy-error sensor)
-writeIBLANK     0      (Write cell iblank values in ParaView files)
+writeIBLANK     1      (Write cell iblank values in ParaView files)
 
 # =============================================================
 # Mesh Options

@@ -110,7 +110,7 @@ public:
                       set<int> &blankIFaces, set<int> &blankMFaces, set<int> &blankOFaces);
 
   int nDims, nFields;
-  int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces, nOverFaces;
+  int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces;
   int nBounds;  //! Number of boundaries
   int meshType;
 
@@ -130,8 +130,8 @@ public:
   matrix<int> c2e, c2b, e2c, e2v, v2e, v2v, v2c;
   matrix<int> c2f, f2v, f2c, c2c, c2ac;
   vector<int> v2nv, v2nc, c2nv, c2nf, f2nv, ctype;
-  vector<int> intFaces, bndFaces, mpiFaces, overFaces, mpiCells;
-  set<int> overCells;            //! List of all cells which have an overset-boundary-condition face
+  vector<int> intFaces, bndFaces, mpiFaces, mpiCells;
+  set<int> overFaces, overCells; //! List of all faces / cells which have an overset-boundary-condition face
   vector<int> bcList;            //! List of boundary conditions for each boundary
   vector<int> bcType;            //! Boundary condition for each boundary face
   matrix<int> bndPts;            //! List of node IDs on each boundary
@@ -183,7 +183,7 @@ public:
   //set<int> fringeFaces;   //! List of faces in mesh which are currently fringe faces
   set<int> unblankCells;  //! List of non-existing cells which, due to motion, must be un-blanked
   set<int> blankCells;    //! List of existing cells which, due to motion, must be blanked
-  set<int> new_blankCells;    //! List of existing cells which, due to motion, must be blanked
+  //set<int> new_blankCells;    //! List of existing cells which, due to motion, must be blanked
 
 #ifndef _NO_MPI
   shared_ptr<overComm> OComm;

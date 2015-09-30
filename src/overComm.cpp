@@ -446,7 +446,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
       for (int id=0; id<foundCellNDonors[p][i]; id++) {
         int ic = eleMap[foundCellDonors[p](i,id)];
         for (int spt=0; spt<nSpts; spt++)
-          donorU[p].insertRow(eles[ic]->U_spts[spt],INSERT_AT_END,params->nFields);
+          donorU[p].insertRow(eles[ic]->U_spts[spt],INSERT_AT_END,nFields);
       }
     }
   }
@@ -458,7 +458,6 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
     nQptsSend[p] = qpts[p].getDim0();
   }
   setupNPieces(nQptsSend,nQptsRecv);
-
 
   vector<vector<int>> unblankID(nproc);
   vector<matrix<double>> qpts_recv(nproc);
@@ -511,7 +510,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
         offsetD += nSpts*foundCellNDonors[p][i-1];
       }
 
-      matrix<double> rhs(nSpts,params->nFields);
+      matrix<double> rhs(nSpts,nFields);
       matrix<double> lhs;
       int nQpts = donors[offset+i].getNQpts();
 
@@ -546,6 +545,12 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   }
   setupNPieces(nCellsSend,nCellsRecv);
 
+//  ///!!! DEBUGGING
+//  if (rank==2) {
+//    cout << "RHS sent from rank 2:" << endl;
+//    RHS[4].print();
+//  }
+
   int strideR = nSpts*nFields;
   int strideL = nSpts*nSpts;
   vector<matrix<double>> tmpUbLHS(nproc), tmpUbRHS(nproc);
@@ -572,15 +577,26 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
     }
   }
 
+  ///!!! DEBUGGING
+  if (rank==4) {
+    cout << "u_spts for rank 4:" << endl;
+  }
+
   // Apply the new values to the unblank ele objects
   for (int i=0; i<nUnblanks; i++) {
     int ic = ubCells[i];
     eles[ic]->U_spts.initializeToZero();
     auto unblankU = solveCholesky(ubLHS[i],ubRHS[i]);
+//if (rank==4)
+//  unblankU.print();
     for (int spt=0; spt<nSpts; spt++)
       for (int k=0; k<nFields; k++)
         eles[ic]->U_spts(spt,k) += unblankU(spt,k);
   }
+
+//  if (rank==4) {
+//    for (auto &e:eles) e->U_spts.print();
+//  }
 #endif
 }
 

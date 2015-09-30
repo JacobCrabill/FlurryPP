@@ -57,6 +57,7 @@ void ele::setup(input *inParams, geo *inGeo)
 
   order = params->order;
   nDims = params->nDims;
+  nFields = params->nFields;
 
   if (eType == QUAD || eType == HEX)
     sptsType = params->sptsTypeQuad;
@@ -83,12 +84,6 @@ void ele::setup(input *inParams, geo *inGeo)
 
 void ele::setupArrays(void)
 {
-  if (params->equation == ADVECTION_DIFFUSION) {
-    nFields = 1;
-  }else if (params->equation == NAVIER_STOKES) {
-    nFields = nDims + 2;
-  }
-
   U_spts.setup(nSpts,nFields);
   U_fpts.setup(nFpts,nFields);
   U_mpts.setup(nMpts,nFields);

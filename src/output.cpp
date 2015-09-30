@@ -35,6 +35,8 @@ void writeData(solver *Solver, input *params)
     writeParaview(Solver,params);
   }
 
+  if (params->writeIBLANK)
+writeMeshTecplot(Solver,params);
 }
 
 void writeCSV(solver *Solver, input *params)
