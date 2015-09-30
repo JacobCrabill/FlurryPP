@@ -147,10 +147,10 @@ void overComm::setIblanks2D(matrix<double>& xv, matrix<int> &overFaces, matrix<i
         }
       }
     }
-    if (std::abs(windW)+eps >= 2.*PI)
+    if (std::abs(windW)+eps >= 2.*pi)
       iblank[i] = HOLE;
 
-    if (std::abs(windO)+eps >= 2.*PI && iblank[i]!=HOLE)
+    if (std::abs(windO)+eps >= 2.*pi && iblank[i]!=HOLE)
       iblank[i] = FRINGE;
   }
 }

@@ -246,6 +246,7 @@ void geo::updateADT(void)
 
 void geo::updateBlanking(void)
 {
+#ifndef _NO_MPI
   updateADT();
 
   if (nDims == 2) {
@@ -255,6 +256,7 @@ void geo::updateBlanking(void)
 
   // Now use new nodal iblanks to set cell and face iblanks
   setCellIblanks();
+#endif
 }
 
 void geo::setCellIblanks(void)
@@ -450,6 +452,7 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
     }
   }
 
+#ifndef _NO_MPI
   // Figure out whether MPI faces are to be unblanked as MPI or as overset
   vector<int> ubMpi;
   for (auto &ff:ubMpiFaces) ubMpi.push_back(ff);
@@ -490,6 +493,7 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
       }
     }
   }
+#endif
 
   // Now, figure out what faces must be removed due to being replaced by other type
   // For cell unblanking, the only possibility for face blanking is overset faces

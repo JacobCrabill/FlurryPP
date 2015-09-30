@@ -124,16 +124,14 @@ void geo::processConnectivity()
 
   /* --- Setup MPI Processor Boundary Faces --- */
   matchMPIFaces();
+#endif
 
   /* --- Additional setup for moving grids --- */
   if (params->motion) {
     xv0.resize(nVerts);
-//    xv_new.resize(nVerts);
-    for (int i=0; i<nVerts; i++) xv0[i] = point(xv[i]);
-//    for (int i=0; i<nVerts; i++) xv_new[i] = point(xv[i]);
+    for (int i=0; i<nVerts; i++) xv0[i] = point(xv[i],nDims);
     gridVel.setup(nVerts,nDims);
   }
-#endif
 }
 
 void geo::processConn2D(void)

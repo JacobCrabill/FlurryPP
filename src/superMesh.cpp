@@ -19,6 +19,7 @@
 #include "superMesh.hpp"
 
 #include <array>
+#include <fstream>
 #include <set>
 #include <map>
 
@@ -42,8 +43,6 @@
  *              `3                                    `3
  */
 
-#include <fstream>
-#include "mpi.h"
 superMesh::superMesh()
 {
 
