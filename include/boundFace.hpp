@@ -27,6 +27,9 @@ public:
   /*! Assign boundary-condition type */
   void setupRightState(void);
 
+  /*! Get pointer access to right ele's data */
+  void getPointersRight(void);
+
   /*! Apply invisic boundary conditions to the solution */
   void applyBCs(void);
 

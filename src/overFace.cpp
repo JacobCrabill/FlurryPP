@@ -27,6 +27,11 @@ void overFace::setupRightState(void)
   }
 }
 
+void overFace::getPointersRight()
+{
+  // Do nothing
+}
+
 void overFace::getRightState(void)
 {
   // Note: fptOffset must be set by Solver during overset setup

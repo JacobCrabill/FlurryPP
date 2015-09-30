@@ -423,33 +423,12 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
   removeEles(eles,blankCells);
   removeFaces(faces,mFaces,oFaces,blankIFaces,blankMFaces,blankOFaces);
   insertFaces(eles,faces,mFaces,oFaces,ubIFaces,ubMFaces,ubOFaces);
-
-  //blankCells = new_blankCells;
 #endif
 }
 
 void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
 {
   /* --- Set Unblank/Blank Faces for All Unblank Elements --- */
-
-  ///!!! DEBUGGING !!!
-///!!  if (params->iter>30 && params->rank==4) {
-///!!    int i = 0;
-///!!    for (auto &ff:faces) {
-///!!      cout << "intFace ind " << i << ", faceMap = " << faceMap[ff->ID] << ", ID " << ff->ID <<  ", currFaceType = " << currFaceType[ff->ID] << endl;
-///!!      i++;
-///!!    }
-///!!    i = 0;
-///!!    for (auto &ff:mFaces) {
-///!!      cout << "mpiFace ind " << i << ", faceMap = " << faceMap[ff->ID] << ", ID " << ff->ID <<  ", currFaceType = " << currFaceType[ff->ID] << endl;
-///!!      i++;
-///!!    }
-///!!    i = 0;
-///!!    for (auto &ff:oFaces) {
-///!!      cout << "overFace ind " << i << ", faceMap = " << faceMap[ff->ID] << ", ID " << ff->ID <<  ", currFaceType = " << currFaceType[ff->ID] << endl;
-///!!      i++;
-///!!    }
-///!!  }
 
   set<int> ubIntFaces, ubMpiFaces, ubOFaces;
   for (auto &ic:unblankCells) {
@@ -469,12 +448,6 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
           ubIntFaces.insert(ff2);
       }
     }
-  }
-
-  if (unblankCells.size()>0) {
-    cout << "**** Rank " << params->rank << ": nUnblankCells = " << unblankCells.size() << endl;
-    cout << "**** Rank " << params->rank << ": nUnblankIntFaces = " << ubIntFaces.size() << endl;
-    cout << "**** Rank " << params->rank << ": nUnblankOFaces = " << ubOFaces.size() << endl;
   }
 
   // Figure out whether MPI faces are to be unblanked as MPI or as overset
@@ -517,11 +490,6 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
       }
     }
   }
-
-///!!  if (params->rank==4 && params->iter>30) {
-///!!    for (auto &oface:oFaces) cout << "rank 4: current oface ID " << oface->ID << endl;
-///!!    for (auto &ff:ubOFaces) cout << "rank 4: ubOFace ID " << ff << endl;
-///!!  }
 
   // Now, figure out what faces must be removed due to being replaced by other type
   // For cell unblanking, the only possibility for face blanking is overset faces
@@ -782,7 +750,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
 
   for (auto &ff:ubOFaces) {
     if (ff<0) continue;
-cout << "rank " << params->rank << ": Unblanking overFace!!  ID " << ff << endl;
+
     shared_ptr<overFace> oface = make_shared<overFace>();
 
     int ic = f2c(ff,0);
@@ -811,12 +779,8 @@ cout << "rank " << params->rank << ": Unblanking overFace!!  ID " << ff << endl;
 
     // Find the next-lowest index for insertion into vector
     int ind = 0;
-    if (params->rank==4)
-///!!cout << "oFace[" << ind << "]->ID = " << oFaces[ind]->ID << endl;
     while (ind+1<oFaces.size() && oFaces[ind+1]->ID < ff) {
       ind++;
-///!!      if (params->rank==4)
-///!!cout << "oFace[" << ind << "]->ID = " << oFaces[ind]->ID << endl;
     }
     oFaces.insert(oFaces.begin()+ind,1,oface);
     faceMap[ff] = ind;
@@ -839,12 +803,10 @@ void geo::removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace
 {
   // NOTE: faceType refers to the original face type as read from mesh file
   //       (Before overset connectivity processing)
-if (params->rank==5 && blankIFaces.size()>0)
-  cout << "rank 5: nbIFaces = " << blankIFaces.size() << endl;
 
   for (auto &ff:blankIFaces) {
     if (ff<0) continue;
-cout << "rank " << params->rank << ": Removing intFace!" << endl;
+
     int ind = faceMap[ff];
     int fType = currFaceType[ff];
     if (ind<0) FatalError("invalid blankIFace!");
@@ -871,7 +833,7 @@ cout << "rank " << params->rank << ": Removing intFace!" << endl;
     if (ff<0) continue;
     int ind = faceMap[ff];
     if (ind<0) FatalError("Invalid balnkMFace!");
-cout << "rank " << params->rank << ": Removing mpiFace!" << endl;
+
     mFaces.erase(mFaces.begin()+ind,mFaces.begin()+ind+1);
 
     faceMap[ff] = -1;
@@ -884,7 +846,6 @@ cout << "rank " << params->rank << ": Removing mpiFace!" << endl;
   }
 
   for (auto &ff:blankOFaces) {
-cout << "rank " << params->rank << ": Removing overFace! ID " << ff << ", map " << faceMap[ff] << endl;
     if (ff<0) continue;
     int ind = faceMap[ff];
     if (ind<0) continue;
@@ -895,10 +856,6 @@ cout << "rank " << params->rank << ": Removing overFace! ID " << ff << ", map " 
     faceMap[ff] = -1;
     currFaceType[ff] = HOLE_FACE;
     for (int i=0; i<oFaces.size(); i++) faceMap[oFaces[i]->ID] = i;
-//    for (int f2=ff+1; f2<nFaces; f2++) {
-//      if (currFaceType[f2] == OVER_FACE)
-//        faceMap[f2]--;
-//    }
 
     overFaces.erase(ff);
   }

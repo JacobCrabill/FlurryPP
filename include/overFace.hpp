@@ -32,6 +32,9 @@ public:
   //! Setup arrays to handle getting/setting data from Solver
   void setupRightState(void);
 
+  /*! Get pointer access to right ele's data */
+  void getPointersRight(void);
+
   //! Get the interpolated overset solution data from the Solver
   void getRightState(void);
 

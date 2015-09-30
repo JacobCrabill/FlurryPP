@@ -26,6 +26,9 @@ public:
   //! Setup arrays to handle getting/setting data at right element
   void setupRightState(void);
 
+  /*! Get pointer access to right ele's data */
+  void getPointersRight(void);
+
   //! Get data from the right element
   void getRightState(void);
 

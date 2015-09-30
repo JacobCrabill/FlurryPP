@@ -484,6 +484,7 @@ void ele::calcTransforms(bool moving)
     }
 
     // Store magnitude of face normal (equivalent to face area in finite-volume land)
+    dA_fpts[fpt] = 0;
     for (int dim=0; dim<nDims; dim++)
       dA_fpts[fpt] += norm_fpts(fpt,dim)*norm_fpts(fpt,dim);
     dA_fpts[fpt] = sqrt(dA_fpts[fpt]);

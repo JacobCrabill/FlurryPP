@@ -38,6 +38,9 @@ public:
   //! Wait to receive # of flux points from opposite proccessor
   void finishRightSetup(void);
 
+  /*! Get pointer access to right ele's data */
+  void getPointersRight(void);
+
   //! Receive the right-state data from the opposite processor
   void getRightState(void);
 

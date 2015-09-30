@@ -58,8 +58,14 @@ public:
   /*! Assign basic parameters to boundary */
   void initialize(shared_ptr<ele> &eL, shared_ptr<ele> &eR, int gID, int locF_L, struct faceInfo myInfo, input* params);
 
-  /*! Setup access to the left elements' data */
+  /*! Setup arrays and access to the left elements' data */
   void setupFace(void);
+
+  /*! Setup pointer access to left elements' data */
+  void getPointers(void);
+
+  /*! Get pointer access to right element's data */
+  virtual void getPointersRight(void) =0;
 
   /*! Setup access to the right elements' data (if it exists) */
   virtual void setupRightState(void) =0;

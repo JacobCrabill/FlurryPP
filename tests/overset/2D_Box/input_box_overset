@@ -7,9 +7,9 @@ timeType      0    (0: Forward Euler, 4: RK44)
 dtType        0    (0: Fixed, 1: CFL-based)
 CFL           .1
 dt            .001
-iterMax       32
+iterMax       30000
 restart       0
-restartIter   30
+restartIter   15000
 
 viscous      0   (0: Inviscid, 1: Viscous)
 motion       4   (0: Static, 1: Perturbation test case)
@@ -32,13 +32,13 @@ diffD        .1   (Diffusion Coefficient)
 # =============================================================
 #   Advection: 0-Gaussian,     1-u=x+y+z test case,  2-u=cos(x)*cos(y)*cos(z) test case
 #   N-S:       0-Uniform flow, 1-Uniform+Vortex (Kui), 2-Uniform+Vortex (Liang)
-icType       0
+icType       2
 
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        1  (Frequency to write plot files)
-monitorResFreq  1    (Frequency to print residual to terminal)
+plotFreq        500  (Frequency to write plot files)
+monitorResFreq  100    (Frequency to print residual to terminal)
 resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    Box    (Filename prefix for output files)
 entropySensor   0      (Calculate & plot entropy-error sensor)

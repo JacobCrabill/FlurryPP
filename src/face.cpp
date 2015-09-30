@@ -77,6 +77,15 @@ void face::setupFace(void)
     Vg.setup(nFptsL,nDims);
   }
 
+  getPointers();
+
+  this->setupRightState();
+
+  this->getPointersRight();
+}
+
+void face::getPointers(void)
+{
   // Get access to data at left element
   int fpt = 0;
   for (int i=fptStartL; i<fptEndL; i++) {
@@ -89,8 +98,6 @@ void face::setupFace(void)
 
     fpt++;
   }
-
-  this->setupRightState();
 }
 
 void face::getLeftState()
@@ -339,10 +346,6 @@ void face::rusanovFlux(void)
       eigR = std::fabs(vnR-vgn) + sqrt(csqR);
     }
     *waveSp[fpt] = max(eigL,eigR);
-  }
-
-  if (params->rank==4 && params->iter>30) {
-    UR.print();
   }
 }
 

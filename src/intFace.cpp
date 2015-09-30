@@ -35,6 +35,11 @@ void intFace::setupRightState(void)
   if (nFptsL != nFptsR)
     FatalError("Mortar elements not yet implemented - must have nFptsL==nFptsR");
 
+  FnR.resize(nFptsR);
+  normR.setup(nFptsR,nDims);
+  dAR.resize(nFptsR);
+  detJacR.resize(nFptsL);
+
   /* --- Setup the L/R flux-point matching --- */
   fptR.resize(nFptsL);
   if (nDims == 2) {
@@ -76,16 +81,13 @@ void intFace::setupRightState(void)
     }
   }
 
-  //FR.resize(nFptsR);
-  FnR.resize(nFptsR);
-  normR.setup(nFptsR,nDims);
-  dAR.resize(nFptsR);
-  detJacR.resize(nFptsL);
-
   if (params->viscous) {
     UcR.resize(nFptsR);
   }
+}
 
+void intFace::getPointersRight(void)
+{
   // Get access to normal flux storage at right element [use look-up table to get right fpt]
   for (int i=0; i<nFptsL; i++) {
     FnR[i] = (eR->Fn_fpts[fptR[i]]);

@@ -100,6 +100,11 @@ void mpiFace::finishRightSetup(void)
 #endif
 }
 
+void mpiFace::getPointersRight()
+{
+  // Do nothing
+}
+
 void mpiFace::communicate(void)
 {
   getLeftState();

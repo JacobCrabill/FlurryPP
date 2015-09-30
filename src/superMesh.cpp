@@ -136,8 +136,6 @@ void superMesh::buildSuperMeshTri(void)
     }
     tris = newTris;
     parents = newParents;
-//!! DEBUGGING
-//printSuperMesh(rank,ID*10+i);
   }
 }
 
@@ -225,9 +223,6 @@ vector<double> superMesh::integrate(matrix<double> &data)
       for (int k=0; k<nFields; k++)
         vals[k] += data(i*nQpts_simp+j,k)*weights[j]*vol[i];
 
-  //!!DEBUGGING
-  if (data.checkNan()) FatalError("NaN data in superMesh::integrateByDonor()");
-
   return vals;
 }
 
@@ -261,11 +256,6 @@ matrix<double> superMesh::integrateByDonor(matrix<double> &data)
       }
     }
   }
-
-  //!!DEBUGGING
-  if (data.checkNan()) FatalError("NaN data in superMesh::integrateByDonor()");
-//  auto vals_0 = data.getCol(0);
-//  printQuadPoints(vals_0);
 
   return val;
 }
@@ -316,9 +306,6 @@ void superMesh::setupQuadrature(void)
       }
     }
   }
-
-  //!!DEBUGGING
-  if (checkNaN(vol)) FatalError("NaN volume in superMesh!");
 }
 
 void superMesh::getQpts(vector<point> &qptPos, vector<int> &qptCell)

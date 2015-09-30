@@ -39,6 +39,11 @@ void boundFace::setupRightState(void)
   }
 }
 
+void boundFace::getPointersRight(void)
+{
+  // Do nothing
+}
+
 void boundFace::getRightState(void)
 {
   // Set the boundary condition [store in UR]
