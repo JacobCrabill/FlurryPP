@@ -8,7 +8,7 @@
  * \version 0.0.1
  *
  * Fux Reconstruction in C++ (Flurry++) Code
- * Copyright (C) 2014 Jacob Crabill.
+ * Copyright (C) 2015 Jacob Crabill.
  *
  */
 

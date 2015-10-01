@@ -274,6 +274,20 @@ void geo::setCellIblanks(void)
   iblankCell.assign(nEles,NORMAL);
 
   // First, blank any fringe vertices which should be treated as hole vertices
+  vector<int> iblank1(nVerts,HOLE);
+  for (int iv=0; iv<nVerts; iv++) {
+    if (iblank[iv] == FRINGE) {
+      for (int j=0; j<v2nv[iv]; j++) {
+        if (iblank[v2v(iv,j)] == NORMAL) {
+          iblank1[iv] = NORMAL;
+        }
+      }
+    }
+  }
+
+  for (int iv=0; iv<nVerts; iv++) {
+    if (iblank1[iv] == NORMAL) iblank[iv] = NORMAL;
+  }
 
   for (int iv=0; iv<nVerts; iv++) {
     if (iblank[iv] == FRINGE) {
@@ -284,7 +298,7 @@ void geo::setCellIblanks(void)
         }
       }
       if (nfringe == v2nv[iv])
-        iblank[iv] = HOLE;
+        iblank[iv] = HOLE; // HOLE
     }
   }
 
@@ -433,6 +447,7 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
   /* --- Set Unblank/Blank Faces for All Unblank Elements --- */
 
   set<int> ubIntFaces, ubMpiFaces, ubOFaces;
+  set<int> blankIFaces, blankMFaces, blankOFaces;
   for (auto &ic:unblankCells) {
     for (int j=0; j<c2nf[ic]; j++) {
       int ic2 = c2c(ic,j);
@@ -475,10 +490,10 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
 
   for (int F=0; F<nMpiFaces; F++) {
     int ff = mpiFaces[F];
-    if (ubMpiFaces.count(ff)) {
+    if (ubMpiFaces.count(ff) || overFaces.count(ff)) {
       int p = procR[F];
       int f2 = faceID_R[F];
-      // If MPI face is unblanked on both sides, keep as MPI face
+
       bool isUnblanked = false;
       for (int j=0; j<recvCnts[p]; j++) {
         if (ubMpi_rank[recvDisp[p]+j]==f2) {
@@ -486,10 +501,15 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
           break;
         }
       }
-      // If not unblanked on other rank, move to overFaces
-      if (!isUnblanked) {
+
+      if (ubMpiFaces.count(ff) && !isUnblanked) {
+        // If MPI face is not unblanked on other rank, move to overFaces
         ubMpiFaces.erase(ff);
         ubOFaces.insert(ff);
+      } else if (currFaceType[ff]==OVER_FACE && isUnblanked) {
+        // Current overset face must be replaced by MPI face
+        blankOFaces.insert(ff);
+        ubMpiFaces.insert(ff);
       }
     }
   }
@@ -497,8 +517,6 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
 
   // Now, figure out what faces must be removed due to being replaced by other type
   // For cell unblanking, the only possibility for face blanking is overset faces
-
-  set<int> blankIFaces, blankMFaces, blankOFaces;
 
   for (auto &ff:ubIntFaces)
     if (overFaces.count(ff))
@@ -795,6 +813,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
     // Add this face to list of overFaces (while keeping list sorted)
     overFaces.insert(ff);
   }
+  overFaces.erase(-1);
 
   // Finish the setup of all unblanked MPI faces (need L/R ranks to be ready)
   for (auto &mface:mFaces)
@@ -836,7 +855,7 @@ void geo::removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace
   for (auto &ff:blankMFaces) {
     if (ff<0) continue;
     int ind = faceMap[ff];
-    if (ind<0) FatalError("Invalid balnkMFace!");
+    if (ind<0) FatalError("Invalid blankMFace!");
 
     mFaces.erase(mFaces.begin()+ind,mFaces.begin()+ind+1);
 

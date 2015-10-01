@@ -9,7 +9,7 @@
  * \version 0.0.1
  *
  * Flux Reconstruction in C++ (Flurry++) Code
- * Copyright (C) 2014 Jacob Crabill.
+ * Copyright (C) 2015 Jacob Crabill.
  *
  */
 
@@ -952,6 +952,7 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
 
   // Overset Faces
   if (meshType == OVERSET_MESH) {
+    set<int> rm_ids;
     for (auto &ff: overFaces) {
       iblankFace[ff] = FRINGE; // To ensure consistency
 
@@ -963,8 +964,7 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
           // This happens when a fringe face is ALSO an MPI-boundary face
           // Since the other processor has the non-blanked cell, just ignore the face here
           iblankFace[ff] = HOLE;
-          overFaces.erase(ff);
-          //ff = -1; // to remove from vector later
+          rm_ids.insert(ff);
           continue;
         }
         ic = f2c(ff,1);
@@ -983,6 +983,8 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
       faceMap[ff] = overFacesVec.size()-1;
       currFaceType[ff] = OVER_FACE;
     }
+
+    for (auto &ff:rm_ids) overFaces.erase(ff);
   }
 }
 
@@ -1106,8 +1108,6 @@ void geo::readGmsh(string fileName)
   eType2nv[10] = 4; // Quadratic Lagrange quad
   eType2nv[8] = 8;  // Linear hex
 
-  // Setup bndPts matrix - Just an initial estimate; will be adjusted on the fly
-  //bndPts.setup(nBounds,std::round(nNodes/nBounds));
   nBndPts.resize(nBounds);
 
   // Read total number of interior + boundary elements
@@ -2436,14 +2436,14 @@ void geo::moveMesh(double rkVal)
         double Ax = 0.5; // Amplitude  (m)
         double Ay = 0.0; // Amplitude  (m)
         double fx = 0.1; // Frequency  (Hz)
-        double fy = 0.05; // Frequency  (Hz)
+        double fy = 0.1; // Frequency  (Hz)
         for (int iv=0; iv<nVerts; iv++) {
           xv(iv,0) = xv0[iv].x + Ax*sin(2.*pi*fx*rkTime);
-          //xv(iv,1) = xv0[iv].y + Ay*sin(2.*pi*fy*rkTime);
-          xv(iv,1) = xv0[iv].y + Ay*(1-cos(2.*pi*fy*rkTime));
+          xv(iv,1) = xv0[iv].y + Ay*sin(2.*pi*fy*rkTime);
+          //xv(iv,1) = xv0[iv].y + Ay*(1-cos(2.*pi*fy*rkTime));
           gridVel(iv,0) = 2.*pi*fx*Ax*cos(2.*pi*fx*rkTime);
-          //gridVel(iv,1) = 2.*pi*fy*Ay*cos(2.*pi*fy*rkTime);
-          gridVel(iv,1) = 2.*pi*fy*Ay*sin(2.*pi*fy*rkTime);
+          gridVel(iv,1) = 2.*pi*fy*Ay*cos(2.*pi*fy*rkTime);
+          //gridVel(iv,1) = 2.*pi*fy*Ay*sin(2.*pi*fy*rkTime);
         }
       }
     }

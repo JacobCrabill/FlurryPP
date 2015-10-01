@@ -9,7 +9,7 @@
  * \version 0.0.1
  *
  * Flux Reconstruction in C++ (Flurry++) Code
- * Copyright (C) 2014 Jacob Crabill.
+ * Copyright (C) 2015 Jacob Crabill.
  *
  */
 #pragma once
@@ -168,9 +168,6 @@ public:
   vector<int> eleMap;     //! For overset meshes where some cells are blanked, map from 'ic' to 'eles' index
   vector<int> faceMap;    //! For overset meshes where some faces are blanked, map from 'ff' to faceType-vector index
   vector<int> currFaceType; //! Current face class type for each face in mesh [internal, boundary, mpi, overset, hole]
-  //vector<int> bfaceMap;
-  //vector<int> mFaceMap;
-  //vector<int> oFaceMap;
 
 #ifndef _NO_MPI
   MPI_Comm gridComm;  //! Intra-grid communicator
@@ -180,10 +177,8 @@ public:
   /* --- Moving-Overset-Grid-Related Variables --- */
   set<int> holeCells;     //! List of cells in mesh which are currently blanked
   set<int> holeFaces;     //! List of faces in mesh which are currently blanked
-  //set<int> fringeFaces;   //! List of faces in mesh which are currently fringe faces
   set<int> unblankCells;  //! List of non-existing cells which, due to motion, must be un-blanked
   set<int> blankCells;    //! List of existing cells which, due to motion, must be blanked
-  //set<int> new_blankCells;    //! List of existing cells which, due to motion, must be blanked
 
 #ifndef _NO_MPI
   shared_ptr<overComm> OComm;

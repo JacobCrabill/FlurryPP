@@ -10,15 +10,15 @@ Aerospace Computing Lab, Stanford University
 Current Capabilities
 ====================
 
-The code is currently capable of running scalar advection or Euler (inviscid Navier-Stokes) cases on unstructured mixed grids of quadrilaterals and triangles (2D) or hexahedrons (3D) in the Gmsh format.  Both linear and quadratic elements are supported, allowing for accurate representations of curved boundaries. Viscous capability is in the works and should be available soon.
+The code is currently capable of running scalar advection/diffusion or Euler/Navier-Stokes cases on unstructured mixed grids of quadrilaterals and triangles (2D) or hexahedrons (3D) in the Gmsh format.  Both linear and quadratic elements are supported, allowing for accurate representations of curved boundaries.
 
 CFL-based time stepping is available for ease (and safety) of use, along with both Forward Euler and RK45 time-stepping.
 
 Shock capturing has been implemented, but is still under development and is not fully tested yet. Additionally, a highly robust stabilization procedure invented by Chi-Wang Shu and further developed by Yu Lv is available; however, its usage tends to disrupt convergence of steady-state problems.
 
-Moving grids are supported by the solver, but there are not yet any grid-motion functions implemented beyond a standard test case.
+Moving grids are supported by the solver, but there are not yet any grid-motion functions implemented beyond several simple test-case functions.
 
-Lastly, overset grids in 3D are supported by using the "artificial boundary" method, with Jay Sitaraman's TIOGA library being used for hole-blanking whenever solid bodies are embedded inside a mesh.  Moving overset grids are not quite ready yet, but actively in the works.
+Lastly, overset grids in 3D are supported by using the "artificial boundary" method, with Jay Sitaraman's TIOGA library being used for hole-blanking whenever solid bodies are embedded inside a mesh.  Moving overset grids are also supported now for 2D, with 3D nearing completion.
 
 Background / Goals of the Project
 =================================
@@ -45,7 +45,7 @@ Optionally, you can specify the type of build as either *debug* or *release*:
 
 `make release mpi=n`
 
-where *release* turns on full optimization, and *debug* removes all optimization and adds flags for both debugging and profiling.  
+where *release* turns on full optimization, and *debug* removes all optimization and adds flags for both debugging and profiling. *mpi=n* sets the compilation to serial.  
 The code also (optionally) utilizes either OpenMP to take advantage of easy parallelization on desktop computers, or MPI to completely parallelize on both shared- and distributed-memory systems. To enable OpenMP or MPI when compiling, just do one of the following:
 
 `make openmp mpi=n`
@@ -63,6 +63,8 @@ Several basic test cases have been created to verify the functionality of the co
 The other two test cases are for the inviscid Navier-Stokes (Euler) equations. One is for supersonic flow over a wedge, and the other is for subsonic flow over a circular cylinder.  
 Note that although Flurry does have a shock-capturing method implemented, it is still in the developmental phase, so general transonic and supersonic cases should be approached with caution.
 The cylinder test case uses a very coarse mesh, and is intended purely for the purpose of testing the functionality of the code on arbitrary unstructured quad meshes from Gmsh, and demonstrating the method for applying boundary conditions to Gmsh meshes.
+
+Lastly, there are several test cases available for overset grids in both 2D and 3D to see the available functionality.
 
 
 Post-Processing
@@ -113,6 +115,10 @@ Basic Classes
   + Note that, as opposed to internal faces, MPI faces are duplicated across processor boundaries
 - Overset Face
   + Similar in concept to the MPI face, all overset faces grab their right state from the solver to which they belong, after the solver has performed the interpolation from the other grid(s).
+- OverComm (Overset Communicator)
+  + Handles all data communication related to overset grids, and implements some 2D hole-cutting algorithms which do not exist in Tioga.
+- SuperMesh
+  + Creates a local supermesh of a target element from one or more donor elements for use with Galerkin projection (see Farrell and Maddison, 2010).
 - Solver
   + Applies the various FR operations to a solution (set of eles, faces, operators, and geometry)
 

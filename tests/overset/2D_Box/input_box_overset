@@ -38,7 +38,7 @@ icType       2
 # Plotting/Output Options
 # =============================================================
 plotFreq        500  (Frequency to write plot files)
-monitorResFreq  100    (Frequency to print residual to terminal)
+monitorResFreq  10    (Frequency to print residual to terminal)
 resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    Box    (Filename prefix for output files)
 entropySensor   0      (Calculate & plot entropy-error sensor)

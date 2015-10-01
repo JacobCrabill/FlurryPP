@@ -11,7 +11,7 @@
  * \version 0.0.1
  *
  * Flux Reconstruction in C++ (Flurry++) Code
- * Copyright (C) 2014 Jacob Crabill.
+ * Copyright (C) 2015 Jacob Crabill.
  *
  */
 #pragma once
@@ -148,9 +148,6 @@ protected:
   //! Temporary vectors for calculating common flux
   matrix<double> tempFL, tempFR;
   vector<double> tempUL;
-
-  // Probably only needed for debugging... remove this later
-  vector<point> posFpts;
 
   int isMPI;  //! Flag for MPI faces to separate communication from flux calculation
   int isBnd;  //! Flag for boundary faces for use in LDG routines

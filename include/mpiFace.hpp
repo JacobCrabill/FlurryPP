@@ -12,7 +12,7 @@
  * \version 0.0.1
  *
  * Flux Reconstruction in C++ (Flurry++) Code
- * Copyright (C) 2014 Jacob Crabill.
+ * Copyright (C) 2015 Jacob Crabill.
  *
  */
 #pragma once

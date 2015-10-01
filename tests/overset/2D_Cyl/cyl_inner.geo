@@ -5,7 +5,7 @@ R1 = .5;
 R2 = 3;
 N_Tan = 20;
 N_Out = 10;
-Prog = 1.2;
+Prog = 1.3;
 
 Point(1) = {0,0,0,cl1};
 Point(2) = {0,-R1,0,cl1};
