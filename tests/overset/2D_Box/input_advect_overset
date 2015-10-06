@@ -37,7 +37,7 @@ icType       0
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        200  (Frequency to write plot files)
+plotFreq        10  (Frequency to write plot files)
 monitorResFreq  50    (Frequency to print residual to terminal)
 resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    Adv    (Filename prefix for output files)

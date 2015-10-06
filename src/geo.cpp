@@ -944,9 +944,6 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
       faceMap[ff] = mpiFacesVec.size()-1;
       currFaceType[ff] = MPI_FACE;
     }
-    // New # of boundary faces (after excluding blanked faces)
-    nMpiFaces = mpiFacesVec.size();
-
   }
 #endif
 
@@ -2434,7 +2431,7 @@ void geo::moveMesh(double rkVal)
       /// Rigid oscillation in a circle
       if (params->meshType!=OVERSET_MESH || gridID==0) {
         double Ax = 0.5; // Amplitude  (m)
-        double Ay = 0.0; // Amplitude  (m)
+        double Ay = 0.51; // Amplitude  (m)
         double fx = 0.1; // Frequency  (Hz)
         double fy = 0.1; // Frequency  (Hz)
         for (int iv=0; iv<nVerts; iv++) {

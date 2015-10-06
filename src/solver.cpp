@@ -505,13 +505,6 @@ void solver::moveMesh(int step)
 
       // Initialize the solution in the new elements using local Galerkin projection
       OComm->matchUnblankCells(eles,opers,Geo->unblankCells,Geo->eleMap,params->order);
-
-      for (auto &iface:faces) {
-        iface->getPointers();
-        iface->getPointersRight();
-      }
-      for (auto &mface:mpiFaces) mface->getPointers();
-      for (auto &oface:overFaces) oface->getPointers();
     }
 
     if (params->nDims==3)

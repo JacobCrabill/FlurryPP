@@ -430,8 +430,10 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
     }
 
     // If MPI face is blanked on other side but not this one, must replace with an overFace
-    if (isBlanked && !blankMFaces.count(ff))
+    if (isBlanked && !blankMFaces.count(ff)) {
+      blankMFaces.insert(ff);
       ubOFaces.insert(ff);
+    }
   }
 
   set<int> ubIFaces, ubMFaces;
@@ -439,6 +441,13 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
   removeEles(eles,blankCells);
   removeFaces(faces,mFaces,oFaces,blankIFaces,blankMFaces,blankOFaces);
   insertFaces(eles,faces,mFaces,oFaces,ubIFaces,ubMFaces,ubOFaces);
+
+  for (auto &iface:faces) {
+    iface->getPointers();
+    iface->getPointersRight();
+  }
+  for (auto &mface:mFaces) mface->getPointers();
+  for (auto &oface:oFaces) oface->getPointers();
 #endif
 }
 
@@ -529,6 +538,13 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
   insertEles(eles,unblankCells);
   removeFaces(faces,mFaces,oFaces,blankIFaces,blankMFaces,blankOFaces);
   insertFaces(eles,faces,mFaces,oFaces,ubIntFaces,ubMpiFaces,ubOFaces);
+
+  for (auto &iface:faces) {
+    iface->getPointers();
+    iface->getPointersRight();
+  }
+  for (auto &mface:mFaces) mface->getPointers();
+  for (auto &oface:oFaces) oface->getPointers();
 }
 
 void geo::removeEles(vector<shared_ptr<ele>> &eles, set<int> &blankEles)
