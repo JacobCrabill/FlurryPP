@@ -2034,10 +2034,13 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
 
   // Find quotation marks around # of points & remove
   size_t ind = str1.find("\"");
-  str1.erase(0,ind);
+  str1.erase(str1.begin(),str1.begin()+ind+1);
   ind = str1.find("\"");
+  cout << "rank " << params->rank << ", ind = " << ind << endl;
   str1.erase(ind,1);
-  ss.str(std::string("")); ss.clear();  // This is how to reset stringstreams!
+
+  ss.str(std::string(""));
+  ss.clear();  // This is how to reset stringstreams!
   ss.str(str1);
   ss >> nPts;
 

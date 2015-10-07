@@ -379,7 +379,6 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
           blankOFaces.insert(c2f(ic,j));
           break;
         case HOLE_FACE:
-          //FatalError("Face of blankCell is already blanked.");
           break;
         default:
           FatalError("Face of blankCell has unknown currFaceType.");
@@ -481,7 +480,6 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
   // Figure out whether MPI faces are to be unblanked as MPI or as overset
   // Need list of all possibly-unblanked MPI faces on this rank
   set<int> allMpiFaces = ubMpiFaces;
-  //for (auto &mface: mFaces) allMpiFaces.insert(mface->ID);
   for (auto &ff:overFaces) if (faceType[ff]==MPI_FACE) allMpiFaces.insert(ff);
 
   vector<int> ubMpi;
@@ -667,20 +665,10 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
 
       // Find the next-lowest index for insertion into vector
       int ind = 0;
-//      for (int f2=ff-1; f2>=0; f2--) {
-//        ind = faceMap[f2];
-//        if ( ind>0 && (faceType[f2] == INTERNAL || faceType[f2] == BOUNDARY) && faces[ind]->ID < ff) {
-//          ind++;
-//          break;
-//        }
-//      }
-      for (int i=0; i<faces.size(); i++) {
-        if (faces[i]->ID > ff) {
-          ind = i;
+      for (ind=0; ind<faces.size(); ind++)
+        if (faces[ind]->ID > ff)
           break;
-        }
-      }
-      ind = max(ind,0);
+
       faces.insert(faces.begin()+ind,1,iface);
       faceMap[ff] = ind;
       currFaceType[ff] = INTERNAL;
@@ -698,7 +686,6 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
       }
       else {
         // Just a normal boundary face
-
         shared_ptr<face> bface = make_shared<boundFace>();
 
         int ic = f2c(ff,0);
@@ -723,7 +710,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
         int ind = 0;
         for (int f2=ff-1; f2>=0; f2--) {
           ind = faceMap[f2];
-          if ( ind>0 && (currFaceType[f2] == INTERNAL || currFaceType[f2] == BOUNDARY) && faces[ind]->ID < ff) {
+          if ( ind>0 && (currFaceType[f2] == INTERNAL || currFaceType[f2] == BOUNDARY) && faces[ind]->ID<ff ) {
             ind++;
             break;
           }
@@ -786,13 +773,6 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
         break;
       }
     }
-//    for (int i=0; i<mFaces.size(); i++) {
-//      if (mFaces[i]->ID > ff) {
-//        ind = i-1;
-//        break;
-//      }
-//    }
-//    ind = max(ind,0);
     mFaces.insert(mFaces.begin()+ind,1,mface);
     faceMap[ff] = ind;
     currFaceType[ff] = MPI_FACE;
@@ -815,7 +795,6 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
         // This happens when a fringe face is ALSO an MPI-boundary face
         // Since the other processor has the non-blanked cell, just ignore the face here
         // But, this should never happen during unblanking... right?
-        //continue;
         FatalError("Something went wrong in determining MPI/Overset face unblanking.");
       }
       ic = f2c(ff,1);
@@ -841,9 +820,6 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
         break;
       }
     }
-//    while (ind+1<oFaces.size() && oFaces[ind+1]->ID < ff) {
-//      ind++;
-//    }
     oFaces.insert(oFaces.begin()+ind,1,oface);
     faceMap[ff] = ind;
     currFaceType[ff] = OVER_FACE;
@@ -879,11 +855,6 @@ void geo::removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace
 
       faceMap[ff] = -1;
       currFaceType[ff] = HOLE_FACE;
-//      for (int f2=ff+1; f2<nFaces; f2++) {
-//        if (currFaceType[f2] == INTERNAL || currFaceType[f2] == BOUNDARY) {
-//          faceMap[f2]--;
-//        }
-//      }
       for (int i=0; i<faces.size(); i++) faceMap[faces[i]->ID] = i;
 
       if (fType == INTERNAL)
@@ -903,11 +874,6 @@ void geo::removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace
     faceMap[ff] = -1;
     currFaceType[ff] = HOLE_FACE;
     for (int i=0; i<mFaces.size(); i++) faceMap[mFaces[i]->ID] = i;
-//    for (int f2=ff+1; f2<nFaces; f2++) {
-//      if (currFaceType[f2] == MPI_FACE) {
-//        faceMap[f2]--;
-//      }
-//    }
   }
 
   for (auto &ff:blankOFaces) {

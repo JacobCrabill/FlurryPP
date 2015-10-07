@@ -88,6 +88,40 @@ void geo::setup(input* params)
 #endif
 
   processConnectivity();
+
+  if (params->restart)
+    restartGrid();
+}
+
+void geo::restartGrid(void)
+{
+  ifstream dataFile;
+  dataFile.precision(15);
+
+  // Get the file name & open the file
+  char timeFileC[256];
+  string fileName = params->dataFileName;
+
+  // Read the simulation time from the separate time file
+  sprintf(timeFileC,"%s_time/%d",&fileName[0],params->restartIter);
+  dataFile.open(timeFileC);
+  if (dataFile.is_open()) {
+    dataFile >> params->time;
+    params->rkTime = params->time;
+    if (params->rank == 0)
+      cout << "  Restart time = " << params->time << endl;
+  } else {
+    if (params->rank == 0)
+      cout << "WARNING: Unable to read simulation restart time." << endl;
+  }
+  dataFile.clear();
+  dataFile.close();
+
+  moveMesh(0);
+
+  updateBlanking();
+
+  setFaceIblanks();
 }
 
 
@@ -2414,7 +2448,7 @@ void geo::moveMesh(double rkVal)
     }
     case 3: {
       if (gridID==0) {
-        /// LiangiMiyaji with easily-modifiable domain width
+        /// Liangi-Miyaji with easily-modifiable domain width
         double t0 = 10.*sqrt(5.);
         double width = 5.;
         #pragma omp parallel for
@@ -2431,7 +2465,7 @@ void geo::moveMesh(double rkVal)
       /// Rigid oscillation in a circle
       if (params->meshType!=OVERSET_MESH || gridID==0) {
         double Ax = 0.5; // Amplitude  (m)
-        double Ay = 0.51; // Amplitude  (m)
+        double Ay = 0.5; // Amplitude  (m)
         double fx = 0.1; // Frequency  (Hz)
         double fy = 0.1; // Frequency  (Hz)
         for (int iv=0; iv<nVerts; iv++) {

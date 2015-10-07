@@ -60,20 +60,20 @@ int main(int argc, char *argv[]) {
 
   if (argc<2) FatalError("No input file specified.");
 
-#ifdef _MPI_DEBUG
-  {
-    // Useful for debugging in parallel with GDB or similar debugger
-    // Sleep until a debugger is attached to rank 0 (change 'blah' once attached to continue)
-    if (rank == 0) {
-      int blah = 0;
-      cout << "Process " << getpid() << " ready for GDB attach" << endl;
-      while (blah == 0)
-        sleep(5);
-    }
+//#ifdef _MPI_DEBUG
+//  {
+//    // Useful for debugging in parallel with GDB or similar debugger
+//    // Sleep until a debugger is attached to rank 0 (change 'blah' once attached to continue)
+//    if (rank == 0) {
+//      int blah = 0;
+//      cout << "Process " << getpid() << " ready for GDB attach" << endl;
+//      while (blah == 0)
+//        sleep(5);
+//    }
 
-    MPI_Barrier(MPI_COMM_WORLD);
-  }
-#endif
+//    MPI_Barrier(MPI_COMM_WORLD);
+//  }
+//#endif
 
   setGlobalVariables();
 
