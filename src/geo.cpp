@@ -2436,11 +2436,11 @@ void geo::moveMesh(double rkVal)
         double fy = 0.1; // Frequency  (Hz)
         for (int iv=0; iv<nVerts; iv++) {
           xv(iv,0) = xv0[iv].x + Ax*sin(2.*pi*fx*rkTime);
-          xv(iv,1) = xv0[iv].y + Ay*sin(2.*pi*fy*rkTime);
-          //xv(iv,1) = xv0[iv].y + Ay*(1-cos(2.*pi*fy*rkTime));
+          //xv(iv,1) = xv0[iv].y + Ay*sin(2.*pi*fy*rkTime);
+          xv(iv,1) = xv0[iv].y + Ay*(1-cos(2.*pi*fy*rkTime));
           gridVel(iv,0) = 2.*pi*fx*Ax*cos(2.*pi*fx*rkTime);
-          gridVel(iv,1) = 2.*pi*fy*Ay*cos(2.*pi*fy*rkTime);
-          //gridVel(iv,1) = 2.*pi*fy*Ay*sin(2.*pi*fy*rkTime);
+          //gridVel(iv,1) = 2.*pi*fy*Ay*cos(2.*pi*fy*rkTime);
+          gridVel(iv,1) = 2.*pi*fy*Ay*sin(2.*pi*fy*rkTime);
         }
       }
     }

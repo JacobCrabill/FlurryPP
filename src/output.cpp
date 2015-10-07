@@ -690,7 +690,7 @@ void writeMeshTecplot(solver* Solver, input* params)
 
 #ifndef _NO_MPI
   /* --- All processors write their solution to their own .vtu file --- */
-  sprintf(fileNameC,"%s/%s_%d.plt",&fileName[0],&fileName[0],params->rank);
+  sprintf(fileNameC,"%s/%s_%d_%d.plt",&fileName[0],&fileName[0],params->iter,params->rank);
 #else
   /* --- Filename to write to --- */
   sprintf(fileNameC,"%s.plt",&fileName[0]);

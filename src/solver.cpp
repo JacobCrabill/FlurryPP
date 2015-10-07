@@ -630,6 +630,29 @@ void solver::readRestartFile(void) {
   dataFile.clear();
   dataFile.close();
 
+  // Update the grid(s) to the current physical time
+  if (params->motion) {
+    for (auto &e:eles) e->setup(params,Geo);
+
+    if (params->meshType == OVERSET_MESH) {
+      Geo->moveMesh(0);
+      for (auto &e:eles) e->move(true);
+
+      Geo->updateBlanking();
+      Geo->processBlanks(eles,faces,mpiFaces,overFaces);
+
+      if (params->nDims==3)
+        OComm->matchOversetPoints3D(eles,overFaces,Geo->eleMap);
+      else {
+        getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
+        OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
+      }
+    } else {
+      Geo->moveMesh(0);
+      for (auto &e:eles) e->move(true);
+    }
+  }
+
   // Move on to the actual restart file
   dataFile.open(fileNameC);
 

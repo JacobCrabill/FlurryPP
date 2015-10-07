@@ -42,7 +42,7 @@ monitorResFreq  10       (Frequency to print residual to terminal)
 resType         2        (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    CylOver    (Filename prefix for output files)
 entropySensor   0        (Calculate & plot entropy-error sensor)
-writeIBLANK     0        (Output cell iblank values in ParaView file)
+writeIBLANK     1        (Output cell iblank values in ParaView file)
 
 # =============================================================
 # Mesh Options
