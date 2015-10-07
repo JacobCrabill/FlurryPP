@@ -46,15 +46,6 @@ void solver::setupOverset(void)
 
 /* ---- Basic Tioga-Based Overset-Grid Functions ---- */
 
-//void solver::setupOverset(void)
-//{
-//  if (gridRank == 0) cout << "Solver: Grid " << gridID << ": Setting up overset connectivity" << endl;
-//  setupOversetData();
-//  // Give TIOGA a pointer to this solver for access to callback functions
-//  tg->setcallback(this);
-//  Geo->updateOversetConnectivity();
-//}
-
 void solver::setupOversetData(void)
 {
   // Allocate storage for global solution vector (for use with Tioga)
@@ -85,7 +76,6 @@ void solver::updateElesSolutionArrays(void)
 void solver::callDataUpdateTIOGA(void)
 {
 #ifndef _NO_MPI
-  //cout << "Calling dataUpdate_highorder" << endl;
   tg->dataUpdate_highorder(params->nFields,U_spts.data(),0);
 #endif
 }

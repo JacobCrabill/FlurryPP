@@ -247,11 +247,11 @@ void geo::updateADT(void)
 void geo::updateBlanking(void)
 {
 #ifndef _NO_MPI
-  updateADT();
-
   if (nDims == 2) {
     // TIOGA only for 3D, so use my own 2D hole-cutting implementation
     OComm->setIblanks2D(xv,overFaceNodes,wallFaceNodes,iblank);
+  } else {
+    updateADT();
   }
 
   // Now use new nodal iblanks to set cell and face iblanks
@@ -292,7 +292,6 @@ void geo::setCellIblanks(void)
       int iv = c2v(ic,j);
       if (iblank[iv] == HOLE) {
         iblankCell[ic] = HOLE;
-
         break;
       }
     }
@@ -360,7 +359,6 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
 {
 #ifndef _NO_MPI
   /* --- Set blank/unblank faces for all elements to be blanked --- */
-
   set<int> blankIFaces, blankMFaces, blankOFaces, ubOFaces;
   for (auto &ic:blankCells) {
     for (int j=0; j<c2nf[ic]; j++) {
@@ -558,7 +556,7 @@ void geo::removeEles(vector<shared_ptr<ele>> &eles, set<int> &blankEles)
   for (auto &ic:blankEles) {
     if (ic<0) continue;
     int ind = eleMap[ic];
-    if (ind<0) FatalError("Should not have marked a hole cell for blanking!");
+    if (ind<0) continue; //FatalError("Should not have marked a hole cell for blanking!");
     eles.erase(eles.begin()+ind,eles.begin()+ind+1);
     eleMap[ic] = -1;
 

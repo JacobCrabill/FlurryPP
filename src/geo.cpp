@@ -88,42 +88,7 @@ void geo::setup(input* params)
 #endif
 
   processConnectivity();
-
-  if (params->restart)
-    restartGrid();
 }
-
-void geo::restartGrid(void)
-{
-  ifstream dataFile;
-  dataFile.precision(15);
-
-  // Get the file name & open the file
-  char timeFileC[256];
-  string fileName = params->dataFileName;
-
-  // Read the simulation time from the separate time file
-  sprintf(timeFileC,"%s_time/%d",&fileName[0],params->restartIter);
-  dataFile.open(timeFileC);
-  if (dataFile.is_open()) {
-    dataFile >> params->time;
-    params->rkTime = params->time;
-    if (params->rank == 0)
-      cout << "  Restart time = " << params->time << endl;
-  } else {
-    if (params->rank == 0)
-      cout << "WARNING: Unable to read simulation restart time." << endl;
-  }
-  dataFile.clear();
-  dataFile.close();
-
-  moveMesh(0);
-
-  updateBlanking();
-
-  setFaceIblanks();
-}
-
 
 void geo::processConnectivity()
 {
@@ -2463,7 +2428,7 @@ void geo::moveMesh(double rkVal)
     }
     case 4: {
       /// Rigid oscillation in a circle
-      if (params->meshType!=OVERSET_MESH || gridID==0) {
+      if (gridID==0) {
         double Ax = 0.5; // Amplitude  (m)
         double Ay = 0.5; // Amplitude  (m)
         double fx = 0.1; // Frequency  (Hz)

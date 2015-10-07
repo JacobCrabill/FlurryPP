@@ -203,9 +203,6 @@ private:
   map<int,int> bcIdMap;  //! Map from Gmsh boundary ID to Flurry BC ID
   int nEles_g, nVerts_g;
 
-  //! Read the restart time and move the mesh vertices to the correct positions
-  void restartGrid();
-
   void processConn2D(void);
   void processConn3D(void);
   void processConnExtra(void);

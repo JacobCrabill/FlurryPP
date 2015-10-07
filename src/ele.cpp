@@ -139,9 +139,6 @@ void ele::setupArrays(void)
   gridVel_nodes.setup(nMpts,nDims);
   gridVel_spts.setup(nSpts,nDims);
   gridVel_fpts.setup(nFpts,nDims);
-  gridVel_nodes.initializeToZero();
-  gridVel_spts.initializeToZero();
-  gridVel_fpts.initializeToZero();
 
   if (params->motion != 0) {
     nodesRK = nodes;
@@ -2036,7 +2033,8 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
   size_t ind = str1.find("\"");
   str1.erase(str1.begin(),str1.begin()+ind+1);
   ind = str1.find("\"");
-  cout << "rank " << params->rank << ", ind = " << ind << endl;
+  if (ind>10)
+    cout << "rank " << params->rank << ", ind = " << ind << endl;
   str1.erase(ind,1);
 
   ss.str(std::string(""));
@@ -2074,15 +2072,6 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
     sptsType = params->sptsTypeQuad;
   else
     FatalError("Only quads and hexes implemented.");
-
-  loc_spts = getLocSpts(eType,order,sptsType);
-  loc_fpts = getLocFpts(eType,order,sptsType);
-
-  pos_spts.resize(nSpts);
-  pos_fpts.resize(nFpts);
-
-  // Allocate memory for all data arrays
-  setupArrays();
 
   // Move on to the first <DataArray>
 

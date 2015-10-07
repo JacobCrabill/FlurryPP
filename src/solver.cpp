@@ -56,12 +56,8 @@ void solver::setup(input *params, geo *Geo)
 
   setupElesFaces();
 
-  if (params->restart)
-    readRestartFile();
-  else {
-    if (params->meshType == OVERSET_MESH)
-      setupOverset();
-  }
+  if (params->meshType == OVERSET_MESH)
+    setupOverset();
 
   /* Setup the FR operators for computation */
   setupOperators();
@@ -600,6 +596,7 @@ void solver::readRestartFile(void) {
 
   // Get the file name & open the file
   char fileNameC[256];
+  char timeFileC[256];
   string fileName = params->dataFileName;
 #ifndef _NO_MPI
   /* --- All processors read their data from their own .vtu file --- */
@@ -613,38 +610,24 @@ void solver::readRestartFile(void) {
 
   if (params->rank==0) cout << "Solver: Restarting from " << fileNameC << endl;
 
-  // Update the grid(s) to the current physical time
-  if (params->motion) {
-    for (auto &e:eles) e->setup(params,Geo);
-
-    if (params->meshType == OVERSET_MESH) {
-      for (auto &e:eles) e->move(true);
-      setupOverset();
-//      if (params->nDims == 3) {
-//        OComm = make_shared<overComm>();
-//        OComm->setup(params,nGrids,gridID,gridRank,nprocPerGrid,Geo->gridIdList);
-//        OComm->tg = Geo->tg;
-//        Geo->updateBlanking();
-//        Geo->unblankCells.clear();
-//      } else {
-//        OComm = Geo->OComm;
-//      }
-//cout << "Blanking cells... nblanks = " << Geo->blankCells.size() << endl;
-////      for (auto &e:eles) e->move(true);
-////      Geo->processBlanks(eles,faces,mpiFaces,overFaces);
-
-//      if (params->nDims==3)
-//        OComm->matchOversetPoints3D(eles,overFaces,Geo->eleMap);
-//      else {
-//        getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
-//        OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
-//      }
-
-    } else {
-      Geo->moveMesh(0);
-      for (auto &e:eles) e->move(true);
-    }
+  // Read the simulation time from the separate time file
+  sprintf(timeFileC,"%s_time/%d",&fileName[0],params->restartIter);
+  dataFile.open(timeFileC);
+  if (dataFile.is_open()) {
+    dataFile >> params->time;
+    params->rkTime = params->time;
+    if (params->rank == 0)
+      cout << "  Restart time = " << params->time << endl;
+  } else {
+    if (params->rank == 0)
+      cout << "WARNING: Unable to read simulation restart time." << endl;
   }
+  dataFile.clear();
+  dataFile.close();
+
+  /* -- Set the geometry to the current restart time -- */
+
+  moveMesh(0);
 
   // Move on to the actual restart file
   dataFile.open(fileNameC);
@@ -668,61 +651,37 @@ void solver::readRestartFile(void) {
   if (!found)
     FatalError("Cannot find UnstructuredData tag in restart file.");
 
-  if (params->rank==7) cout << "nEles = " << eles.size() << endl;
   // Read restart data & setup all data arrays
+  int i = 0;
   for (auto& e:eles) {
     e->restart(dataFile,params,Geo);
+    i++;
   }
 
   dataFile.close();
 
   if (params->rank==0) cout << "Solver: Done reading restart file." << endl;
-
-//  // Setup all transformations and other geometry-related arrays
-//  if (params->rank==0) cout << "Ele: Setting up all element geometry data." << endl;
-//#pragma omp parallel for
-//  for (uint i=0; i<eles.size(); i++) {
-//    eles[i]->setupAllGeometry();
-//  }
-
-//  // Finish setting up internal faces
-//  if (params->rank==0) cout << "Face: Setting up all face data." << endl;
-//#pragma omp parallel for
-//  for (uint i=0; i<faces.size(); i++) {
-//    faces[i]->setupFace();
-//  }
-
-//  // Finish setting up overset faces
-//  if (params->rank==0) cout << "overFace: Setting up all overset faces." << endl;
-//#pragma omp parallel for
-//  for (uint i=0; i<overFaces.size(); i++) {
-//    overFaces[i]->setupFace();
-//  }
-
-//  // Finish setting up MPI faces
-//  if (params->rank==0 && params->nproc>1) cout << "MPIFace: Setting up MPI face communications." << endl;
-//#pragma omp parallel for
-//  for (uint i=0; i<mpiFaces.size(); i++) {
-//    mpiFaces[i]->setupFace();
-//  }
 }
 
 void solver::initializeSolution()
 {
   if (params->rank==0) cout << "Solver: Initializing Solution... " << flush;
 
-  /* Update the mesh to match the restart-file time, or just
-   * get the initial grid velocity for wave speed calculations */
-  if (params->motion > 0) {
-    Geo->moveMesh(0.);
-    for (auto &e:eles) e->move(true);
-  }
+  if (params->restart) {
 
-  if (!params->restart) {
+    readRestartFile();
+
+  } else {
+
+    /* Get the initial grid velocity for wave speed calculations */
+    if (params->motion > 0)
+      moveMesh(0);
+
 #pragma omp parallel for
     for (uint i=0; i<eles.size(); i++) {
       eles[i]->setInitialCondition();
     }
+
   }
 
   /* If using CFL-based time-stepping, calc wave speed in each

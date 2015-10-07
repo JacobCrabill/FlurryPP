@@ -213,10 +213,10 @@ void writeParaview(solver *Solver, input *params)
 
   /* --- There's no possible way to put the simulation time into a ParaView file,
          so we have to create a separate file to store the time values --- */
-  char datadirC[256];
-  char *datadir = &datadirC[0];
-  sprintf(datadirC,"%s_time",&fileName[0]);
   if (params->rank == 0) {
+    char datadirC[256];
+    char *datadir = &datadirC[0];
+    sprintf(datadirC,"%s_time",&fileName[0]);
     struct stat st = {0};
     if (stat(datadir, &st) == -1) {
       mkdir(datadir, 0755);
@@ -224,7 +224,7 @@ void writeParaview(solver *Solver, input *params)
     char timeFileC[256];
     sprintf(timeFileC,"%s_time/%d",&fileName[0],iter);
     dataFile.open(timeFileC);
-    dataFile << params->time;
+    dataFile << params->time << endl;
     dataFile.clear();
     dataFile.close();
   }
@@ -744,32 +744,38 @@ void writeMeshTecplot(solver* Solver, input* params)
     ET = "QUADRILATERAL";
   else
     ET = "BRICK";
-  dataFile << "ZONE T = \"VOL_MIXED\", N=" << nNodes << ", E=" << nCells << ", ET=" << ET << ", F=FEPOINT" << endl;
+  dataFile << "ZONE T = \"VOL_MIXED\", N=" << nCells*4 << ", E=" << nCells << ", ET=" << ET << ", F=FEPOINT" << endl;
 
-  for (int iv=0; iv<nNodes; iv++) {
-    dataFile << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " ";
-    if (params->nDims==2)
-      dataFile << 0.0;
-    else
-      dataFile << Geo->xv(iv,2);
-    dataFile << " " << gridID << " " << Geo->iblank[iv] << endl;
+//  for (int iv=0; iv<nNodes; iv++) {
+//    dataFile << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " ";
+//    if (params->nDims==2)
+//      dataFile << 0.0;
+//    else
+//      dataFile << Geo->xv(iv,2);
+//    dataFile << " " << gridID << " " << Geo->iblank[iv] << endl;
+//  }
+  for (int ic=0; ic<nCells; ic++) {
+    for (int j=0; j<4; j++) {
+      dataFile << Geo->xv(Geo->c2v(ic,j),0) << " " << Geo->xv(Geo->c2v(ic,j),1) << " " << 0.0 << " " << gridID << " " << Geo->iblankCell[ic] << endl;
+    }
   }
 
   int nv = (params->nDims==2) ? 4 : 8; // Ignoring edge nodes for quadratic elements
   for (int ic=0; ic<nCells; ic++) {
     for (int j=0; j<nv; j++) {
-      dataFile << Geo->c2v(ic,j)+1 << " ";
+      //dataFile << Geo->c2v(ic,j)+1 << " ";
+      dataFile << ic*nv + j + 1 << " ";
     }
     dataFile << endl;
   }
 
-  // output wall-boundary node IDs
-  for (auto& iv:Geo->iwall)
-    dataFile << iv+1 << endl;
+//  // output wall-boundary node IDs
+//  for (auto& iv:Geo->iwall)
+//    dataFile << iv+1 << endl;
 
-  // output overset-boundary node IDs
-  for (auto& iv:Geo->iover)
-    dataFile << iv+1 << endl;
+//  // output overset-boundary node IDs
+//  for (auto& iv:Geo->iover)
+//    dataFile << iv+1 << endl;
 
   dataFile.close();
 
