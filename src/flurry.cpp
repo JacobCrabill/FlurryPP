@@ -92,8 +92,8 @@ int main(int argc, char *argv[]) {
   /* Write initial data file */
   writeData(&Solver,&params);
 
-  /* Write out mesh in Tecplot format, with IBLANK data */
-  if (params.writeIBLANK==1)
+  /* Write out mesh in Tecplot format, with IBLANK data [Overset cases only] */
+  if (params.meshType==OVERSET_MESH && params.writeIBLANK==1)
     writeMeshTecplot(&Solver,&params);
 
 #ifndef _NO_MPI
@@ -113,6 +113,9 @@ int main(int argc, char *argv[]) {
     if ((params.iter)%params.monitorResFreq == 0 || params.iter==params.initIter+1) writeResidual(&Solver,&params);
     if ((params.iter)%params.plotFreq == 0) writeData(&Solver,&params);
   }
+
+  /* Display the integral L1 error for the final time */
+  writeError(&Solver,&params);
 
   // Get simulation wall time
   runTime.stopTimer();

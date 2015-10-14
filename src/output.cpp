@@ -689,6 +689,35 @@ void writeResidual(solver *Solver, input *params)
   }
 }
 
+void writeError(solver *Solver, input *params)
+{
+  // Disply integrated quantities over the overset domain
+  if (params->meshType == OVERSET_MESH) {
+    auto err = Solver->integrateErrorOverset();
+    if (params->rank == 0) {
+      int colw = 16;
+      cout.precision(6);
+      cout.setf(ios::scientific, ios::floatfield);
+
+      cout << endl << setw(8) << " ";
+      if (params->equation == ADVECTION_DIFFUSION) {
+        cout << setw(colw) << left << "U" << endl;
+      }else if (params->equation == NAVIER_STOKES) {
+        cout << setw(colw) << left << "rho";
+        cout << setw(colw) << left << "rhoU";
+        cout << setw(colw) << left << "rhoV";
+        if (params->nDims == 3)
+          cout << setw(colw) << left << "rhoW";
+        cout << setw(colw) << left << "rhoE";
+      }
+      cout << endl;
+      cout << setw(8) << left <<  "Error:";
+      for (int i=0; i<err.size(); i++)
+        cout << setw(colw) << left << std::abs(err[i]);
+      cout << endl << endl;
+    }
+  }
+}
 
 void writeMeshTecplot(solver* Solver, input* params)
 {
