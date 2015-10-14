@@ -213,20 +213,41 @@ void writeParaview(solver *Solver, input *params)
 
   /* --- There's no possible way to put the simulation time into a ParaView file,
          so we have to create a separate file to store the time values --- */
+  char datadirC[256];
+  char *datadir = &datadirC[0];
+  sprintf(datadirC,"%s_time",&fileName[0]);
+  char timeFileC[256];
+  sprintf(timeFileC,"%s_time/%d",&fileName[0],iter);
+
   if (params->rank == 0) {
-    char datadirC[256];
-    char *datadir = &datadirC[0];
-    sprintf(datadirC,"%s_time",&fileName[0]);
     struct stat st = {0};
     if (stat(datadir, &st) == -1) {
       mkdir(datadir, 0755);
-    }
-    char timeFileC[256];
-    sprintf(timeFileC,"%s_time/%d",&fileName[0],iter);
+    }    
     dataFile.open(timeFileC);
     dataFile << params->time << endl;
     dataFile.clear();
     dataFile.close();
+  }
+
+  // Write the cell iblank data for restarting purposes
+  if (params->meshType == OVERSET_MESH) {
+    for (int p=0; p<params->nproc; p++) {
+      if (p == params->rank) {
+        dataFile.open(timeFileC,ios::app);
+        dataFile << params->rank << " ";
+        for (int i=0; i<Solver->Geo->nEles; i++) {
+          int ib = NORMAL;
+          if (Solver->Geo->eleMap[i]<0)
+            ib = HOLE;
+          dataFile << ib << " ";
+        }
+        dataFile << endl;
+        dataFile.clear();
+        dataFile.close();
+      }
+      MPI_Barrier(MPI_COMM_WORLD);
+    }
   }
 
   dataFile.open(fileNameC);

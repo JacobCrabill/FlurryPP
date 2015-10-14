@@ -610,6 +610,9 @@ void solver::readRestartFile(void) {
 
   if (params->rank==0) cout << "Solver: Restarting from " << fileNameC << endl;
 
+  vector<double> tmpIblank(Geo->nEles,NORMAL);
+  set<int> tmpBlanks;
+
   // Read the simulation time from the separate time file
   sprintf(timeFileC,"%s_time/%d",&fileName[0],params->restartIter);
   dataFile.open(timeFileC);
@@ -618,6 +621,27 @@ void solver::readRestartFile(void) {
     params->rkTime = params->time;
     if (params->rank == 0)
       cout << "  Restart time = " << params->time << endl;
+
+    if (params->meshType == OVERSET_MESH) {
+      // Read the hole blanking data following the time stamp
+      int tmprank = -1;
+      stringstream ss;
+      string str;
+      while (getline(dataFile,str)) {
+        ss.str(std::string("")); ss.clear();  // This is how to reset stringstreams!
+        ss.str(str);
+
+        ss >> tmprank;
+        cout << "rank " << params->rank << ", at rank line " << tmprank << endl;
+        if (tmprank == params->rank)
+          break;
+      }
+      if (tmprank != params->rank) cout << "WARNING: IblankCell data not found in restart 'time' file for rank " << params->rank << endl;
+
+      Geo->iblankCell.resize(Geo->nEles);
+      for (int i=0; i<Geo->nEles; i++)
+        ss >> tmpIblank[i];
+    }
   } else {
     if (params->rank == 0)
       cout << "WARNING: Unable to read simulation restart time." << endl;
@@ -628,6 +652,19 @@ void solver::readRestartFile(void) {
   /* -- Set the geometry to the current restart time -- */
 
   moveMesh(0);
+
+  if (params->meshType == OVERSET_MESH) {
+    Geo->unblankCells.clear();
+    Geo->blankCells.clear();
+
+    for (int ic=0; ic<Geo->nEles; ic++) {
+      Geo->iblankCell[ic] = tmpIblank[ic];
+      if (tmpIblank[ic] == HOLE)
+        Geo->blankCells.insert(ic);
+    }
+
+    Geo->processBlanks(eles,faces,mpiFaces,overFaces);
+  }
 
   // Move on to the actual restart file
   dataFile.open(fileNameC);

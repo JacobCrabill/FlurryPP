@@ -2180,8 +2180,14 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
   size_t ind = str1.find("\"");
   str1.erase(str1.begin(),str1.begin()+ind+1);
   ind = str1.find("\"");
-  if (ind>10)
+  if (ind>10) {
     cout << "rank " << params->rank << ", ind = " << ind << endl;
+    cout << "Restart-file element doesn't exist!" << endl;
+    for (int spt=0; spt<nSpts; spt++)
+      for (int k=0; k<nFields; k++)
+        U_spts(spt,k) = 100.;
+    return;
+  }
   str1.erase(ind,1);
 
   ss.str(std::string(""));

@@ -94,8 +94,6 @@ void geo::splitGridProcs(void)
   MPI_Comm_rank(gridComm,&gridRank);
   MPI_Comm_size(gridComm,&nProcGrid);
 
-  cout << "rank " << rank << ", gridRank " << gridRank << ", gridID " << gridID << endl;
-
   gridIdList.resize(nproc);
   MPI_Allgather(&gridID,1,MPI_INT,gridIdList.data(),1,MPI_INT,MPI_COMM_WORLD);
 #endif
@@ -361,6 +359,8 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
   /* --- Set blank/unblank faces for all elements to be blanked --- */
   set<int> blankIFaces, blankMFaces, blankOFaces, ubOFaces;
   for (auto &ic:blankCells) {
+    if (eleMap[ic] < 0) continue; // Ignore already-blanked cells
+
     for (int j=0; j<c2nf[ic]; j++) {
       int ftype = currFaceType[c2f(ic,j)];
       switch (ftype) {
