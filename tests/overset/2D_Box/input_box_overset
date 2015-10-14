@@ -8,7 +8,7 @@ dtType        0    (0: Fixed, 1: CFL-based)
 CFL           .1
 dt            .002
 iterMax       55000  (For Liang-Miyaji vortext test case #2: 1 period = 22.3607s)
-restart       1
+restart       0
 restartIter   16000
 
 viscous      0   (0: Inviscid, 1: Viscous)

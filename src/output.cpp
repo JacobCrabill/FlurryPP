@@ -615,7 +615,6 @@ void writeResidual(solver *Solver, input *params)
     string fileName = params->dataFileName + ".hist";
     histFile.open(fileName.c_str(),ofstream::app);
 
-    colW = 14;
     histFile.precision(5);
     histFile.setf(ios::scientific, ios::floatfield);
     if (iter==params->initIter+1 || (iter/params->monitorResFreq)%25==0) {
@@ -675,6 +674,18 @@ void writeResidual(solver *Solver, input *params)
 
     histFile << endl;
     histFile.close();
+  }
+
+  // Disply integrated quantities over the overset domain
+  if (params->meshType == OVERSET_MESH) {
+    auto err = Solver->integrateErrorOverset();
+    if (params->rank == 0) {
+      int colW = 16;
+      cout << setw(8) << " ";
+      for (int i=0; i<err.size(); i++)
+        cout << setw(colW) << left << std::abs(err[i]);
+      cout << endl;
+    }
   }
 }
 

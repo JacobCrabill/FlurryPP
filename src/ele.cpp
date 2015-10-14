@@ -953,6 +953,153 @@ void ele::setInitialCondition()
   }
 }
 
+matrix<double> ele::calcError(void)
+{
+  matrix<double> err(nSpts,nFields);
+
+  if (params->equation == NAVIER_STOKES) {
+    double gamma = params->gamma;
+
+    if (params->icType == 0) {
+      /* --- Uniform "Freestream" solution --- */
+      double rho = params->rhoIC;
+      double vx = params->vxIC;
+      double vy = params->vyIC;
+      double vz = 0.;
+      if (nDims == 3)
+        vz = params->vzIC;
+
+      double p = params->pIC;
+      for (int spt=0; spt<nSpts; spt++) {
+        err(spt,0) = rho;
+        err(spt,1) = rho * vx;
+        err(spt,2) = rho * vy;
+        if (nDims == 3) err(spt,3) = rho * vz;
+        err(spt,nDims+1) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy + vz*vz));
+      }
+    }
+    else if (params->icType == 1) {
+      /* --- Isentropic Vortex of strength eps centered at (0,0) --- */
+      double eps = 5.0;
+
+      double xmin, xmax, ymin, ymax;
+      if (params->meshType == CREATE_MESH) {
+        xmin = params->xmin;
+        xmax = params->xmax;
+        ymin = params->ymin;
+        ymax = params->ymax;
+      } else {
+        // Assuming a 'standard' mesh for the test case
+        xmin = -5;  xmax = 5;
+        ymin = -5;  ymin = 5;
+      }
+
+      double xoff = fmod( (params->time - xmin), (xmax - xmin) ) + xmin;
+      double yoff = fmod( (params->time - ymin), (ymax - ymin) ) + ymin;
+
+      for (int spt=0; spt<nSpts; spt++) {
+        double x = pos_spts[spt].x - xoff;
+        double y = pos_spts[spt].y - yoff;
+
+        double f = 1.0 - (x*x + y*y);
+
+        // Limiting rho to 1e-3 to avoid negative density/pressure issues
+        double rho = max(pow(1. - eps*eps*(gamma-1.)/(8.*gamma*pi*pi)*exp(f), 1.0/(gamma-1.0) + 1e-5), 1e-3);
+        double vx = 1. - eps*y / (2.*pi) * exp(f/2.);
+        double vy = 1. + eps*x / (2.*pi) * exp(f/2.);
+        double p = pow(rho,gamma);
+
+        err(spt,0) = rho;
+        err(spt,1) = rho * vx;
+        err(spt,2) = rho * vy;
+        if (nDims == 3) err(spt,3) = 0.;
+        err(spt,nDims+1) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+      }
+    }
+    else if (params->icType == 2) {
+      /* --- Isentropic Vortex of strength eps centered at (0,0) (Liang version) --- */
+      double eps = 1.0;  // See paper by Liang and Miyaji, CPR Deforming Domains
+      double rc  = 1.0;
+      double Minf = .3;
+      double Uinf = 1;
+      double rhoInf = 1;
+      double theta = atan(0.5);
+      double Pinf = pow(Minf,-2)/gamma;
+
+      double eM = (eps*Minf)*(eps*Minf);
+
+      double xmin, xmax, ymin, ymax;
+      if (params->meshType == CREATE_MESH) {
+        xmin = params->xmin;
+        xmax = params->xmax;
+        ymin = params->ymin;
+        ymax = params->ymax;
+      } else {
+        // Assuming a 'standard' mesh for the test case
+        xmin = -5;  xmax = 5;
+        ymin = -5;  ymin = 5;
+      }
+
+      double xoff = fmod( (Uinf*cos(theta)*params->time - xmin), (xmax - xmin) ) + xmin;
+      double yoff = fmod( (Uinf*sin(theta)*params->time - ymin), (ymax - ymin) ) + ymin;
+
+      for (int spt=0; spt<nSpts; spt++) {
+        double x = pos_spts[spt].x - xoff;
+        double y = pos_spts[spt].y - yoff;
+
+        double f = -(x*x + y*y) / (rc*rc);
+
+        double vx = Uinf*(cos(theta) - y*eps/rc * exp(f/2.));
+        double vy = Uinf*(sin(theta) + x*eps/rc * exp(f/2.));
+        double rho = rhoInf*pow(1. - (gamma-1.)/2. * eM * exp(f), gamma/(gamma-1.0));
+        double p   = Pinf  *pow(1. - (gamma-1.)/2. * eM * exp(f), gamma/(gamma-1.0));
+
+        err(spt,0) = rho;
+        err(spt,1) = rho * vx;
+        err(spt,2) = rho * vy;
+        if (nDims == 3) err(spt,3) = 0.;
+        err(spt,nDims+1) =  p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+      }
+    }
+  }
+  else if (params->equation == ADVECTION_DIFFUSION) {
+    double xmin, xmax, ymin, ymax;
+    if (params->meshType == CREATE_MESH) {
+      xmin = params->xmin;
+      xmax = params->xmax;
+      ymin = params->ymin;
+      ymax = params->ymax;
+    } else {
+      // Assuming a 'standard' mesh for the test case
+      xmin = -5;  xmax = 5;
+      ymin = -5;  ymin = 5;
+    }
+
+    double xoff = fmod( (params->time - xmin), (xmax - xmin) ) + xmin;
+    double yoff = fmod( (params->time - ymin), (ymax - ymin) ) + ymin;
+    point off(xoff,yoff,0.);
+
+    if (params->icType == 0) {
+      /* --- Simple Gaussian bump centered at (0,0) --- */
+      for (int spt=0; spt<nSpts; spt++) {
+        double r2 = (pos_spts[spt]-off)*(pos_spts[spt]-off);
+        err(spt,0) = exp(-r2);
+      }
+    }
+    else if (params->icType == 2) {
+      /* --- Test case for debugging - cos(x)*cos(y)*cos(z) over domain --- */
+      for (int spt=0; spt<nSpts; spt++)
+        U_spts(spt,0) = cos(2*pi*pos_spts[spt].x/6.)*cos(2*pi*pos_spts[spt].y/6.)*cos(2*pi*pos_spts[spt].z/6.);
+    }
+  }
+
+  for (int spt=0; spt<nSpts; spt++)
+    for (int j=0; j<nFields; j++)
+      err(spt,j) = U_spts(spt,j) - err(spt,j);
+
+  return err;
+}
+
 void ele::getShape(point loc, vector<double> &shape)
 {
   if (eType == TRI) {

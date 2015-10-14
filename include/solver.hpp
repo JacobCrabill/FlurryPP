@@ -252,6 +252,9 @@ public:
   //! Perform the overset data interpolation using TIOGA high-order
   void callDataUpdateTIOGA();
 
+  //! Integrate the solution error over the overset domain
+  vector<double> integrateErrorOverset();
+
   /* ---- Callback functions specifically for TIOGA ---- */
 
   void getNodesPerCell(int* cellID, int* nNodes);

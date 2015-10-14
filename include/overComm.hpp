@@ -147,7 +147,7 @@ public:
   void matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int, map<int, oper> >& opers, set<int>& unblankCells, vector<int>& eleMap, int quadOrder);
 
   //! Integrate the solution error over the entire domain, accounting for overset overlap
-  vector<double> integrateErrOverset(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, set<int>& overlapCells, vector<int>& eleMap, int quadOrder);
+  vector<double> integrateErrOverset(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, vector<int>& eleMap, int quadOrder);
 
   //! Perform the interpolation and communicate data across all grids
   void exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap);

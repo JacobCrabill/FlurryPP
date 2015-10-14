@@ -186,6 +186,9 @@ public:
   void checkEntropy();
   void checkEntropyPlot();
 
+  //! Calculate the error of the solution w.r.t. several test cases
+  matrix<double> calcError();
+
   /* --- Simulation/Mesh Parameters --- */
   geo* Geo;      //! Geometry (mesh) to which element belongs
   input* params; //! Input parameters for simulation

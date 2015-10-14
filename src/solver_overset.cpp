@@ -44,6 +44,18 @@ void solver::setupOverset(void)
 #endif
 }
 
+vector<double> solver::integrateErrorOverset(void)
+{
+#ifndef _NO_MPI
+  auto err = OComm->integrateErrOverset(eles,opers,Geo->eleMap,params->order);
+
+  vector<double> tmpErr = err;
+  MPI_Allreduce(tmpErr.data(), err.data(), params->nFields, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+  return err;
+#endif
+}
+
 /* ---- Basic Tioga-Based Overset-Grid Functions ---- */
 
 void solver::setupOversetData(void)

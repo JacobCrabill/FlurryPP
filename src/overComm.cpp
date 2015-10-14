@@ -583,13 +583,12 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
 #endif
 }
 
-vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, set<int> &overlapCells, vector<int> &eleMap, int quadOrder)
+vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &eleMap, int quadOrder)
 {
 #ifndef _NO_MPI
-
   /* ---- Send Unblanked-Cell Nodes to All Grids ---- */
 
-  int nOverlap = overlapCells.size();
+  int nOverlap = eles.size();
 
   int nDims = params->nDims;
   int nv = (nDims==2) ? 4 : 8;
@@ -597,8 +596,8 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   vector<int> ubCells;
   Array<double,3> ubCellNodes(nOverlap,nv,nDims);
   int i = 0;
-  for (auto &ic:overlapCells) {
-    int ie = eleMap[ic];
+
+  for (int ie=0; ie<eles.size(); ie++) {
     ubCells.push_back(ie);
     // Constraining this to just linear hexahedrons/quadrilaterals for the time being
     for (int j=0; j<nv; j++) {
@@ -621,7 +620,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   foundCells.resize(nproc);
   foundCellDonors.resize(nproc);
   foundCellNDonors.resize(nproc);
-  donors.resize(0);
+  vector<superMesh> supers(0);
   int offset = 0;
   for (int p=0; p<nproc; p++) {
     if (p>0) offset += nCells_rank[p-1];
@@ -666,8 +665,8 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
         for (auto &ic:donorsIDs)
           donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
 
-        superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,donors.size());
-        donors.push_back(mesh);
+        superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,supers.size());
+        supers.push_back(mesh);
       }
     }
   }
@@ -675,14 +674,13 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   /* --- Setup & Exchange Quadrature-Point Data --- */
 
   // Now that we have the local superMesh for each target, setup points for
-  // use with Galerkin projection
-  for (auto &mesh:donors)
+  // use with numerical quadrature
+  for (auto &mesh:supers)
     mesh.setupQuadrature();
 
   // Get the locations of the quadrature points for each target cell, and
-  // the reference location of the points within the donor cells
-  vector<matrix<double>> qpts(nproc), qptsD_ref(nproc), donorU(nproc);
-  vector<vector<int>> targetID(nproc), donorID(nproc);
+  // interpolate the solution error to them
+  vector<matrix<double>> superErr(supers.size());
   int nSpts = (params->order+1)*(params->order+1);
   if (nDims == 3) nSpts *= (params->order+1);
   offset = 0;
@@ -691,13 +689,10 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
     for (int i=0; i<foundCells[p].size(); i++) {
       vector<int> parents_tmp;
       matrix<double> qpts_tmp;
-      donors[offset+i].getQpts(qpts_tmp,parents_tmp);
+      supers[offset+i].getQpts(qpts_tmp,parents_tmp);
 
       for (int j=0; j<parents_tmp.size(); j++) {
-        qpts[p].insertRow(qpts_tmp[j],INSERT_AT_END,3);
-        donorID[p].push_back(foundCellDonors[p](i,parents_tmp[j]));
-        targetID[p].push_back(foundCells[p][i]);
-        int ic = eleMap[donorID[p].back()];
+        int ic = eleMap[foundCellDonors[p](i,parents_tmp[j])];
         point refLoc;
         bool isInEle = eles[ic]->getRefLocNelderMeade(point(qpts_tmp[j],nDims),refLoc);
 
@@ -707,70 +702,33 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
           cout << "ele box: " << box[0] << ", " << box[1] << "; " << box[3] << ", " << box[4] << endl;
           FatalError("Quadrature Point Reference Location not found in ele!");
         }
-        qptsD_ref[p].insertRow({refLoc.x,refLoc.x,refLoc.z});
-        vector<double> tmpU(nFields);
-        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts,tmpU.data(),refLoc);
-        donorU[p].insertRow(tmpU);
+
+        matrix<double> err = eles[ic]->calcError();
+        vector<double> tmpErr(nFields);
+        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(err,tmpErr.data(),refLoc);
+        superErr[offset+i].insertRow(tmpErr);
       }
     }
   }
 
-  // Exchange superMesh quadrature points among the grids
-  nQptsSend.resize(nproc);
-  for (int p=0; p<nproc; p++) {
-    if (gridIdList[p] == gridID) continue;
-    nQptsSend[p] = qpts[p].getDim0();
-  }
-  setupNPieces(nQptsSend,nQptsRecv);
-
-  vector<vector<int>> unblankID(nproc);
-  vector<matrix<double>> qpts_recv(nproc);
-  sendRecvData(nQptsSend,nQptsRecv,targetID,unblankID,qpts,qpts_recv,3);
-
-  /* --- Perform the Galerkin Projection --- */
-
-  // Using target cell data and nodes, get basis-function and solution values
-  // at all quadrature points
-  vector<matrix<double>> sendBasis(nproc); // Basis function values to be sent back to donor grid
-  offset = 0;
-  for (int p=0; p<nproc; p++) {
-    if (p>0) offset += nQptsRecv[p-1];
-    if (gridIdList[p] == gridID) continue;
-
-    for (int i=0; i<nQptsRecv[p]; i++) {
-      int ii = unblankID[p][i];
-      int ie = ubCells[ii];
-
-      point refLoc;
-      point pos = point(qpts_recv[p][i],nDims);
-      bool isInEle = eles[ie]->getRefLocNelderMeade(pos,refLoc);
-      if (!isInEle) FatalError("Quadrature Point Reference Location not found in ele!");
-
-      qpts_recv[p](i,0) = refLoc.x;
-      qpts_recv[p](i,1) = refLoc.y;
-      qpts_recv[p](i,2) = refLoc.z;
-    }
-  }
-
-  // Perform integration for each target cell
-  offset = 0;
-  for (int p=0; p<nproc; p++) {
-    if (p>0) offset += foundCells[p-1].size();
-    int offsetQ = 0;
-    int offsetD = 0;
-    for (int i=0; i<foundCells[p].size(); i++) {
-      if (i>0) {
-        offsetQ += donors[offset+i-1].getNQpts();
-        offsetD += nSpts*foundCellNDonors[p][i-1];
-      }
-
-      int nQpts = donors[offset+i].getNQpts();
-
-      // Integrate solution over superMesh's
-    }
-  }
+  /* --- Integrate the Entire Domain --- */
 
   vector<double> intErr(nFields);
+  for (int i=0; i<eles.size(); i++) {
+    auto wts = getQptWeights(eles[i]->order,nDims);
+    auto err = eles[i]->calcError();
+    for (int j=0; j<eles[i]->nSpts; j++)
+      for (int k=0; k<nFields; k++)
+        intErr[k] += err(j,k) * wts[j] * eles[i]->detJac_spts[j];
+  }
+
+  /* --- Subtract the Overlap Region --- */
+
+  for (int i=0; i<supers.size(); i++) {
+    auto tmperr = supers[i].integrate(superErr[i]);
+    for (int j=0; j<nFields; j++)
+      intErr[j] -= 0.5*tmperr[j];
+  }
 
   return intErr;
 #endif
