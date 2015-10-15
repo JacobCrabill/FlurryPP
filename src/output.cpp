@@ -591,9 +591,9 @@ void writeResidual(solver *Solver, input *params)
     cout.setf(ios::scientific, ios::floatfield);
     if (iter==params->initIter+1 || (iter/params->monitorResFreq)%25==0) {
       cout << endl;
-      cout << setw(8) << left << "Iter";
+      cout << setw(8) << left << "Iter" << "Var  ";
       if (params->equation == ADVECTION_DIFFUSION) {
-        cout << " Residual " << endl;
+        cout << "Residual" << endl;
       }else if (params->equation == NAVIER_STOKES) {
         cout << setw(colW) << left << "rho";
         cout << setw(colW) << left << "rhoU";
@@ -612,7 +612,7 @@ void writeResidual(solver *Solver, input *params)
     }
 
     // Print residuals
-    cout << setw(8) << left << iter;
+    cout << setw(8) << left << iter << "Res  ";
     for (int i=0; i<params->nFields; i++) {
       cout << setw(colW) << left << res[i];
     }
@@ -642,8 +642,9 @@ void writeResidual(solver *Solver, input *params)
       histFile << endl;
       histFile << setw(8) << left << "Iter";
       histFile << setw(colW) << left << "Time";
+      histFile << "Var  ";
       if (params->equation == ADVECTION_DIFFUSION) {
-        histFile << " Residual " << endl;
+        histFile << setw(colW) << left << "Residual" << endl;
       }else if (params->equation == NAVIER_STOKES) {
         histFile << setw(colW) << left << "rho";
         histFile << setw(colW) << left << "rhoU";
@@ -674,6 +675,7 @@ void writeResidual(solver *Solver, input *params)
     // Write residuals
     histFile << setw(8) << left << iter;
     histFile << setw(colW) << left << params->time;
+    histFile << "Res  ";
     for (int i=0; i<params->nFields; i++) {
       histFile << setw(colW) << left << res[i];
     }
@@ -696,46 +698,46 @@ void writeResidual(solver *Solver, input *params)
     histFile << endl;
     histFile.close();
   }
-
-  // Disply integrated quantities over the overset domain
-  if (params->meshType == OVERSET_MESH) {
-    auto err = Solver->integrateErrorOverset();
-    if (params->rank == 0) {
-      int colW = 16;
-      cout << setw(8) << " ";
-      for (int i=0; i<err.size(); i++)
-        cout << setw(colW) << left << std::abs(err[i]);
-      cout << endl;
-    }
-  }
 }
 
 void writeError(solver *Solver, input *params)
 {
-  // Disply integrated quantities over the overset domain
+  // For implemented test cases, calculcate the L1 error over the overset domain
+
   if (params->meshType == OVERSET_MESH) {
+
     auto err = Solver->integrateErrorOverset();
+
     if (params->rank == 0) {
+
+      /* --- Write the error out to the terminal --- */
+
       int colw = 16;
       cout.precision(6);
       cout.setf(ios::scientific, ios::floatfield);
 
-      cout << endl << setw(8) << " ";
-      if (params->equation == ADVECTION_DIFFUSION) {
-        cout << setw(colw) << left << "U" << endl;
-      }else if (params->equation == NAVIER_STOKES) {
-        cout << setw(colw) << left << "rho";
-        cout << setw(colw) << left << "rhoU";
-        cout << setw(colw) << left << "rhoV";
-        if (params->nDims == 3)
-          cout << setw(colw) << left << "rhoW";
-        cout << setw(colw) << left << "rhoE";
-      }
-      cout << endl;
-      cout << setw(8) << left <<  "Error:";
+      cout << setw(8) << " " << "Err  ";
       for (int i=0; i<err.size(); i++)
         cout << setw(colw) << left << std::abs(err[i]);
-      cout << endl << endl;
+      cout << endl;
+
+      /* --- Write the error out to the history file --- */
+
+      ofstream histFile;
+      string fileName = params->dataFileName + ".hist";
+      histFile.open(fileName.c_str(),ofstream::app);
+
+      histFile.precision(5);
+      histFile.setf(ios::scientific, ios::floatfield);
+
+      histFile << setw(8) << left << params->iter;
+      histFile << setw(colw) << left << params->time;
+      histFile << "Err  ";
+      for (int i=0; i<params->nFields; i++) {
+        histFile << setw(colw) << left << std::abs(err[i]);
+      }
+      histFile << endl;
+      histFile.close();
     }
   }
 }

@@ -111,10 +111,11 @@ int main(int argc, char *argv[]) {
     Solver.update();
 
     if ((params.iter)%params.monitorResFreq == 0 || params.iter==params.initIter+1) writeResidual(&Solver,&params);
+    if ((params.iter)%params.monitorErrFreq == 0 || params.iter==params.initIter+1) writeError(&Solver,&params);
     if ((params.iter)%params.plotFreq == 0) writeData(&Solver,&params);
   }
 
-  /* Display the integral L1 error for the final time */
+  /* Calculate the integral L1 error for the final time */
   writeError(&Solver,&params);
 
   // Get simulation wall time

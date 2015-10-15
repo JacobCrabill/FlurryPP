@@ -369,6 +369,7 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("periodicTol",periodicTol,1e-6);
 
   opts.getScalarValue("monitorResFreq",monitorResFreq,10);
+  opts.getScalarValue("monitorErrFreq",monitorErrFreq,monitorResFreq);
   opts.getScalarValue("resType",resType,2);
   opts.getScalarValue("plotFreq",plotFreq,100);
   opts.getScalarValue("plotType",plotType,1);

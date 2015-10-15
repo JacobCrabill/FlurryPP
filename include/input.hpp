@@ -127,6 +127,7 @@ public:
   string dataFileName;
   int resType;
   int monitorResFreq;
+  int monitorErrFreq;
   int plotFreq;
   int plotType;
 
