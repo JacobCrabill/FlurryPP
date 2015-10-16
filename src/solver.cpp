@@ -734,6 +734,27 @@ void solver::initializeSolution()
   if (params->rank == 0) cout << "done." << endl;
 }
 
+vector<double> solver::integrateError(void)
+{
+  vector<double> L1Err(params->nFields);
+
+#pragma omp parallel for
+  for (int i=0; i<eles.size(); i++) {
+    auto wts = getQptWeights(eles[i]->order,params->nDims);
+    auto err = eles[i]->calcError();
+    for (int j=0; j<eles[i]->nSpts; j++)
+      for (int k=0; k<params->nFields; k++)
+        L1Err[k] += err(j,k) * wts[j] * eles[i]->detJac_spts[j];
+  }
+
+#ifndef _NO_MPI
+  vector<double> tmpErr = L1Err;
+  MPI_Allreduce(tmpErr.data(), L1Err.data(), params->nFields, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  return L1Err;
+}
+
 // Method for shock capturing
 void solver::shockCapture(void)
 {
