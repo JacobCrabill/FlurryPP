@@ -98,6 +98,7 @@ public:
   //! Calculate average density over an element (needed for negative-density correction)
   void calcAvgU(matrix<double>& U_spts, vector<double>& detJ_spts, vector<double>& Uavg);
 
+  vector<double> interpolateCorrectedFlux(vector<matrix<double> >& Fc_spts, matrix<double>& Fn_fpts, point refLoc);
 private:
   geo *Geo;
   input *params;

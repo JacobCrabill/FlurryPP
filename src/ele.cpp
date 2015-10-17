@@ -762,7 +762,7 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   loc = point(X[ind[nPts-1]],nDims);
 
   // Check to see if final location lies within element or not
-  eps = 1e-9;
+  eps = 1e-8;
   if (std::abs(loc.x)-eps<=1 && std::abs(loc.y)-eps<=1 && std::abs(loc.z)-eps<=1 && !std::isnan(loc.norm()))
     return true;
   else
@@ -1077,19 +1077,19 @@ matrix<double> ele::calcError(void)
 
     double xoff = fmod( (params->time - xmin), (xmax - xmin) ) + xmin;
     double yoff = fmod( (params->time - ymin), (ymax - ymin) ) + ymin;
-    point off(xoff,yoff,0.);
+    //point off(xoff,yoff,0.);
 
     if (params->icType == 0) {
       /* --- Simple Gaussian bump centered at (0,0) --- */
       for (int spt=0; spt<nSpts; spt++) {
-        double r2 = (pos_spts[spt]-off)*(pos_spts[spt]-off);
+        double r2 = (pos_spts[spt].x-xoff)*(pos_spts[spt].x-xoff) + (pos_spts[spt].y-yoff)*(pos_spts[spt].y-yoff);
         err(spt,0) = exp(-r2);
       }
     }
     else if (params->icType == 2) {
       /* --- Test case for debugging - cos(x)*cos(y)*cos(z) over domain --- */
       for (int spt=0; spt<nSpts; spt++)
-        U_spts(spt,0) = cos(2*pi*pos_spts[spt].x/6.)*cos(2*pi*pos_spts[spt].y/6.)*cos(2*pi*pos_spts[spt].z/6.);
+        err(spt,0) = cos(2*pi*pos_spts[spt].x/6.)*cos(2*pi*pos_spts[spt].y/6.)*cos(2*pi*pos_spts[spt].z/6.);
     }
   }
 

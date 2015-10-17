@@ -632,7 +632,6 @@ void solver::readRestartFile(void) {
         ss.str(str);
 
         ss >> tmprank;
-        cout << "rank " << params->rank << ", at rank line " << tmprank << endl;
         if (tmprank == params->rank)
           break;
       }

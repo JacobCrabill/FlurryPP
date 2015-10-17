@@ -807,6 +807,48 @@ void oper::applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &no
   }
 }
 
+vector<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &Fc_spts, matrix<double> &Fn_fpts, point refLoc)
+{
+  // Using the DFR method to interpolate the corrected flux
+
+  vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+  locSpts1D.insert(locSpts1D.begin(),-1.);
+  locSpts1D.push_back(1.);
+
+  matrix<double> Fi(nDims,nFields);
+
+  // Contributions from spts
+  if (nDims == 2) {
+    // Contribution from solution points
+    for (uint dim=0; dim<nDims; dim++) {
+      for (uint k=0; k<nFields; k++) {
+        for (uint spt=0; spt<nSpts; spt++) {
+          // Structured I,J indices of current solution point
+          uint ispt = spt%(nSpts/(order+1));
+          uint jspt = floor(spt/(order+1));
+
+          Fi(dim,k) += Fc_spts[dim](spt,k) * Lagrange(locSpts1D,refLoc.x,ispt+1) * Lagrange(locSpts1D,refLoc.y,jspt+1);
+        }
+      }
+    }
+
+    // Contribution from flux points
+    uint nFaces = 4;
+    uint nFptsPerFace = nFpts / nFaces;
+    for (uint iface=0; iface<nFaces; iface++) {
+      for (uint ifpt=0; ifpt<nFptsPerFace; ifpt++) {
+        for (uint fpt=0; fpt<nFpts; fpt++) {
+//          for (uint k=0; k<nFields; k++)
+//            if (iface==3 || iface==3)
+//              Fi(dim,k) += Fn_fpts((iface*nFptsPerFace)+ifpt,k) * Lagrange(locSpts1D,refLoc.x,0) * Lagrange(locSpts1D,refLoc.y,locSpts1D.size()-1);
+//            else
+//              Fi(dim,k) += Fn_fpts((iface*nFptsPerFace)+ifpt,k) * Lagrange(locSpts1D,refLoc.y,0) * Lagrange(locSpts1D,refLoc.y,locSpts1D.size()-1);
+        }
+      }
+    }
+  }
+}
+
 void oper::applyCorrectDivF(matrix<double> &dFn_fpts, matrix<double> &divF_spts)
 {
   opp_correction.timesMatrixPlus(dFn_fpts,divF_spts);

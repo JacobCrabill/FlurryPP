@@ -348,6 +348,7 @@ void input::readInputFile(char *filename)
     else if (meshType == OVERSET_MESH) {
       opts.getVectorValue("oversetGrids",oversetGrids);
       opts.getScalarValue("writeIBLANK",writeIBLANK,0);
+      opts.getScalarValue("interpFlux",interpFlux,0);
       nGrids = oversetGrids.size();
     }
 

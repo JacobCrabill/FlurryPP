@@ -443,10 +443,44 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
         donorBasis[p].insertRow(basisTmp);
       }
 
+      // For corrected-flux interpolation: Back-calculate solution from flux
+
       for (int id=0; id<foundCellNDonors[p][i]; id++) {
         int ic = eleMap[foundCellDonors[p](i,id)];
-        for (int spt=0; spt<nSpts; spt++)
-          donorU[p].insertRow(eles[ic]->U_spts[spt],INSERT_AT_END,nFields);
+        if (params->interpFlux) {
+          double eps = 1e-10;
+          vector<double> tempU(nFields);
+          matrix<double> F = eles[ic]->F_spts[0];
+          matrix<double> G = eles[ic]->F_spts[1];
+          for (int spt=0; spt<nSpts; spt++) {
+            if (nDims == 2) {
+              double u = G(spt,1)/std::max(G(spt,0),eps);
+              double v = F(spt,2)/std::max(F(spt,0),eps);
+              // Ensure u,v not too small for future calculations
+              if (std::abs(u)<eps)
+                u = 2.*(0.5-signbit(u))*eps;
+              if (std::abs(v)<eps)
+                v = 2.*(0.5-signbit(v))*eps;
+              double rho = F(spt,0)*G(spt,0)/std::max(F(spt,2),G(spt,1));
+              double p = 0.5* ( F(spt,1) - rho*u*u + G(spt,2) - rho*v*v );
+              double rhoE;
+              if (std::abs(u) > std::abs(v))
+                rhoE = F(spt,3)/u - p;
+              else
+                rhoE = G(spt,3)/v - p;
+              tempU[0] = rho;
+              tempU[1] = rho*u;
+              tempU[2] = rho*v;
+              tempU[3] = rhoE;
+            }
+
+            donorU[p].insertRow(tempU.data(),INSERT_AT_END,nFields);
+          }
+        }
+        else {
+          for (int spt=0; spt<nSpts; spt++)
+            donorU[p].insertRow(eles[ic]->U_spts[spt],INSERT_AT_END,nFields);
+        }
       }
     }
   }
@@ -600,10 +634,14 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   for (int ie=0; ie<eles.size(); ie++) {
     ubCells.push_back(ie);
     // Constraining this to just linear hexahedrons/quadrilaterals for the time being
-    for (int j=0; j<nv; j++) {
-      for (int k=0; k<nDims; k++) {
-        ubCellNodes(i,j,k) = eles[ie]->nodesRK[j][k];
-      }
+    if (params->motion) {
+      for (int j=0; j<nv; j++)
+        for (int k=0; k<nDims; k++)
+          ubCellNodes(i,j,k) = eles[ie]->nodesRK[j][k];
+    } else {
+      for (int j=0; j<nv; j++)
+        for (int k=0; k<nDims; k++)
+          ubCellNodes(i,j,k) = eles[ie]->nodes[j][k];
     }
     i++;
   }
@@ -662,8 +700,12 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
         foundCellDonors[p].insertRowUnsized(donorsIDs);
 
         Array2D<point> donorPts;
-        for (auto &ic:donorsIDs)
-          donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
+        if (params->motion)
+          for (auto &ic:donorsIDs)
+            donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
+        else
+          for (auto &ic:donorsIDs)
+            donorPts.insertRow(eles[eleMap[ic]]->nodes);
 
         superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,supers.size());
         supers.push_back(mesh);
@@ -700,6 +742,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
           cout << "qpt: " << qpts_tmp(j,0) << ", " << qpts_tmp(j,1) << endl;
           auto box = eles[ic]->getBoundingBox();
           cout << "ele box: " << box[0] << ", " << box[1] << "; " << box[3] << ", " << box[4] << endl;
+          cout << "ref loc: " << refLoc.x << ", " << refLoc.y << ", " << refLoc.z << endl;
           FatalError("Quadrature Point Reference Location not found in ele!");
         }
 

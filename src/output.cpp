@@ -578,8 +578,8 @@ void writeResidual(solver *Solver, input *params)
   }
 #endif
 
-  // If taking 2-norm, res is sum squared; take sqrt to complete
   if (params->rank == 0) {
+    // If taking 2-norm, res is sum squared; take sqrt to complete
     if (params->resType == 2) {
       for (auto& R:res) R = sqrt(R);
     }
@@ -716,7 +716,7 @@ void writeError(solver *Solver, input *params)
       cout.precision(6);
       cout.setf(ios::scientific, ios::floatfield);
 
-      cout << setw(8) << " " << "Err  ";
+      cout << setw(8) << left << params->iter << "Err  ";
       for (int i=0; i<err.size(); i++)
         cout << setw(colw) << left << std::abs(err[i]);
       cout << endl;
