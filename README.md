@@ -133,3 +133,8 @@ Future Classes
 ------------------
 - H/P Multigrid
   + Borrow implementation details from Josh's ZEFR code to implement P-multigrid (which should also work for H-multigrid, as well).
+
+
+Flurry++ is distributed under the [GNU General Public License Version 3](http://www.gnu.org/licenses/gpl-3.0.txt).
+
+![GPL3](http://www.gnu.org/graphics/gplv3-127x51.png)
