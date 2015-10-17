@@ -303,7 +303,7 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("motion",motion,0);
   opts.getScalarValue("order",order,3);
   opts.getScalarValue("riemannType",riemannType,0);
-  opts.getScalarValue("testCase",test_case,0);
+  opts.getScalarValue("testCase",testCase,0);
   opts.getScalarValue("iterMax",iterMax);
 
   if (viscous && equation == NAVIER_STOKES) {
@@ -383,7 +383,13 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("periodicTol",periodicTol,1e-6);
 
   opts.getScalarValue("monitorResFreq",monitorResFreq,10);
-  opts.getScalarValue("monitorErrFreq",monitorErrFreq,monitorResFreq);
+  if (monitorResFreq < 0) monitorResFreq = -INFINITY;
+  if (meshType == OVERSET_MESH)
+    opts.getScalarValue("monitorErrFreq",monitorErrFreq,monitorResFreq);
+  else
+    opts.getScalarValue("monitorErrFreq",monitorErrFreq,-1);
+  if (monitorErrFreq < 0) monitorErrFreq = -INFINITY;
+
   opts.getScalarValue("resType",resType,2);
   opts.getScalarValue("plotFreq",plotFreq,100);
   opts.getScalarValue("plotType",plotType,1);

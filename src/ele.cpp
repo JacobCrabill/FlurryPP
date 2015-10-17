@@ -970,6 +970,8 @@ matrix<double> ele::calcError(void)
 {
   matrix<double> err(nSpts,nFields);
 
+  if (!params->testCase) return err;
+
   if (params->equation == NAVIER_STOKES) {
     double gamma = params->gamma;
 

@@ -105,10 +105,6 @@ int main(int argc, char *argv[]) {
   /* Write initial data file */
   writeData(&Solver,&params);
 
-  /* Write out mesh in Tecplot format, with IBLANK data [Overset cases only] */
-  if (params.meshType==OVERSET_MESH && params.writeIBLANK==1)
-    writeMeshTecplot(&Solver,&params);
-
 #ifndef _NO_MPI
   // Allow all processes to finish initial file writing before starting computation
   MPI_Barrier(MPI_COMM_WORLD);

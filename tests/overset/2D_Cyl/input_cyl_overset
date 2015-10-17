@@ -8,7 +8,7 @@ dtType        0    (0: Fixed, 1: CFL-based)
 CFL           .1
 dt            .0005
 iterMax       2000
-restart       0
+restart       1
 restartIter   100    
 
 viscous       0   (0: Inviscid, 1: Viscous)
@@ -101,8 +101,8 @@ nzBound   0
 spts_type_quad  Legendre
 
 # Polynomial-Squeezing Stabilization
-squeeze 1
+squeeze 0
 
 # Shock Capturing Parameters
-shockCapture 1
+shockCapture 0
 threshold .1

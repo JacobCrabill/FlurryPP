@@ -49,8 +49,9 @@ void writeData(solver *Solver, input *params)
     writeParaview(Solver,params);
   }
 
-  if (params->writeIBLANK)
-writeMeshTecplot(Solver,params);
+  /* Write out mesh in Tecplot format, with IBLANK data [Overset cases only] */
+  if (params->meshType==OVERSET_MESH && params->writeIBLANK)
+    writeMeshTecplot(Solver,params);
 }
 
 void writeCSV(solver *Solver, input *params)
@@ -260,7 +261,9 @@ void writeParaview(solver *Solver, input *params)
         dataFile.clear();
         dataFile.close();
       }
+#ifndef _NO_MPI
       MPI_Barrier(MPI_COMM_WORLD);
+#endif
     }
   }
 
@@ -716,6 +719,8 @@ void writeResidual(solver *Solver, input *params)
 
 void writeError(solver *Solver, input *params)
 {
+  if (params->testCase == 0) return;
+
   // For implemented test cases, calculcate the L1 error over the overset domain
 
   vector<double> err;

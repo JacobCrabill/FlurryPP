@@ -751,7 +751,6 @@ vector<double> solver::integrateError(void)
 {
   vector<double> L1Err(params->nFields);
 
-#pragma omp parallel for
   for (int i=0; i<eles.size(); i++) {
     auto wts = getQptWeights(eles[i]->order,params->nDims);
     auto err = eles[i]->calcError();

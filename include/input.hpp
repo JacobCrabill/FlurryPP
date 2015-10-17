@@ -98,7 +98,7 @@ public:
   int order;
   int icType;
   int motion;
-  int test_case;
+  int testCase;
   int riemannType;
 
 
