@@ -198,6 +198,9 @@ public:
 
   vector<double> computeWallForce(void);
 
+  //! For implemented test cases, calculate the L1 error over the domain
+  vector<double> integrateError(void);
+
   /* === Functions for Shock Capturing & Filtering=== */
 
   //! Use concentration sensor + exponential modal filter to capture discontinuities
