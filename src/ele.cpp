@@ -1254,20 +1254,6 @@ void ele::calcDeltaFn(void)
       dFn_fpts(fpt,k) = Fn_fpts(fpt,k) - disFn_fpts(fpt,k);
     }
   }
-
-//  if (ID==0) {
-//    cout.setf(ios::fixed);
-//    cout.precision(4);
-//    for (int fpt=0; fpt<nFpts; fpt++) {
-//      //if (fpt>2 && fpt<9) continue;
-//      cout << "fpt = " << fpt << ": ";
-//      cout << "(x,y) = " << pos_fpts[fpt].x << ", " << pos_fpts[fpt].y << " | deltaFn = ";
-//      for (int k=0; k<nFields; k++) {
-//        cout << setw(8) << dFn_fpts(fpt,k) << ", ";
-//      }
-//      cout << endl;
-//    }
-//  }
 }
 
 

@@ -461,40 +461,8 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
 
       for (int id=0; id<foundCellNDonors[p][i]; id++) {
         int ic = eleMap[foundCellDonors[p](i,id)];
-        if (params->interpFlux) {
-          double eps = 1e-10;
-          vector<double> tempU(nFields);
-          matrix<double> F = eles[ic]->F_spts[0];
-          matrix<double> G = eles[ic]->F_spts[1];
-          for (int spt=0; spt<nSpts; spt++) {
-            if (nDims == 2) {
-              double u = G(spt,1)/std::max(G(spt,0),eps);
-              double v = F(spt,2)/std::max(F(spt,0),eps);
-              // Ensure u,v not too small for future calculations
-              if (std::abs(u)<eps)
-                u = 2.*(0.5-signbit(u))*eps;
-              if (std::abs(v)<eps)
-                v = 2.*(0.5-signbit(v))*eps;
-              double rho = F(spt,0)*G(spt,0)/std::max(F(spt,2),G(spt,1));
-              double p = 0.5* ( F(spt,1) - rho*u*u + G(spt,2) - rho*v*v );
-              double rhoE;
-              if (std::abs(u) > std::abs(v))
-                rhoE = F(spt,3)/u - p;
-              else
-                rhoE = G(spt,3)/v - p;
-              tempU[0] = rho;
-              tempU[1] = rho*u;
-              tempU[2] = rho*v;
-              tempU[3] = rhoE;
-            }
-
-            donorU[p].insertRow(tempU.data(),INSERT_AT_END,nFields);
-          }
-        }
-        else {
-          for (int spt=0; spt<nSpts; spt++)
-            donorU[p].insertRow(eles[ic]->U_spts[spt],INSERT_AT_END,nFields);
-        }
+        for (int spt=0; spt<nSpts; spt++)
+          donorU[p].insertRow(eles[ic]->U_spts[spt],INSERT_AT_END,nFields);
       }
     }
   }
@@ -807,7 +775,50 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
         cout << "rank " << params->rank << ", cell " << foundEles[p][i] << endl;
         FatalError("bad value of ic!");
       }
-      opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, U_out[p][i], refPos);
+
+      if (params->interpFlux) {
+        double eps = 1e-10;
+        vector<double> tempU(nFields);
+        if (nDims == 2) {
+          matrix<double> tempF = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(eles[ic]->F_spts, eles[ic]->Fn_fpts, refPos);
+          vector<double> F(nFields), G(nFields);
+          opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->F_spts[0], tempF.data(), refPos);
+          opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->F_spts[1], tempG.data(), refPos);
+          for (int spt=0; spt<nSpts; spt++) {
+            if (nDims == 2) {
+              double u = G(spt,1)/std::max(G(spt,0),eps);
+              double v = F(spt,2)/std::max(F(spt,0),eps);
+              // Ensure u,v not too small for future calculations
+              if (std::abs(u)<eps)
+                u = 2.*(0.5-signbit(u))*eps;
+              if (std::abs(v)<eps)
+                v = 2.*(0.5-signbit(v))*eps;
+              double rho = F(spt,0)*G(spt,0)/std::max(F(spt,2),G(spt,1));
+              double p = 0.5* ( F(spt,1) - rho*u*u + G(spt,2) - rho*v*v );
+              double rhoE;
+              if (std::abs(u) > std::abs(v))
+                rhoE = F(spt,3)/u - p;
+              else
+                rhoE = G(spt,3)/v - p;
+              tempU[0] = rho;
+              tempU[1] = rho*u;
+              tempU[2] = rho*v;
+              tempU[3] = rhoE;
+            }
+
+            donorU[p].insertRow(tempU.data(),INSERT_AT_END,nFields);
+          }
+        } else {
+          // nDims == 3 [TODO]
+          vector<double> F(nFields), G(nFields), H(nFields);
+          opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->F_spts[0], F.data(), refPos);
+          opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->F_spts[1], G.data(), refPos);
+          opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->F_spts[2], H.data(), refPos);
+        }
+      }
+      else {
+        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, U_out[p][i], refPos);
+      }
     }
   }
 
