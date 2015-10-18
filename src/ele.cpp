@@ -1177,15 +1177,6 @@ void ele::calcViscousFlux_spts()
     else if (params->equation == ADVECTION_DIFFUSION)
       viscousFluxAD(tempDU, tempF, params);
 
-//    if (ID==0) {
-//      cout << "spt " << spt << ": ";
-//      cout.precision(2);
-//      cout << "(x,y) = " << pos_spts[spt].x << ", " << pos_spts[spt].y << " | ";
-//      for (int i=0; i<nFields; i++)
-//        cout << tempF(0,i) << ", ";
-//      cout << endl;
-//    }
-
     if (params->motion) {
       /* --- Don't transform yet; that will be handled later --- */
       for (int i=0; i<nDims; i++) {
@@ -1236,8 +1227,8 @@ void ele::transformGradF_spts(int step)
       matrix<double> S = Jacobian.adjoint();
 
       for (int k=0; k<nFields; k++) {
-        for (int dim1=0; dim1<3; dim1++)
-          for (int dim2=0; dim2<3; dim2++)
+        for (int dim2=0; dim2<3; dim2++)
+          for (int dim1=0; dim1<3; dim1++)
             divF_spts[step](spt,k) += dF_spts(dim2,dim1)(spt,k)*S(dim2,dim1);
 
         for (int dim=0; dim<3; dim++)

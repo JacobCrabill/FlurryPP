@@ -473,16 +473,14 @@ void oper::interpolateFluxToPoint(vector<matrix<double>> &F_spts, matrix<double>
 
 void oper::setupGradSpts(vector<point> &loc_spts)
 {
-  uint nSpts, spt1, spt2, dim;
-  uint ispt1, jspt1, kspt1, ispt2, jspt2, kspt2;
-  nSpts = loc_spts.size();
+  if (loc_spts.size() != nSpts) FatalError("Invalid size for loc_spts (should be of size nSpts)");
 
   opp_grad_spts.resize(nDims);
   for (auto& dim:opp_grad_spts) dim.setup(nSpts,nSpts);
 
   if (eType == TRI) {
-    for (spt1=0; spt1<nSpts; spt1++) {
-      for (spt2=0; spt2<nSpts; spt2++) {
+    for (uint spt1=0; spt1<nSpts; spt1++) {
+      for (uint spt2=0; spt2<nSpts; spt2++) {
         opp_grad_spts[0](spt1,spt2) = eval_dr_dubiner_basis_2d(loc_spts[spt1],spt2,order); // double-check the spt vs. spt2 in this
         opp_grad_spts[1](spt1,spt2) = eval_ds_dubiner_basis_2d(loc_spts[spt1],spt2,order);
       }
@@ -494,13 +492,13 @@ void oper::setupGradSpts(vector<point> &loc_spts)
      * Reconstruction Method, J. Sci. Comp. 2014; DOI 10.1007/s10915-015-0085-5] */
     loc_spts_1D.insert(loc_spts_1D.begin(),-1.);
     loc_spts_1D.insert(loc_spts_1D.end(),1.);
-    for (dim=0; dim<nDims; dim++) {
-      for (spt1=0; spt1<nSpts; spt1++) {
-        ispt1 = spt1%(nSpts/(order+1)) + 1;      // col index - also = to (spt1 - (order+1)*row)
-        jspt1 = floor(spt1/(order+1)) + 1;       // row index
-        for (spt2=0; spt2<nSpts; spt2++) {
-          ispt2 = spt2%(nSpts/(order+1)) + 1;
-          jspt2 = floor(spt2/(order+1)) + 1;
+    for (uint dim=0; dim<nDims; dim++) {
+      for (uint spt1=0; spt1<nSpts; spt1++) {
+        uint ispt1 = spt1%(nSpts/(order+1)) + 1;      // col index - also = to (spt1 - (order+1)*row)
+        uint jspt1 = floor(spt1/(order+1)) + 1;       // row index
+        for (uint spt2=0; spt2<nSpts; spt2++) {
+          uint ispt2 = spt2%(nSpts/(order+1)) + 1;
+          uint jspt2 = floor(spt2/(order+1)) + 1;
           if (dim==0) {
             opp_grad_spts[dim](spt1,spt2) = dLagrange(loc_spts_1D,loc_spts_1D[ispt1],ispt2) * Lagrange(loc_spts_1D,loc_spts_1D[jspt1],jspt2);
           } else {
@@ -516,15 +514,15 @@ void oper::setupGradSpts(vector<point> &loc_spts)
      * Reconstruction Method, J. Sci. Comp. 2014; DOI 10.1007/s10915-015-0085-5] */
     loc_spts_1D.insert(loc_spts_1D.begin(),-1.);
     loc_spts_1D.insert(loc_spts_1D.end(),1.);
-    for (dim=0; dim<nDims; dim++) {
-      for (spt1=0; spt1<nSpts; spt1++) {
-        kspt1 = spt1/((order+1)*(order+1)) + 1;                         // col index - also = to (spt1 - (order+1)*row)
-        jspt1 = (spt1-(order+1)*(order+1)*kspt1)/(order+1) + 1;         // row index
-        ispt1 = spt1 - (order+1)*jspt1 - (order+1)*(order+1)*kspt1 + 1; // page index
-        for (spt2=0; spt2<nSpts; spt2++) {
-          kspt2 = spt2/((order+1)*(order+1)) + 1;                         // col index - also = to (spt1 - (order+1)*row)
-          jspt2 = (spt2-(order+1)*(order+1)*kspt2)/(order+1) + 1;         // row index
-          ispt2 = spt2 - (order+1)*jspt2 - (order+1)*(order+1)*kspt2 + 1; // page index
+    for (uint dim=0; dim<nDims; dim++) {
+      for (uint spt1=0; spt1<nSpts; spt1++) {
+        uint kspt1 = spt1/((order+1)*(order+1)) + 1;                         // col index - also = to (spt1 - (order+1)*row)
+        uint jspt1 = (spt1-(order+1)*(order+1)*kspt1)/(order+1) + 1;         // row index
+        uint ispt1 = spt1 - (order+1)*jspt1 - (order+1)*(order+1)*kspt1 + 1; // page index
+        for (uint spt2=0; spt2<nSpts; spt2++) {
+          uint kspt2 = spt2/((order+1)*(order+1)) + 1;                         // col index - also = to (spt1 - (order+1)*row)
+          uint jspt2 = (spt2-(order+1)*(order+1)*kspt2)/(order+1) + 1;         // row index
+          uint ispt2 = spt2 - (order+1)*jspt2 - (order+1)*(order+1)*kspt2 + 1; // page index
           if (dim == 0) {
             opp_grad_spts[dim](spt1,spt2) = dLagrange(loc_spts_1D,loc_spts_1D[ispt1],ispt2) * Lagrange(loc_spts_1D,loc_spts_1D[jspt1],jspt2) * Lagrange(loc_spts_1D,loc_spts_1D[kspt1],kspt2);
           }
@@ -549,46 +547,82 @@ void oper::setupGradFpts(void)
    * Reconstruction Method, J. Sci. Comp. 2014; DOI 10.1007/s10915-015-0085-5] */
 
   opp_grad_fpts.resize(nDims);
-  for (auto& dim:opp_grad_fpts) dim.setup(nSpts,nFpts);
+  for (auto& dim:opp_grad_fpts) {
+    dim.setup(nSpts,nFpts);
+    dim.initializeToZero();
+  }
 
   if (eType == QUAD) {
     vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
     loc_spts_1D.insert(loc_spts_1D.begin(),-1.);
     loc_spts_1D.insert(loc_spts_1D.end(),1.);
-    for (uint dim=0; dim<nDims; dim++) {
+    //for (uint dim=0; dim<nDims; dim++) {
       for (uint spt=0; spt<nSpts; spt++) {
         uint ispt = spt%(nSpts/(order+1)) + 1;      // col index - also = to (spt1 - (order+1)*row)
         uint jspt = floor(spt/(order+1)) + 1;       // row index
-        for (uint fpt=0; fpt<nFpts; fpt++) {
-          uint iface = fpt / (order+1);
-          uint ifpt, jfpt;
-          switch (iface) {
-            case 0:
-              ifpt = fpt%(order+1) + 1;
-              jfpt = 0;
-              break;
-            case 1:
-              ifpt = order+1 + 1;
-              jfpt = fpt%(order+1) + 1;
-              break;
-            case 2:
-              ifpt = order+1 - fpt%(order+1);
-              jfpt = order+1 + 1;
-              break;
-            case 3:
-              ifpt = 0;
-              jfpt = order+1 - fpt%(order+1);
-              break;
-          }
-
-          if (dim==0) {
-            opp_grad_fpts[dim](spt,fpt) = dLagrange(loc_spts_1D,loc_spts_1D[ispt],ifpt) * Lagrange(loc_spts_1D,loc_spts_1D[jspt],jfpt);
-          } else {
-            opp_grad_fpts[dim](spt,fpt) = dLagrange(loc_spts_1D,loc_spts_1D[jspt],jfpt) * Lagrange(loc_spts_1D,loc_spts_1D[ispt],ifpt);
+        for (uint iface=0; iface<4; iface++) {
+          for (uint fpt1=0; fpt1<order+1; fpt1++) {
+            uint fpt = iface*(order+1) + fpt1;
+            uint ifpt, jfpt;
+            switch (iface) {
+              case 0:
+                ifpt = fpt1 + 1;
+                jfpt = 0;
+                opp_grad_fpts[1](spt,fpt) = Lagrange(loc_spts_1D,loc_spts_1D[ispt],ifpt) * dLagrange(loc_spts_1D,loc_spts_1D[jspt],jfpt);
+                break;
+              case 1:
+                ifpt = order+1 + 1;
+                jfpt = fpt1 + 1;
+                opp_grad_fpts[0](spt,fpt) = dLagrange(loc_spts_1D,loc_spts_1D[ispt],ifpt) * Lagrange(loc_spts_1D,loc_spts_1D[jspt],jfpt);
+                break;
+              case 2:
+                ifpt = order+1 - fpt1;
+                jfpt = order+1 + 1;
+                opp_grad_fpts[1](spt,fpt) = Lagrange(loc_spts_1D,loc_spts_1D[ispt],ifpt) * dLagrange(loc_spts_1D,loc_spts_1D[jspt],jfpt);
+                break;
+              case 3:
+                ifpt = 0;
+                jfpt = order+1 - fpt1;
+                opp_grad_fpts[0](spt,fpt) = dLagrange(loc_spts_1D,loc_spts_1D[ispt],ifpt) * Lagrange(loc_spts_1D,loc_spts_1D[jspt],jfpt);
+                break;
+            }
           }
         }
+
+//        for (uint fpt=0; fpt<nFpts; fpt++) {
+//          uint iface = fpt / (order+1);
+//          uint ifpt, jfpt;
+//          switch (iface) {
+//            case 0:
+//              ifpt = fpt%(order+1) + 1;
+//              jfpt = 0;
+//              opp_grad_fpts[1](spt,fpt) = Lagrange(loc_spts_1D,loc_spts_1D[ispt],ifpt) * dLagrange(loc_spts_1D,loc_spts_1D[jspt],jfpt);
+//              break;
+//            case 1:
+//              ifpt = order+1 + 1;
+//              jfpt = fpt%(order+1) + 1;
+//              opp_grad_fpts[0](spt,fpt) = dLagrange(loc_spts_1D,loc_spts_1D[ispt],ifpt) * Lagrange(loc_spts_1D,loc_spts_1D[jspt],jfpt);
+//              break;
+//            case 2:
+//              ifpt = order+1 - fpt%(order+1);
+//              jfpt = order+1 + 1;
+//              opp_grad_fpts[1](spt,fpt) = Lagrange(loc_spts_1D,loc_spts_1D[ispt],ifpt) * dLagrange(loc_spts_1D,loc_spts_1D[jspt],jfpt);
+//              break;
+//            case 3:
+//              ifpt = 0;
+//              jfpt = order+1 - fpt%(order+1);
+//              opp_grad_fpts[0](spt,fpt) = dLagrange(loc_spts_1D,loc_spts_1D[ispt],ifpt) * Lagrange(loc_spts_1D,loc_spts_1D[jspt],jfpt);
+//              break;
+//          }
+
+          //if (dim==0) {
+          //  opp_grad_fpts[dim](spt,fpt) = dLagrange(loc_spts_1D,loc_spts_1D[ispt],ifpt) * Lagrange(loc_spts_1D,loc_spts_1D[jspt],jfpt);
+          //} else {
+          //  opp_grad_fpts[dim](spt,fpt) = dLagrange(loc_spts_1D,loc_spts_1D[jspt],jfpt) * Lagrange(loc_spts_1D,loc_spts_1D[ispt],ifpt);
+          //}
+//        }
       }
-    }
+    //}
   }
   else if (eType == HEX) {
     vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
@@ -900,11 +934,15 @@ void oper::applyGradFSpts(vector<matrix<double>> &F_spts, Array<matrix<double>,2
 }
 
 
-void oper::applyDivFSpts(vector<matrix<double>> &F_spts, matrix<double> &divF_spts)
+void oper::applyDivFSpts(vector<matrix<double>> &F_spts, matrix<double> &Fn_fpts, matrix<double> &divF_spts)
 {
-  divF_spts.initializeToZero();
-  for (uint dim=0; dim<nDims; dim++)
+  opp_grad_spts[0].timesMatrix(F_spts[0],divF_spts);
+
+  for (uint dim=1; dim<nDims; dim++)
       opp_grad_spts[dim].timesMatrixPlus(F_spts[dim],divF_spts);
+
+  for (uint dim=0; dim<nDims; dim++)
+      opp_grad_fpts[dim].timesMatrixPlus(Fn_fpts,divF_spts);
 }
 
 
@@ -1085,13 +1123,13 @@ double oper::divVCJH_quad(int in_fpt, point& loc, vector<double>& loc_1d_spts, u
   j = in_fpt - (order+1)*i;    // Face-local index of flux point [0 to n_fpts_per_face-1]
 
   if(i==0)       // Bottom
-    div_vcjh_basis = -Lagrange(loc_1d_spts,loc[0],j) * dVCJH_1d(loc[1],0,order,eta); // was -'ve
+    div_vcjh_basis = -Lagrange(loc_1d_spts,loc[0],j) * dVCJH_1d(loc[1],0,order,eta);
   else if(i==1)  // Right
     div_vcjh_basis =  Lagrange(loc_1d_spts,loc[1],j) * dVCJH_1d(loc[0],1,order,eta);
   else if(i==2)  // Top
     div_vcjh_basis =  Lagrange(loc_1d_spts,loc[0],order-j) * dVCJH_1d(loc[1],1,order,eta);
   else if(i==3)  // Left
-    div_vcjh_basis = -Lagrange(loc_1d_spts,loc[1],order-j) * dVCJH_1d(loc[0],0,order,eta); // was -'ve
+    div_vcjh_basis = -Lagrange(loc_1d_spts,loc[1],order-j) * dVCJH_1d(loc[0],0,order,eta);
 
 
   return div_vcjh_basis;

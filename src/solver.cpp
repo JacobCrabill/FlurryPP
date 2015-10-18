@@ -187,7 +187,7 @@ void solver::calcResidual(int step)
 
   calcFluxDivergence(step);
 
-  correctDivFlux(step);
+  //correctDivFlux(step);
 }
 
 void solver::calcDt(void)
@@ -417,7 +417,7 @@ void solver::calcDivF_spts(int step)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    opers[eles[i]->eType][eles[i]->order].applyDivFSpts(eles[i]->F_spts,eles[i]->divF_spts[step]);
+    opers[eles[i]->eType][eles[i]->order].applyDivFSpts(eles[i]->F_spts,eles[i]->Fn_fpts,eles[i]->divF_spts[step]);
   }
 }
 
