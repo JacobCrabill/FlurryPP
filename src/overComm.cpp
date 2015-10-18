@@ -779,34 +779,35 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
       if (params->interpFlux) {
         double eps = 1e-10;
         vector<double> tempU(nFields);
-        if (nDims == 2) {
+        if (params->nDims == 2) {
           matrix<double> tempF = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(eles[ic]->F_spts, eles[ic]->Fn_fpts, refPos);
+          // Since flux may give non-unique solution, use discontinuous
+          // sol'n at point to determing correct solution
+          opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
           vector<double> F(nFields), G(nFields);
-          opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->F_spts[0], tempF.data(), refPos);
-          opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->F_spts[1], tempG.data(), refPos);
-          for (int spt=0; spt<nSpts; spt++) {
-            if (nDims == 2) {
-              double u = G(spt,1)/std::max(G(spt,0),eps);
-              double v = F(spt,2)/std::max(F(spt,0),eps);
-              // Ensure u,v not too small for future calculations
-              if (std::abs(u)<eps)
-                u = 2.*(0.5-signbit(u))*eps;
-              if (std::abs(v)<eps)
-                v = 2.*(0.5-signbit(v))*eps;
-              double rho = F(spt,0)*G(spt,0)/std::max(F(spt,2),G(spt,1));
-              double p = 0.5* ( F(spt,1) - rho*u*u + G(spt,2) - rho*v*v );
-              double rhoE;
-              if (std::abs(u) > std::abs(v))
-                rhoE = F(spt,3)/u - p;
-              else
-                rhoE = G(spt,3)/v - p;
-              tempU[0] = rho;
-              tempU[1] = rho*u;
-              tempU[2] = rho*v;
-              tempU[3] = rhoE;
-            }
-
-            donorU[p].insertRow(tempU.data(),INSERT_AT_END,nFields);
+          F.assign(tempF[0],tempF[0]+nFields);
+          G.assign(tempF[1],tempF[1]+nFields);
+//          opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->Fc_spts[0], F.data(), refPos);
+//          opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->Fc_spts[1], G.data(), refPos);
+          if (params->nDims == 2) {
+            double u = G[1]/std::max(G[0],eps);
+            double v = F[2]/std::max(F[0],eps);
+            // Ensure u,v not too small for future calculations
+            if (std::abs(u)<eps)
+              u = 2.*(0.5-signbit(u))*eps;
+            if (std::abs(v)<eps)
+              v = 2.*(0.5-signbit(v))*eps;
+            double rho = F[0]*G[0]/std::max(F[2],G[1]);
+            double p = 0.5* ( F[1] - rho*u*u + G[2] - rho*v*v );
+            double rhoE;
+            if (std::abs(u) > std::abs(v))
+              rhoE = F[3]/u - p;
+            else
+              rhoE = G[3]/v - p;
+            U_out[p](i,0) = rho;
+            U_out[p](i,1) = rho*u;
+            U_out[p](i,2) = rho*v;
+            U_out[p](i,3) = rhoE;
           }
         } else {
           // nDims == 3 [TODO]

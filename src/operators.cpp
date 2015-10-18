@@ -821,7 +821,7 @@ void oper::applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &no
   }
 }
 
-vector<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &Fc_spts, matrix<double> &Fn_fpts, point refLoc)
+matrix<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &Fc_spts, matrix<double> &Fn_fpts, point refLoc)
 {
   // Using the DFR method to interpolate the corrected flux
 
