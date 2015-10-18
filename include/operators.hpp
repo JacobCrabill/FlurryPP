@@ -54,6 +54,9 @@ public:
   //! Setup operator for calculation of gradient at the solution points
   void setupGradSpts(vector<point> &loc_spts);
 
+  //! Setup operator for calculation of gradient at the solution points from common flux at flux points [DFR-Specific]
+  void setupGradFpts(void);
+
   /*! Setup operator to calculate divergence of correction function at solution points
    *  based upon the normal flux correction at the flux points */
   void setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts);
@@ -97,6 +100,9 @@ public:
 
   void applyCorrectDivF(matrix<double> &dFn_fpts, matrix<double> &divF_spts);
 
+  //! DFR version of correction procedure (add derivative contributions from fpts)
+  void applyCorrectDivF_DFR(matrix<double> &Fn_fpts, matrix<double> &divF_spts);
+
 
   void applyCorrectGradU(matrix<double>& dUc_fpts, vector<matrix<double> >& dU_spts, vector<matrix<double> > &JGinv_spts, vector<double> &detJac_spts);
 
@@ -112,7 +118,7 @@ public:
   //! Calculate average density over an element (needed for negative-density correction)
   void calcAvgU(matrix<double>& U_spts, vector<double>& detJ_spts, vector<double>& Uavg);
 
-  vector<double> interpolateCorrectedFlux(vector<matrix<double> >& Fc_spts, matrix<double>& Fn_fpts, point refLoc);
+  matrix<double> interpolateCorrectedFlux(vector<matrix<double> >& Fc_spts, matrix<double>& Fn_fpts, point refLoc);
 private:
   geo *Geo;
   input *params;
@@ -122,6 +128,7 @@ private:
   matrix<double> opp_spts_to_fpts;
   matrix<double> opp_spts_to_mpts;
   vector<matrix<double>> opp_grad_spts;
+  vector<matrix<double>> opp_grad_fpts;  //! DFR-Specific: Adds der. contributions from flux points
   matrix<double> opp_div_spts;
   matrix<double> opp_correction;
   vector<matrix<double>> opp_correctU;

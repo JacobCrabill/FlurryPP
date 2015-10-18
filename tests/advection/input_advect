@@ -16,7 +16,7 @@ icType       0
 iterMax       10000
 
 # Plotting/Output Parameters
-plotFreq         500  # Frequency to write plot files
+plotFreq         50  # Frequency to write plot files
 monitorResFreq  200  # Frequency to print residual to terminal
 resType           2    # 1: 1-norm, 2: 2-norm, 3: Inf-norm
 dataFileName      AdvectBump  # Prefix for all output files

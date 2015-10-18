@@ -183,7 +183,7 @@ void solver::calcResidual(int step)
 
   }
 
-  extrapolateNormalFlux();
+  //extrapolateNormalFlux();
 
   calcFluxDivergence(step);
 
@@ -443,8 +443,9 @@ void solver::correctDivFlux(int step)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    eles[i]->calcDeltaFn();
-    opers[eles[i]->eType][eles[i]->order].applyCorrectDivF(eles[i]->dFn_fpts,eles[i]->divF_spts[step]);
+    //eles[i]->calcDeltaFn();
+    //opers[eles[i]->eType][eles[i]->order].applyCorrectDivF(eles[i]->dFn_fpts,eles[i]->divF_spts[step]);
+    opers[eles[i]->eType][eles[i]->order].applyCorrectDivF_DFR(eles[i]->Fn_fpts,eles[i]->divF_spts[step]);
   }
 }
 
