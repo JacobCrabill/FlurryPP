@@ -73,6 +73,9 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
     setupCorrectGradU();
   }
 
+  if (params->meshType == OVERSET_MESH && params->interpFlux)
+    setupCorrectF(loc_spts);
+
   // Operators needed for Shock capturing
   if (params->scFlag) {
     setupVandermonde(loc_spts);
@@ -564,6 +567,95 @@ void oper::setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
   }
 }
 
+void oper::setupCorrectF(vector<point> &loc_spts)
+{
+  opp_correctF.resize(nDims);
+  for (auto &dim:opp_correctF) {
+    dim.setup(nSpts,nFpts);
+    dim.initializeToZero();
+  }
+
+  if (eType == TRI) {
+    // Not yet implemented
+  }
+  else if (eType == QUAD) {
+    vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+    for(uint spt=0; spt<nSpts; spt++) {
+      for(uint fpt=0; fpt<nFpts; fpt++) {
+        uint iFace = floor(fpt / (order+1));
+
+        double tNorm[2];
+        switch(iFace) {
+        case(0):
+          tNorm[0] = 0;
+          tNorm[1] = -1;
+          break;
+        case(1):
+          tNorm[0] = 1;
+          tNorm[1] = 0;
+          break;
+        case(2):
+          tNorm[0] = 0;
+          tNorm[1] = 1;
+          break;
+        case(3):
+          tNorm[0] = -1;
+          tNorm[1] = 0;
+          break;
+        }
+
+        for (int dim=0; dim<nDims; dim++)
+          opp_correctF[dim](spt,fpt) = VCJH_quad(fpt,loc_spts[spt],locSpts1D,params->vcjhSchemeQuad,order) * tNorm[dim];
+      }
+    }
+  }
+  else if (eType == HEX) {
+    vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+    for(uint spt=0; spt<nSpts; spt++) {
+      for(uint fpt=0; fpt<nFpts; fpt++) {
+        uint iFace = floor(fpt / ((order+1)*(order+1)));
+
+        double tNorm[3];
+        switch(iFace) {
+          case 0:
+            tNorm[0] =  0;
+            tNorm[1] =  0;
+            tNorm[2] = -1;
+            break;
+          case 1:
+            tNorm[0] =  0;
+            tNorm[1] =  0;
+            tNorm[2] =  1;
+            break;
+          case 2:
+            tNorm[0] = -1;
+            tNorm[1] =  0;
+            tNorm[2] =  0;
+            break;
+          case 3:
+            tNorm[0] =  1;
+            tNorm[1] =  0;
+            tNorm[2] =  0;
+            break;
+          case 4:
+            tNorm[0] =  0;
+            tNorm[1] = -1;
+            tNorm[2] =  0;
+            break;
+          case 5:
+            tNorm[0] =  0;
+            tNorm[1] =  1;
+            tNorm[2] =  0;
+            break;
+        }
+
+        for (int dim=0; dim<nDims; dim++)
+          opp_correctF[dim](spt,fpt) = VCJH_hex(fpt,loc_spts[spt],locSpts1D,params->vcjhSchemeQuad,order) * tNorm[dim];
+      }
+    }
+  }
+}
+
 void oper::setupCorrectGradU(void)
 {
   opp_correctU.resize(nDims);
@@ -821,46 +913,108 @@ void oper::applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &no
   }
 }
 
-matrix<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &Fc_spts, matrix<double> &Fn_fpts, point refLoc)
+matrix<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &F_spts, matrix<double> &dFn_fpts, point refLoc)
 {
-  // Using the DFR method to interpolate the corrected flux
-
   vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
-  locSpts1D.insert(locSpts1D.begin(),-1.);
-  locSpts1D.push_back(1.);
 
   matrix<double> Fi(nDims,nFields);
 
-  // Contributions from spts
   if (nDims == 2) {
-    // Contribution from solution points
-    for (uint dim=0; dim<nDims; dim++) {
-      for (uint k=0; k<nFields; k++) {
-        for (uint spt=0; spt<nSpts; spt++) {
-          // Structured I,J indices of current solution point
-          uint ispt = spt%(nSpts/(order+1));
-          uint jspt = floor(spt/(order+1));
+    // Contributions from spts
+    for (uint spt=0; spt<nSpts; spt++) {
+      uint ispt = spt%(nSpts/(order+1));
+      uint jspt = floor(spt/(order+1));
 
-          Fi(dim,k) += Fc_spts[dim](spt,k) * Lagrange(locSpts1D,refLoc.x,ispt+1) * Lagrange(locSpts1D,refLoc.y,jspt+1);
-        }
-      }
+      for (uint dim=0; dim<nDims; dim++)
+        for (uint k=0; k<nFields; k++)
+          Fi(dim,k) += F_spts[dim](spt,k) * Lagrange(locSpts1D,refLoc.x,ispt+1) * Lagrange(locSpts1D,refLoc.y,jspt+1);
     }
 
-    // Contribution from flux points
-    uint nFaces = 4;
-    uint nFptsPerFace = nFpts / nFaces;
-    for (uint iface=0; iface<nFaces; iface++) {
-      for (uint ifpt=0; ifpt<nFptsPerFace; ifpt++) {
-        for (uint fpt=0; fpt<nFpts; fpt++) {
-//          for (uint k=0; k<nFields; k++)
-//            if (iface==3 || iface==3)
-//              Fi(dim,k) += Fn_fpts((iface*nFptsPerFace)+ifpt,k) * Lagrange(locSpts1D,refLoc.x,0) * Lagrange(locSpts1D,refLoc.y,locSpts1D.size()-1);
-//            else
-//              Fi(dim,k) += Fn_fpts((iface*nFptsPerFace)+ifpt,k) * Lagrange(locSpts1D,refLoc.y,0) * Lagrange(locSpts1D,refLoc.y,locSpts1D.size()-1);
-        }
+    // Contribution from flux points [Correction function]
+    for (uint fpt=0; fpt<nFpts; fpt++) {
+      uint iFace = floor(fpt / (order+1));
+      double tNorm[2];
+      switch(iFace) {
+        case(0):
+          tNorm[0] = 0;
+          tNorm[1] = -1;
+          break;
+        case(1):
+          tNorm[0] = 1;
+          tNorm[1] = 0;
+          break;
+        case(2):
+          tNorm[0] = 0;
+          tNorm[1] = 1;
+          break;
+        case(3):
+          tNorm[0] = -1;
+          tNorm[1] = 0;
+          break;
       }
+
+      for (uint dim=0; dim<nDims; dim++)
+        for (uint k=0; k<nFields; k++)
+          Fi(dim,k) += dFn_fpts(fpt,k) * VCJH_quad(fpt,refLoc,locSpts1D,params->vcjhSchemeQuad,order) * tNorm[dim];
     }
   }
+  else {
+    // Contribution from solution points
+    for (uint spt=0; spt<nSpts; spt++) {
+      uint kspt = spt/((order+1)*(order+1));
+      uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+      uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+
+      for (uint dim=0; dim<nDims; dim++)
+        for (uint k=0; k<nFields; k++)
+          Fi(dim,k) += F_spts[dim](spt,k) * Lagrange(locSpts1D,refLoc.x,ispt) * Lagrange(locSpts1D,refLoc.y,jspt) * Lagrange(locSpts1D,refLoc.z,kspt);
+    }
+
+    // Contributions from flux points [Correction function]
+    for (uint fpt=0; fpt<nFpts; fpt++) {
+      uint iFace = floor(fpt / ((order+1)*(order+1)));
+
+      double tNorm[3];
+      switch(iFace) {
+        case 0:
+          tNorm[0] =  0;
+          tNorm[1] =  0;
+          tNorm[2] = -1;
+          break;
+        case 1:
+          tNorm[0] =  0;
+          tNorm[1] =  0;
+          tNorm[2] =  1;
+          break;
+        case 2:
+          tNorm[0] = -1;
+          tNorm[1] =  0;
+          tNorm[2] =  0;
+          break;
+        case 3:
+          tNorm[0] =  1;
+          tNorm[1] =  0;
+          tNorm[2] =  0;
+          break;
+        case 4:
+          tNorm[0] =  0;
+          tNorm[1] = -1;
+          tNorm[2] =  0;
+          break;
+        case 5:
+          tNorm[0] =  0;
+          tNorm[1] =  1;
+          tNorm[2] =  0;
+          break;
+      }
+
+      for (uint dim=0; dim<nDims; dim++)
+        for (uint k=0; k<nFields; k++)
+          Fi(dim,k) += dFn_fpts(fpt,k) * VCJH_hex(fpt,refLoc,locSpts1D,params->vcjhSchemeQuad,order) * tNorm[dim];
+    }
+  }
+
+  return Fi;
 }
 
 void oper::applyCorrectDivF(matrix<double> &dFn_fpts, matrix<double> &divF_spts)
@@ -936,6 +1090,61 @@ const matrix<double> &oper::get_oper_div_spts()
   return opp_div_spts;
 }
 
+double oper::VCJH_quad(uint fpt, point& loc, vector<double>& spts1D, uint vcjh, uint order)
+{
+  double eta;
+  if (vcjh == DG)
+    eta = 0.; // HiFiLES: run_input.eta_quad;
+  else
+    eta = compute_eta(vcjh,order);
+
+  uint iface = fpt / (order+1);   // Face upon which the flux point lies [0,1,2, or 3]
+  uint ifpt = fpt - (order+1)*iface;  // Face-local index of flux point [0 to n_fpts_per_face-1]
+
+  double vcjh_basis = 0;
+
+  if (iface == 0)       // Bottom
+    vcjh_basis = -Lagrange(spts1D,loc[0],ifpt) * VCJH_1d(loc[1],0,order,eta);
+  else if (iface == 1)  // Right
+    vcjh_basis =  Lagrange(spts1D,loc[1],ifpt) * VCJH_1d(loc[0],1,order,eta);
+  else if (iface == 2)  // Top
+    vcjh_basis =  Lagrange(spts1D,loc[0],order-ifpt) * VCJH_1d(loc[1],1,order,eta);
+  else if (iface == 3)  // Left
+    vcjh_basis = -Lagrange(spts1D,loc[1],order-ifpt) * VCJH_1d(loc[0],0,order,eta);
+
+  return vcjh_basis;
+}
+
+double oper::VCJH_hex(int fpt, point& loc, vector<double>& spts1D, uint vcjh, uint order)
+{
+  double eta;
+  if (vcjh == DG)
+    eta = 0.; // HiFiLES: run_input.eta_quad;
+  else
+    eta = compute_eta(vcjh,order);
+
+  uint P1  = order+1;
+  uint P12 = P1*P1;
+  uint iface = floor(fpt / P12);           // Face upon which the flux point lies [0 to 5]
+  uint jfpt = (fpt - P12*iface) / P1;      // Face-local index of flux point [0 to n_fpts_per_face-1]
+  uint ifpt =  fpt - P12*iface  - P1*jfpt; // Face-local index of flux point [0 to n_fpts_per_face-1]
+
+  double vcjh_basis = 0;
+  if(iface==0)       // z-plane, 'L'
+    vcjh_basis = Lagrange(spts1D,loc.x,ifpt)       * Lagrange(spts1D,loc.y,jfpt) * -dVCJH_1d(loc.z,0,order,eta);
+  else if(iface==1)  // z-plane, 'R'
+    vcjh_basis = Lagrange(spts1D,loc.x,order-ifpt) * Lagrange(spts1D,loc.y,jfpt) *  dVCJH_1d(loc.z,1,order,eta);
+  else if(iface==2)  // x-plane, 'L'
+    vcjh_basis = Lagrange(spts1D,loc.y,ifpt)       * Lagrange(spts1D,loc.z,jfpt) * -dVCJH_1d(loc.x,0,order,eta);
+  else if(iface==3)  // x-plane, 'R'
+    vcjh_basis = Lagrange(spts1D,loc.y,order-ifpt) * Lagrange(spts1D,loc.z,jfpt) *  dVCJH_1d(loc.x,1,order,eta);
+  else if(iface==4)  // y-plane, 'L'
+    vcjh_basis = Lagrange(spts1D,loc.x,order-ifpt) * Lagrange(spts1D,loc.z,jfpt) * -dVCJH_1d(loc.y,0,order,eta);
+  else if(iface==5)  // y-plane, 'R'
+    vcjh_basis = Lagrange(spts1D,loc.x,ifpt)       * Lagrange(spts1D,loc.z,jfpt) *  dVCJH_1d(loc.y,1,order,eta);
+
+  return vcjh_basis;
+}
 
 double oper::divVCJH_quad(int in_fpt, point& loc, vector<double>& loc_1d_spts, uint vcjh, uint order)
 {

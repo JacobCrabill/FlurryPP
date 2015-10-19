@@ -764,6 +764,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
 #ifndef _NO_MPI
 
   U_out.resize(nproc);
+  set<int> correctedEles;
   for (int p=0; p<nproc; p++) {
     U_out[p].setup(foundPts[p].size(),nFields);
     if (gridIdList[p] == gridID) continue;
@@ -777,19 +778,33 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
       }
 
       if (params->interpFlux) {
+        // For flux-interp method, need corrected flux for all donor cells
+        // NOTE: Need to ensure later than donor cells do not contain overset faces...
+        //
+        // Need to also keep track of whether flux is in ref/phys space
+        // and transform as required.
+        if (!correctedEles.count(ic)) {
+          correctedEles.insert(ic);
+          if (params->motion) {
+            opers[eles[ic]->eType][eles[ic]->order].applyExtrapolateFn(eles[ic]->F_spts,eles[ic]->norm_fpts,eles[ic]->disFn_fpts,eles[ic]->dA_fpts);
+            // eles[ic]->transformFluxPhysRef();
+          } else {
+            opers[eles[ic]->eType][eles[ic]->order].applyExtrapolateFn(eles[ic]->F_spts,eles[ic]->tNorm_fpts,eles[ic]->disFn_fpts);
+          }
+          eles[ic]->calcDeltaFn();
+        }
+
         double eps = 1e-10;
         vector<double> tempU(nFields);
         if (params->equation == NAVIER_STOKES) {
           if (params->nDims == 2) {
-            matrix<double> tempF = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(eles[ic]->F_spts, eles[ic]->Fn_fpts, refPos);
+            matrix<double> tempF = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(eles[ic]->F_spts, eles[ic]->dFn_fpts, refPos);
             // Since flux may give non-unique solution, use discontinuous
             // sol'n at point to determing correct solution
             opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
             vector<double> F(nFields), G(nFields);
             F.assign(tempF[0],tempF[0]+nFields);
             G.assign(tempF[1],tempF[1]+nFields);
-            //          opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->Fc_spts[0], F.data(), refPos);
-            //          opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->Fc_spts[1], G.data(), refPos);
             if (params->nDims == 2) {
               double u = G[1]/std::max(G[0],eps);
               double v = F[2]/std::max(F[0],eps);
@@ -813,17 +828,30 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
           } else {
             // nDims == 3 [TODO]
             vector<double> F(nFields), G(nFields), H(nFields);
-            opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->F_spts[0], F.data(), refPos);
-            opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->F_spts[1], G.data(), refPos);
-            opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->F_spts[2], H.data(), refPos);
+            matrix<double> tempF = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(eles[ic]->F_spts, eles[ic]->dFn_fpts, refPos);
+            F.assign(tempF[0],tempF[0]+nFields);
+            G.assign(tempF[1],tempF[1]+nFields);
+            H.assign(tempF[2],tempF[2]+nFields);
           }
         } else if (params->equation == ADVECTION_DIFFUSION) {
           matrix<double> tempF = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(eles[ic]->F_spts, eles[ic]->Fn_fpts, refPos);
-          // In case one of Vx or Vy ~= 0
-          if (std::abs(params->advectVx) > std::abs(params->advectVy))
-            U_out[p](i,0) = tempF(0,0) / params->advectVx;
-          else
-            U_out[p](i,0) = tempF(1,0) / params->advectVy;
+          // In case one of the advection speeds ~= 0
+          if (params->nDims == 2) {
+            if (std::abs(params->advectVx) > std::abs(params->advectVy))
+              U_out[p](i,0) = tempF(0,0) / params->advectVx;
+            else
+              U_out[p](i,0) = tempF(1,0) / params->advectVy;
+          } else {
+            double vx = std::abs(params->advectVx);
+            double vy = std::abs(params->advectVy);
+            double vz = std::abs(params->advectVz);
+            if (vx > vy && vx > vz)
+              U_out[p](i,0) = tempF(0,0) / params->advectVx;
+            else if (vy > vz)
+              U_out[p](i,0) = tempF(1,0) / params->advectVy;
+            else
+              U_out[p](i,0) = tempF(2,0) / params->advectVz;
+          }
         }
       }
       else {

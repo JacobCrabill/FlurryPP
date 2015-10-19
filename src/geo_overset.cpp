@@ -314,7 +314,7 @@ void geo::setCellIblanks(void)
     if (iblankCell[ic] == HOLE) {
       for (int j=0; j<c2nf[ic]; j++) {
         int ic2 = c2c(ic,j);
-        if (ic2>0 && iblankCell[ic2]==NORMAL) {
+        if (ic2>0 && iblankCell[ic2]!=HOLE) {
           iblankCell1[ic] = NORMAL;
           break;
         }
@@ -325,14 +325,14 @@ void geo::setCellIblanks(void)
   // Only needed for moving grids: Existing cells which must be removed from solver
   for (int ic=0; ic<nEles; ic++) {
     if (iblankCell1[ic] == NORMAL)
-      iblankCell[ic] = NORMAL;
+      iblankCell[ic] = FRINGE; // May need to go back to 'NORMAL'...
     else if (iblankCell[ic] == HOLE && !holeCells.count(ic))
      blankCells.insert(ic);
   }
 
   // Only needed for moving grids: Get cells which  must be 'un-blanked'
   for (auto &ic:holeCells)
-    if (iblankCell[ic] == NORMAL)
+    if (iblankCell[ic] != HOLE)
       unblankCells.insert(ic);
 }
 
@@ -348,7 +348,7 @@ void geo::setFaceIblanks(void)
         // Internal face
         if (iblankCell[c2c(ic,j)] == HOLE) {
           iblankFace[c2f(ic,j)] = HOLE;
-        } else if (iblankCell[c2c(ic,j)] == NORMAL) {
+        } else {
           iblankFace[c2f(ic,j)] = FRINGE;
         }
       } else {
@@ -402,8 +402,8 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
   for (auto &ff:blankIFaces) {
     int ic1 = f2c(ff,0);
     int ic2 = f2c(ff,1);
-    if ( (iblankCell[ic1]==NORMAL && iblankCell[ic2]==HOLE) ||
-         (iblankCell[ic1]==HOLE && iblankCell[ic2]==NORMAL) )
+    if ( (iblankCell[ic1]!=HOLE && iblankCell[ic2]==HOLE) ||
+         (iblankCell[ic1]==HOLE && iblankCell[ic2]!=HOLE) )
       ubOFaces.insert(ff);
   }
 
@@ -473,7 +473,7 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
       int ic2 = c2c(ic,j);
       int ff2 = c2f(ic,j);
       if (ic2>=0) {
-        if (iblankCell[ic2]==NORMAL || unblankCells.count(ic2))
+        if (iblankCell[ic2]!=HOLE || unblankCells.count(ic2))
           ubIntFaces.insert(ff2);
         else
           ubOFaces.insert(ff2);

@@ -52,6 +52,9 @@ double exponential_filter(int in_mode, int inBasisOrder, double exponent);
 
 double compute_eta(int vcjh_scheme, int order);
 
+/*! Evaluate the VCJH correction function at a point */
+double VCJH_1d(double xi, int mode, int order, double eta);
+
 /*! Evaluate the divergence [dF/dxi or dG/deta] of the correction function at a point */
 double dVCJH_1d(double in_r, int in_mode, int in_order, double in_eta);
 

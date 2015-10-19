@@ -771,7 +771,7 @@ void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>>
   int nc = 0;
   for (int ic=0; ic<nEles; ic++) {
     // Skip any hole cells
-    if (meshType == OVERSET_MESH && iblankCell[ic] != NORMAL) continue;
+    if (meshType == OVERSET_MESH && iblankCell[ic] == HOLE) continue;
 
     shared_ptr<ele> e = make_shared<ele>();
     e->ID = ic;

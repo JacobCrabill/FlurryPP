@@ -112,7 +112,8 @@ public:
   //! Calculate average density over an element (needed for negative-density correction)
   void calcAvgU(matrix<double>& U_spts, vector<double>& detJ_spts, vector<double>& Uavg);
 
-  matrix<double> interpolateCorrectedFlux(vector<matrix<double> >& Fc_spts, matrix<double>& Fn_fpts, point refLoc);
+  matrix<double> interpolateCorrectedFlux(vector<matrix<double> >& F_spts, matrix<double>& dFn_fpts, point refLoc);
+
 private:
   geo *Geo;
   input *params;
@@ -125,10 +126,16 @@ private:
   matrix<double> opp_div_spts;
   matrix<double> opp_correction;
   vector<matrix<double>> opp_correctU;
+  vector<matrix<double>> opp_correctF ;
+
+  void setupCorrectF(vector<point> &loc_spts);
+
+  //! Evalulate the VCJH correction function at a solution point from a flux point */
+  double VCJH_quad(uint fpt, point &loc, vector<double> &spts1D, uint vcjh, uint order);
+  double VCJH_hex(int fpt, point &loc, vector<double> &spts1D, uint vcjh, uint order);
 
   /*! Evaluate the divergence of the (VCJH) correction function at a solution point from a flux point */
   double divVCJH_quad(int in_fpt, point& loc, vector<double> &loc_1d_spts, uint vcjh, uint order);
-
   double divVCJH_hex(int in_fpt, point& loc, vector<double> &loc_1d_spts, uint vcjh, uint order);
 
   /* Stuff required for Shock Capturing */

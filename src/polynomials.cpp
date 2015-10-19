@@ -463,6 +463,18 @@ double compute_eta(int vcjh_scheme, int order)
   return eta;
 }
 
+double VCJH_1d(double xi, int mode, int order, double eta)
+{
+  double val;
+
+  if (mode == 0) // Left
+    val = pow(-1,order)/2.*(Legendre(xi,order) - (eta*Legendre(xi,order-1) + Legendre(xi,order+1))/(1.+eta));
+  else
+    val = 0.5*(Legendre(xi,order) + (eta*Legendre(xi,order-1) + Legendre(xi,order+1)))/(1+eta);
+
+  return val;
+}
+
 double dVCJH_1d(double in_r, int in_mode, int in_order, double in_eta)
 {
   double dtemp_0 = 0.;

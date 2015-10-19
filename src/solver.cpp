@@ -153,6 +153,8 @@ void solver::calcResidual(int step)
 
   calcInviscidFlux_spts();
 
+  calcInviscidFlux_faces();
+
   if (params->meshType == OVERSET_MESH) {
 
     oversetInterp();
@@ -160,8 +162,6 @@ void solver::calcResidual(int step)
     calcInviscidFlux_overset();
 
   }
-
-  calcInviscidFlux_faces();
 
 #ifndef _NO_MPI
   calcInviscidFlux_mpi();
@@ -625,7 +625,6 @@ void solver::readRestartFile(void) {
   if (params->rank==0) cout << "Solver: Restarting from " << fileNameC << endl;
 
   vector<double> tmpIblank(Geo->nEles,NORMAL);
-  set<int> tmpBlanks;
 
   // Read the simulation time from the separate time file
   sprintf(timeFileC,"%s_time/%d",&fileName[0],params->restartIter);
