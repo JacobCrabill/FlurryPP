@@ -1051,7 +1051,7 @@ matrix<double> ele::calcError(void)
       } else {
         // Assuming a 'standard' mesh for the test case
         xmin = -5;  xmax = 5;
-        ymin = -5;  ymin = 5;
+        ymin = -5;  ymax = 5;
       }
 
       double xoff = fmod( (params->time - xmin), (xmax - xmin) ) + xmin;
@@ -1097,7 +1097,7 @@ matrix<double> ele::calcError(void)
       } else {
         // Assuming a 'standard' mesh for the test case
         xmin = -5;  xmax = 5;
-        ymin = -5;  ymin = 5;
+        ymin = -5;  ymax = 5;
       }
 
       double xoff = fmod( (Uinf*cos(theta)*params->time - xmin), (xmax - xmin) ) + xmin;
