@@ -927,7 +927,7 @@ matrix<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &F_spts, ma
 
       for (uint dim=0; dim<nDims; dim++)
         for (uint k=0; k<nFields; k++)
-          Fi(dim,k) += F_spts[dim](spt,k) * Lagrange(locSpts1D,refLoc.x,ispt+1) * Lagrange(locSpts1D,refLoc.y,jspt+1);
+          Fi(dim,k) += F_spts[dim](spt,k) * Lagrange(locSpts1D,refLoc.x,ispt) * Lagrange(locSpts1D,refLoc.y,jspt);
     }
 
     // Contribution from flux points [Correction function]

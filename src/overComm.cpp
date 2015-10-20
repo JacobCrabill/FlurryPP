@@ -778,46 +778,60 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
       }
 
       if (params->interpFlux) {
-        // For flux-interp method, need corrected flux for all donor cells
+        // Interpolate solution calculated from corrected flux
+        // Need corrected flux for all donor cells, so calc discontinuous Fn & deltaFn
+        //   for correction function scaling
+        // Need to also keep track of whether flux is in ref/phys space and
+        //   transform as required.
         // NOTE: Need to ensure later than donor cells do not contain overset faces...
-        //
-        // Need to also keep track of whether flux is in ref/phys space
-        // and transform as required.
         if (!correctedEles.count(ic)) {
           correctedEles.insert(ic);
           if (params->motion) {
             opers[eles[ic]->eType][eles[ic]->order].applyExtrapolateFn(eles[ic]->F_spts,eles[ic]->norm_fpts,eles[ic]->disFn_fpts,eles[ic]->dA_fpts);
             // eles[ic]->transformFluxPhysRef();
           } else {
+          if (eles[ic]->F_spts[0].checkNan())
+            FatalError("NaN");
             opers[eles[ic]->eType][eles[ic]->order].applyExtrapolateFn(eles[ic]->F_spts,eles[ic]->tNorm_fpts,eles[ic]->disFn_fpts);
           }
           eles[ic]->calcDeltaFn();
         }
 
-        matrix<double> jacobian, invJaco;
-        double detjac;
-        eles[ic]->calcTransforms_point(jacobian,invJaco,detjac,refPos);
         vector<matrix<double>> tempF_spts;
         uint nSpts = eles[ic]->nSpts;
         uint nFpts = eles[ic]->nFpts;
         if (params->motion) {
-          // Must transform to ref. space in order to apply correction functions
+          // Flux vector must be in ref. space in order to apply correction functions
           tempF_spts = eles[ic]->transformFlux_physToRef();
         } else {
           tempF_spts = eles[ic]->F_spts;
         }
 
+        matrix<double> tempF_ref = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(tempF_spts, eles[ic]->dFn_fpts, refPos);
+
+        // NOW we can transform flux vector back to physical space
+        // [Recall: F_phys = JGinv .dot. F_ref]
+        matrix<double> jacobian, invJaco;
+        double detJac;
+        eles[ic]->calcTransforms_point(jacobian,invJaco,detJac,refPos);
+
+        int nDims = params->nDims;
+        matrix<double> tempF(nDims,nFields);
+        for (int dim1=0; dim1<nDims; dim1++)
+          for (int dim2=0; dim2<nDims; dim2++)
+            for (int k=0; k<nFields; k++)
+              tempF(dim1,k) += invJaco(dim2,dim1) * tempF_ref(dim2,k) / detJac;
+
         double eps = 1e-10;
         vector<double> tempU(nFields);
         if (params->equation == NAVIER_STOKES) {
           if (params->nDims == 2) {
-            matrix<double> tempF = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(tempF_spts, eles[ic]->dFn_fpts, refPos);
             // Since flux may give non-unique solution, use discontinuous
             // sol'n at point to determing correct solution
             opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
             vector<double> F(nFields), G(nFields);
-            F.assign(tempF[0],tempF[0]+nFields);
-            G.assign(tempF[1],tempF[1]+nFields);
+            F = tempF.getRow(0);
+            G = tempF.getRow(1);
             if (params->nDims == 2) {
               double u = G[1]/std::max(G[0],eps);
               double v = F[2]/std::max(F[0],eps);
@@ -838,41 +852,44 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
               U_out[p](i,2) = rho*v;
               U_out[p](i,3) = rhoE;
             }
-          } else {
+          }
+          else {
             // nDims == 3 [TODO]
             vector<double> F(nFields), G(nFields), H(nFields);
-            matrix<double> tempF = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(eles[ic]->F_spts, eles[ic]->dFn_fpts, refPos);
-            F.assign(tempF[0],tempF[0]+nFields);
-            G.assign(tempF[1],tempF[1]+nFields);
-            H.assign(tempF[2],tempF[2]+nFields);
+            F = tempF.getRow(0);
+            G = tempF.getRow(1);
+            H = tempF.getRow(2);
           }
-        } else if (params->equation == ADVECTION_DIFFUSION) {
-          matrix<double> tempF = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(eles[ic]->F_spts, eles[ic]->Fn_fpts, refPos);
-          // In case one of the advection speeds ~= 0
-          if (params->nDims == 2) {
-            if (std::abs(params->advectVx) > std::abs(params->advectVy))
-              U_out[p](i,0) = tempF(0,0) / params->advectVx;
-            else
-              U_out[p](i,0) = tempF(1,0) / params->advectVy;
-          } else {
-            double vx = std::abs(params->advectVx);
-            double vy = std::abs(params->advectVy);
-            double vz = std::abs(params->advectVz);
-            if (vx > vy && vx > vz)
-              U_out[p](i,0) = tempF(0,0) / params->advectVx;
-            else if (vy > vz)
-              U_out[p](i,0) = tempF(1,0) / params->advectVy;
-            else
-              U_out[p](i,0) = tempF(2,0) / params->advectVz;
-          }
+        }
+        else if (params->equation == ADVECTION_DIFFUSION) {
+          // In case one of the advection speeds ~= 0, use max speed
+          double vx = std::abs(params->advectVx);
+          double vy = std::abs(params->advectVy);
+          double vz = std::abs(params->advectVz);
+          if (nDims == 2) vz = 0.;
+
+          if (vx > vy && vx > vz)
+            U_out[p](i,0) = tempF(0,0) / params->advectVx;
+          else if (vy > vz)
+            U_out[p](i,0) = tempF(1,0) / params->advectVy;
+          else
+            U_out[p](i,0) = tempF(2,0) / params->advectVz;
         }
       }
       else {
+        // Interpolate discontinuous solution [Original 'Artificial Boundary' Method]
         opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, U_out[p][i], refPos);
       }
+
+//      if (params->rank == 0 && p == 5 && params->iter >= 1000 && i<=4) {
+//        double u2[5] = {0};
+//        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, u2, refPos);
+//        cout << "Uout = " << U_out[p](i,0) << ", u2 = " << u2[0] << ", detJac " << detj << endl;
+//      }
     }
   }
-
+//if (params->rank == 0 && params->iter >= 1000)
+//  cout << "END ITER " << params->iter << endl;
   /* ---- Send/Receive the the interpolated data across grids using interComm ---- */
   nPtsSend.resize(nproc);
   for (int p=0; p<nproc; p++) {

@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
   /* Stat timer for simulation (ignoring pre-processing) */
   simTimer runTime;
   runTime.startTimer();
-cout << "err freq = " << params.monitorErrFreq << endl;
+
   /* --- Calculation Loop --- */
   for (params.iter=params.initIter+1; params.iter<=params.iterMax; params.iter++) {
 

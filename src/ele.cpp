@@ -1255,11 +1255,11 @@ vector<matrix<double>> ele::transformFlux_physToRef(void)
   if (params->motion) {
     if (nDims == 2) {
       for (int spt=0; spt<nSpts; spt++) {
-        double A = gridVel_spts(spt,1)*Jac_spts[spt](0,1) - gridVel_spts(spt,0)*Jac_spts[spt](1,1);
-        double B = gridVel_spts(spt,0)*Jac_spts[spt](1,0) - gridVel_spts(spt,1)*Jac_spts[spt](0,0);
+//        double A = gridVel_spts(spt,1)*Jac_spts[spt](0,1) - gridVel_spts(spt,0)*Jac_spts[spt](1,1);
+//        double B = gridVel_spts(spt,0)*Jac_spts[spt](1,0) - gridVel_spts(spt,1)*Jac_spts[spt](0,0);
         for (int k=0; k<nFields; k++) {
-          outF[0](spt,k) =  F_spts[0](spt,k)*Jac_spts[spt](1,1) - F_spts[1](spt,k)*Jac_spts[spt](0,1) + U_spts(spt,k)*A;
-          outF[1](spt,k) = -F_spts[0](spt,k)*Jac_spts[spt](1,0) + F_spts[1](spt,k)*Jac_spts[spt](0,0) + U_spts(spt,k)*B;
+          outF[0](spt,k) =  F_spts[0](spt,k)*Jac_spts[spt](1,1) - F_spts[1](spt,k)*Jac_spts[spt](0,1);// + U_spts(spt,k)*A;
+          outF[1](spt,k) = -F_spts[0](spt,k)*Jac_spts[spt](1,0) + F_spts[1](spt,k)*Jac_spts[spt](0,0);// + U_spts(spt,k)*B;
         }
       }
     } else {
@@ -1270,7 +1270,7 @@ vector<matrix<double>> ele::transformFlux_physToRef(void)
         for (int i=0; i<3; i++) {
           for (int j=0; j<3; j++)
             Jacobian(i,j) = Jac_spts[spt](i,j);
-          Jacobian(i,3) = gridVel_spts(spt,i);
+          Jacobian(i,3) = 0.;//gridVel_spts(spt,i);
         }
         matrix<double> S = Jacobian.adjoint();
 
