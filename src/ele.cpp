@@ -431,10 +431,10 @@ void ele::calcTransforms(bool moving)
 
     if (nDims == 2) {
       // Determinant of transformation matrix
-      detJac_spts[spt] = Jac_spts[spt][0][0]*Jac_spts[spt][1][1]-Jac_spts[spt][1][0]*Jac_spts[spt][0][1];
+      detJac_spts[spt] = Jac_spts[spt](0,0)*Jac_spts[spt](1,1)-Jac_spts[spt](1,0)*Jac_spts[spt](0,1);
       // Inverse of transformation matrix (times its determinant)
-      JGinv_spts[spt][0][0] = Jac_spts[spt][1][1];  JGinv_spts[spt][0][1] =-Jac_spts[spt][0][1];
-      JGinv_spts[spt][1][0] =-Jac_spts[spt][1][0];  JGinv_spts[spt][1][1] = Jac_spts[spt][0][0];
+      JGinv_spts[spt](0,0) = Jac_spts[spt](1,1);  JGinv_spts[spt](0,1) =-Jac_spts[spt](0,1);
+      JGinv_spts[spt](1,0) =-Jac_spts[spt](1,0);  JGinv_spts[spt](1,1) = Jac_spts[spt](0,0);
     }
     else if (nDims == 3) {
       double xr = Jac_spts[spt](0,0);   double xs = Jac_spts[spt](0,1);   double xt = Jac_spts[spt](0,2);
@@ -468,10 +468,10 @@ void ele::calcTransforms(bool moving)
 
 
     if (nDims == 2) {
-      detJac_fpts[fpt] = Jac_fpts[fpt][0][0]*Jac_fpts[fpt][1][1]-Jac_fpts[fpt][1][0]*Jac_fpts[fpt][0][1];
+      detJac_fpts[fpt] = Jac_fpts[fpt](0,0)*Jac_fpts[fpt](1,1)-Jac_fpts[fpt](1,0)*Jac_fpts[fpt](0,1);
       // Inverse of transformation matrix (times its determinant)
-      JGinv_fpts[fpt][0][0] = Jac_fpts[fpt][1][1];  JGinv_fpts[fpt][0][1] =-Jac_fpts[fpt][0][1];
-      JGinv_fpts[fpt][1][0] =-Jac_fpts[fpt][1][0];  JGinv_fpts[fpt][1][1] = Jac_fpts[fpt][0][0];
+      JGinv_fpts[fpt](0,0) = Jac_fpts[fpt](1,1);  JGinv_fpts[fpt](0,1) =-Jac_fpts[fpt](0,1);
+      JGinv_fpts[fpt](1,0) =-Jac_fpts[fpt](1,0);  JGinv_fpts[fpt](1,1) = Jac_fpts[fpt](0,0);
     }
     else if (nDims == 3) {
       double xr = Jac_fpts[fpt](0,0);   double xs = Jac_fpts[fpt](0,1);   double xt = Jac_fpts[fpt](0,2);
@@ -512,6 +512,51 @@ void ele::calcTransforms(bool moving)
         norm_fpts(fpt,dim) /= dA_fpts[fpt];
     }
   }
+}
+
+void ele::calcTransforms_point(matrix<double> &jacobian, matrix<double> &JGinv, double &detJac, const point &loc)
+{
+  jacobian.setup(nDims,nDims);
+  jacobian.initializeToZero();
+  JGinv.setup(nDims,nDims);
+  JGinv.initializeToZero();
+
+  matrix<double> dshape;
+  if (nDims==2)
+    dshape_quad(loc, dshape, nNodes);
+  else
+    dshape_hex(loc, dshape, nNodes);
+
+  if (!params->motion) {
+    for (int i=0; i<nNodes; i++)
+      for (int dim1=0; dim1<nDims; dim1++)
+        for (int dim2=0; dim2<nDims; dim2++)
+          jacobian(dim1,dim2) += dshape(i,dim2)*nodes[i][dim1];
+  }
+  else {
+    for (int i=0; i<nNodes; i++)
+      for (int dim1=0; dim1<nDims; dim1++)
+        for (int dim2=0; dim2<nDims; dim2++)
+          jacobian(dim1,dim2) += dshape(i,dim2)*nodesRK[i][dim1];
+  }
+
+  if (nDims == 2) {
+    // Determinant of transformation matrix
+    detJac = jacobian(0,0)*jacobian(1,1)-jacobian(1,0)*jacobian(0,1);
+    // Inverse of transformation matrix (times its determinant)
+    JGinv(0,0) = jacobian(1,1);  JGinv(0,1) =-jacobian(0,1);
+    JGinv(1,0) =-jacobian(1,0);  JGinv(1,1) = jacobian(0,0);
+  } else {
+    double xr = jacobian(0,0);   double xs = jacobian(0,1);   double xt = jacobian(0,2);
+    double yr = jacobian(1,0);   double ys = jacobian(1,1);   double yt = jacobian(1,2);
+    double zr = jacobian(2,0);   double zs = jacobian(2,1);   double zt = jacobian(2,2);
+    detJac = xr*(ys*zt - yt*zs) - xs*(yr*zt - yt*zr) + xt*(yr*zs - ys*zr);
+
+    JGinv(0,0) = ys*zt - yt*zs;  JGinv(0,1) = xt*zs - xs*zt;  JGinv(0,2) = xs*yt - xt*ys;
+    JGinv(1,0) = yt*zr - yr*zt;  JGinv(1,1) = xr*zt - xt*zr;  JGinv(1,2) = xt*yr - xr*yt;
+    JGinv(2,0) = yr*zs - ys*zr;  JGinv(2,1) = xs*zr - xr*zs;  JGinv(2,2) = xr*ys - xs*yr;
+  }
+  if (detJac<0) FatalError("Negative Jacobian at given point.");
 }
 
 point ele::calcPos(const point &loc)
@@ -1087,7 +1132,7 @@ matrix<double> ele::calcError(void)
     } else {
       // Assuming a 'standard' mesh for the test case
       xmin = -5;  xmax = 5;
-      ymin = -5;  ymin = 5;
+      ymin = -5;  ymax = 5;
     }
 
     double xoff = fmod( (params->time - xmin), (xmax - xmin) ) + xmin;
@@ -1197,6 +1242,58 @@ void ele::calcViscousFlux_spts()
     }
 
   }
+}
+
+vector<matrix<double>> ele::transformFlux_physToRef(void)
+{
+  vector<matrix<double>> outF(nDims);
+  for (auto &FD:outF) {
+    FD.setup(nSpts,nFields);
+    FD.initializeToZero();
+  }
+
+  if (params->motion) {
+    if (nDims == 2) {
+      for (int spt=0; spt<nSpts; spt++) {
+        double A = gridVel_spts(spt,1)*Jac_spts[spt](0,1) - gridVel_spts(spt,0)*Jac_spts[spt](1,1);
+        double B = gridVel_spts(spt,0)*Jac_spts[spt](1,0) - gridVel_spts(spt,1)*Jac_spts[spt](0,0);
+        for (int k=0; k<nFields; k++) {
+          outF[0](spt,k) =  F_spts[0](spt,k)*Jac_spts[spt](1,1) - F_spts[1](spt,k)*Jac_spts[spt](0,1) + U_spts(spt,k)*A;
+          outF[1](spt,k) = -F_spts[0](spt,k)*Jac_spts[spt](1,0) + F_spts[1](spt,k)*Jac_spts[spt](0,0) + U_spts(spt,k)*B;
+        }
+      }
+    } else {
+      for (int spt=0; spt<nSpts; spt++) {
+        // Build the full 4D (space+time) Jacobian matrix & its adjoint
+        matrix<double> Jacobian(4,4);
+        Jacobian(3,3) = 1;
+        for (int i=0; i<3; i++) {
+          for (int j=0; j<3; j++)
+            Jacobian(i,j) = Jac_spts[spt](i,j);
+          Jacobian(i,3) = gridVel_spts(spt,i);
+        }
+        matrix<double> S = Jacobian.adjoint();
+
+        for (int dim1=0; dim1<3; dim1++)
+          for (int dim2=0; dim2<3; dim2++)
+            for (int k=0; k<nFields; k++)
+              outF[dim1](spt,k) += F_spts[dim2](spt,k)*S(dim2,dim1);
+
+        for (int dim=0; dim<3; dim++)
+          for (int k=0; k<nFields; k++)
+            outF[dim](spt,k) += U_spts(spt,k)*S(dim,3);
+      }
+    }
+  }
+
+  return outF;
+}
+
+vector<matrix<double>> ele::transformFlux_refToPhys(void)
+{
+  vector<matrix<double>> outF(nDims);
+
+  return outF;
 }
 
 void ele::transformGradF_spts(int step)

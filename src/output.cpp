@@ -719,7 +719,7 @@ void writeResidual(solver *Solver, input *params)
 
 void writeError(solver *Solver, input *params)
 {
-  if (params->testCase == 0) return;
+  if (params->meshType != OVERSET_MESH && !params->testCase) return;
 
   // For implemented test cases, calculcate the L1 error over the overset domain
 

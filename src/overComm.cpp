@@ -794,11 +794,24 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
           eles[ic]->calcDeltaFn();
         }
 
+        matrix<double> jacobian, invJaco;
+        double detjac;
+        eles[ic]->calcTransforms_point(jacobian,invJaco,detjac,refPos);
+        vector<matrix<double>> tempF_spts;
+        uint nSpts = eles[ic]->nSpts;
+        uint nFpts = eles[ic]->nFpts;
+        if (params->motion) {
+          // Must transform to ref. space in order to apply correction functions
+          tempF_spts = eles[ic]->transformFlux_physToRef();
+        } else {
+          tempF_spts = eles[ic]->F_spts;
+        }
+
         double eps = 1e-10;
         vector<double> tempU(nFields);
         if (params->equation == NAVIER_STOKES) {
           if (params->nDims == 2) {
-            matrix<double> tempF = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(eles[ic]->F_spts, eles[ic]->dFn_fpts, refPos);
+            matrix<double> tempF = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(tempF_spts, eles[ic]->dFn_fpts, refPos);
             // Since flux may give non-unique solution, use discontinuous
             // sol'n at point to determing correct solution
             opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);

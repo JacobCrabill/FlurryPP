@@ -78,6 +78,8 @@ public:
 
   void calcTransforms(bool moving = false);
 
+  void calcTransforms_point(matrix<double>& jacobian, matrix<double>& JGinv, double& detJac, const point& loc);
+
   point calcPos(const point &loc);
 
   void calcPosSpts(void);
@@ -276,6 +278,8 @@ public:
   matrix<double> tempF;
   vector<double> tempU;
 
+  vector<matrix<double> > transformFlux_physToRef();
+  vector<matrix<double> > transformFlux_refToPhys();
 private:
 
   /*! Get the values of the nodal shape bases at a solution point */
