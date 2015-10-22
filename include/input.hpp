@@ -142,6 +142,7 @@ public:
   int resType;
   int monitorResFreq;
   int monitorErrFreq;
+  int errorNorm;
   int plotFreq;
   int plotType;
 

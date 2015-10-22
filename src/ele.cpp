@@ -1153,9 +1153,14 @@ matrix<double> ele::calcError(void)
     }
   }
 
+  // NOTE: In order to do actual L1, L2, etc. error integral, supposed to
+  // take the |x| or |x|^2 FIRST, before integration!!!  Oops....
   for (int spt=0; spt<nSpts; spt++)
     for (int j=0; j<nFields; j++)
-      err(spt,j) = U_spts(spt,j) - err(spt,j);
+      err(spt,j) = abs(U_spts(spt,j) - err(spt,j));
+
+  if (params->errorNorm == 2)
+    for (auto &val:err.data()) val *= val;  // L2 norm instead of L1
 
   return err;
 }

@@ -728,6 +728,17 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
           FatalError("Quadrature Point Reference Location not found in ele!");
         }
 
+        // NOTE: For better integration, should actually over-integrate by
+        // interpolating U to higher-order qpts first
+        // Add interpolateToQpts() to oper class
+        // add calcTransforms_qpts() to ele class
+        // matrix<double> quadPoints;
+        // vector<point> qpts = getLocSpts(eles[ic]->eType,10,string("Legendre"));
+        // for (auto &pt: qpts) quadPoints.insertRow({pt.x,pt.y,pt.z});
+        // matrix<double> U_qpts = opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts,quadPoints);
+        // matrix<double> err_qpts = calcError(U_qpts,quadPoints,params->icType);
+        // auto wts = getQptWts(10,nDims);
+        //
         matrix<double> err = eles[ic]->calcError();
         vector<double> tmpErr(nFields);
         opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(err,tmpErr.data(),refLoc);

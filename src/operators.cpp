@@ -321,7 +321,7 @@ void oper::interpolateSptsToPoints(matrix<double> &Q_spts,matrix<double> &Q_ipts
     case TRI: {
       for (uint ipt=0; ipt<nIpts; ipt++) {
         // Location of the current interpolation point
-        point pt = point(loc_ipts[ipt]);
+        point pt = point(loc_ipts[ipt],2);
 
         // Use the orthogonal 2D Dubiner basis for triangular elements
         for (uint spt=0; spt<nSpts; spt++)
@@ -334,7 +334,7 @@ void oper::interpolateSptsToPoints(matrix<double> &Q_spts,matrix<double> &Q_ipts
       vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint ipt=0; ipt<nIpts; ipt++) {
         // Location of the current interpolation point
-        point pt = point(loc_ipts[ipt]);
+        point pt = point(loc_ipts[ipt],2);
         for (uint spt=0; spt<nSpts; spt++) {
           // Structured I,J indices of current solution point
           uint ispt = spt%(nSpts/(order+1));
