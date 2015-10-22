@@ -1160,7 +1160,7 @@ matrix<double> ele::calcError(void)
       err(spt,j) = abs(U_spts(spt,j) - err(spt,j));
 
   if (params->errorNorm == 2)
-    for (auto &val:err.data()) val *= val;  // L2 norm instead of L1
+    for (auto &val:err.data) val *= val;  // L2 norm instead of L1
 
   return err;
 }
