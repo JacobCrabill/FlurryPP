@@ -37,23 +37,25 @@ Quick Start
 Compilation Instructions
 -------------------------
 
-To compile Flurry, you can either use QT Creator (https://www.qt.io/download-open-source/), which is an excellent C++ IDE that I use for development, or you can use the provided Makefile.flurry to compile using GNU make.  For the make option, just open a terminal and run the following:
+To compile Flurry, you can either use QT Creator (https://www.qt.io/download-open-source/), which is an excellent C++ IDE that I use for development, or you can use the provided makefile to compile using GNU make.  For the make option,
+just open a terminal and run the following:</p>
 
-`make mpi=n`
+`make build_type`
 
-Optionally, you can specify the type of build as either *debug* or *release*:
+Where `build_type` is one of the following options:
 
-`make release mpi=n`
+* `debug mpi=n`
+* `release mpi=n`
+* `openmp mpi=n`
+* `mpidebug`
+* `mpi2`
+* `mpi`
 
-where *release* turns on full optimization, and *debug* removes all optimization and adds flags for both debugging and profiling. *mpi=n* sets the compilation to serial.  
-The code also (optionally) utilizes either OpenMP to take advantage of easy parallelization on desktop computers, or MPI to completely parallelize on both shared- and distributed-memory systems. To enable OpenMP or MPI when compiling, just do one of the following:
 
-`make openmp mpi=n`
-
-`make mpi`
-
-Note that compiling with MPI requires several external libraries and header files (metis.h/metis.a, mpi.h), the location of which must be specified in the makefile.
+Both the serial `release` and the parallel `mpi` builds turn on full optimization, while the `debug` and `mpidebug` builds remove all
+optimization and add flags for both debugging and profiling. The `openmp` build uses OpenMP to take advantage of easy parallelization on desktop computers, and the `mpi` builds use MPI to completely parallelize the program on both shared- and distributed-memory systems. Note that compiling with MPI requires several external libraries and header files (metis.h/metis.a, mpi.h), the location of which must be specified in the makefile.
 The code is known to work with OpenMPI >= 1.6.5.
+
 
 Test Cases
 -------------------------
