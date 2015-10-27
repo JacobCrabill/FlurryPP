@@ -729,19 +729,20 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
         }
 
         // NOTE: For better integration, should actually over-integrate by
-        // interpolating U to higher-order qpts first
-        // Add interpolateToQpts() to oper class
-        // add calcTransforms_qpts() to ele class
-        // matrix<double> quadPoints;
-        // vector<point> qpts = getLocSpts(eles[ic]->eType,10,string("Legendre"));
-        // for (auto &pt: qpts) quadPoints.insertRow({pt.x,pt.y,pt.z});
-        // matrix<double> U_qpts = opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts,quadPoints);
-        // matrix<double> err_qpts = calcError(U_qpts,quadPoints,params->icType);
-        // auto wts = getQptWts(10,nDims);
-        //
-        matrix<double> err = eles[ic]->calcError();
-        vector<double> tmpErr(nFields);
-        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(err,tmpErr.data(),refLoc);
+        // interpolating U to higher-order qpts first, then calculating
+        // error at the quadrature points (rather than interpolating error
+        // to quadrature points from spts)
+
+        /* Original Method */
+//        matrix<double> err = eles[ic]->calcError();
+//        vector<double> tmpErr(nFields);
+//        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(err,tmpErr.data(),refLoc);
+//        superErr[offset+i].insertRow(tmpErr);
+
+        /* Better(?) Method */
+        vector<double> tmpU(nFields);
+        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tmpU.data(), refLoc);
+        vector<double> tmpErr = calcError(tmpU,point(qpts_tmp[j],nDims),params);
         superErr[offset+i].insertRow(tmpErr);
       }
     }
@@ -749,14 +750,45 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
 
   /* --- Integrate the Entire Domain --- */
 
+  // NOTE: For better integration, should actually over-integrate by
+  // interpolating U to higher-order qpts first, then calculating
+  // error at the quadrature points (rather than interpolating error
+  // to quadrature points from spts)
+  vector<point> qpts;
+  if (nDims == 2)
+   qpts = getLocSpts(QUAD,quadOrder,string("Legendre"));
+  else
+   qpts = getLocSpts(HEX,quadOrder,string("Legendre"));
+
+  auto wts = getQptWeights(quadOrder,nDims);
+
+  matrix<double> quadPoints;
+  for (auto &pt: qpts) quadPoints.insertRow({pt.x,pt.y,pt.z});
+
   vector<double> intErr(nFields);
-  for (int i=0; i<eles.size(); i++) {
-    auto wts = getQptWeights(eles[i]->order,nDims);
-    auto err = eles[i]->calcError();
-    for (int j=0; j<eles[i]->nSpts; j++)
-      for (int k=0; k<nFields; k++)
-        intErr[k] += err(j,k) * wts[j] * eles[i]->detJac_spts[j];
+//  vector<double> ERR(nFields);
+  matrix<double> U_qpts;
+  vector<double> detJac_qpts;
+  for (uint ic=0; ic<eles.size(); ic++) {
+    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts, U_qpts, quadPoints);
+    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
+    matrix<double> err_qpts;
+    for (uint i=0; i<qpts.size(); i++) {
+      auto tmpErr = calcError(U_qpts.getRow(i), eles[ic]->calcPos(qpts[i]), params);
+      for (int j=0; j<nFields; j++)
+        intErr[j] += tmpErr[j] * wts[i] * detJac_qpts[i];
+    }
+
   }
+
+//  vector<double> intErr(nFields);
+//  for (int i=0; i<eles.size(); i++) {
+//    auto wts = getQptWeights(eles[i]->order,nDims);
+//    auto err = eles[i]->calcError();
+//    for (int j=0; j<eles[i]->nSpts; j++)
+//      for (int k=0; k<nFields; k++)
+//        intErr[k] += err(j,k) * wts[j] * eles[i]->detJac_spts[j];
+//  }
 
   /* --- Subtract the Overlap Region --- */
 
@@ -765,6 +797,9 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
     for (int j=0; j<nFields; j++)
       intErr[j] -= 0.5*tmperr[j];
   }
+
+  if (params->errorNorm == 2)
+    for (auto &val:intErr) val = std::sqrt(val);
 
   return intErr;
 #endif

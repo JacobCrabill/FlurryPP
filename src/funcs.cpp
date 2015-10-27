@@ -534,3 +534,148 @@ void getBoundingBox(double *pts, int nPts, int nDims, point &minPt, point &maxPt
     }
   }
 }
+
+vector<double> calcError(const vector<double> &U, const point &pos, input *params)
+{
+  int nDims = params->nDims;
+  int nFields = params->nFields;
+
+  vector<double> err(nFields);
+
+  if (params->equation == NAVIER_STOKES) {
+    double gamma = params->gamma;
+
+    if (params->icType == 0) {
+      /* --- Uniform "Freestream" solution --- */
+      double rho = params->rhoIC;
+      double vx = params->vxIC;
+      double vy = params->vyIC;
+      double vz = 0.;
+      if (nDims == 3)
+        vz = params->vzIC;
+
+      double p = params->pIC;
+      err[0] = rho;
+      err[1] = rho * vx;
+      err[2] = rho * vy;
+      if (nDims == 3) err[3] = rho * vz;
+      err[nDims+1] = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy + vz*vz));
+    }
+    else if (params->icType == 1) {
+      /* --- Isentropic Vortex of strength eps centered at (0,0) --- */
+      double eps = 5.0;
+
+      double xmin, xmax, ymin, ymax;
+      if (params->meshType == CREATE_MESH) {
+        xmin = params->xmin;
+        xmax = params->xmax;
+        ymin = params->ymin;
+        ymax = params->ymax;
+      } else {
+        // Assuming a 'standard' mesh for the test case
+        xmin = -5;  xmax = 5;
+        ymin = -5;  ymax = 5;
+      }
+
+      double xoff = fmod( (params->time - xmin), (xmax - xmin) ) + xmin;
+      double yoff = fmod( (params->time - ymin), (ymax - ymin) ) + ymin;
+
+      double x = pos.x - xoff;
+      double y = pos.y - yoff;
+
+      double f = 1.0 - (x*x + y*y);
+
+      // Limiting rho to 1e-10 to avoid negative density/pressure issues
+      double rho = max(pow(1. - eps*eps*(gamma-1.)/(8.*gamma*pi*pi)*exp(f), 1.0/(gamma-1.0) + 1e-5), 1e-10);
+      double vx = 1. - eps*y / (2.*pi) * exp(f/2.);
+      double vy = 1. + eps*x / (2.*pi) * exp(f/2.);
+      double p = pow(rho,gamma);
+
+      err[0] = rho;
+      err[1] = rho * vx;
+      err[2] = rho * vy;
+      if (nDims == 3) err[3] = 0.;
+      err[nDims+1] = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+    }
+    else if (params->icType == 2) {
+      /* --- Isentropic Vortex of strength eps centered at (0,0) (Liang version) --- */
+      double eps = 1.0;  // See paper by Liang and Miyaji, CPR Deforming Domains
+      double rc  = 1.0;
+      double Minf = .3;
+      double Uinf = 1;
+      double rhoInf = 1;
+      double theta = atan(0.5);
+      double Pinf = pow(Minf,-2)/gamma;
+
+      double eM = (eps*Minf)*(eps*Minf);
+
+      double xmin, xmax, ymin, ymax;
+      if (params->meshType == CREATE_MESH) {
+        xmin = params->xmin;
+        xmax = params->xmax;
+        ymin = params->ymin;
+        ymax = params->ymax;
+      } else {
+        // Assuming a 'standard' mesh for the test case
+        xmin = -5;  xmax = 5;
+        ymin = -5;  ymax = 5;
+      }
+
+      double xoff = fmod( (Uinf*cos(theta)*params->time - xmin), (xmax - xmin) ) + xmin;
+      double yoff = fmod( (Uinf*sin(theta)*params->time - ymin), (ymax - ymin) ) + ymin;
+
+      double x = pos.x - xoff;
+      double y = pos.y - yoff;
+
+      double f = -(x*x + y*y) / (rc*rc);
+
+      double vx = Uinf*(cos(theta) - y*eps/rc * exp(f/2.));
+      double vy = Uinf*(sin(theta) + x*eps/rc * exp(f/2.));
+      double rho = rhoInf*pow(1. - (gamma-1.)/2. * eM * exp(f), gamma/(gamma-1.0));
+      double p   = Pinf  *pow(1. - (gamma-1.)/2. * eM * exp(f), gamma/(gamma-1.0));
+
+      err[0] = rho;
+      err[1] = rho * vx;
+      err[2] = rho * vy;
+      if (nDims == 3) err[3] = 0.;
+      err[nDims+1] =  p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+    }
+  }
+  else if (params->equation == ADVECTION_DIFFUSION) {
+    double xmin, xmax, ymin, ymax;
+    if (params->meshType == CREATE_MESH) {
+      xmin = params->xmin;
+      xmax = params->xmax;
+      ymin = params->ymin;
+      ymax = params->ymax;
+    } else {
+      // Assuming a 'standard' mesh for the test case
+      xmin = -5;  xmax = 5;
+      ymin = -5;  ymax = 5;
+    }
+
+    double xoff = fmod( (params->time - xmin), (xmax - xmin) ) + xmin;
+    double yoff = fmod( (params->time - ymin), (ymax - ymin) ) + ymin;
+    //point off(xoff,yoff,0.);
+
+    if (params->icType == 0) {
+      /* --- Simple Gaussian bump centered at (0,0) --- */
+      double r2 = (pos.x-xoff)*(pos.x-xoff) + (pos.y-yoff)*(pos.y-yoff);
+      err[0] = exp(-r2);
+    }
+    else if (params->icType == 2) {
+      /* --- Test case for debugging - cos(x)*cos(y)*cos(z) over domain --- */
+      err[0] = cos(2*pi*pos.x/6.)*cos(2*pi*pos.y/6.)*cos(2*pi*pos.z/6.);
+    }
+  }
+
+  for (int i=0; i<nFields; i++)
+    err[i] = U[i] - err[i];
+
+  if (params->errorNorm == 1)
+    for (auto &val:err) val = abs(val); // L1 norm
+  else if (params->errorNorm == 2)
+    for (auto &val:err) val *= val;     // L2 norm
+
+  return err;
+}

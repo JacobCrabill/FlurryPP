@@ -61,7 +61,7 @@ void solver::setupOverset(void)
 vector<double> solver::integrateErrorOverset(void)
 {
 #ifndef _NO_MPI
-  auto err = OComm->integrateErrOverset(eles,opers,Geo->eleMap,params->order);
+  auto err = OComm->integrateErrOverset(eles,opers,Geo->eleMap,10);
 
   vector<double> tmpErr = err;
   MPI_Allreduce(tmpErr.data(), err.data(), params->nFields, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);

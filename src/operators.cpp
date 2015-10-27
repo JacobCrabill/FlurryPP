@@ -309,6 +309,42 @@ void oper::getBasisValues(double* loc_ipt, double* weights)
   }
 }
 
+void oper::interpolateSptsToPoints(vector<double> &Q_spts, vector<double> &Q_ipts, matrix<double> &loc_ipts)
+{
+  uint nIpts = loc_ipts.getDim0();
+  Q_ipts.assign(nIpts,0);
+
+  if (eType == QUAD) {
+    vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+    for (uint ipt=0; ipt<nIpts; ipt++) {
+      // Location of the current interpolation point
+      point pt = point(loc_ipts[ipt],2);
+      for (uint spt=0; spt<nSpts; spt++) {
+        // Structured I,J indices of current solution point
+        uint ispt = spt%(nSpts/(order+1));
+        uint jspt = floor(spt/(order+1));
+
+        Q_ipts[ipt] += Q_spts[spt] * Lagrange(locSpts1D,pt.x,ispt) * Lagrange(locSpts1D,pt.y,jspt);
+      }
+    }
+  }
+  else if (eType == HEX) {
+    vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+    for (uint ipt = 0; ipt < nIpts; ipt++) {
+      // Location of the current interpolation point
+      point pt = point(loc_ipts[ipt]);
+      for (uint spt=0; spt<nSpts; spt++) {
+        // Structured I,J,K indices of current solution point
+        uint kspt = spt/((order+1)*(order+1));
+        uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+        uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+
+        Q_ipts[ipt] += Q_spts[spt] * Lagrange(locSpts1D,pt.x,ispt) * Lagrange(locSpts1D,pt.y,jspt) * Lagrange(locSpts1D,pt.z,kspt);
+      }
+    }
+  }
+}
+
 void oper::interpolateSptsToPoints(matrix<double> &Q_spts,matrix<double> &Q_ipts, matrix<double> &loc_ipts)
 {
   uint nIpts = loc_ipts.dims[0];

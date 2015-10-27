@@ -1013,9 +1013,9 @@ void ele::setInitialCondition()
 
 matrix<double> ele::calcError(void)
 {
-  matrix<double> err(nSpts,nFields);
+  if (!params->testCase) return U_spts;
 
-  if (!params->testCase) return err;
+  matrix<double> err(nSpts,nFields);
 
   if (params->equation == NAVIER_STOKES) {
     double gamma = params->gamma;
@@ -1153,14 +1153,14 @@ matrix<double> ele::calcError(void)
     }
   }
 
-  // NOTE: In order to do actual L1, L2, etc. error integral, supposed to
-  // take the |x| or |x|^2 FIRST, before integration!!!  Oops....
   for (int spt=0; spt<nSpts; spt++)
     for (int j=0; j<nFields; j++)
-      err(spt,j) = abs(U_spts(spt,j) - err(spt,j));
+      err(spt,j) = U_spts(spt,j) - err(spt,j);
 
-  if (params->errorNorm == 2)
-    for (auto &val:err.data) val *= val;  // L2 norm instead of L1
+  if (params->errorNorm == 1)
+    for (auto &val:err.data) val = abs(val); // L1 norm
+  else if (params->errorNorm == 2)
+    for (auto &val:err.data) val *= val;     // L2 norm
 
   return err;
 }

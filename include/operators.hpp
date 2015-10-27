@@ -61,6 +61,9 @@ public:
   //! Setup an interpolation operation between solution points and given points using solution basis
   matrix<double> setupInterpolateSptsIpts(matrix<double>& loc_ipts);
 
+  //! Interpolate a scalar field at the solution points of an element to given interpolation points
+  void interpolateSptsToPoints(vector<double> &Q_spts, vector<double> &Q_ipts, matrix<double> &loc_ipts);
+
   //! Interpolate a set of values at the solution points of an element to given interpolation points
   void interpolateSptsToPoints(matrix<double>& Q_spts, matrix<double>& Q_ipts, matrix<double>& loc_ipts);
 

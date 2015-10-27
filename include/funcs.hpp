@@ -29,6 +29,7 @@
 #pragma once
 
 #include "global.hpp"
+#include "input.hpp"
 
 /* --- Linear-Algebra Routines --- */
 
@@ -86,3 +87,5 @@ Vec3 getEdgeNormal(vector<point> &edge, point &xc);
 void getBoundingBox(vector<point> &pts, point &minPt, point &maxPt);
 void getBoundingBox(matrix<double> &pts, point &minPt, point &maxPt);
 void getBoundingBox(double *pts, int nPts, int nDims, point &minPt, point &maxPt);
+
+vector<double> calcError(const vector<double> &U, const point &pos, input *params);
