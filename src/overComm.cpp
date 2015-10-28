@@ -834,10 +834,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
           correctedEles.insert(ic);
           if (params->motion) {
             opers[eles[ic]->eType][eles[ic]->order].applyExtrapolateFn(eles[ic]->F_spts,eles[ic]->norm_fpts,eles[ic]->disFn_fpts,eles[ic]->dA_fpts);
-            // eles[ic]->transformFluxPhysRef();
           } else {
-          if (eles[ic]->F_spts[0].checkNan())
-            FatalError("NaN");
             opers[eles[ic]->eType][eles[ic]->order].applyExtrapolateFn(eles[ic]->F_spts,eles[ic]->tNorm_fpts,eles[ic]->disFn_fpts);
           }
           eles[ic]->calcDeltaFn();
@@ -879,8 +876,13 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
             F = tempF.getRow(0);
             G = tempF.getRow(1);
             if (params->nDims == 2) {
-              double u = G[1]/std::max(G[0],eps);
-              double v = F[2]/std::max(F[0],eps);
+              if (std::abs(G[0])<eps)
+                G[0] = 2.*(0.5-signbit(G[0]))*eps; // +/- eps
+              if (std::abs(F[0])<eps)
+                F[0] = 2.*(0.5-signbit(F[0]))*eps;
+
+              double u = G[1]/G[0];
+              double v = F[2]/F[0];
               // Ensure u,v not too small for future calculations
               if (std::abs(u)<eps)
                 u = 2.*(0.5-signbit(u))*eps;
