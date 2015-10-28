@@ -524,7 +524,6 @@ T *Array<T,N>::getData(void)
   return data.data();
 }
 
-// Method to invert matrix - returns the inverse
 template<typename T>
 matrix<T> matrix<T>::invertMatrix(void)
 {
@@ -644,6 +643,105 @@ matrix<T> matrix<T>::invertMatrix(void)
   }
 
   return inverse_out;
+}
+
+template<typename T>
+vector<T> matrix<T>::solve(vector<T> RHS)
+{
+  if (this->dims[0] != this->dims[1])
+    FatalErrorST("Can only use Gaussian elimination on a square matrix.");
+
+  // Gaussian elimination with full pivoting
+  // not to be used where speed is paramount
+
+  vector<T> vec(this->dims[0]);
+  vector<T> solution(this->dims[0]);
+  vector<int> swap_0(this->dims[0],1);
+  vector<int> swap_1(this->dims[0],1);
+  vector<T> tmpRow(this->dims[0]);
+
+  matrix<T> LHS(*this);
+
+  // setup swap arrays
+  for(uint i=0; i<this->dims[0]; i++) {
+    swap_0[i]=i;
+    swap_1[i]=i;
+  }
+
+  // make triangular
+  for(uint k=0; k<this->dims[0]-1; k++) {
+    T max = 0;
+    T mag;
+
+    // find pivot
+    int pivot_i = 0;
+    int pivot_j = 0;
+    for(uint i=k; i<this->dims[0]; i++) {
+      for(uint j=k; j<this->dims[0]; j++) {
+        mag = LHS(i,j)*LHS(i,j);
+        if(mag>max) {
+          pivot_i = i;
+          pivot_j = j;
+          max = mag;
+        }
+      }
+    }
+
+    // swap the swap arrays
+    int itemp_0 = swap_0[k];
+    swap_0[k] = swap_0[pivot_i];
+    swap_0[pivot_i] = itemp_0;
+    itemp_0 = swap_1[k];
+    swap_1[k] = swap_1[pivot_j];
+    swap_1[pivot_j] = itemp_0;
+
+    // swap the columns
+    for(uint i=0; i<this->dims[0]; i++) {
+      tmpRow[i] = LHS(i,pivot_j);
+      LHS(i,pivot_j) = LHS(i,k);
+      LHS(i,k) = tmpRow[i];
+    }
+
+    // swap the rows
+    for(uint j=0; j<this->dims[0]; j++) {
+      tmpRow[j] = LHS(pivot_i,j);
+      LHS(pivot_i,j) = LHS(k,j);
+      LHS(k,j) = tmpRow[j];
+    }
+    T tmp = RHS[pivot_i];
+    RHS[pivot_i] = RHS[k];
+    RHS[k] = tmp;
+
+    // subtraction
+    for(uint i=k+1; i<this->dims[0]; i++) {
+      T first = LHS(i,k);
+      RHS[i] = RHS[i] - first/LHS(k,k)*RHS[k];
+      for(uint j=k; j<this->dims[0]; j++)
+        LHS(i,j) = LHS(i,j) - (first/LHS(k,k))*LHS(k,j);
+    }
+
+    // exact zero
+    for(uint j=0; j<k+1; j++) {
+      for(uint i=j+1; i<this->dims[0]; i++) {
+        LHS(i,j)=0.0;
+      }
+    }
+  }
+
+  // back substitute
+  for(int i=(int)this->dims[0]-1; i>=0; i--) {
+    T dtemp_0 = 0.0;
+    for(uint k = i+1; k<this->dims[0]; k++) {
+      dtemp_0 = dtemp_0 + (LHS(i,k)*vec[k]);
+    }
+    vec[i] = (RHS[i]-dtemp_0)/LHS(i,i);
+  }
+
+  // swap solution rows
+  for(uint i=0; i<this->dims[0]; i++)
+    solution[swap_1[i]] = vec[i];
+
+  return solution;
 }
 
 template<typename T>

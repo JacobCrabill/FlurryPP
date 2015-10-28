@@ -184,8 +184,11 @@ public:
   //! Multiplies the Array by the vector A and stores the result in B (B = M*A)
   void timesVector(vector<T> &A, vector<T> &B);
 
-  /*! Invert the current Matrix using Gauss elimination with pivots */
+  /*! Invert the current matrix using Gauss elimination with pivots */
   matrix<T> invertMatrix(void);
+
+  /*! Solve Ax=b with this matrix, given the RHS vector */
+  vector<T> solve(vector<T> RHS);
 
   //! Get the determinant of the matrix (recursive algorithm)
   double det();
