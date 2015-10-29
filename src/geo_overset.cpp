@@ -284,6 +284,7 @@ void geo::setCellIblanks(void)
 
   iblankCell.assign(nEles,NORMAL);
 
+  // Convert fringe nodes to hole nodes where completely surrounded
   for (int iv=0; iv<nVerts; iv++) {
     if (iblank[iv] == FRINGE) {
       int nfringe = 0;
@@ -297,7 +298,114 @@ void geo::setCellIblanks(void)
     }
   }
 
-  // First, blank all cells which contain a hole node
+  // Enforce consistency across MPI boundaries for fringe->hole conversion
+  vector<int> mpiFringeNodes;
+  for (auto &iv:mpiNodes) {
+    if (iblank[iv] == FRINGE)
+      mpiFringeNodes.push_back(iv2ivg[iv]);
+  }
+  vector<int> nFringe_proc(nProcGrid);
+  int nFringe = mpiFringeNodes.size();
+  MPI_Allgather(&nFringe,1,MPI_INT,nFringe_proc.data(),1,MPI_INT,gridComm);
+
+  int maxNFringe = getMax(nFringe_proc);
+  matrix<int> mpiFringeNodes_proc(nProcGrid,maxNFringe);
+
+  vector<int> recvCnts(nProcGrid);
+  vector<int> recvDisp(nProcGrid);
+  for (int i=0; i<nProcGrid; i++) {
+    recvCnts[i] = nFringe_proc[i];
+    recvDisp[i] = i*maxNFringe;
+  }
+  MPI_Allgatherv(mpiFringeNodes.data(),mpiFringeNodes.size(),MPI_INT,mpiFringeNodes_proc.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
+
+  /* What's going on here: If an MPI node tagged as 'HOLE' due to rank-local
+   * fringe->hole conversion was _not_ converted on another rank, then globally
+   * we want to keep the node as a 'FRINGE' node to avoid extra hole nodes/cells
+   * at MPI boundaries. */
+  for (auto &iv:mpiNodes) {
+    if (iblank[iv] == HOLE) {
+      int ivg = iv2ivg[iv];
+
+      bool found = false;
+      for (int p=0; p<nProcGrid; p++) {
+        if (p == gridRank) continue;
+
+        for (int i=0; i<recvCnts[p]; i++) {
+          int iv2 = mpiFringeNodes_proc(p,i);
+          if (ivg == iv2) {
+            iblank[iv] = FRINGE;
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+
+    }
+  }
+
+  // Extend 'fringe' region into 'hole' region by one more layer of vertices
+  vector<int> iblank1(nVerts,HOLE);
+  for (int iv=0; iv<nVerts; iv++) {
+    if (iblank[iv] == HOLE) {
+      for (int j=0; j<v2nv[iv]; j++) {
+        int iv2 = v2v(iv,j);
+        if (iblank[iv2] != HOLE) {
+          iblank1[iv] = NORMAL;
+          break;
+        }
+      }
+    }
+  }
+
+  for (int iv=0; iv<nVerts; iv++)
+    if (iblank1[iv] == NORMAL)
+      iblank[iv] = FRINGE;
+
+  // Enforce consistency across MPI boundaries for fringe-layer extension
+  mpiFringeNodes.resize(0);
+  for (auto &iv:mpiNodes) {
+    if (iblank[iv] == FRINGE)
+      mpiFringeNodes.push_back(iv2ivg[iv]);
+  }
+
+  nFringe_proc.assign(nProcGrid,0);
+  nFringe = mpiFringeNodes.size();
+  MPI_Allgather(&nFringe,1,MPI_INT,nFringe_proc.data(),1,MPI_INT,gridComm);
+
+  maxNFringe = getMax(nFringe_proc);
+  mpiFringeNodes_proc.setup(nProcGrid,maxNFringe);
+
+  for (int i=0; i<nProcGrid; i++) {
+    recvCnts[i] = nFringe_proc[i];
+    recvDisp[i] = i*maxNFringe;
+  }
+  MPI_Allgatherv(mpiFringeNodes.data(),mpiFringeNodes.size(),MPI_INT,mpiFringeNodes_proc.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
+
+  for (auto &iv:mpiNodes) {
+    if (iblank[iv] == HOLE) {
+      int ivg = iv2ivg[iv];
+      bool found = false;
+      for (int p=0; p<nProcGrid; p++) {
+        if (p == gridRank) continue;
+
+        for (int i=0; i<recvCnts[p]; i++) {
+          int iv2 = mpiFringeNodes_proc(p,i);
+          if (ivg == iv2) {
+            iblank[iv] = FRINGE;
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+    }
+  }
+
+  /* --- Move on to cell iblank values --- */
+
+  // Simply blank all cells which contain a hole node
   for (int ic=0; ic<nEles; ic++) {
     for (int j=0; j<c2nv[ic]; j++) {
       int iv = c2v(ic,j);
@@ -308,25 +416,9 @@ void geo::setCellIblanks(void)
     }
   }
 
-  // Next, remove one layer of hole cells to ensure complete overlap between grids
-  vector<int> iblankCell1(nEles,HOLE);
-  for (int ic=0; ic<nEles; ic++) {
-    if (iblankCell[ic] == HOLE) {
-      for (int j=0; j<c2nf[ic]; j++) {
-        int ic2 = c2c(ic,j);
-        if (ic2>0 && iblankCell[ic2]!=HOLE) {
-          iblankCell1[ic] = NORMAL;
-          break;
-        }
-      }
-    }
-  }
-
   // Only needed for moving grids: Existing cells which must be removed from solver
   for (int ic=0; ic<nEles; ic++) {
-    if (iblankCell1[ic] == NORMAL)
-      iblankCell[ic] = FRINGE; // May need to go back to 'NORMAL'...
-    else if (iblankCell[ic] == HOLE && !holeCells.count(ic))
+    if (iblankCell[ic] == HOLE && !holeCells.count(ic))
      blankCells.insert(ic);
   }
 

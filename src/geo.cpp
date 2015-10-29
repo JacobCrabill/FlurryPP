@@ -751,6 +751,12 @@ void geo::matchMPIFaces(void)
     }
   }
 
+  if (params->meshType == OVERSET_MESH) {
+    for (auto &ff:mpiFaces)
+      for (int j=0; j<f2nv[ff]; j++)
+        mpiNodes.insert(f2v(ff,j));
+  }
+
   int nFacesTotalGrid;
   MPI_Allreduce(&nMpiFaces,&nFacesTotalGrid,1,MPI_INT,MPI_SUM,gridComm);
 

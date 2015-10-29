@@ -821,7 +821,7 @@ void writeMeshTecplot(solver* Solver, input* params)
 
   dataFile << "# " << nPrism << " " << nHex << " " << nNodes << " " << nCells << " " << nNodesWall << " " << nNodesOver << endl;
   dataFile << "TITLE = \"" << fileName << "\"" << endl;
-  dataFile << "VARIABLES = \"X\", \"Y\", \"Z\", \"bodyTag\", \"IBLANK\"" << endl;
+  dataFile << "VARIABLES = \"X\", \"Y\", \"Z\", \"bodyTag\", \"IBLANK\", \"IBLANKCELL\"" << endl;
   string ET;
   if (params->nDims==2)
     ET = "QUADRILATERAL";
@@ -829,24 +829,15 @@ void writeMeshTecplot(solver* Solver, input* params)
     ET = "BRICK";
   dataFile << "ZONE T = \"VOL_MIXED\", N=" << nCells*4 << ", E=" << nCells << ", ET=" << ET << ", F=FEPOINT" << endl;
 
-//  for (int iv=0; iv<nNodes; iv++) {
-//    dataFile << Geo->xv(iv,0) << " " << Geo->xv(iv,1) << " ";
-//    if (params->nDims==2)
-//      dataFile << 0.0;
-//    else
-//      dataFile << Geo->xv(iv,2);
-//    dataFile << " " << gridID << " " << Geo->iblank[iv] << endl;
-//  }
   for (int ic=0; ic<nCells; ic++) {
     for (int j=0; j<4; j++) {
-      dataFile << Geo->xv(Geo->c2v(ic,j),0) << " " << Geo->xv(Geo->c2v(ic,j),1) << " " << 0.0 << " " << gridID << " " << Geo->iblankCell[ic] << endl;
+      dataFile << Geo->xv(Geo->c2v(ic,j),0) << " " << Geo->xv(Geo->c2v(ic,j),1) << " " << 0.0 << " " << gridID << " " << Geo->iblank[Geo->c2v(ic,j)] << " " << Geo->iblankCell[ic] << endl;
     }
   }
 
   int nv = (params->nDims==2) ? 4 : 8; // Ignoring edge nodes for quadratic elements
   for (int ic=0; ic<nCells; ic++) {
     for (int j=0; j<nv; j++) {
-      //dataFile << Geo->c2v(ic,j)+1 << " ";
       dataFile << ic*nv + j + 1 << " ";
     }
     dataFile << endl;
