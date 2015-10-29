@@ -19,3 +19,5 @@
   printf("Fatal error '%s' at %s:%d\n\n",s,__FILE__,__LINE__);      \
   backtrace_symbols_fd(array, size, STDERR_FILENO);                 \
   exit(1); }
+
+#define _(x) cout << #x << ": " << x << endl;

@@ -73,9 +73,6 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
     setupCorrectGradU();
   }
 
-  if (params->meshType == OVERSET_MESH && params->interpFlux)
-    setupCorrectF(loc_spts);
-
   // Operators needed for Shock capturing
   if (params->scFlag) {
     setupVandermonde(loc_spts);

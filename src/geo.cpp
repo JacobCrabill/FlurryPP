@@ -490,7 +490,13 @@ void geo::processConn3D(void)
 
 void geo::processConnExtra(void)
 {
-  c2ac.setup(nEles,26); // ALL cell surrounding each cell (all cells sharing at least 1 vertex)
+  int maxNC;
+  if (nDims == 2)
+    maxNC = 8;
+  else
+    maxNC = 26;
+
+  c2ac.setup(nEles,maxNC); // ALL cell surrounding each cell (all cells sharing at least 1 vertex)
   c2ac.initializeToValue(-1);
   for (int ic=0; ic<nEles; ic++) {
     set<int> tmpIC;
