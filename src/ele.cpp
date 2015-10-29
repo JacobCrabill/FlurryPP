@@ -1257,37 +1257,33 @@ vector<matrix<double>> ele::transformFlux_physToRef(void)
     FD.initializeToZero();
   }
 
-  if (params->motion) {
-    if (nDims == 2) {
-      for (int spt=0; spt<nSpts; spt++) {
-//        double A = gridVel_spts(spt,1)*Jac_spts[spt](0,1) - gridVel_spts(spt,0)*Jac_spts[spt](1,1);
-//        double B = gridVel_spts(spt,0)*Jac_spts[spt](1,0) - gridVel_spts(spt,1)*Jac_spts[spt](0,0);
-        for (int k=0; k<nFields; k++) {
-          outF[0](spt,k) =  F_spts[0](spt,k)*Jac_spts[spt](1,1) - F_spts[1](spt,k)*Jac_spts[spt](0,1);// + U_spts(spt,k)*A;
-          outF[1](spt,k) = -F_spts[0](spt,k)*Jac_spts[spt](1,0) + F_spts[1](spt,k)*Jac_spts[spt](0,0);// + U_spts(spt,k)*B;
-        }
+  if (nDims == 2) {
+    for (int spt=0; spt<nSpts; spt++) {
+      for (int k=0; k<nFields; k++) {
+        outF[0](spt,k) =  F_spts[0](spt,k)*Jac_spts[spt](1,1) - F_spts[1](spt,k)*Jac_spts[spt](0,1);
+        outF[1](spt,k) = -F_spts[0](spt,k)*Jac_spts[spt](1,0) + F_spts[1](spt,k)*Jac_spts[spt](0,0);
       }
-    } else {
-      for (int spt=0; spt<nSpts; spt++) {
-        // Build the full 4D (space+time) Jacobian matrix & its adjoint
-        matrix<double> Jacobian(4,4);
-        Jacobian(3,3) = 1;
-        for (int i=0; i<3; i++) {
-          for (int j=0; j<3; j++)
-            Jacobian(i,j) = Jac_spts[spt](i,j);
-          Jacobian(i,3) = 0.;//gridVel_spts(spt,i);
-        }
-        matrix<double> S = Jacobian.adjoint();
+    }
+  } else {
+    for (int spt=0; spt<nSpts; spt++) {
+      // Build the full 4D (space+time) Jacobian matrix & its adjoint
+      matrix<double> Jacobian(4,4);
+      Jacobian(3,3) = 1;
+      for (int i=0; i<3; i++) {
+        for (int j=0; j<3; j++)
+          Jacobian(i,j) = Jac_spts[spt](i,j);
+        Jacobian(i,3) = 0.;
+      }
+      matrix<double> S = Jacobian.adjoint();
 
-        for (int dim1=0; dim1<3; dim1++)
-          for (int dim2=0; dim2<3; dim2++)
-            for (int k=0; k<nFields; k++)
-              outF[dim1](spt,k) += F_spts[dim2](spt,k)*S(dim2,dim1);
-
-        for (int dim=0; dim<3; dim++)
+      for (int dim1=0; dim1<3; dim1++)
+        for (int dim2=0; dim2<3; dim2++)
           for (int k=0; k<nFields; k++)
-            outF[dim](spt,k) += U_spts(spt,k)*S(dim,3);
-      }
+            outF[dim1](spt,k) += F_spts[dim2](spt,k)*S(dim2,dim1);
+
+      for (int dim=0; dim<3; dim++)
+        for (int k=0; k<nFields; k++)
+          outF[dim](spt,k) += U_spts(spt,k)*S(dim,3);
     }
   }
 
@@ -1299,6 +1295,26 @@ vector<matrix<double>> ele::transformFlux_refToPhys(void)
   vector<matrix<double>> outF(nDims);
 
   return outF;
+}
+
+vector<matrix<double>> ele::transformGradU_physToRef(void)
+{
+  vector<matrix<double>> outDU(nDims);
+  for (auto &DU:outDU) {
+    DU.setup(nSpts,nFields);
+    DU.initializeToZero();
+  }
+
+  if (nDims == 2) {
+    for (int spt=0; spt<nSpts; spt++) {
+      for (int k=0; k<nFields; k++) {
+        outDU[0](spt,k) =  dU_spts[0](spt,k)*Jac_spts[spt](1,1) - dU_spts[1](spt,k)*Jac_spts[spt](0,1);
+        outDU[1](spt,k) = -dU_spts[0](spt,k)*Jac_spts[spt](1,0) + dU_spts[1](spt,k)*Jac_spts[spt](0,0);
+      }
+    }
+  }
+
+  return outDU;
 }
 
 void ele::transformGradF_spts(int step)

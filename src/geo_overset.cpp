@@ -345,60 +345,62 @@ void geo::setCellIblanks(void)
     }
   }
 
-  // Extend 'fringe' region into 'hole' region by one more layer of vertices
-  vector<int> iblank1(nVerts,HOLE);
-  for (int iv=0; iv<nVerts; iv++) {
-    if (iblank[iv] == HOLE) {
-      for (int j=0; j<v2nv[iv]; j++) {
-        int iv2 = v2v(iv,j);
-        if (iblank[iv2] != HOLE) {
-          iblank1[iv] = NORMAL;
-          break;
-        }
-      }
-    }
-  }
-
-  for (int iv=0; iv<nVerts; iv++)
-    if (iblank1[iv] == NORMAL)
-      iblank[iv] = FRINGE;
-
-  // Enforce consistency across MPI boundaries for fringe-layer extension
-  mpiFringeNodes.resize(0);
-  for (auto &iv:mpiNodes) {
-    if (iblank[iv] == FRINGE)
-      mpiFringeNodes.push_back(iv2ivg[iv]);
-  }
-
-  nFringe_proc.assign(nProcGrid,0);
-  nFringe = mpiFringeNodes.size();
-  MPI_Allgather(&nFringe,1,MPI_INT,nFringe_proc.data(),1,MPI_INT,gridComm);
-
-  maxNFringe = getMax(nFringe_proc);
-  mpiFringeNodes_proc.setup(nProcGrid,maxNFringe);
-
-  for (int i=0; i<nProcGrid; i++) {
-    recvCnts[i] = nFringe_proc[i];
-    recvDisp[i] = i*maxNFringe;
-  }
-  MPI_Allgatherv(mpiFringeNodes.data(),mpiFringeNodes.size(),MPI_INT,mpiFringeNodes_proc.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
-
-  for (auto &iv:mpiNodes) {
-    if (iblank[iv] == HOLE) {
-      int ivg = iv2ivg[iv];
-      bool found = false;
-      for (int p=0; p<nProcGrid; p++) {
-        if (p == gridRank) continue;
-
-        for (int i=0; i<recvCnts[p]; i++) {
-          int iv2 = mpiFringeNodes_proc(p,i);
-          if (ivg == iv2) {
-            iblank[iv] = FRINGE;
-            found = true;
+  if (params->interpFlux) {
+    // Extend 'fringe' region into 'hole' region by one more layer of vertices
+    vector<int> iblank1(nVerts,HOLE);
+    for (int iv=0; iv<nVerts; iv++) {
+      if (iblank[iv] == HOLE) {
+        for (int j=0; j<v2nv[iv]; j++) {
+          int iv2 = v2v(iv,j);
+          if (iblank[iv2] != HOLE) {
+            iblank1[iv] = NORMAL;
             break;
           }
         }
-        if (found) break;
+      }
+    }
+
+    for (int iv=0; iv<nVerts; iv++)
+      if (iblank1[iv] == NORMAL)
+        iblank[iv] = FRINGE;
+
+    // Enforce consistency across MPI boundaries for fringe-layer extension
+    mpiFringeNodes.resize(0);
+    for (auto &iv:mpiNodes) {
+      if (iblank[iv] == FRINGE)
+        mpiFringeNodes.push_back(iv2ivg[iv]);
+    }
+
+    nFringe_proc.assign(nProcGrid,0);
+    nFringe = mpiFringeNodes.size();
+    MPI_Allgather(&nFringe,1,MPI_INT,nFringe_proc.data(),1,MPI_INT,gridComm);
+
+    maxNFringe = getMax(nFringe_proc);
+    mpiFringeNodes_proc.setup(nProcGrid,maxNFringe);
+
+    for (int i=0; i<nProcGrid; i++) {
+      recvCnts[i] = nFringe_proc[i];
+      recvDisp[i] = i*maxNFringe;
+    }
+    MPI_Allgatherv(mpiFringeNodes.data(),mpiFringeNodes.size(),MPI_INT,mpiFringeNodes_proc.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
+
+    for (auto &iv:mpiNodes) {
+      if (iblank[iv] == HOLE) {
+        int ivg = iv2ivg[iv];
+        bool found = false;
+        for (int p=0; p<nProcGrid; p++) {
+          if (p == gridRank) continue;
+
+          for (int i=0; i<recvCnts[p]; i++) {
+            int iv2 = mpiFringeNodes_proc(p,i);
+            if (ivg == iv2) {
+              iblank[iv] = FRINGE;
+              found = true;
+              break;
+            }
+          }
+          if (found) break;
+        }
       }
     }
   }

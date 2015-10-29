@@ -78,6 +78,11 @@ matrix<T>::matrix(uint inNDim0, uint inNDim1)
   this->data.resize(inNDim0*inNDim1);
   this->dims[0] = inNDim0;
   this->dims[1] = inNDim1;
+
+  if (this->data.size()>0) {
+    this->dims[2] = 1;
+    this->dims[3] = 1;
+  }
 }
 
 template<typename T>
@@ -151,7 +156,7 @@ template<typename T, uint N>
 T* Array<T,N>::operator[](int inRow)
 {
   if (inRow < (int)this->dims[0] && inRow >= 0) {
-    return &data[inRow*dims[1]];
+    return &data[inRow*this->dims[1]];
   }
   else {
     cout << "inRow = " << inRow << ", nRows = " << this->dims[0] << endl;
@@ -356,6 +361,9 @@ void Array2D<T>::insertRowUnsized(const vector<T> &vec)
   // If row too short, finish filling with 0's
   if (vec.size() < this->dims[1]) this->data.insert(this->data.end(),this->dims[1]-vec.size(),(T)0);
 
+  if (this->dims[0]==0)
+    this->dims = {{0,(uint)vec.size(),1,1}};
+
   this->dims[0]++;
 }
 
@@ -370,6 +378,9 @@ void Array2D<T>::insertRowUnsized(T* vec, uint length)
   // If row too short, finish filling with 0's
   if (length < this->dims[1]) this->data.insert(this->data.end(),this->dims[1]-length,(T)0);
 
+  if (this->dims[0]==0)
+    this->dims = {{0,length,1,1}};
+
   this->dims[0]++;
 }
 
@@ -381,6 +392,7 @@ void Array2D<T>::addCol(void)
     it = this->data.begin() + (row+1)*(this->dims[1]+1) - 1;
     this->data.insert(it,1,(T)0);
   }
+
   this->dims[1]++;
 }
 

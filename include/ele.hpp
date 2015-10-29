@@ -278,8 +278,9 @@ public:
   matrix<double> tempF;
   vector<double> tempU;
 
-  vector<matrix<double> > transformFlux_physToRef();
-  vector<matrix<double> > transformFlux_refToPhys();
+  vector<matrix<double>> transformFlux_physToRef(void);
+  vector<matrix<double>> transformFlux_refToPhys(void);
+  vector<matrix<double>> transformGradU_physToRef(void);
 private:
 
   /*! Get the values of the nodal shape bases at a solution point */

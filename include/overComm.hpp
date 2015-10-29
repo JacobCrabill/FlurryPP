@@ -109,6 +109,9 @@ public:
   matrix<double> U_in;          //! Data received from other grid(s)
   vector<matrix<double>> U_out; //! Interpolated data being sent to other grid(s)
 
+  matrix<double> gradU_in;          //! Gradient data received from other grid(s)
+  vector<matrix<double>> gradU_out; //! Interpolated gradient data being sent to other grid(s)
+
   /* --- Variables for Exchanging Data on Unblanked Cells --- */
 
   vector<int> nCells_rank;              //! Number of unblanked cells for each rank of current grid
@@ -165,6 +168,9 @@ public:
 
   //! Perform the interpolation and communicate data across all grids
   void exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap);
+
+  //! Perform the interpolation and communicate gradient across all grids
+  void exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap);
 
   /*!
    * \brief Gather a distributed dataset so that every rank has the full, organized dataset

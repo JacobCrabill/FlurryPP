@@ -219,7 +219,7 @@ void face::calcViscousFlux(void)
       matrix<double> Fc(nDims,nFields);
 
       if (isBnd) {
-        if (isBnd > 1) {          
+        if (isBnd > 1) {
           // Adiabatic wall boundary condition (Neumann-type BC)
           viscousFlux(UR[fpt], gradUR[fpt], tempFR, params);
           for (int dim=0; dim<nDims; dim++) {

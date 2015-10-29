@@ -36,6 +36,11 @@ void solver::oversetInterp(void)
   OComm->exchangeOversetData(eles,opers,Geo->eleMap);
 }
 
+void solver::oversetInterp_gradient(void)
+{
+  OComm->exchangeOversetGradient(eles,opers,Geo->eleMap);
+}
+
 void solver::setupOverset(void)
 {
 #ifndef _NO_MPI

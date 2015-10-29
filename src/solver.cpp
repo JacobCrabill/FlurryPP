@@ -181,6 +181,11 @@ void solver::calcResidual(int step)
     calcViscousFlux_mpi();
 #endif
 
+    if (params->meshType == OVERSET_MESH) {
+      oversetInterp_gradient();
+
+      calcViscousFlux_overset();
+    }
   }
 
   extrapolateNormalFlux();
@@ -369,7 +374,6 @@ void solver::calcViscousFlux_faces()
   }
 }
 
-
 void solver::calcViscousFlux_mpi()
 {
   for (uint i=0; i<mpiFaces.size(); i++) {
@@ -377,6 +381,13 @@ void solver::calcViscousFlux_mpi()
   }
 }
 
+void solver::calcViscousFlux_overset()
+{
+#pragma omp parallel for
+  for (uint i=0; i<overFaces.size(); i++) {
+    overFaces[i]->calcViscousFlux();
+  }
+}
 
 void solver::calcGradF_spts(void)
 {

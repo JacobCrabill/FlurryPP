@@ -829,7 +829,6 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
         //   for correction function scaling
         // Need to also keep track of whether flux is in ref/phys space and
         //   transform as required.
-        // NOTE: Need to ensure later than donor cells do not contain overset faces...
         if (!correctedEles.count(ic)) {
           correctedEles.insert(ic);
           if (params->motion) {
@@ -928,16 +927,9 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
         // Interpolate discontinuous solution [Original 'Artificial Boundary' Method]
         opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, U_out[p][i], refPos);
       }
-
-//      if (params->rank == 0 && p == 5 && params->iter >= 1000 && i<=4) {
-//        double u2[5] = {0};
-//        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, u2, refPos);
-//        cout << "Uout = " << U_out[p](i,0) << ", u2 = " << u2[0] << ", detJac " << detj << endl;
-//      }
     }
   }
-//if (params->rank == 0 && params->iter >= 1000)
-//  cout << "END ITER " << params->iter << endl;
+
   /* ---- Send/Receive the the interpolated data across grids using interComm ---- */
   nPtsSend.resize(nproc);
   for (int p=0; p<nproc; p++) {
@@ -959,6 +951,79 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
   }
 
   sendRecvData(nPtsSend,nPtsRecv,foundPts,recvPts,U_out,U_in,nFields,true);
+#endif
+}
+
+void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap)
+{
+#ifndef _NO_MPI
+  int nDims = params->nDims;
+  gradU_out.resize(nproc);
+
+  for (int p=0; p<nproc; p++) {
+    gradU_out[p].setup(foundPts[p].size(),nDims*nFields);
+    if (gridIdList[p] == gridID) continue;
+
+    for (int i=0; i<foundPts[p].size(); i++) {
+      point refPos = foundLocs[p][i];
+      int ic = eleMap[foundEles[p][i]];
+      if (ic<0 || ic>eles.size()) {
+        cout << "!!!! ic = " << ic << " !!!!" << endl;
+        cout << "rank " << params->rank << ", cell " << foundEles[p][i] << endl;
+        FatalError("bad value of ic!");
+      }
+
+      // Interpolate corrected gradient
+      // Need to also keep track of whether gradient is in ref/phys space and
+      //   transform as required.
+      vector<matrix<double>> tempDU_spts;
+      uint nSpts = eles[ic]->nSpts;
+      uint nFpts = eles[ic]->nFpts;
+      if (params->motion) {
+        // Gradient vector must be in ref. space in order to apply correction functions
+        tempDU_spts = eles[ic]->transformGradU_physToRef();
+      } else {
+        tempDU_spts = eles[ic]->dU_spts;
+      }
+
+      matrix<double> tempDU_ref(nDims,nFields);
+      for (int dim=0; dim<nDims; dim++)
+        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(tempDU_spts[dim], tempDU_ref[dim], refPos);
+
+      // NOW we can transform flux vector back to physical space
+      // [Recall: F_phys = JGinv .dot. F_ref]
+      matrix<double> jacobian, invJaco;
+      double detJac;
+      eles[ic]->calcTransforms_point(jacobian,invJaco,detJac,refPos);
+
+      for (int dim1=0; dim1<nDims; dim1++)
+        for (int dim2=0; dim2<nDims; dim2++)
+          for (int k=0; k<nFields; k++)
+            gradU_out[p](i,dim1*nFields+k) += invJaco(dim2,dim1) * tempDU_ref(dim2,k) / detJac;
+    }
+  }
+
+  /* ---- Send/Receive the the interpolated data across grids using interComm ---- */
+  nPtsSend.resize(nproc);
+  for (int p=0; p<nproc; p++) {
+    if (gridIdList[p] == gridID) continue;
+    nPtsSend[p] = foundPts[p].size();
+  }
+
+  setupNPieces(nPtsSend,nPtsRecv);
+
+  if (nOverPts > getSum(nPtsRecv)) {
+    cout << "rank " << params->rank << ", # Unmatched Points = " << nOverPts - getSum(nPtsRecv) << " out of " << nOverPts << endl;
+    FatalError("Unmatched points remaining!");
+  }
+
+  recvPts.resize(nproc);
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    recvPts[p].resize(nPtsRecv[p]);
+  }
+
+  sendRecvData(nPtsSend,nPtsRecv,foundPts,recvPts,gradU_out,gradU_in,nDims*nFields,true);
 #endif
 }
 

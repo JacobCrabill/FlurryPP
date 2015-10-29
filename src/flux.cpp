@@ -121,6 +121,34 @@ void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *
     dRhoW_dz = gradU(2,3);
     dE_dz	   = gradU(2,4);
   }
+//    /* --- Get Gradients --- */
+//  double dRho_dx  = gradU[0];
+//  double dRhoU_dx = gradU[1];
+//  double dRhoV_dx = gradU[2];
+//  double dE_dx    = gradU[nDims+1];
+//
+//  double dRho_dy  = gradU[nFields+0];
+//  double dRhoU_dy = gradU[nFields+1];
+//  double dRhoV_dy = gradU[nFields+2]
+//  double dE_dy	  = gradU[nFields+nDims+1];
+//
+//  // 3D Derivatives
+//  double dRho_dz  = 0;
+//  double dRhoU_dz = 0;
+//  double dRhoV_dz = 0;
+//  double dRhoW_dx = 0;
+//  double dRhoW_dy = 0;
+//  double dRhoW_dz = 0;
+//  double dE_dz    = 0;
+//  if (nDims == 3) {
+//    dRho_dz	 = gradU[2*nFields+0];
+//    dRhoU_dz = gradU[2*nFields+1];
+//    dRhoV_dz = gradU[2*nFields+2];
+//    dRhoW_dx = gradU[3];
+//    dRhoW_dy = gradU[nFields+3];
+//    dRhoW_dz = gradU[2*nFields+3];
+//    dE_dz	   = gradU[2*nFields+4];
+//  }
 
   /* --- Calculate Viscosity --- */
   double mu = params->mu_inf;

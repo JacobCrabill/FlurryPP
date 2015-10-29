@@ -149,6 +149,7 @@ protected:
   matrix<double> UC;      //! Common solution at interface [nFpts, nFields]
   vector<matrix<double>> gradUL; //! Solution gradient at left side
   vector<matrix<double>> gradUR; //! Solution gradient at right side
+  //Array<double,3> gradUR; //! Solution gradient at right side
   matrix<double> Vg;      //! Grid velocity at interface
   vector<matrix<double>> FL; //! Flux matrix at each flux point [nFpts, nDims, nFields]
   vector<double*> FnL;    //! Common normal flux for left ele (in ele's memory)  [nFpts, nFields]

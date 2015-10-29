@@ -189,6 +189,9 @@ public:
   //! Calculate the viscous interface flux at all MPI boundary faces
   void calcViscousFlux_mpi(void);
 
+  //! Calculate the viscous interface flux at all overset boundary faces
+  void calcViscousFlux_overset(void);
+
   //! Wrapper to calc divergence of flux (using one of two possible methods)
   void calcFluxDivergence(int step);
 
@@ -287,7 +290,7 @@ public:
   /* ---- My Overset Functions ---- */
 
   void oversetInterp();
-  void sendRecvOversetData();
+  void oversetInterp_gradient();
 
   /* ---- Stabilization Functions ---- */
 
