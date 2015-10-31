@@ -196,7 +196,7 @@ public:
   int nx, ny, nz;   //! For creating a structured mesh: Number of cells in each direction
   int nGrids;       //! # of grids in overset calculation
   int writeIBLANK;  //! Write IBLANK in ParaView output?
-  int interpFlux;   //! At overset boundaries, interpolate discontinuous sol'n., or corrected flux?
+  int oversetMethod;   //! Interp. dis. sol'n (0) or corr. flux (1) at overset bounds, or use Galerkin proj. (2) on fringe cells
   double xmin, xmax, ymin, ymax, zmin, zmax;
   double periodicTol, periodicDX, periodicDY, periodicDZ;
   string create_bcTop, create_bcBottom, create_bcLeft;

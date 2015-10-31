@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <set>
+#include <unordered_set>
 
 #include "codetypes.h"
 
@@ -198,7 +198,7 @@ class MeshBlock
   int findPointDonor(double *x_pt);
 
   /*! Given a bounding box, find all elements which overlap with it */
-  std::set<int> findCellDonors(double *bbox);
+  std::unordered_set<int> findCellDonors(double *bbox);
 
   void writeOBB(int bid);
 

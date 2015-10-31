@@ -169,10 +169,10 @@ void overComm::setIblanks2D(matrix<double>& xv, matrix<int> &overFaces, matrix<i
   }
 }
 
-set<int> overComm::findCellDonors2D(vector<shared_ptr<ele>> &eles, const vector<double> &targetBox)
+unordered_set<int> overComm::findCellDonors2D(vector<shared_ptr<ele>> &eles, const vector<double> &targetBox)
 {
   // Find all eles which overlap with targetBox
-  set<int> hitCells;
+  unordered_set<int> hitCells;
   for (auto &e:eles) {
     auto box = e->getBoundingBox();
     bool hit = true;
@@ -324,7 +324,7 @@ void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared
 }
 
 
-void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, set<int> &unblankCells, vector<int> &eleMap, int quadOrder)
+void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<int>& unblankCells, vector<int> &eleMap, int quadOrder)
 {
 #ifndef _NO_MPI
 
@@ -335,18 +335,23 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   int nDims = params->nDims;
   int nv = (nDims==2) ? 4 : 8;
 
-  vector<int> ubCells;
+  ubCells.resize(0);
   Array<double,3> ubCellNodes(nUnblanks,nv,nDims);
   int i = 0;
   for (auto &ic:unblankCells) {
     int ie = eleMap[ic];
     ubCells.push_back(ie);
     // Constraining this to just linear hexahedrons/quadrilaterals for the time being
-    for (int j=0; j<nv; j++) {
-      for (int k=0; k<nDims; k++) {
-        ubCellNodes(i,j,k) = eles[ie]->nodesRK[j][k];
-      }
+    if (params->motion) {
+      for (int j=0; j<nv; j++)
+        for (int k=0; k<nDims; k++)
+          ubCellNodes(i,j,k) = eles[ie]->nodesRK[j][k];
+    } else {
+      for (int j=0; j<nv; j++)
+        for (int k=0; k<nDims; k++)
+          ubCellNodes(i,j,k) = eles[ie]->nodes[j][k];
     }
+
     i++;
   }
 
@@ -389,7 +394,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
       }
 
       // Find all possible donors using Tioga's ADT search (3D) or my brute-force search (2D)
-      set<int> cellIDs;
+      unordered_set<int> cellIDs;
       if (nDims == 2)
         cellIDs = findCellDonors2D(eles,targetBox);
       else
@@ -406,8 +411,12 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
         foundCellDonors[p].insertRowUnsized(donorsIDs);
 
         Array2D<point> donorPts;
-        for (auto &ic:donorsIDs)
-          donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
+        if (params->motion)
+          for (auto &ic:donorsIDs)
+            donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
+        else
+          for (auto &ic:donorsIDs)
+            donorPts.insertRow(eles[eleMap[ic]]->nodes);
 
         superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,donors.size());
         donors.push_back(mesh);
@@ -421,6 +430,14 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   // use with Galerkin projection
   for (auto &mesh:donors)
     mesh.setupQuadrature();
+}
+
+void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &eleMap)
+{
+  int nDims = params->nDims;
+
+  if (foundCells.size()<nproc)
+    foundCells.resize(nproc);
 
   // Get the locations of the quadrature points for each target cell, and
   // the reference location of the points within the donor cells
@@ -428,12 +445,13 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   vector<vector<int>> targetID(nproc), donorID(nproc);
   int nSpts = (params->order+1)*(params->order+1);
   if (nDims == 3) nSpts *= (params->order+1);
-  offset = 0;
+  int offset = 0;
   for (int p=0; p<nproc; p++) {
     if (p>0) offset += foundCells[p-1].size();
     for (int i=0; i<foundCells[p].size(); i++) {
       vector<int> parents_tmp;
       matrix<double> qpts_tmp;
+      _(donors.size());
       donors[offset+i].getQpts(qpts_tmp,parents_tmp);
 
       for (int j=0; j<parents_tmp.size(); j++) {
@@ -510,7 +528,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int,map<int,
   }
 
   vector<matrix<double>> targetBasis(nproc);
-  stride = nSpts;
+  int stride = nSpts;
   sendRecvData(nQptsRecv,nQptsSend,sendBasis,targetBasis,stride);
 
   // Perform integration for each target cell
@@ -665,7 +683,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
       }
 
       // Find all possible donors using Tioga's ADT search (3D) or my brute-force search (2D)
-      set<int> cellIDs;
+      unordered_set<int> cellIDs;
       if (nDims == 2)
         cellIDs = findCellDonors2D(eles,targetBox);
       else
@@ -733,13 +751,6 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
         // error at the quadrature points (rather than interpolating error
         // to quadrature points from spts)
 
-        /* Original Method */
-//        matrix<double> err = eles[ic]->calcError();
-//        vector<double> tmpErr(nFields);
-//        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(err,tmpErr.data(),refLoc);
-//        superErr[offset+i].insertRow(tmpErr);
-
-        /* Better(?) Method */
         vector<double> tmpU(nFields);
         opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tmpU.data(), refLoc);
         vector<double> tmpErr = calcError(tmpU,point(qpts_tmp[j],nDims),params);
@@ -766,13 +777,11 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   for (auto &pt: qpts) quadPoints.insertRow({pt.x,pt.y,pt.z});
 
   vector<double> intErr(nFields);
-//  vector<double> ERR(nFields);
   matrix<double> U_qpts;
   vector<double> detJac_qpts;
   for (uint ic=0; ic<eles.size(); ic++) {
     opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts, U_qpts, quadPoints);
     opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
-    matrix<double> err_qpts;
     for (uint i=0; i<qpts.size(); i++) {
       auto tmpErr = calcError(U_qpts.getRow(i), eles[ic]->calcPos(qpts[i]), params);
       for (int j=0; j<nFields; j++)
@@ -780,15 +789,6 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
     }
 
   }
-
-//  vector<double> intErr(nFields);
-//  for (int i=0; i<eles.size(); i++) {
-//    auto wts = getQptWeights(eles[i]->order,nDims);
-//    auto err = eles[i]->calcError();
-//    for (int j=0; j<eles[i]->nSpts; j++)
-//      for (int k=0; k<nFields; k++)
-//        intErr[k] += err(j,k) * wts[j] * eles[i]->detJac_spts[j];
-//  }
 
   /* --- Subtract the Overlap Region --- */
 
@@ -810,7 +810,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
 #ifndef _NO_MPI
 
   U_out.resize(nproc);
-  set<int> correctedEles;
+  unordered_set<int> correctedEles;
   for (int p=0; p<nproc; p++) {
     U_out[p].setup(foundPts[p].size(),nFields);
     if (gridIdList[p] == gridID) continue;
@@ -823,7 +823,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
         FatalError("bad value of ic!");
       }
 
-      if (params->interpFlux) {
+      if (params->oversetMethod == 1) {
         // Interpolate solution calculated from corrected flux
         // Need corrected flux for all donor cells, so calc discontinuous Fn & deltaFn
         //   for correction function scaling
@@ -840,8 +840,6 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
         }
 
         vector<matrix<double>> tempF_spts;
-        uint nSpts = eles[ic]->nSpts;
-        uint nFpts = eles[ic]->nFpts;
         if (params->motion) {
           // Flux vector must be in ref. space in order to apply correction functions
           tempF_spts = eles[ic]->transformFlux_physToRef();

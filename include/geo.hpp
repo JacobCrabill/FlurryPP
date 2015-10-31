@@ -110,18 +110,18 @@ public:
   void processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
 
   //! Create and insert elements into the eles vector
-  void insertEles(vector<shared_ptr<ele>> &eles, set<int> &uEles);
+  void insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &uEles);
 
   //! Create and insert faces into the face vectors
   void insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,
-                   set<int> &ubIFaces, set<int> &ubMFaces, set<int> &ubOFaces);
+                   unordered_set<int> &ubIFaces, unordered_set<int> &ubMFaces, unordered_set<int> &ubOFaces);
 
   //! Remove elements from the eles vector
-  void removeEles(vector<shared_ptr<ele>> &eles, set<int> &blankEles);
+  void removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEles);
 
   //! Remove faces from the face vectors
   void removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,
-                      set<int> &blankIFaces, set<int> &blankMFaces, set<int> &blankOFaces);
+                      unordered_set<int> &blankIFaces, unordered_set<int> &blankMFaces, unordered_set<int> &blankOFaces);
 
   int nDims, nFields;
   int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces;
@@ -145,7 +145,7 @@ public:
   matrix<int> c2f, f2v, f2c, c2c, c2ac;
   vector<int> v2nv, v2nc, c2nv, c2nf, f2nv, ctype;
   vector<int> intFaces, bndFaces, mpiFaces, mpiCells;
-  set<int> overFaces, overCells; //! List of all faces / cells which have an overset-boundary-condition face
+  unordered_set<int> overFaces, overCells; //! List of all faces / cells which have an overset-boundary-condition face
   vector<int> bcList;            //! List of boundary conditions for each boundary
   vector<int> bcType;            //! Boundary condition for each boundary face
   matrix<int> bndPts;            //! List of node IDs on each boundary
@@ -191,10 +191,11 @@ public:
 #endif
 
   /* --- Moving-Overset-Grid-Related Variables --- */
-  set<int> holeCells;     //! List of cells in mesh which are currently blanked
-  set<int> holeFaces;     //! List of faces in mesh which are currently blanked
-  set<int> unblankCells;  //! List of non-existing cells which, due to motion, must be un-blanked
-  set<int> blankCells;    //! List of existing cells which, due to motion, must be blanked
+  unordered_set<int> holeCells;     //! List of cells in mesh which are currently blanked
+  unordered_set<int> holeFaces;     //! List of faces in mesh which are currently blanked
+  unordered_set<int> unblankCells;  //! List of non-existing cells which, due to motion, must be un-blanked
+  unordered_set<int> blankCells;    //! List of existing cells which, due to motion, must be blanked
+  unordered_set<int> fringeCells;   //! For field-fill (non-boundary) overset method, fringe/receptor cell list
 
 #ifndef _NO_MPI
   shared_ptr<overComm> OComm;

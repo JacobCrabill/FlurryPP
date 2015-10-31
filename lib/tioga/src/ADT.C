@@ -59,7 +59,7 @@ void searchIntersections(MeshBlock *mb,int *cellIndex,int *adtIntegers,double *a
   return;
 }
 
-void searchBoxIntersections(MeshBlock *mb,std::set<int> &icells,int *adtIntegers,double *adtReals,
+void searchBoxIntersections(MeshBlock *mb,std::unordered_set<int> &icells,int *adtIntegers,double *adtReals,
        double *coord,int level,int node,double *bbox,int nelem,int ndim)
 {
   int i;
@@ -337,7 +337,7 @@ void ADT::searchADT_point(MeshBlock *mb, int* cellIndex, double *xsearch)
         coord,0,rootNode,xsearch,nelem,ndim);
 }
 
-void ADT::searchADT_box(MeshBlock *mb, std::set<int> &icells, double *bbox)
+void ADT::searchADT_box(MeshBlock *mb, std::unordered_set<int> &icells, double *bbox)
 {
   int rootNode=0;
   icells.clear();

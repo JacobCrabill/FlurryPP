@@ -345,7 +345,7 @@ void geo::setCellIblanks(void)
     }
   }
 
-  if (params->interpFlux) {
+  if (params->oversetMethod != 0) {
     // Extend 'fringe' region into 'hole' region by one more layer of vertices
     vector<int> iblank1(nVerts,HOLE);
     for (int iv=0; iv<nVerts; iv++) {
@@ -418,6 +418,28 @@ void geo::setCellIblanks(void)
     }
   }
 
+  // Tag the innermost layer of 'normal' cells as 'fringe' cells for unblank method
+  if (params->oversetMethod == 2) {
+    fringeCells.clear();
+    for (int ic=0; ic<nEles; ic++) {
+      if (iblankCell[ic] == NORMAL) {
+        int nfringe = 0;
+        for (int j=0; j<c2nv[ic]; j++) {
+          if (iblank[c2v(ic,j)] == FRINGE) {
+            nfringe++;
+//            iblankCell[ic] = FRINGE;
+//            fringeCells.insert(ic);
+//            break;
+          }
+        }
+        if (nfringe == c2nv[ic]) {
+          iblankCell[ic] = FRINGE;
+          fringeCells.insert(ic);
+        }
+      }
+    }
+  }
+
   // Only needed for moving grids: Existing cells which must be removed from solver
   for (int ic=0; ic<nEles; ic++) {
     if (iblankCell[ic] == HOLE && !holeCells.count(ic))
@@ -464,7 +486,7 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
 {
 #ifndef _NO_MPI
   /* --- Set blank/unblank faces for all elements to be blanked --- */
-  set<int> blankIFaces, blankMFaces, blankOFaces, ubOFaces;
+  unordered_set<int> blankIFaces, blankMFaces, blankOFaces, ubOFaces;
   for (auto &ic:blankCells) {
     if (eleMap[ic] < 0) continue; // Ignore already-blanked cells
 
@@ -541,7 +563,7 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
     }
   }
 
-  set<int> ubIFaces, ubMFaces;
+  unordered_set<int> ubIFaces, ubMFaces;
 
   removeEles(eles,blankCells);
   removeFaces(faces,mFaces,oFaces,blankIFaces,blankMFaces,blankOFaces);
@@ -560,8 +582,8 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
 {
   /* --- Set Unblank/Blank Faces for All Unblank Elements --- */
 
-  set<int> ubIntFaces, ubMpiFaces, ubOFaces;
-  set<int> blankIFaces, blankMFaces, blankOFaces;
+  unordered_set<int> ubIntFaces, ubMpiFaces, ubOFaces;
+  unordered_set<int> blankIFaces, blankMFaces, blankOFaces;
   for (auto &ic:unblankCells) {
     for (int j=0; j<c2nf[ic]; j++) {
       int ic2 = c2c(ic,j);
@@ -584,7 +606,7 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
 #ifndef _NO_MPI
   // Figure out whether MPI faces are to be unblanked as MPI or as overset
   // Need list of all possibly-unblanked MPI faces on this rank
-  set<int> allMpiFaces = ubMpiFaces;
+  unordered_set<int> allMpiFaces = ubMpiFaces;
   for (auto &ff:overFaces) if (faceType[ff]==MPI_FACE) allMpiFaces.insert(ff);
 
   vector<int> ubMpi;
@@ -656,7 +678,7 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
   for (auto &oface:oFaces) oface->getPointers();
 }
 
-void geo::removeEles(vector<shared_ptr<ele>> &eles, set<int> &blankEles)
+void geo::removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEles)
 {
   /* --- Remove Newly-Blanked Elements --- */
 
@@ -674,7 +696,7 @@ void geo::removeEles(vector<shared_ptr<ele>> &eles, set<int> &blankEles)
   }
 }
 
-void geo::insertEles(vector<shared_ptr<ele>> &eles, set<int> &ubEles)
+void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles)
 {
   /* --- Setup & Insert Unblanked Elements --- */
 
@@ -731,7 +753,7 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, set<int> &ubEles)
 }
 
 void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,
-                      set<int> &ubIFaces, set<int> &ubMFaces, set<int> &ubOFaces)
+                      unordered_set<int> &ubIFaces, unordered_set<int> &ubMFaces, unordered_set<int> &ubOFaces)
 {
   /* --- Create Newly-Unblanked Faces Corresponding to Unblanked Eles --- */
 
@@ -943,7 +965,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
 }
 
 void geo::removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,
-                      set<int> &blankIFaces, set<int> &blankMFaces, set<int> &blankOFaces)
+                      unordered_set<int>& blankIFaces, unordered_set<int>& blankMFaces, unordered_set<int>& blankOFaces)
 {
   // NOTE: faceType refers to the original face type as read from mesh file
   //       (Before overset connectivity processing)

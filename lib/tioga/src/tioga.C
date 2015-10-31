@@ -97,7 +97,7 @@ int tioga::findPointDonor(double *x_pt)
   return mb->findPointDonor(x_pt);
 }
 
-std::set<int> tioga::findCellDonors(double *bbox)
+std::unordered_set<int> tioga::findCellDonors(double *bbox)
 {
   return mb->findCellDonors(bbox);
 }

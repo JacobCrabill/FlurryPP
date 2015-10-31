@@ -42,7 +42,10 @@ vector<double> solveCholesky(matrix<double> A, vector<double> b)
       for (int i=0; i<n-j; i++) A(j+i,j) -= a1[i];
     }
 
-    if (A(j,j)<0) FatalError("Negative factor in Cholesky!");
+    if (A(j,j)<0) {
+      A.print();
+      FatalError("Negative factor in Cholesky!");
+    }
 
     double ajj = sqrt(A(j,j));
     for (int i=j; i<n; i++)
@@ -74,6 +77,7 @@ vector<double> solveCholesky(matrix<double> A, vector<double> b)
 
 matrix<double> solveCholesky(matrix<double> A, matrix<double> &B)
 {
+  double eps = 1e-12;
   int m = A.getDim0();
   int n = A.getDim1();
   int p = B.getDim1();
@@ -88,7 +92,14 @@ matrix<double> solveCholesky(matrix<double> A, matrix<double> &B)
       for (int i=0; i<n-j; i++) A(j+i,j) -= a1[i];
     }
 
-    if (A(j,j)<0) FatalError("Negative factor in Cholesky!");
+    if (A(j,j)<0) {
+      if (std::abs(A(j,j) < eps)) {
+        A(j,j) = eps;
+      } else {
+        _(A(j,j));
+        FatalError("Negative factor in Cholesky!");
+      }
+    }
 
     double ajj = sqrt(A(j,j));
     for (int i=j; i<n; i++) {

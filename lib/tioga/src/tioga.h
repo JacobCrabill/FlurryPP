@@ -56,7 +56,7 @@ class tioga
 
   int findPointDonor(double* x_pt);
 
-  std::set<int> findCellDonors(double* bbox);
+  std::unordered_set<int> findCellDonors(double* bbox);
 
   void exchangeBoxes(void);
 

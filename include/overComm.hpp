@@ -34,6 +34,7 @@
 
 #include <map>
 #include <set>
+#include <unordered_set>
 #include <vector>
 
 class oper;
@@ -120,7 +121,7 @@ public:
   vector<vector<int>> foundCellNDonors; //! Number of donor cells on this grid for each found unblanked cell
 
   int nUnblanks;          //! Number of unblank cells on this grid
-  vector<int> unblanks;   //! Cells from this grid which need to be unblanked
+  vector<int> ubCells;    //! Cells from this grid which need to be unblanked
   vector<int> nCellsRecv;         //! Number of points incoming from each grid (across interComm)
   vector<int> nCellsSend;         //! Number of points outgoing to each grid (across interComm)
   vector<vector<int>> recvCells;  //! Cell IDs which will be received from each grid (across interComm) (counter to foundPts)
@@ -138,7 +139,7 @@ public:
   void setIblanks2D(matrix<double> &xv, matrix<int>& overFaces, matrix<int> &wallFaces, vector<int> &iblank);
 
   //! Find all elements from eles which overlap with target bounding-box
-  set<int> findCellDonors2D(vector<shared_ptr<ele>> &eles, const vector<double> &targetBox);
+  unordered_set<int> findCellDonors2D(vector<shared_ptr<ele>> &eles, const vector<double> &targetBox);
 
   /*!
    * \brief Match up each overset-face flux point to its donor grid and element
@@ -161,7 +162,9 @@ public:
    * For each unblanked face, add its points to the communicator
    *
    */
-  void matchUnblankCells(vector<shared_ptr<ele>> &eles, map<int, map<int, oper> >& opers, set<int>& unblankCells, vector<int>& eleMap, int quadOrder);
+  void matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<int>& unblankCells, vector<int>& eleMap, int quadOrder);
+
+  void performProjection(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, vector<int>& eleMap);
 
   //! Integrate the solution error over the entire domain, accounting for overset overlap
   vector<double> integrateErrOverset(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, vector<int>& eleMap, int quadOrder);

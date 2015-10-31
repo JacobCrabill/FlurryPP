@@ -31,14 +31,40 @@
 
 /* ---- My New Overset Grid Functions ---- */
 
+void solver::oversetFieldInterp(void)
+{
+#ifndef _NO_MPI
+  // Use field interpolation rather than boundary interpolation
+
+  if (params->motion || params->iter == params->initIter+1) {
+    fringeCells.clear();
+    for (auto &ic:Geo->fringeCells)
+      if (!Geo->unblankCells.count(ic))
+        fringeCells.insert(ic);
+
+    OComm->matchUnblankCells(eles,fringeCells,Geo->eleMap,params->order);
+  }
+
+  OComm->performProjection(eles,opers,Geo->eleMap);
+#endif
+}
+
 void solver::oversetInterp(void)
 {
+#ifndef _NO_MPI
+  if (params->oversetMethod == 2) return;
+
   OComm->exchangeOversetData(eles,opers,Geo->eleMap);
+#endif
 }
 
 void solver::oversetInterp_gradient(void)
 {
+#ifndef _NO_MPI
+  if (params->oversetMethod == 2) return;
+
   OComm->exchangeOversetGradient(eles,opers,Geo->eleMap);
+#endif
 }
 
 void solver::setupOverset(void)
@@ -53,12 +79,14 @@ void solver::setupOverset(void)
 
     OComm->tg = Geo->tg;
 
-    OComm->matchOversetPoints3D(eles,overFaces,Geo->eleMap);
+    if (params->oversetMethod != 2)
+      OComm->matchOversetPoints3D(eles,overFaces,Geo->eleMap);
   }
   else {
     OComm = Geo->OComm;
 
-    OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
+    if (params->oversetMethod != 2)
+      OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
   }
 #endif
 }

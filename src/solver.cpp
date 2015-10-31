@@ -126,6 +126,10 @@ void solver::update(void)
 
 void solver::calcResidual(int step)
 {
+  if (params->meshType == OVERSET_MESH && params->oversetMethod == 2) {
+    oversetFieldInterp();
+  }
+
   if(params->scFlag == 1) {
     shockCapture();
   }
@@ -352,6 +356,8 @@ void solver::calcInviscidFlux_mpi()
 
 void solver::calcInviscidFlux_overset()
 {
+  if (params->oversetMethod == 2) return;
+
 #pragma omp parallel for
   for (uint i=0; i<overFaces.size(); i++) {
     overFaces[i]->calcInviscidFlux();
@@ -383,6 +389,8 @@ void solver::calcViscousFlux_mpi()
 
 void solver::calcViscousFlux_overset()
 {
+  if (params->oversetMethod == 2) return;
+
 #pragma omp parallel for
   for (uint i=0; i<overFaces.size(); i++) {
     overFaces[i]->calcViscousFlux();
@@ -524,14 +532,17 @@ void solver::moveMesh(int step)
       Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
 
       // Initialize the solution in the new elements using local Galerkin projection
-      OComm->matchUnblankCells(eles,opers,Geo->unblankCells,Geo->eleMap,params->order);
+      OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->order);
+      OComm->performProjection(eles,opers,Geo->eleMap);
     }
 
-    if (params->nDims==3)
-      OComm->matchOversetPoints3D(eles,overFaces,Geo->eleMap);
-    else {
-      getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
-      OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
+    if (params->oversetMethod != 2) {
+      if (params->nDims==3)
+        OComm->matchOversetPoints3D(eles,overFaces,Geo->eleMap);
+      else {
+        getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
+        OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
+      }
     }
 
   } else {

@@ -1354,9 +1354,9 @@ int MeshBlock::findPointDonor(double *x_pt)
   return foundCell;
 }
 
-std::set<int> MeshBlock::findCellDonors(double *bbox)
+std::unordered_set<int> MeshBlock::findCellDonors(double *bbox)
 {
-  std::set<int> foundCells;
+  std::unordered_set<int> foundCells;
   adt->searchADT_box(this,foundCells,bbox);
   return foundCells;
 }

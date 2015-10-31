@@ -289,7 +289,13 @@ public:
 
   /* ---- My Overset Functions ---- */
 
+  //! Perform Galerkin projection to fringe cells instead of boundary method
+  void oversetFieldInterp();
+
+  //! Interpolate 'right state' to overset boundaries for Riemann solve
   void oversetInterp();
+
+  //! Interpolate 'right state' gradient to overset boundaries for viscous flux
   void oversetInterp_gradient();
 
   /* ---- Stabilization Functions ---- */
@@ -317,4 +323,6 @@ private:
   vector<double> U_spts; //! Global solution vector for solver (over all elements)
 
   shared_ptr<overComm> OComm;
+
+  unordered_set<int> fringeCells;
 };
