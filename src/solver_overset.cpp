@@ -37,12 +37,7 @@ void solver::oversetFieldInterp(void)
   // Use field interpolation rather than boundary interpolation
 
   if (params->motion || params->iter == params->initIter+1) {
-    fringeCells.clear();
-    for (auto &ic:Geo->fringeCells)
-      if (!Geo->unblankCells.count(ic))
-        fringeCells.insert(ic);
-
-    OComm->matchUnblankCells(eles,fringeCells,Geo->eleMap,params->order);
+    OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->order);
     OComm->performProjection(eles,opers,Geo->eleMap);
   } else {
     OComm->performProjection_static(eles,Geo->eleMap);
