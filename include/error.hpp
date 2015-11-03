@@ -20,4 +20,6 @@
   backtrace_symbols_fd(array, size, STDERR_FILENO);                 \
   exit(1); }
 
+
 #define _(x) cout << #x << ": " << x << endl;
+#define _print(x,y) cout << #x << ": " << x << ", " << #y << ": " << y << endl;

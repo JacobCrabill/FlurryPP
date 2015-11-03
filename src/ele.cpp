@@ -109,6 +109,9 @@ void ele::setupArrays(void)
   divF_spts.resize(nRKSteps);
   for (auto& dF:divF_spts) dF.setup(nSpts,nFields);
 
+  if (nRKSteps>1)
+    U0 = U_spts;
+
   if (params->motion || params->viscous) {
     dU_spts.resize(nDims);
     dU_fpts.resize(nDims);

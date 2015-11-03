@@ -177,18 +177,18 @@ void writeParaview(solver *Solver, input *params)
     if (params->equation == NAVIER_STOKES) {
       pVTU << "      <PDataArray type=\"Float32\" Name=\"Velocity\" NumberOfComponents=\"3\" />" << endl;
       pVTU << "      <PDataArray type=\"Float32\" Name=\"Pressure\" />" << endl;
-      if (params->motion) {
-        pVTU << "      <PDataArray type=\"Float32\" Name=\"GridVelocity\" NumberOfComponents=\"3\" />" << endl;
-      }
-      if (params->scFlag == 1) {
-        pVTU << "      <PDataArray type=\"Float32\" Name=\"Sensor\" />" << endl;
-      }
       if (params->calcEntropySensor) {
         pVTU << "      <PDataArray type=\"Float32\" Name=\"EntropyErr\" />" << endl;
       }
-      if (params->meshType == OVERSET_MESH && params->writeIBLANK) {
-        pVTU << "      <PDataArray type=\"Float32\" Name=\"IBLANK\" />" << endl;
-      }
+    }
+    if (params->scFlag == 1) {
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"Sensor\" />" << endl;
+    }
+    if (params->motion) {
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"GridVelocity\" NumberOfComponents=\"3\" />" << endl;
+    }
+    if (params->meshType == OVERSET_MESH && params->writeIBLANK) {
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"IBLANK\" />" << endl;
     }
     pVTU << "    </PPointData>" << endl;
     pVTU << "    <PPoints>" << endl;
@@ -252,10 +252,10 @@ void writeParaview(solver *Solver, input *params)
         dataFile.open(timeFileC,ios::app);
         dataFile << params->rank << " ";
         for (int i=0; i<Solver->Geo->nEles; i++) {
-          int ib = NORMAL;
           if (Solver->Geo->eleMap[i]<0)
-            ib = HOLE;
-          dataFile << ib << " ";
+            dataFile << HOLE << " ";
+          else
+            dataFile << Solver->Geo->iblankCell[i] << " ";
         }
         dataFile << endl;
         dataFile.clear();
@@ -375,27 +375,18 @@ void writeParaview(solver *Solver, input *params)
       dataFile << endl;
       dataFile << "				</DataArray>" << endl;
 
-      if (params->motion) {
-        /* --- Grid Velocity --- */
-        dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" Name=\"GridVelocity\" format=\"ascii\">" << endl;
+      if (params->calcEntropySensor) {
+        /* --- Entropy Error Estimate --- */
+        dataFile << "				<DataArray type=\"Float32\" Name=\"EntropyErr\" format=\"ascii\">" << endl;
         for(int k=0; k<nPpts; k++) {
-          // Divide momentum components by density to obtain velocity components
-          dataFile << gridVelPpts(k,0) << " " << gridVelPpts(k,1) << " ";
-
-          // In 2D the z-component of velocity is not stored, but Paraview needs it so write a 0.
-          if(params->nDims==2) {
-            dataFile << 0.0 << " ";
-          }
-          else {
-            dataFile << gridVelPpts(k,2) << " ";
-          }
+          dataFile << std::abs(errPpts(k)) << " ";
         }
         dataFile << endl;
         dataFile << "				</DataArray>" << endl;
       }
     }
 
-    if(params->scFlag == 1){
+    if(params->scFlag == 1) {
       /* --- Shock Sensor --- */
       dataFile << "				<DataArray type=\"Float32\" Name=\"Sensor\" format=\"ascii\">" << endl;
       for(int k=0; k<nPpts; k++) {
@@ -405,11 +396,20 @@ void writeParaview(solver *Solver, input *params)
       dataFile << "				</DataArray>" << endl;
     }
 
-    if (params->equation == NAVIER_STOKES && params->calcEntropySensor) {
-      /* --- Entropy Error Estimate --- */
-      dataFile << "				<DataArray type=\"Float32\" Name=\"EntropyErr\" format=\"ascii\">" << endl;
+    if (params->motion > 0) {
+      /* --- Grid Velocity --- */
+      dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" Name=\"GridVelocity\" format=\"ascii\">" << endl;
       for(int k=0; k<nPpts; k++) {
-        dataFile << std::abs(errPpts(k)) << " ";
+        // Divide momentum components by density to obtain velocity components
+        dataFile << gridVelPpts(k,0) << " " << gridVelPpts(k,1) << " ";
+
+        // In 2D the z-component of velocity is not stored, but Paraview needs it so write a 0.
+        if(params->nDims==2) {
+          dataFile << 0.0 << " ";
+        }
+        else {
+          dataFile << gridVelPpts(k,2) << " ";
+        }
       }
       dataFile << endl;
       dataFile << "				</DataArray>" << endl;

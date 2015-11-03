@@ -339,6 +339,10 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
   int i = 0;
   for (auto &ic:unblankCells) {
     int ie = eleMap[ic];
+    if (ie<0) {
+      _print(params->rank,ic);
+      FatalError("Unblank cell not in ele map...");
+    }
     ubCells.push_back(ie);
     // Constraining this to just linear hexahedrons/quadrilaterals for the time being
     if (params->motion) {
@@ -361,7 +365,8 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
   vector<double> ubNodes_rank;
   gatherData(nUnblanks, stride, ubCellNodes.getData(), nCells_rank, ubNodes_rank);
 
-  if (getSum(nCells_rank)==0) return;
+  nUnblanksTotal = getSum(nCells_rank);
+  if (nUnblanksTotal==0) return;
 
   /* ---- Check Every Unblanked Cell for Donor Cells on This Grid ---- */
 
@@ -435,8 +440,7 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
 {
   int nDims = params->nDims;
 
-  if (foundCells.size()<nproc)
-    foundCells.resize(nproc);
+  if (nUnblanksTotal == 0) return;
 
   // Get the locations of the quadrature points for each target cell, and
   // the reference location of the points within the donor cells
@@ -604,18 +608,6 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
   for (auto &rhs:ubRHS) {
     rhs.setup(nSpts,nFields);
     rhs.initializeToZero();
-  }
-
-//  _(nUnblanks);
-  vector<int> maxind(nproc);
-  for (int p=0; p<nproc; p++) {
-    maxind[p] = getMax(recvInds[p]);
-  }
-  int maxi = getMax(maxind);
-  if (maxi>=nUnblanks && maxi>0) {
-    cout << "ERROR!!!!!!" << endl;
-    _(getMax(maxind));
-    _(nUnblanks);
   }
 
   for (int p=0; p<nproc; p++) {

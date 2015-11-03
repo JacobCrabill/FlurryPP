@@ -121,6 +121,7 @@ public:
   vector<vector<int>> foundCellNDonors; //! Number of donor cells on this grid for each found unblanked cell
 
   int nUnblanks;          //! Number of unblank cells on this grid
+  int nUnblanksTotal;     //! Total number of cells to unblank across domain
   vector<int> ubCells;    //! Cells from this grid which need to be unblanked
   vector<int> nCellsRecv;         //! Number of points incoming from each grid (across interComm)
   vector<int> nCellsSend;         //! Number of points outgoing to each grid (across interComm)

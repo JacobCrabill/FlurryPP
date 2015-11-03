@@ -45,7 +45,7 @@ void solver::oversetFieldInterp(void)
     OComm->matchUnblankCells(eles,fringeCells,Geo->eleMap,params->order);
     OComm->performProjection(eles,opers,Geo->eleMap);
   } else {
-    //OComm->performProjection_static(eles,Geo->eleMap);
+    OComm->performProjection_static(eles,Geo->eleMap);
   }
 #endif
 }

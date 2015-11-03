@@ -93,7 +93,6 @@ void solver::update(void)
   if (params->dtType == 1) calcDt();
 
   for (int step=0; step<nRKSteps-1; step++) {
-
     params->rkTime = params->time + params->RKa[step]*params->dt;
 
     moveMesh(step);
@@ -218,9 +217,16 @@ void solver::calcDt(void)
 
 void solver::timeStepA(int step)
 {
+  if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
+    for (uint i=0; i<eles.size(); i++) {
+      if (Geo->iblankCell[eles[i]->ID] == NORMAL)
+        eles[i]->timeStepA(step,params->RKa[step+1]);
+    }
+  } else {
 #pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    eles[i]->timeStepA(step,params->RKa[step+1]);
+    for (uint i=0; i<eles.size(); i++) {
+      eles[i]->timeStepA(step,params->RKa[step+1]);
+    }
   }
 }
 
@@ -509,7 +515,7 @@ void solver::moveMesh(int step)
   if (params->meshType == OVERSET_MESH) {
     /* -- Remove blanks tagged during previous iteration and
      *    find new blanks/unblanks -- */
-    if (step==0) {
+    if (step==0 && params->oversetMethod!=2) {
       Geo->processBlanks(eles,faces,mpiFaces,overFaces);
 
       Geo->moveMesh(1.);
@@ -519,6 +525,9 @@ void solver::moveMesh(int step)
       Geo->updateBlanking();
     }
 
+    if (params->oversetMethod==2)
+      Geo->processBlanks(eles,faces,mpiFaces,overFaces);
+
     /* -- Set the geometry to the current RK-stage time -- */
 
     Geo->moveMesh(params->RKa[step]);
@@ -527,8 +536,11 @@ void solver::moveMesh(int step)
 
     Geo->updateADT();
 
+    if (params->oversetMethod == 2)
+      Geo->updateBlanking();
+
     /* -- Setup unblanks needed for this time step -- */
-    if (step==0) {
+    if (step==0 || params->oversetMethod==2) {
       Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
 
       // Initialize the solution in the new elements using local Galerkin projection
@@ -722,10 +734,15 @@ void solver::readRestartFile(void) {
     FatalError("Cannot find UnstructuredData tag in restart file.");
 
   // Read restart data & setup all data arrays
-  int i = 0;
-  for (auto& e:eles) {
-    e->restart(dataFile,params,Geo);
-    i++;
+  if (params->meshType == OVERSET_MESH && params->oversetMethod == 2) {
+    for (int ic=0; ic<eles.size(); ic++) {
+      if (tmpIblank[eles[ic]->ID] != NORMAL) continue;
+      eles[ic]->restart(dataFile,params,Geo);
+    }
+  }
+  else {
+    for (auto& e:eles)
+      e->restart(dataFile,params,Geo);
   }
 
   dataFile.close();

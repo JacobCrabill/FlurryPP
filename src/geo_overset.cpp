@@ -465,7 +465,7 @@ void geo::setCellIblanks(void)
       }
     }
 
-    for (int i=0; i<nBndFaces; i++) {
+    for (int i=0; i<bndFaces.size(); i++) {
       if (bcType[i] == OVERSET) {
         int ic = f2c(bndFaces[i],0);
         iblankCell[ic] = FRINGE;
