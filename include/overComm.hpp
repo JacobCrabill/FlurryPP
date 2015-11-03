@@ -166,8 +166,10 @@ public:
 
   void performProjection(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, vector<int>& eleMap);
 
+  void performProjection_static(vector<shared_ptr<ele> >& eles, vector<int>& eleMap);
+
   //! Integrate the solution error over the entire domain, accounting for overset overlap
-  vector<double> integrateErrOverset(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, vector<int>& eleMap, int quadOrder);
+  vector<double> integrateErrOverset(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, vector<int>& iblankCell, vector<int>& eleMap, int quadOrder);
 
   //! Perform the interpolation and communicate data across all grids
   void exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap);
@@ -216,4 +218,9 @@ private:
 #ifndef _NO_MPI
   template<typename T> MPI_Datatype getMpiDatatype(void);
 #endif
+
+  /* ---- For Static Cases using Field Interpolation ---- */
+  vector<matrix<double>> qpts, qptsD_ref, donorBasis, massMatTDRow, ubLHS;
+  vector<vector<int>> targetID, donorID;
+  vector<vector<int>> recvInds;
 };

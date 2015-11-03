@@ -43,9 +43,10 @@ void solver::oversetFieldInterp(void)
         fringeCells.insert(ic);
 
     OComm->matchUnblankCells(eles,fringeCells,Geo->eleMap,params->order);
+    OComm->performProjection(eles,opers,Geo->eleMap);
+  } else {
+    //OComm->performProjection_static(eles,Geo->eleMap);
   }
-
-  OComm->performProjection(eles,opers,Geo->eleMap);
 #endif
 }
 
@@ -94,7 +95,7 @@ void solver::setupOverset(void)
 vector<double> solver::integrateErrorOverset(void)
 {
 #ifndef _NO_MPI
-  auto err = OComm->integrateErrOverset(eles,opers,Geo->eleMap,10);
+  auto err = OComm->integrateErrOverset(eles,opers,Geo->iblankCell,Geo->eleMap,10);
 
   vector<double> tmpErr = err;
   MPI_Allreduce(tmpErr.data(), err.data(), params->nFields, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);

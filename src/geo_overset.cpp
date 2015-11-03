@@ -34,6 +34,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <unordered_set>
 #include <sstream>
 
 #include "ele.hpp"
@@ -228,6 +229,7 @@ void geo::setNodeTypes2D(void)
     }
   }
 
+  unordered_set<int> overNodes;
   overFaceNodes.setup(0,0);
   wallFaceNodes.setup(0,0);
   for (int bf=0; bf<nBndFaces; bf++) {
@@ -237,8 +239,35 @@ void geo::setNodeTypes2D(void)
     }
     else if (bcType[bf] == OVERSET) {
       int ff = bndFaces[bf];
-      overFaceNodes.insertRow({f2v(ff,0),f2v(ff,1)});
+      overFaces.insert(ff);
+      if (params->oversetMethod == 2) {
+        overNodes.insert(f2v(ff,0));
+        overNodes.insert(f2v(ff,1));
+      } else {
+        overFaceNodes.insertRow({f2v(ff,0),f2v(ff,1)});
+      }
     }
+  }
+
+  if (params->oversetMethod == 2) {
+    unordered_set<int> newOverFaces;
+    // Need more overlap for field interp method; move back boundary by one layer
+    for (auto &ff:overFaces) {
+      int ic = f2c(ff,0);
+      fringeCells.insert(ic);
+      for (int j=0; j<c2nf[ic]; j++) {
+        int ff2 = c2f(ic,j);
+        int iv1 = f2v(ff2,0);
+        int iv2 = f2v(ff2,1);
+        if (!overNodes.count(iv1) && !overNodes.count(iv2)) {
+          newOverFaces.insert(ff2);
+          overFaceNodes.insertRow({iv1,iv2});
+        }
+      }
+      //bcType[ff] = NONE;
+    }
+    overFaces.clear();
+    overFaces = newOverFaces;
   }
 }
 
@@ -427,15 +456,20 @@ void geo::setCellIblanks(void)
         for (int j=0; j<c2nv[ic]; j++) {
           if (iblank[c2v(ic,j)] == FRINGE) {
             nfringe++;
-//            iblankCell[ic] = FRINGE;
-//            fringeCells.insert(ic);
-//            break;
           }
         }
         if (nfringe == c2nv[ic]) {
           iblankCell[ic] = FRINGE;
           fringeCells.insert(ic);
         }
+      }
+    }
+
+    for (int i=0; i<nBndFaces; i++) {
+      if (bcType[i] == OVERSET) {
+        int ic = f2c(bndFaces[i],0);
+        iblankCell[ic] = FRINGE;
+        fringeCells.insert(ic);
       }
     }
   }

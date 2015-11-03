@@ -546,7 +546,6 @@ void solver::moveMesh(int step)
     }
 
   } else {
-
     Geo->moveMesh(params->RKa[step]);
 
 #pragma omp parallel for

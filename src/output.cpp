@@ -297,6 +297,8 @@ void writeParaview(solver *Solver, input *params)
   }
 
   for (auto& e:Solver->eles) {
+    if (params->meshType == OVERSET_MESH && Solver->Geo->iblankCell[e->ID]!=NORMAL) continue;
+
     if (params->motion != 0) {
       e->updatePosSpts();
       e->updatePosFpts();
@@ -534,6 +536,7 @@ void writeResidual(solver *Solver, input *params)
   if (params->resType == 3) {
     // Infinity Norm
     for (uint e=0; e<Solver->eles.size(); e++) {
+      if (params->meshType == OVERSET_MESH && Solver->Geo->iblankCell[Solver->eles[e]->ID]!=NORMAL) continue;
       auto resTmp = Solver->eles[e]->getNormResidual(params->resType);
       if(checkNaN(resTmp)) {
         cout << "rank " << params->rank << ", ele " << e << ": ";
@@ -549,6 +552,7 @@ void writeResidual(solver *Solver, input *params)
   else if (params->resType == 1 || params->resType == 2) {
     // 1-Norm or 2-Norm
     for (uint e=0; e<Solver->eles.size(); e++) {
+      if (params->meshType == OVERSET_MESH && Solver->Geo->iblankCell[Solver->eles[e]->ID]!=NORMAL) continue;
       auto resTmp = Solver->eles[e]->getNormResidual(params->resType);
       if(checkNaN(resTmp)) {
         cout << "rank " << params->rank << ", ele " << e << ": " << flush;

@@ -327,7 +327,6 @@ void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared
 void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<int>& unblankCells, vector<int> &eleMap, int quadOrder)
 {
 #ifndef _NO_MPI
-
   /* ---- Send Unblanked-Cell Nodes to All Grids ---- */
 
   nUnblanks = unblankCells.size();
@@ -441,17 +440,28 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
 
   // Get the locations of the quadrature points for each target cell, and
   // the reference location of the points within the donor cells
-  vector<matrix<double>> qpts(nproc), qptsD_ref(nproc), donorBasis(nproc), donorU(nproc);
-  vector<vector<int>> targetID(nproc), donorID(nproc);
+  qpts.resize(nproc);
+  qptsD_ref.resize(nproc);
+  donorBasis.resize(nproc);
+  targetID.resize(nproc);
+  donorID.resize(nproc);
+
+  vector<matrix<double>> donorU(nproc);
   int nSpts = (params->order+1)*(params->order+1);
   if (nDims == 3) nSpts *= (params->order+1);
   int offset = 0;
   for (int p=0; p<nproc; p++) {
     if (p>0) offset += foundCells[p-1].size();
+
+    qpts[p].setup(0,0);
+    qptsD_ref[p].setup(0,0);
+    donorID[p].resize(0);
+    targetID[p].resize(0);
+    donorBasis[p].setup(0,0);
+
     for (int i=0; i<foundCells[p].size(); i++) {
       vector<int> parents_tmp;
       matrix<double> qpts_tmp;
-      _(donors.size());
       donors[offset+i].getQpts(qpts_tmp,parents_tmp);
 
       for (int j=0; j<parents_tmp.size(); j++) {
@@ -474,8 +484,6 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
         opers[eles[ic]->eType][eles[ic]->order].getBasisValues(refLoc,basisTmp);
         donorBasis[p].insertRow(basisTmp);
       }
-
-      // For corrected-flux interpolation: Back-calculate solution from flux
 
       for (int id=0; id<foundCellNDonors[p][i]; id++) {
         int ic = eleMap[foundCellDonors[p](i,id)];
@@ -533,6 +541,7 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
 
   // Perform integration for each target cell
   vector<matrix<double>> LHS(nproc), RHS(nproc);
+  massMatTDRow.resize(donors.size()*nSpts);
   offset = 0;
   for (int p=0; p<nproc; p++) {
     if (p>0) offset += foundCells[p-1].size();
@@ -560,12 +569,12 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
         auto massMatTTRow = donors[offset+i].integrate(basisTgtTgt);
         lhs.insertRow(massMatTTRow);
 
-        auto massMatTDRow = donors[offset+i].integrateByDonor(basisTgtDnr);
+        massMatTDRow[(offset+i)*nSpts+ispt] = donors[offset+i].integrateByDonor(basisTgtDnr);
 
         for (int id=0; id<foundCellNDonors[p][i]; id++)
           for (int jspt=0; jspt<nSpts; jspt++)
             for (int k=0; k<nFields; k++)
-              rhs(ispt,k) += massMatTDRow(id,jspt) * donorU[p](offsetD+id*nSpts+jspt,k);
+              rhs(ispt,k) += massMatTDRow[(offset+i)*nSpts+ispt](id,jspt) * donorU[p](offsetD+id*nSpts+jspt,k);
       }
       LHS[p].appendRows(lhs);
       RHS[p].appendRows(rhs);
@@ -582,14 +591,32 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
   int strideR = nSpts*nFields;
   int strideL = nSpts*nSpts;
   vector<matrix<double>> tmpUbLHS(nproc), tmpUbRHS(nproc);
-  vector<vector<int>> recvInds;
   sendRecvData(nCellsSend,nCellsRecv,foundCells,recvInds,LHS,tmpUbLHS,strideL);
   sendRecvData(nCellsSend,nCellsRecv,RHS,tmpUbRHS,strideR);
 
   // Add contributions from superMeshes on each rank
-  vector<matrix<double>> ubLHS(nUnblanks), ubRHS(nUnblanks);
-  for (auto &lhs:ubLHS) lhs.setup(nSpts,nSpts);
-  for (auto &rhs:ubRHS) rhs.setup(nSpts,nFields);
+  vector<matrix<double>> ubRHS(nUnblanks);
+  ubLHS.resize(nUnblanks);
+  for (auto &lhs:ubLHS) {
+    lhs.setup(nSpts,nSpts);
+    lhs.initializeToZero();
+  }
+  for (auto &rhs:ubRHS) {
+    rhs.setup(nSpts,nFields);
+    rhs.initializeToZero();
+  }
+
+//  _(nUnblanks);
+  vector<int> maxind(nproc);
+  for (int p=0; p<nproc; p++) {
+    maxind[p] = getMax(recvInds[p]);
+  }
+  int maxi = getMax(maxind);
+  if (maxi>=nUnblanks && maxi>0) {
+    cout << "ERROR!!!!!!" << endl;
+    _(getMax(maxind));
+    _(nUnblanks);
+  }
 
   for (int p=0; p<nproc; p++) {
     if (p==rank) continue;
@@ -617,7 +644,90 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
 #endif
 }
 
-vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &eleMap, int quadOrder)
+void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<int> &eleMap)
+{
+#ifndef _NO_MPI
+  int nDims = params->nDims;
+
+  if (foundCells.size()<nproc)
+    foundCells.resize(nproc);
+
+  // Get the locations of the quadrature points for each target cell, and
+  // the reference location of the points within the donor cells
+
+  vector<matrix<double>> donorU(nproc);
+  int nSpts = (params->order+1)*(params->order+1);
+  if (nDims == 3) nSpts *= (params->order+1);
+  int offset = 0;
+  for (int p=0; p<nproc; p++) {
+    if (p>0) offset += foundCells[p-1].size();
+    for (int i=0; i<foundCells[p].size(); i++) {
+      for (int id=0; id<foundCellNDonors[p][i]; id++) {
+        int ic = eleMap[foundCellDonors[p](i,id)];
+        for (int spt=0; spt<nSpts; spt++)
+          donorU[p].insertRow(eles[ic]->U_spts[spt],INSERT_AT_END,nFields);
+      }
+    }
+  }
+
+  /* --- Perform the Galerkin Projection --- */
+
+  // Perform integration for each target cell
+  vector<matrix<double>> RHS(nproc);
+  offset = 0;
+  for (int p=0; p<nproc; p++) {
+    if (p>0) offset += foundCells[p-1].size();
+    int offsetQ = 0;
+    int offsetD = 0;
+    for (int i=0; i<foundCells[p].size(); i++) {
+      if (i>0) {
+        offsetQ += donors[offset+i-1].getNQpts();
+        offsetD += nSpts*foundCellNDonors[p][i-1];
+      }
+
+      matrix<double> rhs(nSpts,nFields);
+      for (int ispt=0; ispt<nSpts; ispt++)
+        for (int id=0; id<foundCellNDonors[p][i]; id++)
+          for (int jspt=0; jspt<nSpts; jspt++)
+            for (int k=0; k<nFields; k++)
+              rhs(ispt,k) += massMatTDRow[(offset+i)*nSpts+ispt](id,jspt) * donorU[p](offsetD+id*nSpts+jspt,k);
+      RHS[p].appendRows(rhs);
+    }
+  }
+
+  // Send/recv the final target-cell data
+  int strideR = nSpts*nFields;
+  vector<matrix<double>> tmpUbRHS(nproc);
+  sendRecvData(nCellsSend,nCellsRecv,RHS,tmpUbRHS,strideR);
+
+  // Add contributions from superMeshes on each rank
+  vector<matrix<double>> ubRHS(nUnblanks);
+  for (auto &rhs:ubRHS) rhs.setup(nSpts,nFields);
+
+  for (int p=0; p<nproc; p++) {
+    if (p==rank) continue;
+    for (int i=0; i<nCellsRecv[p]; i++) {
+      for (int j=0; j<nSpts; j++) {
+        for (int k=0; k<nFields; k++) {
+          ubRHS[recvInds[p][i]](j,k) += tmpUbRHS[p](i,j*nFields+k);
+        }
+      }
+    }
+  }
+
+  // Apply the new values to the unblank ele objects
+  for (int i=0; i<nUnblanks; i++) {
+    int ic = ubCells[i];
+    eles[ic]->U_spts.initializeToZero();
+    auto unblankU = solveCholesky(ubLHS[i],ubRHS[i]);
+    for (int spt=0; spt<nSpts; spt++)
+      for (int k=0; k<nFields; k++)
+        eles[ic]->U_spts(spt,k) += unblankU(spt,k);
+  }
+#endif
+}
+
+vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &iblankCell, vector<int> &eleMap, int quadOrder)
 {
 #ifndef _NO_MPI
   /* ---- Send Unblanked-Cell Nodes to All Grids ---- */
@@ -632,6 +742,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   int i = 0;
 
   for (int ie=0; ie<eles.size(); ie++) {
+    if (iblankCell[eles[ie]->ID] != NORMAL) continue;
     ubCells.push_back(ie);
     // Constraining this to just linear hexahedrons/quadrilaterals for the time being
     if (params->motion) {
@@ -655,9 +766,11 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
 
   /* ---- Check Every Unblanked Cell for Donor Cells on This Grid ---- */
 
-  foundCells.resize(nproc);
-  foundCellDonors.resize(nproc);
-  foundCellNDonors.resize(nproc);
+  vector<vector<int>> foundCells(nproc); //.resize(nproc);
+  vector<matrix<int>> foundCellDonors(nproc);
+  vector<vector<int>> foundCellNDonors(nproc);
+  //foundCellDonors.resize(nproc);
+  //foundCellNDonors.resize(nproc);
   vector<superMesh> supers(0);
   int offset = 0;
   for (int p=0; p<nproc; p++) {
@@ -689,8 +802,18 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
       else
         cellIDs = tg->findCellDonors(targetBox.data());
 
+      // Remove interpolated field / fringe cells from integration
+      set<int> fringeCells;
+      for (auto &ic:cellIDs) {
+        if (iblankCell[ic]!=NORMAL) {
+          fringeCells.insert(ic);
+        }
+      }
+      for (auto &ic:fringeCells) cellIDs.erase(ic);
+
       if (cellIDs.size() > 0) {
         vector<int> donorsIDs;
+
         foundCellNDonors[p].push_back(cellIDs.size());
         foundCells[p].push_back(i);
         for (auto &ic:cellIDs)
@@ -780,6 +903,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   matrix<double> U_qpts;
   vector<double> detJac_qpts;
   for (uint ic=0; ic<eles.size(); ic++) {
+    if (iblankCell[eles[ic]->ID]!=NORMAL) continue;
     opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts, U_qpts, quadPoints);
     opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
     for (uint i=0; i<qpts.size(); i++) {
@@ -799,7 +923,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   }
 
   if (params->errorNorm == 2)
-    for (auto &val:intErr) val = std::sqrt(val);
+    for (auto &val:intErr) val = std::sqrt(std::abs(val));
 
   return intErr;
 #endif
