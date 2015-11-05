@@ -910,6 +910,9 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
 
   for (int i=0; i<supers.size(); i++) {
     auto tmperr = supers[i].integrate(superErr[i]);
+
+    if (tmperr.size()==0) continue; // Happens if supermesh is empty
+
     for (int j=0; j<nFields; j++)
       intErr[j] -= 0.5*tmperr[j];
   }

@@ -55,6 +55,7 @@ class tioga;
 #define NORMAL  1
 #define HOLE    0
 #define FRINGE -1
+#define FIELD_HOLE -2
 
 class geo
 {
@@ -205,6 +206,8 @@ public:
   array<int*,1> conn;  //! Pointer to c2v for each element type [but only 1, so will be size(1)]
   matrix<int> tg_c2v;  //! 'Cleaned' c2v for Tioga (when quadratic elements present, normal c2v won't work)
 
+  void setIterIblanks(void);
+  void setIblankEles(vector<int>& iblankVert, vector<int>& iblankEle);
 private:
 
   input *params;

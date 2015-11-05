@@ -323,4 +323,6 @@ private:
   vector<double> U_spts; //! Global solution vector for solver (over all elements)
 
   shared_ptr<overComm> OComm;
+
+  vector<int> iblankVert, iblankEle;
 };

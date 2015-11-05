@@ -284,6 +284,222 @@ void geo::updateADT(void)
 #endif
 }
 
+void geo::setIterIblanks(void)
+{
+  if (params->iter==params->initIter) {
+    holeCells.clear();
+    for (int ic=0; ic<nEles; ic++)
+      if (iblankCell[ic] == HOLE)
+        holeCells.insert(ic);
+  }
+
+  // Get iblank data for end of iteration
+  moveMesh(1.);
+  vector<int> iblankVert1;
+  OComm->setIblanks2D(xv,overFaceNodes,wallFaceNodes,iblankVert1);
+
+  // Get iblank data for beginning of iteration
+  moveMesh(0.);
+  OComm->setIblanks2D(xv,overFaceNodes,wallFaceNodes,iblank);
+
+  // Take the union of the hole and normal regions, leaving the intersection of
+  // the fringe regions
+  for (int iv=0; iv<nVerts; iv++) {
+    if (iblankVert1[iv] == HOLE || iblank[iv] == HOLE)
+      iblank[iv] = HOLE;
+
+    if (iblankVert1[iv] == NORMAL || iblank[iv] == NORMAL)
+      iblank[iv] = NORMAL;
+  }
+
+  setIblankEles(iblank,iblankCell);
+
+  unordered_set<int> holeCells_tmp;
+  fringeCells.clear();
+  blankCells.clear();
+  unblankCells.clear();
+  for (int ic=0; ic<nEles; ic++) {
+    if (iblankCell[ic] == HOLE) {
+      holeCells_tmp.insert(ic);
+      if (!holeCells.count(ic))
+        blankCells.insert(ic);
+    } else {
+      if (iblankCell[ic] == FRINGE)
+        fringeCells.insert(ic);
+      if (holeCells.count(ic))
+        unblankCells.insert(ic);
+    }
+  }
+
+  holeCells = holeCells_tmp;
+}
+
+void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
+{
+  // Use the TIOGA-supplied nodal iblank values, set iblank values for all cells and faces
+
+  // Only needed for moving grids: List of current hole cells
+  iblankEle.assign(nEles,NORMAL);
+
+  // Convert fringe nodes to hole nodes where completely surrounded
+  for (int iv=0; iv<nVerts; iv++) {
+    if (iblankVert[iv] == FRINGE) {
+      int nfringe = 0;
+      for (int j=0; j<v2nv[iv]; j++) {
+        if ((iblankVert[v2v(iv,j)] == FRINGE && nodeType[v2v(iv,j)] == NORMAL_NODE) || iblankVert[v2v(iv,j)] == HOLE) {
+          nfringe++;
+        }
+      }
+      if (nfringe == v2nv[iv])
+        iblankVert[iv] = HOLE;
+    }
+  }
+
+  // Enforce consistency across MPI boundaries for fringe->hole conversion
+  vector<int> mpiFringeNodes;
+  for (auto &iv:mpiNodes) {
+    if (iblankVert[iv] == FRINGE)
+      mpiFringeNodes.push_back(iv2ivg[iv]);
+  }
+  vector<int> nFringe_proc(nProcGrid);
+  int nFringe = mpiFringeNodes.size();
+  MPI_Allgather(&nFringe,1,MPI_INT,nFringe_proc.data(),1,MPI_INT,gridComm);
+
+  int maxNFringe = getMax(nFringe_proc);
+  matrix<int> mpiFringeNodes_proc(nProcGrid,maxNFringe);
+
+  vector<int> recvCnts(nProcGrid);
+  vector<int> recvDisp(nProcGrid);
+  for (int i=0; i<nProcGrid; i++) {
+    recvCnts[i] = nFringe_proc[i];
+    recvDisp[i] = i*maxNFringe;
+  }
+  MPI_Allgatherv(mpiFringeNodes.data(),mpiFringeNodes.size(),MPI_INT,mpiFringeNodes_proc.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
+
+  /* What's going on here: If an MPI node tagged as 'HOLE' due to rank-local
+   * fringe->hole conversion was _not_ converted on another rank, then globally
+   * we want to keep the node as a 'FRINGE' node to avoid extra hole nodes/cells
+   * at MPI boundaries. */
+  for (auto &iv:mpiNodes) {
+    if (iblankVert[iv] == HOLE) {
+      int ivg = iv2ivg[iv];
+
+      bool found = false;
+      for (int p=0; p<nProcGrid; p++) {
+        if (p == gridRank) continue;
+
+        for (int i=0; i<recvCnts[p]; i++) {
+          int iv2 = mpiFringeNodes_proc(p,i);
+          if (ivg == iv2) {
+            iblankVert[iv] = FRINGE;
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+
+    }
+  }
+
+  if (params->oversetMethod != 0) {
+    // Extend 'fringe' region into 'hole' region by one more layer of vertices
+    vector<int> iblank1(nVerts,HOLE);
+    for (int iv=0; iv<nVerts; iv++) {
+      if (iblankVert[iv] == HOLE) {
+        for (int j=0; j<v2nv[iv]; j++) {
+          int iv2 = v2v(iv,j);
+          if (iblankVert[iv2] != HOLE) {
+            iblank1[iv] = NORMAL;
+            break;
+          }
+        }
+      }
+    }
+
+    for (int iv=0; iv<nVerts; iv++)
+      if (iblank1[iv] == NORMAL)
+        iblankVert[iv] = FRINGE;
+
+    // Enforce consistency across MPI boundaries for fringe-layer extension
+    mpiFringeNodes.resize(0);
+    for (auto &iv:mpiNodes) {
+      if (iblankVert[iv] == FRINGE)
+        mpiFringeNodes.push_back(iv2ivg[iv]);
+    }
+
+    nFringe_proc.assign(nProcGrid,0);
+    nFringe = mpiFringeNodes.size();
+    MPI_Allgather(&nFringe,1,MPI_INT,nFringe_proc.data(),1,MPI_INT,gridComm);
+
+    maxNFringe = getMax(nFringe_proc);
+    mpiFringeNodes_proc.setup(nProcGrid,maxNFringe);
+
+    for (int i=0; i<nProcGrid; i++) {
+      recvCnts[i] = nFringe_proc[i];
+      recvDisp[i] = i*maxNFringe;
+    }
+    MPI_Allgatherv(mpiFringeNodes.data(),mpiFringeNodes.size(),MPI_INT,mpiFringeNodes_proc.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
+
+    for (auto &iv:mpiNodes) {
+      if (iblankVert[iv] == HOLE) {
+        int ivg = iv2ivg[iv];
+        bool found = false;
+        for (int p=0; p<nProcGrid; p++) {
+          if (p == gridRank) continue;
+
+          for (int i=0; i<recvCnts[p]; i++) {
+            int iv2 = mpiFringeNodes_proc(p,i);
+            if (ivg == iv2) {
+              iblankVert[iv] = FRINGE;
+              found = true;
+              break;
+            }
+          }
+          if (found) break;
+        }
+      }
+    }
+  }
+
+  /* --- Move on to cell iblank values --- */
+
+  // Simply blank all cells which contain a hole node
+  for (int ic=0; ic<nEles; ic++) {
+    for (int j=0; j<c2nv[ic]; j++) {
+      int iv = c2v(ic,j);
+      if (iblankVert[iv] == HOLE) {
+        iblankEle[ic] = HOLE;
+        break;
+      }
+    }
+  }
+
+  // Tag the innermost layer of 'normal' cells as 'fringe' cells for unblank method
+  if (params->oversetMethod == 2) {
+    for (int ic=0; ic<nEles; ic++) {
+      if (iblankEle[ic] == NORMAL) {
+        int nfringe = 0;
+        for (int j=0; j<c2nv[ic]; j++) {
+          if (iblankVert[c2v(ic,j)] == FRINGE) {
+            nfringe++;
+          }
+        }
+        if (nfringe == c2nv[ic]) {
+          iblankEle[ic] = FRINGE;
+        }
+      }
+    }
+
+    for (int i=0; i<bndFaces.size(); i++) {
+      if (bcType[i] == OVERSET) {
+        int ic = f2c(bndFaces[i],0);
+        iblankEle[ic] = FRINGE;
+      }
+    }
+  }
+}
+
 void geo::updateBlanking(void)
 {
 #ifndef _NO_MPI
