@@ -162,6 +162,9 @@ Vec3 operator*(matrix<double>& mat, Vec3 &vec)
 point operator/(point a, double b) { return a/=b; }
 point operator*(point a, double b) { return a*=b; }
 
+
+bool operator<(const point &a, const point &b) { return a.x < b.x; }
+
 double getDist(point a, point b)
 {
   Vec3 dx = a - b;

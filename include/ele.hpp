@@ -287,4 +287,6 @@ private:
   void getShape(point loc, vector<double> &shape);
 
   double getDxNelderMeade(point refLoc, point physPos);
+
+  vector<double> tmpShape;  //! To avoid unnecessary mem allocs in calcPos
 };

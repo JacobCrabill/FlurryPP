@@ -275,6 +275,8 @@ struct point
 point operator/(point a, double b);
 point operator*(point a, double b);
 
+bool operator<(const point &a, const point &b); // Just a sort of 'dummy' function for sorting purposes
+
 double getDist(point a, point b);
 
 //! For clearer notation when a vector is implied, rather than a point

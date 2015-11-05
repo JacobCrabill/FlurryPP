@@ -59,7 +59,7 @@ void searchIntersections(MeshBlock *mb,int *cellIndex,int *adtIntegers,double *a
   return;
 }
 
-void searchBoxIntersections(MeshBlock *mb,std::unordered_set<int> &icells,int *adtIntegers,double *adtReals,
+void searchBoxIntersections(int *elementList,std::unordered_set<int> &icells,int *adtIntegers,double *adtReals,
        double *coord,int level,int node,double *bbox,int nelem,int ndim)
 {
   int i;
@@ -77,7 +77,7 @@ void searchBoxIntersections(MeshBlock *mb,std::unordered_set<int> &icells,int *a
   }
 
   if (flag) {
-    int ind = mb->getCellIndex(adtIntegers[4*node]);
+    int ind = elementList[adtIntegers[4*node]];
     icells.insert(ind);
   }
 
@@ -99,7 +99,7 @@ void searchBoxIntersections(MeshBlock *mb,std::unordered_set<int> &icells,int *a
       }
 
       if (flag)
-        searchBoxIntersections(mb,icells,adtIntegers,adtReals,coord,level+1,
+        searchBoxIntersections(elementList,icells,adtIntegers,adtReals,coord,level+1,
                             nodeChild,bbox,nelem,ndim);
     }
   }
@@ -337,7 +337,7 @@ void ADT::searchADT_point(MeshBlock *mb, int* cellIndex, double *xsearch)
         coord,0,rootNode,xsearch,nelem,ndim);
 }
 
-void ADT::searchADT_box(MeshBlock *mb, std::unordered_set<int> &icells, double *bbox)
+void ADT::searchADT_box(int *elementList, std::unordered_set<int> &icells, double *bbox)
 {
   int rootNode=0;
   icells.clear();
@@ -350,7 +350,7 @@ void ADT::searchADT_box(MeshBlock *mb, std::unordered_set<int> &icells, double *
   }
 
   // Call recursive routine to check intersections with ADT nodes
-  if (flag) searchBoxIntersections(mb,icells,adtIntegers,adtReals,
+  if (flag) searchBoxIntersections(elementList,icells,adtIntegers,adtReals,
         coord,0,rootNode,bbox,nelem,ndim);
 }
 

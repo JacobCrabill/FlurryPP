@@ -564,19 +564,18 @@ void ele::calcTransforms_point(matrix<double> &jacobian, matrix<double> &JGinv, 
 
 point ele::calcPos(const point &loc)
 {
-  vector<double> shape;
-  getShape(loc,shape);
+  getShape(loc,tmpShape);
 
   point pt;
   if (params->motion == 0) {
     for (int iv=0; iv<nNodes; iv++)
       for (int dim=0; dim<nDims; dim++)
-        pt[dim] += shape[iv]*nodes[iv][dim];
+        pt[dim] += tmpShape[iv]*nodes[iv][dim];
   }
   else {
     for (int iv=0; iv<nNodes; iv++)
       for (int dim=0; dim<nDims; dim++)
-        pt[dim] += shape[iv]*nodesRK[iv][dim];
+        pt[dim] += tmpShape[iv]*nodesRK[iv][dim];
   }
 
   return pt;
@@ -722,105 +721,97 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
 
   int nPts = nDims+1;
   int nVars = nDims;
-  vector<double> F(nPts);
-  matrix<double> X(nPts,nVars);
+  vector<std::pair<double,point>> FX(nPts);
 
   // Starting location for search
   double L = .75;
   if (nDims == 3) {
-    X(0,0) =-L*.5; X(0,1) =-L*.43301; X(0,2) =-L*.375;
-    X(1,0) = L*.5; X(1,1) =-L*.43301; X(1,2) =-L*.375;
-    X(2,0) = L*0;  X(2,1) = L*.43301; X(2,2) =-L*.375;
-    X(3,0) = L*0;  X(3,1) = L*0;      X(3,2) = L*.375;
+    FX[0].second = point(-L*.5, -L*.43301, -L*.375);
+    FX[1].second = point( L*.5, -L*.43301, -L*.375);
+    FX[2].second = point( L*0.,  L*.43301, -L*.375);
+    FX[3].second = point( L*0., -L*0.,      L*.375);
   }
   else {
-    X(0,0) =-L*.5; X(0,1) =-L*.43301;
-    X(1,0) = L*.5; X(1,1) =-L*.43301;
-    X(2,0) = L*0;  X(2,1) = L*.43301;
+    FX[0].second = point(-L*.5, -L*.43301, 0);
+    FX[1].second = point( L*.5, -L*.43301, 0);
+    FX[2].second = point( L*0.,  L*.43301, 0);
   }
 
   // Evaluate the 'function' at the initial 'points'
   for (int i=0; i<nPts; i++)
-    F[i] = getDxNelderMeade(point(X[i],nDims),pos);
+    FX[i].first = getDxNelderMeade(FX[i].second,pos);
+
+  std::sort(FX.begin(),FX.end());
 
   double tol = 1e-11;
   int iter = 0;
-  while (iter < 300 && getMin(F)>tol) {
-    auto ind = getOrder(F);
-    point Xn = point(X[ind[nPts-1]],nDims);  // Point with the highest value of F
-    point X0;                          // Centroid of all other points
-    point Xr;                          // Reflected point
+  while (iter < 300 && FX[0].first>tol) {
+    point Xn = FX[nPts-1].second;  // Point with the highest value of F
+    point X0;                      // Centroid of all other points
+    point Xr;                      // Reflected point
 
     // Take centroid of all points besides Xn
     for (int j=0; j<nPts-1; j++)
-      X0 += point(X[ind[j]],nDims)/(nPts-1);
+      X0 += FX[j].second/(nPts-1);
     // Reflect Xn around X0
     Xr = X0 + (X0-Xn);
 
     double Fr = getDxNelderMeade(Xr,pos);
 
     // Determine what to do with the new point
-    if (Fr < F[ind[nPts-2]]) {
+    if (Fr < FX[nPts-2].first) {
       // We will be keeping this point
-      if (Fr < F[ind[0]]) {
+      if (Fr < FX[0].first) {
         // This one's good; keep going! Expand from Xr
         point Xe = Xr + (X0-Xn);
         double Fe = getDxNelderMeade(Xe,pos);
 
         if (Fe < Fr) {
           // This one's even better; use it instead
-          for (int i=0; i<nVars; i++) {
-            X(ind[nPts-1],i) = Xe[i];
-            F[ind[nPts-1]] = Fe;
-          }
+          FX[nPts-1].first = Fe;
+          FX[nPts-1].second = Xe;
         }
         else {
           // Xe/Fe was no better; stick with Fr, Xr
-          for (int i=0; i<nVars; i++) {
-            X(ind[nPts-1],i) = Xr[i];
-            F[ind[nPts-1]] = Fr;
-          }
+          FX[nPts-1].first = Fr;
+          FX[nPts-1].second = Xr;
         }
       }
       else {
         // This one's somewhere in the middle; replace Xn with Xr
-        for (int i=0; i<nVars; i++) {
-          X(ind[nPts-1],i) = Xr[i];
-          F[ind[nPts-1]] = Fr;
-        }
+        FX[nPts-1].first = Fr;
+        FX[nPts-1].second = Xr;
       }
     }
     else {
       // Try reducing the size of the simplex
       point Xc = X0 - (X0-Xn)*.5;
       double Fc = getDxNelderMeade(Xc,pos);
-      if (Fc < F[ind[nPts-1]]) {
+      if (Fc < FX[nPts-1].first) {
         // Bringing this point in is better; use it
-        for (int i=0; i<nVars; i++) {
-          X(ind[nPts-1],i) = Xc[i];
-          F[ind[nPts-1]] = Fc;
-        }
+        FX[nPts-1].first = Fc;
+        FX[nPts-1].second = Xc;
       }
       else {
         // Bringing this point in didn't work; shrink the simplex onto
         // the smallest-valued vertex
-        point X1 = point(X[ind[0]],nDims);
+        point X1 = FX[0].second;
         for (int i=1; i<nPts; i++) {
           for (int j=0; j<nVars; j++) {
-            X(ind[i],j) = X1[j] + 0.5*(X(ind[i],j)-X1[j]);
+            FX[i].second[j] = X1[j] + 0.5*(FX[i].second[j]-X1[j]);
           }
-          point xTmp = point(X[ind[i]],nDims);
-          F[ind[i]] = getDxNelderMeade(xTmp,pos);
+          FX[i].first = getDxNelderMeade(FX[i].second,pos);
         }
       }
     }
+
+    std::sort(FX.begin(),FX.end());
 
     // Continue to iterate
     iter++;
   }
 
-  auto ind = getOrder(F);
-  loc = point(X[ind[nPts-1]],nDims);
+  loc = FX[nPts-1].second;
 
   // Check to see if final location lies within element or not
   eps = 1e-8;
