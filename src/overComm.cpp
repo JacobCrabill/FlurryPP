@@ -308,6 +308,7 @@ void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared
       vector<double> targetBox = {pt.x,pt.y,pt.x,pt.y};
       adt->searchADT_box(eleList.data(),cellIDs,targetBox.data());
       for (auto &ic:cellIDs) {
+        if (eleMap[ic]<0) continue;
         point refLoc;
         bool isInEle = eles[eleMap[ic]]->getRefLocNelderMeade(pt,refLoc);
 
@@ -342,6 +343,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
 
   int nDims = params->nDims;
   int nv = (nDims==2) ? 4 : 8;
+  quadOrder = max(quadOrder,1);
 
   ubCells.resize(0);
   Array<double,3> ubCellNodes(nUnblanks,nv,nDims);

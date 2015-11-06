@@ -383,12 +383,12 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("periodicTol",periodicTol,1e-6);
 
   opts.getScalarValue("monitorResFreq",monitorResFreq,10);
-  if (monitorResFreq < 0) monitorResFreq = -INFINITY;
+  if (monitorResFreq < 0) monitorResFreq = INT_MAX;
   if (meshType == OVERSET_MESH)
     opts.getScalarValue("monitorErrFreq",monitorErrFreq,monitorResFreq);
   else
     opts.getScalarValue("monitorErrFreq",monitorErrFreq,-1);
-  if (monitorErrFreq < 0) monitorErrFreq = -INFINITY;
+  if (monitorErrFreq < 0) monitorErrFreq = INT_MAX;
   opts.getScalarValue("errorNorm",errorNorm,1);
 
   opts.getScalarValue("resType",resType,2);

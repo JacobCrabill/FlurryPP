@@ -426,7 +426,7 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
     }
   }
 
-  if (params->oversetMethod != 0) {
+//  if (params->oversetMethod != 0) {
     // Extend 'fringe' region into 'hole' region by one more layer of vertices
     vector<int> iblank1(nVerts,HOLE);
     for (int iv=0; iv<nVerts; iv++) {
@@ -484,7 +484,7 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
         }
       }
     }
-  }
+//  }
 
   /* --- Move on to cell iblank values --- */
 
