@@ -125,9 +125,9 @@ void solver::update(void)
 
 void solver::calcResidual(int step)
 {
-//  if (params->meshType == OVERSET_MESH && params->oversetMethod == 2) {
-//    oversetFieldInterp();
-//  }
+  if (params->meshType == OVERSET_MESH && params->oversetMethod == 2) {
+    oversetFieldInterp();
+  }
 
   if(params->scFlag == 1) {
     shockCapture();
@@ -513,63 +513,34 @@ void solver::moveMesh(int step)
   if (!params->motion) return;
 
   if (params->meshType == OVERSET_MESH) {
+    if (step == 0) {
+      Geo->setIterIblanks();
+      if (params->RKa[nRKSteps-1]!=1.)
+        Geo->updateADT();
+      Geo->processBlanks(eles,faces,mpiFaces,overFaces);
+      Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
+      OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->order);
+      OComm->performProjection(eles,opers,Geo->eleMap);
+    }
 
     if (params->oversetMethod == 2) {
-
-      if (step == 0) {
-        Geo->setIterIblanks();
-        Geo->processBlanks(eles,faces,mpiFaces,overFaces);
-        Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
-        OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->order);
-        OComm->performProjection(eles,opers,Geo->eleMap);
-      }
-
       OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->order);
       OComm->performProjection(eles,opers,Geo->eleMap);
+    }
 
-      //if ( !(step==0 && params->RKa[step]==0) )
+    if ( !(step==0 && params->RKa[step]==0) )
       Geo->moveMesh(params->RKa[step]);
 
-      for (auto &e:eles) e->move(true);
+    for (auto &e:eles) e->move(true);
 
-      Geo->updateADT();
+    Geo->updateADT();
 
-    } else {
-
-      /* -- Remove blanks tagged during previous iteration and
-       *    find new blanks/unblanks -- */
-      if (step==0) {
-        Geo->processBlanks(eles,faces,mpiFaces,overFaces);
-
-        Geo->moveMesh(1.);
-
-        for (auto &e:eles) e->move(false);
-
-        Geo->updateBlanking();
-      }
-
-      /* -- Set the geometry to the current RK-stage time -- */
-
-      Geo->moveMesh(params->RKa[step]);
-
-      for (auto &e:eles) e->move(true);
-
-      Geo->updateADT();
-
-
-      /* -- Setup unblanks needed for this time step -- */
-      if (step==0) {
-        Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
-
-        // Initialize the solution in the new elements using local Galerkin projection
-        OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->order);
-        OComm->performProjection(eles,opers,Geo->eleMap);
-      }
+    if (params->oversetMethod != 2) {
       if (params->nDims==3) {
         OComm->matchOversetPoints3D(eles,overFaces,Geo->eleMap);
       } else {
         getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
-        OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
+        OComm->matchOversetPoints2D(eles,overFaces,Geo->eleMap,Geo->minPt,Geo->maxPt);
       }
     }
   } else {

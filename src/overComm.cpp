@@ -177,7 +177,7 @@ unordered_set<int> overComm::findCellDonors2D(vector<shared_ptr<ele>> &eles, con
     auto box = e->getBoundingBox();
     bool hit = true;
     for (int dim=0; dim<2; dim++) {
-      hit = hit && (targetBox[dim+3] >= box[dim]);
+      hit = hit && (targetBox[dim+2] >= box[dim]);
       hit = hit && (targetBox[dim] <= box[dim+3]);
     }
     if (hit)
@@ -252,7 +252,7 @@ void overComm::matchOversetPoints3D(vector<shared_ptr<ele>> &eles, vector<shared
 #endif
 }
 
-void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const point &minPt, const point &maxPt)
+void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap, const point &minPt, const point &maxPt)
 {
 #ifndef _NO_MPI
   /* ---- Gather all interpolation point data on each grid ---- */
@@ -274,6 +274,12 @@ void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared
   gatherData(nOverPts, 3, overPts.getData(), nPts_rank, interpPtsPhys);
 
   /* ---- Check Every Fringe Point for Donor Cell on This Grid ---- */
+
+  // For use with ADT
+  if (eleList.size() != eleMap.size()) {
+    eleList.resize(eleMap.size());
+    for (int i=0; i<eleMap.size(); i++) eleList[i] = i;
+  }
 
   foundPts.resize(nproc);
   foundEles.resize(nproc);
@@ -297,14 +303,17 @@ void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared
            (pt.x>maxPt.x+tol) || (pt.y>maxPt.y+tol) )
         continue;
 
-      // Check for containment in all eles on this rank of this grid [no ADT currently for 2D meshes]
-      for (auto &e:eles) {
+      // Use ADT to find all cells whose bounding box contains the point
+      unordered_set<int> cellIDs;
+      vector<double> targetBox = {pt.x,pt.y,pt.x,pt.y};
+      adt->searchADT_box(eleList.data(),cellIDs,targetBox.data());
+      for (auto &ic:cellIDs) {
         point refLoc;
-        bool isInEle = e->getRefLocNelderMeade(pt,refLoc);
+        bool isInEle = eles[eleMap[ic]]->getRefLocNelderMeade(pt,refLoc);
 
         if (isInEle) {
           foundPts[p].push_back(i);
-          foundEles[p].push_back(e->ID); // Local ele id for this grid
+          foundEles[p].push_back(ic); // Local ele id for this grid
           foundLocs[p].push_back(refLoc);
           break;
         }
@@ -370,8 +379,10 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
 
   /* ---- Check Every Unblanked Cell for Donor Cells on This Grid ---- */
 
-  vector<int> eleList(eleMap.size());
-  for (int i=0; i<eleMap.size(); i++) eleList[i] = i;
+  if (eleList.size() != eleMap.size()) {
+    eleList.resize(eleMap.size());
+    for (int i=0; i<eleMap.size(); i++) eleList[i] = i;
+  }
 
   foundCells.resize(nproc);
   foundCellDonors.resize(nproc);
@@ -406,18 +417,12 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
 
       // Find all possible donors using Tioga's ADT search (3D) or my brute-force search (2D)
       unordered_set<int> cellIDs;
-      if (nDims == 2)
-        adt->searchADT_box(eleMap.data(),cellIDs,targetBox.data());
-        //cellIDs = findCellDonors2D(eles,targetBox);
-      else
+      if (nDims == 2) {
+        adt->searchADT_box(eleList.data(),cellIDs,targetBox.data());
+      }
+      else {
         cellIDs = tg->findCellDonors(targetBox.data());
-
-//      if (params->rank == 2) {
-//        for (auto &ic:cellIDs) {
-//          _print(params->rank,ic);
-//        }
-//        cout << endl;
-//      }
+      }
 
       if (cellIDs.size() > 0) {
         vector<int> donorsIDs;
@@ -442,7 +447,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
       }
     }
   }
-//exit(0);
+
   /* --- Setup & Exchange Quadrature-Point Data --- */
 
   // Now that we have the local superMesh for each target, setup points for
@@ -776,8 +781,6 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   vector<vector<int>> foundCells(nproc); //.resize(nproc);
   vector<matrix<int>> foundCellDonors(nproc);
   vector<vector<int>> foundCellNDonors(nproc);
-  //foundCellDonors.resize(nproc);
-  //foundCellNDonors.resize(nproc);
   vector<superMesh> supers(0);
   int offset = 0;
   for (int p=0; p<nproc; p++) {
@@ -876,11 +879,6 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
           FatalError("Quadrature Point Reference Location not found in ele!");
         }
 
-        // NOTE: For better integration, should actually over-integrate by
-        // interpolating U to higher-order qpts first, then calculating
-        // error at the quadrature points (rather than interpolating error
-        // to quadrature points from spts)
-
         vector<double> tmpU(nFields);
         opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tmpU.data(), refLoc);
         vector<double> tmpErr = calcError(tmpU,point(qpts_tmp[j],nDims),params);
@@ -891,10 +889,6 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
 
   /* --- Integrate the Entire Domain --- */
 
-  // NOTE: For better integration, should actually over-integrate by
-  // interpolating U to higher-order qpts first, then calculating
-  // error at the quadrature points (rather than interpolating error
-  // to quadrature points from spts)
   vector<point> qpts;
   if (nDims == 2)
    qpts = getLocSpts(QUAD,quadOrder,string("Legendre"));

@@ -165,6 +165,12 @@ point operator*(point a, double b) { return a*=b; }
 
 bool operator<(const point &a, const point &b) { return a.x < b.x; }
 
+std::ostream& operator<<(std::ostream &os, const point &pt)
+{
+  os << "(x,y,z) = " << pt.x << ", " << pt.y << ", " << pt.z;
+  return os;
+}
+
 double getDist(point a, point b)
 {
   Vec3 dx = a - b;

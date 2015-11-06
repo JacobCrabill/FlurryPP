@@ -92,7 +92,7 @@ public:
   MPI_Comm gridComm;
 
   shared_ptr<tioga> tg;  //! TIOGA object in use for simulation
-  shared_ptr<ADT> adt;
+  shared_ptr<ADT> adt;   //! Alternating Digital Tree for searching
 #endif
 
   /* --- Variables for Exchanging Data at Overset Faces --- */
@@ -154,7 +154,7 @@ public:
    */
   void matchOversetPoints3D(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap);
 
-  void matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const point &minPt, const point &maxPt);
+  void matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap, const point &minPt, const point &maxPt);
 
   /*!
    * \brief Setup all communication for unblanked cells and faces
@@ -226,4 +226,7 @@ private:
   vector<matrix<double>> qpts, qptsD_ref, donorBasis, massMatTDRow, ubLHS;
   vector<vector<int>> targetID, donorID;
   vector<vector<int>> recvInds;
+
+  //! For use with ADT in 2D
+  vector<int> eleList;
 };

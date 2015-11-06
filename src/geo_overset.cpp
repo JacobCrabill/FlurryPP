@@ -295,6 +295,15 @@ void geo::updateADT(void)
 
     // Have TIOGA perform the nodal overset connectivity (set nodal iblanks)
     tg->performConnectivity();
+  } else {
+    for (int i=0; i<nEles; i++) {
+      matrix<double> epts;
+      for (int j=0; j<c2nv[i]; j++) {
+        epts.insertRow(xv[c2v(i,j)],INSERT_AT_END,nDims);
+      }
+      getBoundingBox(epts.getData(),c2nv[i],nDims,eleBBox[i]);
+    }
+    adt->buildADT(nDims*2,nEles,eleBBox.getData());
   }
 #endif
 }

@@ -208,7 +208,8 @@ void ele::move(bool doTransforms)
   }
 
   if (doTransforms) {
-    calcTransforms(true);
+    if (params->motion!=4) // Rigid translation: No update needed
+      calcTransforms(true);
     calcGridVelocity();
   }
 }
@@ -1048,12 +1049,11 @@ matrix<double> ele::calcError(void)
         ymin = -5;  ymax = 5;
       }
 
-      double xoff = fmod( (params->time - xmin), (xmax - xmin) ) + xmin;
-      double yoff = fmod( (params->time - ymin), (ymax - ymin) ) + ymin;
-
       for (int spt=0; spt<nSpts; spt++) {
-        double x = pos_spts[spt].x - xoff;
-        double y = pos_spts[spt].y - yoff;
+        double x = abs(fmod( (pos_spts[spt].x - params->time), (xmax-xmin) ));
+        double y = abs(fmod( (pos_spts[spt].y - params->time), (ymax-ymin) ));
+        if (x > (xmax-xmin)/2) x -= (xmax-xmin);
+        if (y > (ymax-ymin)/2) y -= (ymax-ymin);
 
         double f = 1.0 - (x*x + y*y);
 
@@ -1094,12 +1094,11 @@ matrix<double> ele::calcError(void)
         ymin = -5;  ymax = 5;
       }
 
-      double xoff = fmod( (Uinf*cos(theta)*params->time - xmin), (xmax - xmin) ) + xmin;
-      double yoff = fmod( (Uinf*sin(theta)*params->time - ymin), (ymax - ymin) ) + ymin;
-
       for (int spt=0; spt<nSpts; spt++) {
-        double x = pos_spts[spt].x - xoff;
-        double y = pos_spts[spt].y - yoff;
+        double x = abs(fmod( (pos_spts[spt].x - Uinf*cos(theta)*params->time), (xmax-xmin) ));
+        double y = abs(fmod( (pos_spts[spt].y - Uinf*sin(theta)*params->time), (ymax-ymin) ));
+        if (x > (xmax-xmin)/2) x -= (xmax-xmin);
+        if (y > (ymax-ymin)/2) y -= (ymax-ymin);
 
         double f = -(x*x + y*y) / (rc*rc);
 
@@ -1129,14 +1128,18 @@ matrix<double> ele::calcError(void)
       ymin = -5;  ymax = 5;
     }
 
-    double xoff = fmod( (params->time - xmin), (xmax - xmin) ) + xmin;
-    double yoff = fmod( (params->time - ymin), (ymax - ymin) ) + ymin;
-    //point off(xoff,yoff,0.);
+    double xc = fmod( (params->time - xmin), (xmax - xmin) ) + xmin;
+    double yc = fmod( (params->time - ymin), (ymax - ymin) ) + ymin;
 
     if (params->icType == 0) {
       /* --- Simple Gaussian bump centered at (0,0) --- */
       for (int spt=0; spt<nSpts; spt++) {
-        double r2 = (pos_spts[spt].x-xoff)*(pos_spts[spt].x-xoff) + (pos_spts[spt].y-yoff)*(pos_spts[spt].y-yoff);
+        double x = abs(fmod( (pos_spts[spt].x - params->time), (xmax-xmin) ));
+        double y = abs(fmod( (pos_spts[spt].y - params->time), (ymax-ymin) ));
+        if (x > (xmax-xmin)/2) x -= (xmax-xmin);
+        if (y > (ymax-ymin)/2) y -= (ymax-ymin);
+
+        double r2 = x*x + y*y;
         err(spt,0) = exp(-r2);
       }
     }

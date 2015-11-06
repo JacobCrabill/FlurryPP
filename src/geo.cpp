@@ -2397,6 +2397,7 @@ void geo::partitionMesh(void)
 void geo::moveMesh(double rkVal)
 {
   double rkTime = params->time + params->dt*rkVal;
+  params->rkTime = rkTime;
 
   switch (params->motion) {
     case 1: {

@@ -603,11 +603,11 @@ vector<double> calcError(const vector<double> &U, const point &pos, input *param
         ymin = -5;  ymax = 5;
       }
 
-      double xoff = fmod( (params->time - xmin), (xmax - xmin) ) + xmin;
-      double yoff = fmod( (params->time - ymin), (ymax - ymin) ) + ymin;
+      double x = fmod( (pos.x - params->time), (xmax - xmin) );
+      double y = fmod( (pos.y - params->time), (ymax - ymin) );
 
-      double x = pos.x - xoff;
-      double y = pos.y - yoff;
+      if (x > (xmax-xmin)/2) x -= (xmax-xmin);
+      if (y > (ymax-ymin)/2) y -= (ymax-ymin);
 
       double f = 1.0 - (x*x + y*y);
 
@@ -647,11 +647,11 @@ vector<double> calcError(const vector<double> &U, const point &pos, input *param
         ymin = -5;  ymax = 5;
       }
 
-      double xoff = fmod( (Uinf*cos(theta)*params->time - xmin), (xmax - xmin) ) + xmin;
-      double yoff = fmod( (Uinf*sin(theta)*params->time - ymin), (ymax - ymin) ) + ymin;
+      double x = fmod( (pos.x - Uinf*cos(theta)*params->time), (xmax - xmin) );
+      double y = fmod( (pos.y - Uinf*sin(theta)*params->time), (ymax - ymin) );
 
-      double x = pos.x - xoff;
-      double y = pos.y - yoff;
+      if (x > (xmax-xmin)/2) x -= (xmax-xmin);
+      if (y > (ymax-ymin)/2) y -= (ymax-ymin);
 
       double f = -(x*x + y*y) / (rc*rc);
 
@@ -680,13 +680,14 @@ vector<double> calcError(const vector<double> &U, const point &pos, input *param
       ymin = -5;  ymax = 5;
     }
 
-    double xoff = fmod( (params->time - xmin), (xmax - xmin) ) + xmin;
-    double yoff = fmod( (params->time - ymin), (ymax - ymin) ) + ymin;
-    //point off(xoff,yoff,0.);
+    double x = abs(fmod( (pos.x - params->time), (xmax-xmin) ));
+    double y = abs(fmod( (pos.y - params->time), (ymax-ymin) ));
+    if (x > (xmax-xmin)/2) x -= (xmax-xmin);
+    if (y > (ymax-ymin)/2) y -= (ymax-ymin);
 
     if (params->icType == 0) {
       /* --- Simple Gaussian bump centered at (0,0) --- */
-      double r2 = (pos.x-xoff)*(pos.x-xoff) + (pos.y-yoff)*(pos.y-yoff);
+      double r2 = x*x + y*y;
       err[0] = exp(-r2);
     }
     else if (params->icType == 2) {

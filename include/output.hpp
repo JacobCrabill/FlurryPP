@@ -45,7 +45,10 @@ void writeParaview(solver *Solver, input *params);
 /*! Compute the residual and print to both the terminal and history file. */
 void writeResidual(solver *Solver, input *params);
 
-/*! Compute the L1 solution error (for certain test cases) and print to screen. */
+/*! Compute and display all error norms */
+void writeAllError(solver *Solver, input *params);
+
+/*! Compute the conservation, L1, or L2 solution error (for certain test cases) and print to screen. */
 void writeError(solver *Solver, input *params);
 
 /*! Write a Tecplot mesh file compatible with TIOGA's testTioga FORTRAN interface */

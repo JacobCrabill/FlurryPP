@@ -125,24 +125,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Calculate the integral / L1 / L2 error for the final time */
-  if (params.testCase > 0) {
-    params.errorNorm = 0;
-    if (params.rank == 0)
-      cout << "Integrated conservative variables:" << endl;
-    writeError(&Solver,&params);
-
-    params.errorNorm = 1;
-    if (params.rank == 0)
-      cout << "Integral L1 error:" << endl;
-    writeError(&Solver,&params);
-
-    params.errorNorm = 2;
-    if (params.rank == 0)
-      cout << "Integral L2 error:" << endl;
-    writeError(&Solver,&params);
-  } else {
-    writeError(&Solver,&params);
-  }
+  writeAllError(&Solver,&params);
 
   // Get simulation wall time
   runTime.stopTimer();

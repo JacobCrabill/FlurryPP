@@ -34,9 +34,10 @@
 void solver::oversetFieldInterp(void)
 {
 #ifndef _NO_MPI
-  // Use field interpolation rather than boundary interpolation
+  if (params->motion) return;  // For moving problems, projection done in moveMesh()
 
-  if (params->motion || params->iter == params->initIter+1) {
+  // Use field interpolation rather than boundary interpolation
+  if (params->iter == params->initIter+1) {
     OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->order);
     OComm->performProjection(eles,opers,Geo->eleMap);
   } else {
@@ -82,7 +83,7 @@ void solver::setupOverset(void)
     OComm = Geo->OComm;
 
     if (params->oversetMethod != 2)
-      OComm->matchOversetPoints2D(eles,overFaces,Geo->minPt,Geo->maxPt);
+      OComm->matchOversetPoints2D(eles,overFaces,Geo->eleMap,Geo->minPt,Geo->maxPt);
   }
 #endif
 }

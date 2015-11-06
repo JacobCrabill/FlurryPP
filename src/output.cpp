@@ -721,6 +721,31 @@ void writeResidual(solver *Solver, input *params)
   }
 }
 
+void writeAllError(solver *Solver, input *params)
+{
+  if (params->testCase > 0) {
+    params->errorNorm = 0;
+    if (params->rank == 0)
+      cout << "Integrated conservation error:" << endl;
+    writeError(Solver,params);
+
+    params->errorNorm = 1;
+    if (params->rank == 0)
+      cout << "Integral L1 error:" << endl;
+    writeError(Solver,params);
+
+    params->errorNorm = 2;
+    if (params->rank == 0)
+      cout << "Integral L2 error:" << endl;
+    writeError(Solver,params);
+  } else {
+    params->errorNorm = 0;
+    if (params->rank == 0)
+      cout << "Integrated conservative variables:" << endl;
+    writeError(Solver,params);
+  }
+}
+
 void writeError(solver *Solver, input *params)
 {
   if (params->meshType != OVERSET_MESH && !params->testCase) return;
