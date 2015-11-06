@@ -42,6 +42,7 @@
 #include "overFace.hpp"
 #include "overComm.hpp"
 #include "superMesh.hpp"
+#include "ADT.h"
 
 #ifndef _NO_MPI
 #include "mpi.h"
@@ -202,6 +203,20 @@ void geo::setupOverset2D(void)
 
   // Now use new nodal iblanks to set cell and face iblanks
   setCellIblanks();
+
+  eleBBox.setup(nEles,nDims*2);
+  for (int i=0; i<nEles; i++) {
+    matrix<double> epts;
+    for (int j=0; j<c2nv[i]; j++) {
+      epts.insertRow(xv[c2v(i,j)],INSERT_AT_END,nDims);
+    }
+    getBoundingBox(epts.getData(),c2nv[i],nDims,eleBBox[i]);
+  }
+
+  adt = make_shared<ADT>();
+  OComm->adt = adt;
+
+  adt->buildADT(nDims*2,nEles,eleBBox.getData());
 #endif
 }
 

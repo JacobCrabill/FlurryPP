@@ -60,4 +60,4 @@ void searchIntersections(MeshBlock *mb,int *cellIndex,int *adtIntegers,double *a
 //! Recursively search the input ADT for all MeshBlock cells intersecting with bbox
 void searchBoxIntersections(int *elementList, std::unordered_set<int>& icells, int *adtIntegers, double *adtReals, double *coord, int level, int node, double *bbox, int nelem, int ndim);
 
-void buildADTrecursion(double *coord,double *adtReals,double *adtWork,int *adtIntegers,int *elementsAvailable,int *adtCount,int side,int parent,int level,int ndim,int nelem, int nav);
+void buildADTrecursion(double *coord, double *adtReals, double *adtWork, int *adtIntegers, int *eleIDs, int *adtCount, int side, int parent, int level, int ndim, int nelem, int nav);

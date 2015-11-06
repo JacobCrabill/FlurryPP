@@ -66,22 +66,26 @@ odd = .true.
 IF (n == 2 * nby2) odd = .false.
 lo = 1
 hi = n
+
 IF (n < 3) THEN
   IF (n < 1) THEN
     xmed = 0.0
     RETURN
   END IF
+
   xmed = x(1)
   IF (n == 1) RETURN
+
   xmed = 0.5*(xmed + x(2))
-   if (x(2) < x(1)) then
+  IF (x(2) < x(1)) THEN
     temp=x(1)
     x(1)=x(2)
     x(2)=temp
     itemp=ix(1)
     ix(1)=ix(2)
     ix(2)=itemp
-   endif
+  ENDIF
+
   RETURN
 END IF
 

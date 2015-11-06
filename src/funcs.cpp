@@ -546,6 +546,21 @@ void getBoundingBox(double *pts, int nPts, int nDims, point &minPt, point &maxPt
   }
 }
 
+void getBoundingBox(double *pts, int nPts, int nDims, double *bbox)
+{
+  for (int i=0; i<nDims; i++) {
+    bbox[i]       =  INFINITY;
+    bbox[nDims+i] = -INFINITY;
+  }
+
+  for (int i=0; i<nPts; i++) {
+    for (int dim=0; dim<nDims; dim++) {
+      bbox[dim]       = min(bbox[dim],      pts[i*nDims+dim]);
+      bbox[nDims+dim] = max(bbox[nDims+dim],pts[i*nDims+dim]);
+    }
+  }
+}
+
 vector<double> calcError(const vector<double> &U, const point &pos, input *params)
 {
   int nDims = params->nDims;

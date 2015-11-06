@@ -47,6 +47,7 @@ class tioga;
 #include "overComm.hpp"
 #include "solver.hpp"
 #include "superMesh.hpp"
+#include "ADT.h"
 
 #ifndef _NO_MPI
 #include "tioga.h"
@@ -201,10 +202,13 @@ public:
 #ifndef _NO_MPI
   shared_ptr<overComm> OComm;
   shared_ptr<tioga> tg;  //! Pointer to Tioga object for processing overset grids
+  shared_ptr<ADT> adt;
 #endif
   int* nodesPerCell;   //! Pointer for Tioga to know # of nodes for each element type
   array<int*,1> conn;  //! Pointer to c2v for each element type [but only 1, so will be size(1)]
   matrix<int> tg_c2v;  //! 'Cleaned' c2v for Tioga (when quadratic elements present, normal c2v won't work)
+
+  matrix<double> eleBBox;
 
   void setIterIblanks(void);
   void setIblankEles(vector<int>& iblankVert, vector<int>& iblankEle);

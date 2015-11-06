@@ -45,6 +45,7 @@ class overFace;
 #include "operators.hpp"
 #include "overFace.hpp"
 #include "superMesh.hpp"
+#include "ADT.h"
 
 #ifndef _NO_MPI
 #include "tioga.h"
@@ -91,6 +92,7 @@ public:
   MPI_Comm gridComm;
 
   shared_ptr<tioga> tg;  //! TIOGA object in use for simulation
+  shared_ptr<ADT> adt;
 #endif
 
   /* --- Variables for Exchanging Data at Overset Faces --- */

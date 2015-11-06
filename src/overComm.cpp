@@ -370,6 +370,9 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
 
   /* ---- Check Every Unblanked Cell for Donor Cells on This Grid ---- */
 
+  vector<int> eleList(eleMap.size());
+  for (int i=0; i<eleMap.size(); i++) eleList[i] = i;
+
   foundCells.resize(nproc);
   foundCellDonors.resize(nproc);
   foundCellNDonors.resize(nproc);
@@ -386,23 +389,35 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
 
     for (int i=0; i<nCells_rank[p]; i++) {
       // Get requested cell's bounding box [min & max extents]
-      vector<double> targetBox = {1e15, 1e15, 1e15, -1e15, -1e15, -1e15};
+      vector<double> targetBox(nDims*2);
+      for (int dim=0; dim<nDims; dim++) {
+        targetBox[dim]       = 1e15;
+        targetBox[dim+nDims] =-1e15;
+      }
       vector<point> targetNodes;
       for (int j=0; j<nv; j++) {
         point pt = point(&ubNodes_rank[(offset+i)*stride+nDims*j],nDims);
         targetNodes.push_back(pt);
-        for (int dim=0; dim<3; dim++) {
-          targetBox[dim]   = min(pt[dim],targetBox[dim]);
-          targetBox[dim+3] = max(pt[dim],targetBox[dim+3]);
+        for (int dim=0; dim<nDims; dim++) {
+          targetBox[dim]       = min(pt[dim],targetBox[dim]);
+          targetBox[dim+nDims] = max(pt[dim],targetBox[dim+nDims]);
         }
       }
 
       // Find all possible donors using Tioga's ADT search (3D) or my brute-force search (2D)
       unordered_set<int> cellIDs;
       if (nDims == 2)
-        cellIDs = findCellDonors2D(eles,targetBox);
+        adt->searchADT_box(eleMap.data(),cellIDs,targetBox.data());
+        //cellIDs = findCellDonors2D(eles,targetBox);
       else
         cellIDs = tg->findCellDonors(targetBox.data());
+
+//      if (params->rank == 2) {
+//        for (auto &ic:cellIDs) {
+//          _print(params->rank,ic);
+//        }
+//        cout << endl;
+//      }
 
       if (cellIDs.size() > 0) {
         vector<int> donorsIDs;
@@ -427,7 +442,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
       }
     }
   }
-
+//exit(0);
   /* --- Setup & Exchange Quadrature-Point Data --- */
 
   // Now that we have the local superMesh for each target, setup points for
