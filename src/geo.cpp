@@ -119,13 +119,10 @@ void geo::processConnectivity()
 #ifndef _NO_MPI
   /* --- Use TIOGA to find all hole nodes, then setup overset-face connectivity --- */
   if (meshType == OVERSET_MESH) {
-    if (nDims == 3) {
-      registerGridDataTIOGA();
-
-      updateBlanking();
-    } else {
+    if (nDims == 3)
+      setupOverset3D();
+    else
       setupOverset2D();
-    }
 
     setFaceIblanks();
 

@@ -47,10 +47,10 @@ class tioga;
 #include "overComm.hpp"
 #include "solver.hpp"
 #include "superMesh.hpp"
-#include "ADT.h"
 
 #ifndef _NO_MPI
 #include "tioga.h"
+#include "ADT.h"
 #endif
 
 #define NORMAL  1
@@ -88,7 +88,7 @@ public:
   void createMesh();
 
   //! Update connectivity / node-blanking for overset grids
-  void registerGridDataTIOGA();
+  void setupOverset3D();
 
   /*!
    * \brief Call TIOGA to re-process overset connectivity
@@ -102,8 +102,8 @@ public:
 
   void matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &donors);
 
-  //! Update nodal and cell iblank values using current mesh
-  void updateBlanking(void);
+  //! Update nodal and cell iblank values using current mesh using Tioga (3D)
+  void updateBlankingTioga(void);
 
   //! Remove cells and faces which were tagged for blanking
   void processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);

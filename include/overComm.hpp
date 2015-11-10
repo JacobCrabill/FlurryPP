@@ -45,10 +45,10 @@ class overFace;
 #include "operators.hpp"
 #include "overFace.hpp"
 #include "superMesh.hpp"
-#include "ADT.h"
 
 #ifndef _NO_MPI
 #include "tioga.h"
+#include "ADT.h"
 #include "mpi.h"
 #endif
 

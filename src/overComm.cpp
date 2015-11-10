@@ -456,10 +456,12 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
   // use with Galerkin projection
   for (auto &mesh:donors)
     mesh.setupQuadrature();
+#endif
 }
 
 void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &eleMap)
 {
+#ifndef _NO_MPI
   int nDims = params->nDims;
 
   if (nUnblanksTotal == 0) return;
