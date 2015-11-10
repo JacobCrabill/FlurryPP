@@ -757,6 +757,12 @@ void solver::initializeSolution()
 
   }
 
+  if (params->meshType == OVERSET_MESH && params->motion == 0) {
+    // Perform initial LGP to setup connectivity / arrays for remainder of computations
+    OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->order);
+    OComm->performProjection(eles,opers,Geo->eleMap);
+  }
+
   /* If using CFL-based time-stepping, calc wave speed in each
    * ele for initial dt calculation */
   if (params->dtType == 1) {

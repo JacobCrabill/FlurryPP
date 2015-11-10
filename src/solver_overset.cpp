@@ -37,12 +37,7 @@ void solver::oversetFieldInterp(void)
   if (params->motion) return;  // For moving problems, projection done in moveMesh()
 
   // Use field interpolation rather than boundary interpolation
-  if (params->iter == params->initIter+1) {
-    OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->order);
-    OComm->performProjection(eles,opers,Geo->eleMap);
-  } else {
-    OComm->performProjection_static(eles,Geo->eleMap);
-  }
+  OComm->performProjection_static(eles,Geo->eleMap);
 #endif
 }
 

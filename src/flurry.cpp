@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-  /* Stat timer for simulation (ignoring pre-processing) */
+  /* Start timer for simulation (ignoring pre-processing) */
   simTimer runTime;
   runTime.startTimer();
 

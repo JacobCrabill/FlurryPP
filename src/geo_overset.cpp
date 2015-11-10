@@ -210,9 +210,6 @@ void geo::setupOverset2D(void)
 
   OComm->setIblanks2D(xv,overFaceNodes,wallFaceNodes,iblank);
 
-  // Now use new nodal iblanks to set cell and face iblanks
-  setIblankEles(iblank,iblankCell);
-
   eleBBox.setup(nEles,nDims*2);
   for (int i=0; i<nEles; i++) {
     matrix<double> epts;
@@ -226,6 +223,15 @@ void geo::setupOverset2D(void)
   OComm->adt = adt;
 
   adt->buildADT(nDims*2,nEles,eleBBox.getData());
+
+  // Now use new nodal iblanks to set cell and face iblanks
+  setIblankEles(iblank,iblankCell);
+
+  fringeCells.clear();
+  for (int ic=0; ic<nEles; ic++) {
+    if (iblankCell[ic] == FRINGE)
+      fringeCells.insert(ic);
+  }
 #endif
 }
 
