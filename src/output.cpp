@@ -170,6 +170,12 @@ void writeParaview(solver *Solver, input *params)
 
     pVTU << "<?xml version=\"1.0\" ?>" << endl;
     pVTU << "<VTKFile type=\"PUnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" compressor=\"vtkZLibDataCompressor\">" << endl;
+
+    // Just found out ParaView won't complain about comments if you put them here!
+    // TODO: Replace extra file with comments here
+    pVTU << "<!-- TIME " << params->time << " -->" << endl;
+    pVTU << "<!-- ITER " << params->iter << " -->" << endl;
+
     pVTU << "  <PUnstructuredGrid GhostLevel=\"1\">" << endl;
     // NOTE: Must be careful with order here [particularly of vector data], or else ParaView gets confused
     pVTU << "    <PPointData Scalars=\"Density\" Vectors=\"Velocity\" >" << endl;

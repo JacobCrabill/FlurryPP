@@ -493,28 +493,32 @@ void geo::processConnExtra(void)
   else
     maxNC = 26;
 
-  c2ac.setup(nEles,maxNC); // ALL cell surrounding each cell (all cells sharing at least 1 vertex)
-  c2ac.initializeToValue(-1);
-  for (int ic=0; ic<nEles; ic++) {
-    set<int> tmpIC;
-    for (int j=0; j<c2nv[ic]; j++) {
-      int iv = c2v(ic,j);
-      for (int ic2=0; ic2<nEles; ic2++) {
-        if (ic2 == ic) continue;
-        for (int k=0; k<c2nv[ic2]; k++) {
-          if (c2v(ic2,k)==iv) {
-            tmpIC.insert(ic2);
-          }
-        }
-      }
-    }
+//  c2ac.setup(nEles,maxNC); // ALL cell surrounding each cell (all cells sharing at least 1 vertex)
+//  c2ac.initializeToValue(-1);
+//  for (int ic=0; ic<nEles; ic++) {
+//    set<int> tmpIC;
+//    for (int j=0; j<c2nv[ic]; j++) {
+//      int iv = c2v(ic,j);
+//      for (int ic2=0; ic2<nEles; ic2++) {
+//        if (ic2 == ic) continue;
+//        for (int k=0; k<c2nv[ic2]; k++) {
+//          if (c2v(ic2,k)==iv) {
+//            tmpIC.insert(ic2);
+//          }
+//        }
+//      }
+//    }
 
-    int nc = 0;
-    for (auto &ic2:tmpIC) {
-      c2ac(ic,nc) = ic2;
-      nc++;
-    }
-  }
+//    int nc = 0;
+//    if (tmpIC.size()>8) {
+//      _print(ic,tmpIC.size());
+
+//    }
+//    for (auto &ic2:tmpIC) {
+//      c2ac(ic,nc) = ic2;
+//      nc++;
+//    }
+//  }
 
   getBoundingBox(xv,minPt,maxPt);
 

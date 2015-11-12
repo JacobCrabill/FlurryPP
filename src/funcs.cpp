@@ -563,6 +563,8 @@ void getBoundingBox(double *pts, int nPts, int nDims, double *bbox)
 
 vector<double> calcError(const vector<double> &U, const point &pos, input *params)
 {
+  if (params->testCase == 0) return U;
+
   int nDims = params->nDims;
   int nFields = params->nFields;
 

@@ -519,12 +519,12 @@ void solver::moveMesh(int step)
         Geo->updateADT();
       Geo->processBlanks(eles,faces,mpiFaces,overFaces);
       Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
-      OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->order);
+      OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,10);
       OComm->performProjection(eles,opers,Geo->eleMap);
     }
 
     if (params->oversetMethod == 2) {
-      OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->order);
+      OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,10);
       OComm->performProjection(eles,opers,Geo->eleMap);
     }
 
@@ -759,7 +759,7 @@ void solver::initializeSolution()
 
   if (params->meshType == OVERSET_MESH && params->motion == 0) {
     // Perform initial LGP to setup connectivity / arrays for remainder of computations
-    OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->order);
+    OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,10);
     OComm->performProjection(eles,opers,Geo->eleMap);
   }
 
@@ -778,22 +778,42 @@ void solver::initializeSolution()
 
 vector<double> solver::integrateError(void)
 {
-  vector<double> L1Err(params->nFields);
+  int quadOrder = 10;
 
-  for (int i=0; i<eles.size(); i++) {
-    auto wts = getQptWeights(eles[i]->order,params->nDims);
-    auto err = eles[i]->calcError();
-    for (int j=0; j<eles[i]->nSpts; j++)
-      for (int k=0; k<params->nFields; k++)
-        L1Err[k] += err(j,k) * wts[j] * eles[i]->detJac_spts[j];
+  vector<point> qpts;
+  if (params->nDims == 2)
+   qpts = getLocSpts(QUAD,quadOrder,string("Legendre"));
+  else
+   qpts = getLocSpts(HEX,quadOrder,string("Legendre"));
+
+  auto wts = getQptWeights(quadOrder,params->nDims);
+
+  matrix<double> quadPoints;
+  for (auto &pt: qpts) quadPoints.insertRow({pt.x,pt.y,pt.z});
+
+  vector<double> LpErr(params->nFields);
+  matrix<double> U_qpts;
+  vector<double> detJac_qpts;
+  for (uint ic=0; ic<eles.size(); ic++) {
+    if (Geo->iblankCell[eles[ic]->ID]!=NORMAL) continue;
+    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts, U_qpts, quadPoints);
+    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
+    for (uint i=0; i<qpts.size(); i++) {
+      auto tmpErr = calcError(U_qpts.getRow(i), eles[ic]->calcPos(qpts[i]), params);
+      for (int j=0; j<params->nFields; j++)
+        LpErr[j] += tmpErr[j] * wts[i] * detJac_qpts[i];
+    }
   }
 
 #ifndef _NO_MPI
-  vector<double> tmpErr = L1Err;
-  MPI_Allreduce(tmpErr.data(), L1Err.data(), params->nFields, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  vector<double> tmpErr = LpErr;
+  MPI_Allreduce(tmpErr.data(), LpErr.data(), params->nFields, MPI_DOUBLE, MPI_SUM, Geo->gridComm);
 #endif
 
-  return L1Err;
+  if (params->errorNorm==2)
+    for (auto &val:LpErr) val = std::sqrt(std::abs(val));
+
+  return LpErr;
 }
 
 // Method for shock capturing

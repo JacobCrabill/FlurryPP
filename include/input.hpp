@@ -42,6 +42,10 @@ public:
 
   fileReader(string fileName);
 
+  fileReader(const fileReader& _fr);
+
+  fileReader& operator=(const fileReader& _fr);
+
   /*! Default destructor */
   ~fileReader();
 

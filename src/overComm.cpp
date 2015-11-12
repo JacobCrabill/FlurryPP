@@ -550,7 +550,12 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
       point refLoc;
       point pos = point(qpts_recv[p][i],nDims);
       bool isInEle = eles[ie]->getRefLocNelderMeade(pos,refLoc);
-      if (!isInEle) FatalError("Quadrature Point Reference Location not found in ele!");
+      if (!isInEle) {
+        cout << "qpt: " << pos.x << ", " << pos.y << endl;
+        auto box = eles[ie]->getBoundingBox();
+        cout << "ele box: " << box[0] << ", " << box[1] << "; " << box[3] << ", " << box[4] << endl;
+        FatalError("Quadrature Point Reference Location not found in ele!");
+      }
 
       qpts_recv[p](i,0) = refLoc.x;
       qpts_recv[p](i,1) = refLoc.y;
@@ -782,6 +787,12 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
 
   /* ---- Check Every Unblanked Cell for Donor Cells on This Grid ---- */
 
+  // For use with ADT
+  if (nDims == 2 and eleList.size() != eleMap.size()) {
+    eleList.resize(eleMap.size());
+    for (int i=0; i<eleMap.size(); i++) eleList[i] = i;
+  }
+
   vector<vector<int>> foundCells(nproc); //.resize(nproc);
   vector<matrix<int>> foundCellDonors(nproc);
   vector<vector<int>> foundCellNDonors(nproc);
@@ -798,21 +809,25 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
 
     for (int i=0; i<nCells_rank[p]; i++) {
       // Get requested cell's bounding box [min & max extents]
-      vector<double> targetBox = {1e15, 1e15, 1e15, -1e15, -1e15, -1e15};
+      vector<double> targetBox(2*nDims);
+      for (int dim=0; dim<nDims; dim++) {
+        targetBox[dim]       =  1e15;
+        targetBox[dim+nDims] = -1e15;
+      }
       vector<point> targetNodes;
       for (int j=0; j<nv; j++) {
         point pt = point(&ubNodes_rank[(offset+i)*stride+nDims*j],nDims);
         targetNodes.push_back(pt);
-        for (int dim=0; dim<3; dim++) {
+        for (int dim=0; dim<nDims; dim++) {
           targetBox[dim]   = min(pt[dim],targetBox[dim]);
-          targetBox[dim+3] = max(pt[dim],targetBox[dim+3]);
+          targetBox[dim+nDims] = max(pt[dim],targetBox[dim+nDims]);
         }
       }
 
       // Find all possible donors using Tioga's ADT search (3D) or my brute-force search (2D)
       unordered_set<int> cellIDs;
       if (nDims == 2)
-        cellIDs = findCellDonors2D(eles,targetBox);
+        adt->searchADT_box(eleList.data(),cellIDs,targetBox.data());
       else
         cellIDs = tg->findCellDonors(targetBox.data());
 
@@ -916,7 +931,6 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
       for (int j=0; j<nFields; j++)
         intErr[j] += tmpErr[j] * wts[i] * detJac_qpts[i];
     }
-
   }
 
   /* --- Subtract the Overlap Region --- */
@@ -929,6 +943,9 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
     for (int j=0; j<nFields; j++)
       intErr[j] -= 0.5*tmperr[j];
   }
+
+  vector<double> tmpErr = intErr;
+  MPI_Allreduce(tmpErr.data(),intErr.data(),nFields,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
 
   if (params->errorNorm == 2)
     for (auto &val:intErr) val = std::sqrt(std::abs(val));

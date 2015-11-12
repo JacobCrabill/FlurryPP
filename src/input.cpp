@@ -43,6 +43,16 @@ fileReader::fileReader(string fileName)
   this->fileName = fileName;
 }
 
+fileReader::fileReader(const fileReader &_fr)
+{
+  this->fileName = _fr.fileName;
+}
+
+fileReader& fileReader::operator=(const fileReader& _fr)
+{
+  this->fileName = _fr.fileName;
+}
+
 fileReader::~fileReader()
 {
   if (optFile.is_open()) optFile.close();
