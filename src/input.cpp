@@ -316,6 +316,13 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("testCase",testCase,0);
   opts.getScalarValue("iterMax",iterMax);
 
+  if (motion == 4) {
+    opts.getScalarValue("moveAx",moveAx);
+    opts.getScalarValue("moveAy",moveAy);
+    opts.getScalarValue("moveFx",moveFx);
+    opts.getScalarValue("moveFy",moveFy);
+  }
+
   if (viscous && equation == NAVIER_STOKES) {
     opts.getScalarValue("Re",Re);
     opts.getScalarValue("Lref",Lref,1.0);

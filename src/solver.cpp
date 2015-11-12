@@ -629,7 +629,6 @@ void solver::readRestartFile(void) {
 
   // Get the file name & open the file
   char fileNameC[256];
-  char timeFileC[256];
   string fileName = params->dataFileName;
 #ifndef _NO_MPI
   /* --- All processors read their data from their own .vtu file --- */
@@ -643,42 +642,54 @@ void solver::readRestartFile(void) {
 
   if (params->rank==0) cout << "Solver: Restarting from " << fileNameC << endl;
 
-  vector<double> tmpIblank(Geo->nEles,NORMAL);
+  dataFile.open(fileNameC);
 
-  // Read the simulation time from the separate time file
-  sprintf(timeFileC,"%s_time/%d",&fileName[0],params->restartIter);
-  dataFile.open(timeFileC);
-  if (dataFile.is_open()) {
-    dataFile >> params->time;
-    params->rkTime = params->time;
-    if (params->rank == 0)
-      cout << "  Restart time = " << params->time << endl;
+  if (!dataFile.is_open())
+    FatalError("Cannont open restart file.");
 
-    if (params->meshType == OVERSET_MESH) {
-      // Read the hole blanking data following the time stamp
-      int tmprank = -1;
-      stringstream ss;
-      string str;
-      while (getline(dataFile,str)) {
-        ss.str(std::string("")); ss.clear();  // This is how to reset stringstreams!
-        ss.str(str);
-
-        ss >> tmprank;
-        if (tmprank == params->rank)
-          break;
+  // Read the simulation time from the comment section, then find the start of
+  // the UnstructuredData region
+  // Also read overset iblank data if applicable
+  bool foundTime  = false;
+  bool foundIBTag = false;
+  bool foundUGTag = false;
+  string str;
+  stringstream ss;
+  vector<double> tmpIblank;
+  while (getline(dataFile,str)) {
+    ss.str(string("")); ss.clear();
+    ss.str(str);
+    ss >> str;
+    if (str.compare("<!--")==0) {
+      ss >> str;
+      if (str.compare("TIME")==0) {
+        foundTime = true;
+        ss >> params->time;
+        params->rkTime = params->time;
+        if (params->rank == 0)
+          cout << "  Restart time = " << params->time << endl;
+      } else if (params->meshType == OVERSET_MESH and str.compare("IBLANK_CELL")==0) {
+        foundIBTag = true;
+        // Read cell Iblank data for overset cases
+        Geo->iblankCell.resize(Geo->nEles);
+        tmpIblank.assign(Geo->nEles,NORMAL);
+        for (int i=0; i<Geo->nEles; i++)
+          ss >> tmpIblank[i];
       }
-      if (tmprank != params->rank) cout << "WARNING: IblankCell data not found in restart 'time' file for rank " << params->rank << endl;
-
-      Geo->iblankCell.resize(Geo->nEles);
-      for (int i=0; i<Geo->nEles; i++)
-        ss >> tmpIblank[i];
+    } else if (str.compare("<UnstructuredGrid>")==0) {
+      foundUGTag = true;
+      break;
     }
-  } else {
-    if (params->rank == 0)
-      cout << "WARNING: Unable to read simulation restart time." << endl;
   }
-  dataFile.clear();
-  dataFile.close();
+
+  if (!foundTime)
+    cout << "WARNING: Unable to read simulation restart time." << endl;
+
+  if (!foundUGTag)
+    FatalError("Cannot find UnstructuredData tag in restart file.");
+
+  if (params->meshType == OVERSET_MESH and !foundIBTag)
+    cout << "WARNING: IblankCell data not found in restart file for rank " << params->rank << endl;
 
   /* -- Set the geometry to the current restart time -- */
 
@@ -696,28 +707,6 @@ void solver::readRestartFile(void) {
 
     Geo->processBlanks(eles,faces,mpiFaces,overFaces);
   }
-
-  // Move on to the actual restart file
-  dataFile.open(fileNameC);
-
-  if (!dataFile.is_open())
-    FatalError("Cannont open restart file.");
-
-  // Find the start of the UnstructuredData region
-  bool found = false;
-  string str;
-  while (getline(dataFile,str)) {
-    stringstream ss;
-    ss.str(str);
-    ss >> str;
-    if (str.compare("<UnstructuredGrid>")==0) {
-      found = true;
-      break;
-    }
-  }
-
-  if (!found)
-    FatalError("Cannot find UnstructuredData tag in restart file.");
 
   // Read restart data & setup all data arrays
   if (params->meshType == OVERSET_MESH && params->oversetMethod == 2) {
@@ -795,7 +784,7 @@ vector<double> solver::integrateError(void)
   matrix<double> U_qpts;
   vector<double> detJac_qpts;
   for (uint ic=0; ic<eles.size(); ic++) {
-    if (Geo->iblankCell[eles[ic]->ID]!=NORMAL) continue;
+    if (params->meshType == OVERSET_MESH and Geo->iblankCell[eles[ic]->ID]!=NORMAL) continue;
     opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts, U_qpts, quadPoints);
     opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
     for (uint i=0; i<qpts.size(); i++) {

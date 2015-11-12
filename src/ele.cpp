@@ -993,9 +993,9 @@ void ele::setInitialCondition()
       }
     }
     else if (params->icType == 1) {
-      /* --- Test case for debugging - linear solution x+y+z over domain --- */
+      /* --- Test case: sin(x) --- */
       for (int spt=0; spt<nSpts; spt++) {
-        U_spts(spt,0) = pos_spts[spt].x + pos_spts[spt].y + pos_spts[spt].z;
+        U_spts(spt,0) = 1. + sin(2.*PI*(pos_spts[spt].x+5)/10.);
       }
     }
     else if (params->icType == 2) {
@@ -1142,6 +1142,11 @@ matrix<double> ele::calcError(void)
         double r2 = x*x + y*y;
         err(spt,0) = exp(-r2);
       }
+    }
+    else if (params->icType == 1) {
+      /* --- Test case equivalent to 1D test - Advection of sine wave --- */
+      for (int spt=0; spt<nSpts; spt++)
+        err(spt,0) = 1 + sin(2*pi*(pos_spts[spt].x+5-params->time)/10.);
     }
     else if (params->icType == 2) {
       /* --- Test case for debugging - cos(x)*cos(y)*cos(z) over domain --- */

@@ -2456,10 +2456,10 @@ void geo::moveMesh(double rkVal)
     case 4: {
       /// Rigid oscillation in a circle
       if (gridID==0) {
-        double Ax = 0.5; // Amplitude  (m)
-        double Ay = 0.5; // Amplitude  (m)
-        double fx = 0.1; // Frequency  (Hz)
-        double fy = 0.1; // Frequency  (Hz)
+        double Ax = params->moveAx; // Amplitude  (m)
+        double Ay = params->moveAy; // Amplitude  (m)
+        double fx = params->moveFx; // Frequency  (Hz)
+        double fy = params->moveFy; // Frequency  (Hz)
         for (int iv=0; iv<nVerts; iv++) {
           xv(iv,0) = xv0[iv].x + Ax*sin(2.*pi*fx*rkTime);
           //xv(iv,1) = xv0[iv].y + Ay*sin(2.*pi*fy*rkTime);

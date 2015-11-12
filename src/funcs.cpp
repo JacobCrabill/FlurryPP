@@ -692,6 +692,9 @@ vector<double> calcError(const vector<double> &U, const point &pos, input *param
       double r2 = x*x + y*y;
       err[0] = exp(-r2);
     }
+    else if (params->icType == 1) {
+      err[0] = 1 + sin(2.*pi*(pos.x+5.-params->time)/10.);
+    }
     else if (params->icType == 2) {
       /* --- Test case for debugging - cos(x)*cos(y)*cos(z) over domain --- */
       err[0] = cos(2*pi*pos.x/6.)*cos(2*pi*pos.y/6.)*cos(2*pi*pos.z/6.);

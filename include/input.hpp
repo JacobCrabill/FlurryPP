@@ -140,6 +140,9 @@ public:
 
   int iter;
 
+  /* --- Moving-Grid Parameters --- */
+  double moveAx, moveAy, moveFx, moveFy;
+
   /* --- Output Parameters --- */
 
   string dataFileName;

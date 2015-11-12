@@ -171,8 +171,7 @@ void writeParaview(solver *Solver, input *params)
     pVTU << "<?xml version=\"1.0\" ?>" << endl;
     pVTU << "<VTKFile type=\"PUnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" compressor=\"vtkZLibDataCompressor\">" << endl;
 
-    // Just found out ParaView won't complain about comments if you put them here!
-    // TODO: Replace extra file with comments here
+    // Use XML / ParaView comments here for simulation time
     pVTU << "<!-- TIME " << params->time << " -->" << endl;
     pVTU << "<!-- ITER " << params->iter << " -->" << endl;
 
@@ -232,53 +231,27 @@ void writeParaview(solver *Solver, input *params)
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-  /* --- There's no possible way to put the simulation time into a ParaView file,
-         so we have to create a separate file to store the time values --- */
-  char datadirC[256];
-  char *datadir = &datadirC[0];
-  sprintf(datadirC,"%s_time",&fileName[0]);
-  char timeFileC[256];
-  sprintf(timeFileC,"%s_time/%d",&fileName[0],iter);
-
-  if (params->rank == 0) {
-    struct stat st = {0};
-    if (stat(datadir, &st) == -1) {
-      mkdir(datadir, 0755);
-    }
-    dataFile.open(timeFileC);
-    dataFile << params->time << endl;
-    dataFile.clear();
-    dataFile.close();
-  }
-
-  // Write the cell iblank data for restarting purposes
-  if (params->meshType == OVERSET_MESH) {
-    for (int p=0; p<params->nproc; p++) {
-      if (p == params->rank) {
-        dataFile.open(timeFileC,ios::app);
-        dataFile << params->rank << " ";
-        for (int i=0; i<Solver->Geo->nEles; i++) {
-          if (Solver->Geo->eleMap[i]<0)
-            dataFile << HOLE << " ";
-          else
-            dataFile << Solver->Geo->iblankCell[i] << " ";
-        }
-        dataFile << endl;
-        dataFile.clear();
-        dataFile.close();
-      }
-#ifndef _NO_MPI
-      MPI_Barrier(MPI_COMM_WORLD);
-#endif
-    }
-  }
-
+  /* --- Move onto the rank-specific data file --- */
   dataFile.open(fileNameC);
   dataFile.precision(16);
 
   // File header
   dataFile << "<?xml version=\"1.0\" ?>" << endl;
   dataFile << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" compressor=\"vtkZLibDataCompressor\">" << endl;
+
+  // Write simulation time and iteration number
+  dataFile << "<!-- TIME " << params->time << " -->" << endl;
+  dataFile << "<!-- ITER " << params->iter << " -->" << endl;
+
+  // Write the cell iblank data for restarting purposes
+  if (params->meshType == OVERSET_MESH) {
+    dataFile << "<!-- IBLANK_CELL ";
+    for (int i=0; i<Solver->Geo->nEles; i++) {
+      dataFile << Solver->Geo->iblankCell[i] << " ";
+    }
+    dataFile << " -->" << endl;
+  }
+
   dataFile << "	<UnstructuredGrid>" << endl;
 
   // If this is the initial file, need to extrapolate solution to flux points
