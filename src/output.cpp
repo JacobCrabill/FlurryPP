@@ -157,6 +157,11 @@ void writeParaview(solver *Solver, input *params)
     cout << "Writing ParaView file " << params->dataFileName << "_" << string(Iter) << ".vtu...  " << flush;
 
 #ifndef _NO_MPI
+  // Get # of eles on each rank to avoid printing completely-blanked ranks (if exist)
+  int nEles = Solver->eles.size();
+  vector<int> nEles_rank(Solver->nprocPerGrid);
+  MPI_Allgather(&nEles,1,MPI_INT,nEles_rank.data(),1,MPI_INT,Solver->Geo->gridComm);
+
   /* --- Write 'master' .pvtu file (for each grid, if overset) --- */
   if (Solver->gridRank == 0) {
     ofstream pVTU;
@@ -206,7 +211,8 @@ void writeParaview(solver *Solver, input *params)
         sprintf(filnameTmpC,"%s_%.09d/%s%d_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],Solver->gridID,iter,p);
       else
         sprintf(filnameTmpC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,p);
-      pVTU << "    <Piece Source=\"" << string(filnameTmpC) << "\" />" << endl;
+      if (nEles_rank[p]>0)
+        pVTU << "    <Piece Source=\"" << string(filnameTmpC) << "\" />" << endl;
     }
     pVTU << "  </PUnstructuredGrid>" << endl;
     pVTU << "</VTKFile>" << endl;
@@ -232,6 +238,8 @@ void writeParaview(solver *Solver, input *params)
 #endif
 
   /* --- Move onto the rank-specific data file --- */
+  if (Solver->eles.size()==0) return;
+
   dataFile.open(fileNameC);
   dataFile.precision(16);
 
