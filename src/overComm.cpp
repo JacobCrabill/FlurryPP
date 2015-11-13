@@ -164,7 +164,7 @@ void overComm::setIblanks2D(matrix<double>& xv, matrix<int> &overFaces, matrix<i
     if (std::abs(windW)+eps >= 2.*pi)
       iblank[i] = HOLE;
 
-    if (std::abs(windO)+eps >= 2.*pi && iblank[i]!=HOLE)
+    if (std::abs(windO)+eps >= 2*pi && iblank[i]!=HOLE)
       iblank[i] = FRINGE;
   }
 }
@@ -763,7 +763,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   int i = 0;
 
   for (int ie=0; ie<eles.size(); ie++) {
-    if (iblankCell[eles[ie]->ID] != NORMAL) continue;
+    if (iblankCell[eles[ie]->ID] == HOLE) continue;
     ubCells.push_back(ie);
     // Constraining this to just linear hexahedrons/quadrilaterals for the time being
     if (params->motion) {
