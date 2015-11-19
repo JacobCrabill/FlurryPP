@@ -167,6 +167,9 @@ public:
    *  physical position */
   point getRefLoc(const point &pos);
 
+  //! Use Newton minimization method to solve for ref. location given physical location
+  point getRefLocNewton(point pos);
+
   /*! Find the reference location of a point inside an element given its
    *  physical location, using the Nelder-Meade algorithm */
   bool getRefLocNelderMeade(point pos, point &loc);
