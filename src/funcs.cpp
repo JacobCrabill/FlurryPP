@@ -327,6 +327,75 @@ void dshape_hex(const point &in_rst, matrix<double> &out_dshape, int nNodes)
   }
 }
 
+void ddshape_quad(const point &in_rs, Array<double,3> &out_dshape, int nNodes)
+{
+  double xi  = in_rs.x;
+  double eta = in_rs.y;
+  out_dshape.setup(nNodes,2,2);
+
+  switch(nNodes) {
+  case 4:
+    out_dshape(0,0,0) = 0;
+    out_dshape(1,0,0) = 0;
+    out_dshape(2,0,0) = 0;
+    out_dshape(3,0,0) = 0;
+
+    out_dshape(0,0,1) =  0.25;
+    out_dshape(1,0,1) = -0.25;
+    out_dshape(2,0,1) =  0.25;
+    out_dshape(3,0,1) = -0.25;
+
+    out_dshape(0,1,0) =  0.25;
+    out_dshape(1,1,0) = -0.25;
+    out_dshape(2,1,0) =  0.25;
+    out_dshape(3,1,0) = -0.25;
+
+    out_dshape(0,1,1) = 0;
+    out_dshape(1,1,1) = 0;
+    out_dshape(2,1,1) = 0;
+    out_dshape(3,1,1) = 0;
+    break;
+
+  case 8:
+    out_dshape(0,0,0) = -0.5*(-1+eta);
+    out_dshape(1,0,0) = -0.5*(-1+eta);
+    out_dshape(2,0,0) =  0.5*( 1+eta);
+    out_dshape(3,0,0) =  0.5*( 1+eta);
+    out_dshape(4,0,0) = -1+eta;
+    out_dshape(5,0,0) =  0.;
+    out_dshape(6,0,0) = -1+eta;
+    out_dshape(7,0,0) =  0.;
+
+    out_dshape(0,0,1) = -0.25*(2*xi + eta) - 0.25*(-1+eta);
+    out_dshape(1,0,1) =  0.25*(eta - 2*xi) + 0.25*(-1+eta);
+    out_dshape(2,0,1) =  0.25*(2*xi + eta) + 0.25*( 1+eta);
+    out_dshape(3,0,1) = -0.25*(eta - 2*xi) - 0.25*( 1+eta);
+    out_dshape(4,0,1) =  xi;
+    out_dshape(5,0,1) = -0.5*(-1+eta) - 0.5*(1+eta);
+    out_dshape(6,0,1) = -xi;
+    out_dshape(7,0,1) =  0.5*(-1+eta) + 0.5*(1+eta);
+
+    out_dshape(0,1,0) = -0.25*(2*eta+xi) - 0.25*(-1+xi);
+    out_dshape(1,1,0) =  0.25*(2*eta-xi) - 0.25*( 1+xi);
+    out_dshape(2,1,0) =  0.25*(2*eta+xi) + 0.25*( 1+xi);
+    out_dshape(3,1,0) = -0.25*(2*eta-xi) + 0.25*(-1+xi);
+    out_dshape(4,1,0) =  0.5*(-1+xi) + 0.5*(1+xi);
+    out_dshape(5,1,0) = -eta;
+    out_dshape(6,1,0) = -0.5*(-1+xi) - 0.5*(1+xi);
+    out_dshape(7,1,0) =  eta;
+
+    out_dshape(0,1,1) = -0.5*(-1+xi);
+    out_dshape(1,1,1) =  0.5*( 1+xi);
+    out_dshape(2,1,1) =  0.5*( 1+xi);
+    out_dshape(3,1,1) = -0.5*(-1+xi);
+    out_dshape(4,1,1) =  0.;
+    out_dshape(5,1,1) = -(1+xi);
+    out_dshape(6,1,1) =  0.;
+    out_dshape(7,1,1) =  (-1+xi);
+    break;
+  }
+}
+
 void shape_tri(const point &in_rs, vector<double> &out_shape)
 {
   // NOTE: Reference triangle is defined in interval [0,1]^2

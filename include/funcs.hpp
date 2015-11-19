@@ -46,6 +46,9 @@ void shape_quad(const point &in_rs, double* out_shape, int nNodes);
 //! Derivative of shape functions for linear or quadratic quad
 void dshape_quad(const point &in_rs, matrix<double> &out_dshape, int nNodes);
 
+//! Second derivative (Hessian) of shape functions for linear or quadratic quad
+void ddshape_quad(const point &in_rs, Array<double,3> &out_dshape, int nNodes);
+
 //! Shape function for linear or quadratic hexahedron
 void shape_hex(const point &in_rst, vector<double> &out_shape, int nNodes);
 void shape_hex(const point &in_rst, double* out_shape, int nNodes);
