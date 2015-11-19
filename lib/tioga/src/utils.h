@@ -44,7 +44,7 @@ void insertInList(DONORLIST **donorList,DONORLIST *temp1);
 
 void solvec(double **a,double *b,int *iflag,int n);
 
-void newtonSolve(double f[7][3],double *u1,double *v1,double *w1);
+void newtonSolve(double f[8][3],double *u1,double *v1,double *w1);
 
 /* ---- Geometry Functions ---- */
 

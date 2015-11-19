@@ -499,7 +499,7 @@ void insertInList(DONORLIST **donorList,DONORLIST *temp1)
 
 void solvec(double **a,double *b,int *iflag,int n)
 {
-  int i,j,k,l,flag,temp1;
+  int i,j,k,l,flag;
   double fact;
   double temp;
   double sum;
@@ -555,66 +555,62 @@ void solvec(double **a,double *b,int *iflag,int n)
 
 }
 
-void newtonSolve(double f[7][3],double *u1,double *v1,double *w1)
+void newtonSolve(double f[8][3],double *u1,double *v1,double *w1)
 {
-  int i,j,k;
-  int iter,itmax,isolflag;
-  double u,v,w;
-  double uv,wu,vw,uvw,norm,convergenceLimit;
-  double *rhs;
-  double **lhs;
-  double alph;
-  //
-  lhs=(double **)malloc(sizeof(double)*3);
-  for(i=0;i<3;i++)
-    lhs[i]=(double *)malloc(sizeof(double)*3);
-  rhs=(double *)malloc(sizeof(double)*3);
-  //
-  itmax=500;
-  convergenceLimit=1e-14;
-  alph=1.0;
-  isolflag=1.0;
-  //
-  u=v=w=0.5;
-  //
-  for(iter=0;iter<itmax;iter++)
-    {
-      uv=u*v;
-      vw=v*w;
-      wu=w*u;
-      uvw=u*v*w;
+  double **lhs = (double **)malloc(sizeof(double)*3);
+  for (int i=0; i<3; i++)
+    lhs[i] = (double *)malloc(sizeof(double)*3);
 
-      for(j=0;j<3;j++)
-  rhs[j]=f[0][j]+f[1][j]*u+f[2][j]*v+f[3][j]*w+
-    f[4][j]*uv + f[5][j]*vw + f[6][j]*wu +
-    f[7][j]*uvw;
+  double *rhs = (double *)malloc(sizeof(double)*3);
 
-      norm=rhs[0]*rhs[0]+rhs[1]*rhs[1]+rhs[2]*rhs[2];
-      if (sqrt(norm) <= convergenceLimit) break;
+  int itmax=500;
+  double convergenceLimit=1e-14;
+  double alph=1.0;
+  int isolflag = 1;
 
-      for(j=0;j<3;j++)
+  double u = .5;
+  double v = .5;
+  double w = .5;
+
+  for (int iter=0; iter<itmax; iter++)
   {
-    lhs[j][0]=f[1][j]+f[4][j]*v+f[6][j]*w+f[7][j]*vw;
-    lhs[j][1]=f[2][j]+f[5][j]*w+f[4][j]*u+f[7][j]*wu;
-    lhs[j][2]=f[3][j]+f[6][j]*u+f[5][j]*v+f[7][j]*uv;
-  }
+    double uv=u*v;
+    double vw=v*w;
+    double wu=w*u;
+    double uvw=u*v*w;
 
-      solvec(lhs,rhs,&isolflag,3);
-      if (isolflag==0) break;
-
-      u-=(rhs[0]*alph);
-      v-=(rhs[1]*alph);
-      w-=(rhs[2]*alph);
+    for(int j=0; j<3; j++) {
+      rhs[j] = f[0][j] + f[1][j]*u + f[2][j]*v + f[3][j]*w
+             + f[4][j]*uv + f[5][j]*vw + f[6][j]*wu + f[7][j]*uvw;
     }
 
+    double norm = rhs[0]*rhs[0] + rhs[1]*rhs[1] + rhs[2]*rhs[2];
+    if (sqrt(norm) <= convergenceLimit) break;
+
+    for (int j=0; j<3; j++)
+    {
+      lhs[j][0] = f[1][j] + f[4][j]*v + f[6][j]*w + f[7][j]*vw;
+      lhs[j][1] = f[2][j] + f[5][j]*w + f[4][j]*u + f[7][j]*wu;
+      lhs[j][2] = f[3][j] + f[6][j]*u + f[5][j]*v + f[7][j]*uv;
+    }
+
+    solvec(lhs,rhs,&isolflag,3);
+    if (isolflag==0) break;
+
+    u-=(rhs[0]*alph);
+    v-=(rhs[1]*alph);
+    w-=(rhs[2]*alph);
+  }
+
   if (isolflag==0) {
-    u=1.0;
-    v=w=0.;
+    u = 1.0;
+    v = w = 0.;
   }
   *u1=u;
   *v1=v;
   *w1=w;
-  for(i=0;i<3;i++) free(lhs[i]);
+
+  for(int i=0;i<3;i++) free(lhs[i]);
   free(lhs);
   free(rhs);
   return;
