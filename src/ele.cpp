@@ -637,6 +637,90 @@ point ele::getRefLoc(const point &pos)
   return xin;
 }
 
+point ele::getRefLocNewton(point pos)
+{
+  // First, do a quick check to see if the point is even close to being in the element
+  double xmin, ymin, zmin;
+  double xmax, ymax, zmax;
+  xmin = ymin = zmin =  1e15;
+  xmax = ymax = zmax = -1e15;
+  double eps = 1e-10;
+
+  auto box = getBoundingBox();
+  xmin = box[0];  ymin = box[1];  zmin = box[2];
+  xmax = box[3];  ymax = box[4];  zmax = box[5];
+
+  if (pos.x < xmin-eps || pos.y < ymin-eps || pos.z < zmin-eps ||
+      pos.x > xmax+eps || pos.y > ymax+eps || pos.z > zmax+eps) {
+    // Point does not lie within cell - return an obviously bad ref position
+    point loc(99.,99.,99.);
+    return loc;
+  }
+
+  // Use a relative tolerance to handle extreme grids
+  double h = min(xmax-xmin,ymax-ymin);
+  if (nDims==3) h = min(h,zmax-zmin);
+
+  double tol = 1e-14*h;
+
+  matrix<double> Hessian(nDims,nDims);
+  vector<double> gradient(nDims);
+  vector<double> shape(nNodes);
+  matrix<double> dshape(nNodes,nDims);
+  matrix<double> grad(nDims,nDims);
+  Array<double,3> ddshape(nNodes,nDims,nDims);
+  Array<double,3> gradgrad(nDims,nDims,nDims);
+
+  int iter = 0;
+  double norm = 1;
+  point xin;
+  while (norm > tol) {
+    shape_quad(xin,shape,nNodes);
+    dshape_quad(xin,dshape,nNodes);
+    ddshape_quad(xin,ddshape,nNodes);
+
+    gradient.assign(nDims,0);
+    Hessian.initializeToZero();
+    grad.initializeToZero();
+    gradgrad.initializeToValue(0.);
+    point xn;
+    for (int n=0; n<nNodes; n++) {
+      for (int i=0; i<nDims; i++) {
+        for (int j=0; j<nDims; j++) {
+          grad(i,j) += dshape(n,j)*nodes[n][i];
+          for (int k=0; k<nDims; k++) {
+            gradgrad(i,j,k) += ddshape(n,i,j)*nodes[n][k];
+          }
+        }
+        xn[i] += shape[n]*nodes[n][i];
+      }
+    }
+
+    for (int i=0; i<nDims; i++) {
+      for (int j=0; j<nDims; j++) {
+        gradient[i] += 2*(pos[j] - xn[j])*grad(j,i);
+        for (int k=0; k<nDims; k++) {
+          Hessian(i,j) += -2*(grad(k,i)*grad(k,j)) + 2*(pos[k]-xn[k])*gradgrad(i,j,k);
+        }
+      }
+    }
+
+    auto dx = Hessian.solve(gradient);
+
+    norm = 0;
+    for (int i=0; i<nDims; i++) {
+      norm += dx[i]*dx[i]/4.;
+      xin[i] -= dx[i]/2.;
+    }
+
+    iter++;
+    if (iter > 100)
+      cout << "WARNING: Newton method not converging for ref-loc lookup" << endl;
+  }
+
+  return xin;
+}
+
 void ele::getInverseMapping(const point xi, matrix<double> &J, matrix<double> &Jinv)
 {
   matrix<double> dshape(nNodes,nDims);
@@ -694,7 +778,18 @@ double ele::getDxNelderMeade(point refLoc, point physPos)
 {
   point pt = calcPos(refLoc);
   Vec3 dx = physPos - pt;
-  return dx.norm();
+
+  double norm = dx.norm();
+
+  refLoc.abs();
+  for (int i=0; i<nDims; i++) {
+    if (refLoc[i]>1) {
+      double dxi2 = (refLoc[i]-1.)*(refLoc[i]-1.);
+      norm += std::exp(dxi2*dxi2) - 1.;
+    }
+  }
+
+  return norm;
 }
 
 bool ele::getRefLocNelderMeade(point pos, point& loc)
@@ -744,7 +839,11 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
 
   std::sort(FX.begin(),FX.end());
 
-  double tol = 1e-11;
+  // Use a relative tolerance to handle extreme grids
+  double h = min(xmax-xmin,ymax-ymin);
+  if (nDims==3) h = min(h,zmax-zmin);
+
+  double tol = 1e-10*h;
   int iter = 0;
   while (iter < 300 && FX[0].first>tol) {
     point Xn = FX[nPts-1].second;  // Point with the highest value of F
@@ -815,47 +914,12 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   loc = FX[nPts-1].second;
 
   // Check to see if final location lies within element or not
-  eps = 1e-8;
+  eps = 1e3*tol;
   if (std::abs(loc.x)-eps<=1 && std::abs(loc.y)-eps<=1 && std::abs(loc.z)-eps<=1 && !std::isnan(loc.norm()))
     return true;
   else
     return false;
 }
-
-//bool ele::getRefLocQuad(point pos, point &loc)
-//{
-//  // Check if pos lies within ele using ray tracing approach [LINEAR QUADS ONLY]
-
-//  // Side 1
-//  Vec3 dx1 = nodes[1] - nodes[0];
-//  Vec3 dx2 = pos - nodes[0];
-//  Vec3 cross = dx1.cross(dx2);
-//  if (cross.z < 0)
-//    return false;
-
-//  // Side 2
-//  dx1 = nodes[2] - nodes[1];
-//  dx2 = pos - nodes[1];
-//  cross = dx1.cross(dx2);
-//  if (cross.z < 0)
-//    return false;
-
-//  // Side 3
-//  dx1 = nodes[3] - nodes[2];
-//  dx2 = pos - nodes[2];
-//  cross = dx1.cross(dx2);
-//  if (cross.z < 0)
-//    return false;
-
-//  // Side 4
-//  dx1 = nodes[0] - nodes[3];
-//  dx2 = pos - nodes[3];
-//  cross = dx1.cross(dx2);
-//  if (cross.z < 0)
-//    return false;
-
-//  // Point must lie within element
-//}
 
 void ele::calcPosSpts(void)
 {
@@ -995,7 +1059,7 @@ void ele::setInitialCondition()
     else if (params->icType == 1) {
       /* --- Test case: sin(x) --- */
       for (int spt=0; spt<nSpts; spt++) {
-        U_spts(spt,0) = 1. + sin(2.*PI*(pos_spts[spt].x+5)/10.);
+        U_spts(spt,0) = 1. + sin(2.*pi*(pos_spts[spt].x+5)/10.);
       }
     }
     else if (params->icType == 2) {
