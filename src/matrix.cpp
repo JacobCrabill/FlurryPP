@@ -206,14 +206,10 @@ void matrix<T>::initializeToZero(void)
           this->data[l+this->dims[3]*(k+this->dims[2]*(j+this->dims[1]*i))] = 0;
 }
 
-template<typename T>
-void matrix<T>::initializeToValue(T val)
+template<typename T, uint N>
+void Array<T,N>::initializeToValue(const T &_val)
 {
-  for (uint i=0; i<this->dims[0]; i++)
-    for (uint j=0; j<this->dims[1]; j++)
-      for (uint k=0; k<this->dims[2]; k++)
-        for (uint l=0; l<this->dims[3]; l++)
-          this->data[l+this->dims[3]*(k+this->dims[2]*(j+this->dims[1]*i))] = val;
+  for (auto &val:this->data) val = _val;
 }
 
 template <typename T>

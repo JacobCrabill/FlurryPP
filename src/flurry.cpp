@@ -109,27 +109,28 @@ int main(int argc, char *argv[]) {
   /* Apply the initial condition */
   Solver.initializeSolution();
 
+#ifndef _NO_MPI
   if (DO_LGP_TEST) {
     writeData(&Solver,&params);
 
-    vector<double> Error1, Error2, Error3;
+    vector<double> Error0, Error1, Error2, Error3;
     // Calc Error Before Interpolation:
-    Error1 = Solver.integrateError();
+    Error0 = Solver.integrateError();
 
     Geo.fringeCells.clear();
     if (Geo.gridID>0)
       for (int ic=0; ic<Geo.nEles; ic++)
         Geo.fringeCells.insert(ic);
 
-    // Interpolate IC to 2nd grid
-    Solver.OComm->matchUnblankCells(Solver.eles,Geo.fringeCells,Geo.eleMap,8);
+    // Interpolate IC to 2nd grid [from box1 to box2]
+    Solver.OComm->matchUnblankCells(Solver.eles,Geo.fringeCells,Geo.eleMap,10);
     Solver.OComm->performProjection(Solver.eles,Solver.opers,Geo.eleMap);
 
     params.dataFileName = "LGP_Test1";
     writeData(&Solver,&params);
 
     // Calc Error After 1st Interpolation:
-    Error2 = Solver.integrateError();
+    Error1 = Solver.integrateError();
 
     // Setup next grid
     solver Solver2;
@@ -148,51 +149,91 @@ int main(int argc, char *argv[]) {
         Geo2.fringeCells.insert(ic);
     }
 
-    // Interpolate IC to 2nd grid
-    Solver2.OComm->matchUnblankCells(Solver2.eles,Geo2.fringeCells,Geo2.eleMap,8);
+    // Interpolate IC to 2nd grid [from box2 to box3]
+    Solver2.OComm->matchUnblankCells(Solver2.eles,Geo2.fringeCells,Geo2.eleMap,10);
     Solver2.OComm->performProjection(Solver2.eles,Solver2.opers,Geo2.eleMap);
 
     params2.dataFileName = "LGP_Test2";
     writeData(&Solver2,&params2);
 
     // Calc Error After 2nd Interpolation:
-    Error3 = Solver2.integrateError();
+    Error2 = Solver2.integrateError();
+
+
+    // Setup next grid
+    solver Solver3;
+    geo Geo3;
+    input params3 = params2;
+    params3.oversetGrids[0] = string("box3.msh");
+    params3.oversetGrids[1] = string("box1.msh");
+
+    Geo3.setup(&params3);
+    Solver3.setup(&params3,&Geo3);
+    if (Geo.gridID==0)
+      Solver3.eles = Solver2.eles;
+
+    Geo3.fringeCells.clear();
+    if (Geo3.gridID>0) {
+      for (int ic=0; ic<Geo3.nEles; ic++)
+        Geo3.fringeCells.insert(ic);
+    }
+
+    // Interpolate IC to 2nd grid [from box2 to box3]
+    Solver3.OComm->matchUnblankCells(Solver3.eles,Geo3.fringeCells,Geo3.eleMap,10);
+    Solver3.OComm->performProjection(Solver3.eles,Solver3.opers,Geo3.eleMap);
+
+    params3.dataFileName = "LGP_Test3";
+    writeData(&Solver3,&params3);
+
+    // Calc Error After 2nd Interpolation:
+    Error3 = Solver3.integrateError();
+
 
     if (params.rank==0) cout << endl;
-    double EXACT = PI*erf(5)*erf(5);
+    double EXACT = pi*erf(5)*erf(5);
     MPI_Barrier(MPI_COMM_WORLD);
 
     if (Geo.gridRank==0) {
       cout << "Integral for First Grid_" << Geo.gridID << ": ";
+      for (auto &val:Error0)
+        cout << setprecision(16) << EXACT - val << " ";
+      cout << endl;
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (params.rank==0) cout << endl;
+
+    if (Geo.gridRank==0) {
+      cout << "Integral for Second Grid_" << Geo.gridID << ": ";
       for (auto &val:Error1)
         cout << setprecision(16) << EXACT - val << " ";
       cout << endl;
     }
 
-    if (params.rank==0) cout << endl;
     MPI_Barrier(MPI_COMM_WORLD);
+    if (params.rank==0) cout << endl;
 
     if (Geo.gridRank==0) {
-      cout << "Integral for Second Grid_" << Geo.gridID << ": ";
+      cout << "Integral for Third Grid_" << Geo.gridID << ": ";
       for (auto &val:Error2)
         cout << setprecision(16) << EXACT - val << " ";
       cout << endl;
     }
 
-    if (params.rank==0) cout << endl;
     MPI_Barrier(MPI_COMM_WORLD);
+    if (params.rank==0) cout << endl;
 
     if (Geo.gridRank==0) {
-      cout << "Integral for Third Grid_" << Geo.gridID << ": ";
+      cout << "Integral for Fourth Grid_" << Geo.gridID << ": ";
       for (auto &val:Error3)
         cout << setprecision(16) << EXACT - val << " ";
       cout << endl;
-      if (params.rank==0) cout << endl;
     }
 
     MPI_Finalize();
     return 0;
   }
+#endif
 
   /* Write initial data file */
   writeData(&Solver,&params);
@@ -222,6 +263,27 @@ int main(int argc, char *argv[]) {
   // Get simulation wall time
   runTime.stopTimer();
   runTime.showTime();
+
+  if (DO_LGP_TEST) {
+    params.errorNorm = 0;
+    auto err = Solver.integrateError();
+    cout.precision(6);
+    cout.setf(ios::scientific, ios::floatfield);
+    if (Geo.gridRank==0)
+      cout << "Integrated Conservation Error for Grid " << Geo.gridID << " = " << err[0] << endl;
+  } else {
+    params.errorNorm = 0;
+    params.testCase = 0;
+    vector<double> err;
+    if (params.meshType == OVERSET_MESH)
+      err = Solver.integrateErrorOverset();
+    else
+      err = Solver.integrateError();
+    double EXACT = 10;
+    cout.precision(10);
+    if (params.rank==0)
+      cout << "Integrated Conservation Error for Grid " << Geo.gridID << " = " << EXACT - err[0] << endl;
+  }
 
 #ifndef _NO_MPI
  MPI_Finalize();

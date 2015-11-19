@@ -436,16 +436,18 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
         // Setup the donor cells [on this grid] for the unblanked cell [on other grid]
         foundCellDonors[p].insertRowUnsized(donorsIDs);
 
-        Array2D<point> donorPts;
-        if (params->motion)
-          for (auto &ic:donorsIDs)
-            donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
-        else
-          for (auto &ic:donorsIDs)
-            donorPts.insertRow(eles[eleMap[ic]]->nodes);
+//        if (params->projection == 1) {
+          Array2D<point> donorPts;
+          if (params->motion)
+            for (auto &ic:donorsIDs)
+              donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
+          else
+            for (auto &ic:donorsIDs)
+              donorPts.insertRow(eles[eleMap[ic]]->nodes);
 
-        superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,donors.size());
-        donors.push_back(mesh);
+          superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,donors.size());
+          donors.push_back(mesh);
+//        }
       }
     }
   }
@@ -501,9 +503,24 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
         bool isInEle = eles[ic]->getRefLocNelderMeade(point(qpts_tmp[j],nDims),refLoc);
 
         if (!isInEle) {
-          cout << "qpt: " << qpts_tmp(j,0) << ", " << qpts_tmp(j,1) << endl;
+          cout.precision(16);
+          point pos = point(qpts_tmp[j],2);
+          _(pos);
           auto box = eles[ic]->getBoundingBox();
           cout << "ele box: " << box[0] << ", " << box[1] << "; " << box[3] << ", " << box[4] << endl;
+          for (int n=0; n<4; n++) {
+            _(eles[ic]->nodes[n]);
+          }
+          point new_pos = eles[ic]->calcPos(refLoc);
+          point dx = pos - new_pos;
+          _(refLoc);
+          _(new_pos);
+          _(dx);
+
+          _(pos);
+          refLoc = point({0,0,0});
+          eles[ic]->getRefLocNelderMeade(pos,refLoc);
+          _(refLoc);
           FatalError("Quadrature Point Reference Location not found in ele!");
         }
         qptsD_ref[p].insertRow({refLoc.x,refLoc.x,refLoc.z});
@@ -551,9 +568,24 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
       point pos = point(qpts_recv[p][i],nDims);
       bool isInEle = eles[ie]->getRefLocNelderMeade(pos,refLoc);
       if (!isInEle) {
-        cout << "qpt: " << pos.x << ", " << pos.y << endl;
+        cout.precision(16);
+        _(pos);
         auto box = eles[ie]->getBoundingBox();
         cout << "ele box: " << box[0] << ", " << box[1] << "; " << box[3] << ", " << box[4] << endl;
+        for (int n=0; n<4; n++) {
+          _(eles[ie]->nodes[n]);
+        }
+        eles[ie]->setupAllGeometry();
+        point new_pos = eles[ie]->calcPos(refLoc);
+        point dx = pos - new_pos;
+        _(refLoc);
+        _(new_pos);
+        _(dx);
+
+        _(pos);
+        refLoc = point({0,0,0});
+        eles[ie]->getRefLocNelderMeade(pos,refLoc);
+        _(refLoc);
         FatalError("Quadrature Point Reference Location not found in ele!");
       }
 

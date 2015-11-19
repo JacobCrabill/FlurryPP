@@ -63,6 +63,8 @@ public:
   //! Copy Constructor
   Array(const Array<T,N>& inArray);
 
+  void initializeToValue(const T &_val);
+
   //! Assignment
   Array<T,N> operator=(const Array<T,N>& inArray);
 
@@ -155,7 +157,7 @@ public:
 
   void initializeToZero(void);
 
-  void initializeToValue(T val);
+  //void initializeToValue(T val);
 
   //! Adds the Array a*A to current Array (M += a*A)
   void addMatrix(matrix<T> &A, double a=1);

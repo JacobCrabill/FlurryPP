@@ -379,6 +379,7 @@ void input::readInputFile(char *filename)
       opts.getVectorValue("oversetGrids",oversetGrids);
       opts.getScalarValue("writeIBLANK",writeIBLANK,0);
       opts.getScalarValue("oversetMethod",oversetMethod);
+      opts.getScalarValue("projection",projection,1);
       nGrids = oversetGrids.size();
     }
 

@@ -158,6 +158,10 @@ void solver::calcResidual(int step)
 
   calcInviscidFlux_faces();
 
+#ifndef _NO_MPI
+  calcInviscidFlux_mpi();
+#endif
+
   if (params->meshType == OVERSET_MESH) {
 
     oversetInterp();
@@ -165,10 +169,6 @@ void solver::calcResidual(int step)
     calcInviscidFlux_overset();
 
   }
-
-#ifndef _NO_MPI
-  calcInviscidFlux_mpi();
-#endif
 
   if (params->viscous) {
 
@@ -514,13 +514,13 @@ void solver::moveMesh(int step)
 
   if (params->meshType == OVERSET_MESH) {
     if (step == 0) {
-      Geo->setIterIblanks();
+      /*Geo->setIterIblanks();
       if (params->RKa[nRKSteps-1]!=1.)
         Geo->updateADT();
       Geo->processBlanks(eles,faces,mpiFaces,overFaces);
       Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
       OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,10);
-      OComm->performProjection(eles,opers,Geo->eleMap);
+      OComm->performProjection(eles,opers,Geo->eleMap);*/
     }
 
     if (params->oversetMethod == 2) {
@@ -528,7 +528,7 @@ void solver::moveMesh(int step)
       OComm->performProjection(eles,opers,Geo->eleMap);
     }
 
-    if ( !(step==0 && params->RKa[step]==0) )
+    //if ( !(step==0 && params->RKa[step]==0) )
       Geo->moveMesh(params->RKa[step]);
 
     for (auto &e:eles) e->move(true);
@@ -767,7 +767,7 @@ void solver::initializeSolution()
 
 vector<double> solver::integrateError(void)
 {
-  int quadOrder = 10;
+  int quadOrder = 8;
 
   vector<point> qpts;
   if (params->nDims == 2)
@@ -784,7 +784,7 @@ vector<double> solver::integrateError(void)
   matrix<double> U_qpts;
   vector<double> detJac_qpts;
   for (uint ic=0; ic<eles.size(); ic++) {
-    if (params->meshType == OVERSET_MESH and Geo->iblankCell[eles[ic]->ID]!=NORMAL) continue;
+    //if (params->meshType == OVERSET_MESH and Geo->iblankCell[eles[ic]->ID]!=NORMAL) continue;
     opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts, U_qpts, quadPoints);
     opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
     for (uint i=0; i<qpts.size(); i++) {

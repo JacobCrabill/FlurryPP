@@ -204,6 +204,7 @@ public:
   int nGrids;       //! # of grids in overset calculation
   int writeIBLANK;  //! Write IBLANK in ParaView output?
   int oversetMethod;   //! Interp. dis. sol'n (0) or corr. flux (1) at overset bounds, or use Galerkin proj. (2) on fringe cells
+  int projection;   //! Use Local Galerkin Projection (1) or simple collocation (0)
   double xmin, xmax, ymin, ymax, zmin, zmax;
   double periodicTol, periodicDX, periodicDY, periodicDZ;
   string create_bcTop, create_bcBottom, create_bcLeft;

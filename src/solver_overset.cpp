@@ -86,7 +86,7 @@ void solver::setupOverset(void)
 vector<double> solver::integrateErrorOverset(void)
 {
 #ifndef _NO_MPI
-  return OComm->integrateErrOverset(eles,opers,Geo->iblankCell,Geo->eleMap,10);;
+  return OComm->integrateErrOverset(eles,opers,Geo->iblankCell,Geo->eleMap,10);
 #endif
 }
 
