@@ -787,6 +787,29 @@ vector<double> getQptWeights1D(int order)
     outWts[6] = 0.2223810344533745;
     outWts[7] = 0.1012285362903763;
   }
+  else if (order == 8) {
+    outWts[0] = 0.0812743883615744;
+    outWts[1] = 0.1806481606948574;
+    outWts[2] = 0.2606106964029354;
+    outWts[3] = 0.3123470770400029;
+    outWts[4] = 0.3302393550012598;
+    outWts[5] = 0.3123470770400029;
+    outWts[6] = 0.2606106964029354;
+    outWts[7] = 0.1806481606948574;
+    outWts[8] = 0.0812743883615744;
+  }
+  else if (order == 9) {
+    outWts[0] = 0.0666713443086881;
+    outWts[1] = 0.1494513491505806;
+    outWts[2] = 0.2190863625159820;
+    outWts[3] = 0.2692667193099963;
+    outWts[4] = 0.2955242247147529;
+    outWts[5] = 0.2955242247147529;
+    outWts[6] = 0.2692667193099963;
+    outWts[7] = 0.2190863625159820;
+    outWts[8] = 0.1494513491505806;
+    outWts[9] = 0.0666713443086881;
+  }
   else if (order == 10) {
     outWts[0 ] = 0.0556685671161737;
     outWts[1 ] = 0.1255803694649046;
@@ -1069,7 +1092,7 @@ void getQuadRuleTri(int order, vector<point> &locQpts, vector<double> &weights)
       locQpts[4] = point({loc2, loc1, 0.});
       locQpts[5] = point({loc1, loc2, 0.});
       locQpts[6] = point({loc1, loc1, 0.});
-      loc1 = .4904340197011306;
+      loc1 = .4904340197011305;
       loc2 = 1-2.*loc1;
       locQpts[7] = point({loc2, loc1, 0.});
       locQpts[8] = point({loc1, loc2, 0.});
@@ -1089,7 +1112,7 @@ void getQuadRuleTri(int order, vector<point> &locQpts, vector<double> &weights)
       locQpts[17] = point({loc3, loc1, 0.});
       locQpts[18] = point({loc3, loc2, 0.});
       loc1 = .12280457706855927;
-      loc2 = .03337183373930477;
+      loc2 = 3.3371833739304786e-2;
       loc3 = 1-loc1-loc2;
       locQpts[19] = point({loc1, loc2, 0.});
       locQpts[20] = point({loc1, loc3, 0.});
@@ -1097,13 +1120,13 @@ void getQuadRuleTri(int order, vector<point> &locQpts, vector<double> &weights)
       locQpts[22] = point({loc2, loc3, 0.});
       locQpts[23] = point({loc3, loc1, 0.});
       locQpts[24] = point({loc3, loc2, 0.});
-      double wt0 = .08093742879762288;
-      double wt1 = .07729858800296312;
-      double wt2 = .07845763861237173;
-      double wt3 = .01746916799592949;
-      double wt4 = .004292374184832828;
-      double wt5 = .03746885821046764;
-      double wt6 = .02694935259187996;
+      double wt0 = 8.093742879762288e-2;
+      double wt1 = 7.729858800296312e-2;
+      double wt2 = 7.845763861237173e-2;
+      double wt3 = 1.746916799592949e-2;
+      double wt4 = 4.292374184832828e-3;
+      double wt5 = 3.746885821046764e-2;
+      double wt6 = 2.694935259187996e-2;
       weights = {wt0,wt1,wt1,wt1,wt2,wt2,wt2,wt3,wt3,wt3,wt4,wt4,wt4,
                      wt5,wt5,wt5,wt5,wt5,wt5,wt6,wt6,wt6,wt6,wt6,wt6};
       break;
