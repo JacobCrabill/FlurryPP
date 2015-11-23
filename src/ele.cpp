@@ -843,7 +843,7 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   double h = min(xmax-xmin,ymax-ymin);
   if (nDims==3) h = min(h,zmax-zmin);
 
-  double tol = 1e-10*h;
+  double tol = 1e-12*h;
   int iter = 0;
   while (iter < 300 && FX[0].first>tol) {
     point Xn = FX[nPts-1].second;  // Point with the highest value of F
@@ -914,7 +914,7 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
   loc = FX[nPts-1].second;
 
   // Check to see if final location lies within element or not
-  eps = 1e3*tol;
+  eps = 1e4*tol;
   if (std::abs(loc.x)-eps<=1 && std::abs(loc.y)-eps<=1 && std::abs(loc.z)-eps<=1 && !std::isnan(loc.norm()))
     return true;
   else
