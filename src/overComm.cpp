@@ -569,23 +569,11 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
       bool isInEle = eles[ie]->getRefLocNelderMeade(pos,refLoc);
       if (!isInEle) {
         cout.precision(16);
+        cout << "qpt:" << endl;
         _(pos);
-        auto box = eles[ie]->getBoundingBox();
-        cout << "ele box: " << box[0] << ", " << box[1] << "; " << box[3] << ", " << box[4] << endl;
-        for (int n=0; n<4; n++) {
+        cout << "Ele nodes:" << endl;
+        for (int n=0; n<4; n++)
           _(eles[ie]->nodes[n]);
-        }
-        eles[ie]->setupAllGeometry();
-        point new_pos = eles[ie]->calcPos(refLoc);
-        point dx = pos - new_pos;
-        _(refLoc);
-        _(new_pos);
-        _(dx);
-
-        _(pos);
-        refLoc = point({0,0,0});
-        eles[ie]->getRefLocNelderMeade(pos,refLoc);
-        _(refLoc);
         FatalError("Quadrature Point Reference Location not found in ele!");
       }
 
@@ -997,6 +985,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
     if (gridIdList[p] == gridID) continue;
     for (int i=0; i<foundPts[p].size(); i++) {
       point refPos = foundLocs[p][i];
+
       int ic = eleMap[foundEles[p][i]];
       if (ic<0 || ic>eles.size()) {
         cout << "!!!! ic = " << ic << " !!!!" << endl;

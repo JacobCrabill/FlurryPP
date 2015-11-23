@@ -402,7 +402,7 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
 
   // Only needed for moving grids: List of current hole cells
   iblankEle.assign(nEles,NORMAL);
-//return; /// DEBUGGING STUFF
+
   /* --- Move on to cell iblank values --- */
 
   // Simply blank all cells which contain a hole node
@@ -527,20 +527,20 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
   }
 
   /// === FOR 'SINTEST' / 'QUASI-1D' TESTING ===
-  for (int ic=0; ic<nEles; ic++) {
-    double xmin=1e15;
-    double xmax=-1e15;
-    for (int j=0; j<c2nv[ic]; j++) {
-      xmin = min(xmin,xv(c2v(ic,j),0));
-      xmax = max(xmax,xv(c2v(ic,j),0));
-    }
+//  for (int ic=0; ic<nEles; ic++) {
+//    double xmin=1e15;
+//    double xmax=-1e15;
+//    for (int j=0; j<c2nv[ic]; j++) {
+//      xmin = min(xmin,xv(c2v(ic,j),0));
+//      xmax = max(xmax,xv(c2v(ic,j),0));
+//    }
 
-    if (gridID == 1) {
-      double eps = .5+1e-3;
-      if (xmax>-2.5+eps and xmin<2.5-eps)
-        iblankEle[ic] = HOLE;
-    }
-  }
+//    if (gridID == 1) {
+//      double eps = .5+1e-3;
+//      if (xmax>-2.5+eps and xmin<2-eps)
+//        iblankEle[ic] = HOLE;
+//    }
+//  }
   /// === FOR 'SINTEST' / 'QUASI-1D' TESTING ===
 #endif
 }

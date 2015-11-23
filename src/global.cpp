@@ -171,6 +171,18 @@ std::ostream& operator<<(std::ostream &os, const point &pt)
   return os;
 }
 
+std::ostream& operator<<(std::ostream &os, matrix<double> &mat)
+{
+  mat.print();
+  return os;
+}
+
+std::ostream& operator<<(std::ostream &os, matrix<int> &mat)
+{
+  mat.print();
+  return os;
+}
+
 double getDist(point a, point b)
 {
   Vec3 dx = a - b;

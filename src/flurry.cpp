@@ -257,6 +257,8 @@ int main(int argc, char *argv[]) {
     if ((params.iter)%params.plotFreq == 0 || params.iter==params.iterMax) writeData(&Solver,&params);
   }
 
+//MPI_Finalize();
+//exit(0);
   /* Calculate the integral / L1 / L2 error for the final time */
   writeAllError(&Solver,&params);
 
@@ -280,9 +282,11 @@ int main(int argc, char *argv[]) {
     else
       err = Solver.integrateError();
     double EXACT = 10;
+    if (params.icType==0)
+      EXACT = pi*erf(5)*erf(5);
     cout.precision(10);
     if (params.rank==0)
-      cout << "Integrated Conservation Error for Grid " << Geo.gridID << " = " << EXACT - err[0] << endl;
+      cout << "Integrated Conservation Error = " << EXACT - err[0] << endl;
   }
 
 #ifndef _NO_MPI

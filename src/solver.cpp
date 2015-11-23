@@ -232,9 +232,16 @@ void solver::timeStepA(int step)
 
 void solver::timeStepB(int step)
 {
+  if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
+    for (uint i=0; i<eles.size(); i++) {
+      if (Geo->iblankCell[eles[i]->ID] == NORMAL)
+        eles[i]->timeStepB(step,params->RKb[step]);
+    }
+  } else {
 #pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    eles[i]->timeStepB(step,params->RKb[step]);
+    for (uint i=0; i<eles.size(); i++) {
+      eles[i]->timeStepB(step,params->RKb[step]);
+    }
   }
 }
 
@@ -514,13 +521,13 @@ void solver::moveMesh(int step)
 
   if (params->meshType == OVERSET_MESH) {
     if (step == 0) {
-      /*Geo->setIterIblanks();
+      Geo->setIterIblanks();
       if (params->RKa[nRKSteps-1]!=1.)
         Geo->updateADT();
       Geo->processBlanks(eles,faces,mpiFaces,overFaces);
       Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
       OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,10);
-      OComm->performProjection(eles,opers,Geo->eleMap);*/
+      OComm->performProjection(eles,opers,Geo->eleMap);
     }
 
     if (params->oversetMethod == 2) {
