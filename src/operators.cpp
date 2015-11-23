@@ -953,7 +953,7 @@ matrix<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &F_spts, ma
   matrix<double> Fi(nDims,nFields);
 
   if (nDims == 2) {
-    // Contributions from spts
+    // Contributions from solution points
     for (uint spt=0; spt<nSpts; spt++) {
       uint ispt = spt%(nSpts/(order+1));
       uint jspt = floor(spt/(order+1));
@@ -970,7 +970,7 @@ matrix<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &F_spts, ma
       switch(iFace) {
         case(0):
           tNorm[0] = 0;
-          tNorm[1] = -1;
+          tNorm[1] = 1;
           break;
         case(1):
           tNorm[0] = 1;
@@ -981,7 +981,7 @@ matrix<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &F_spts, ma
           tNorm[1] = 1;
           break;
         case(3):
-          tNorm[0] = -1;
+          tNorm[0] = 1;
           tNorm[1] = 0;
           break;
       }
@@ -1010,34 +1010,34 @@ matrix<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &F_spts, ma
       double tNorm[3];
       switch(iFace) {
         case 0:
-          tNorm[0] =  0;
-          tNorm[1] =  0;
-          tNorm[2] = -1;
+          tNorm[0] = 0;
+          tNorm[1] = 0;
+          tNorm[2] = 1;
           break;
         case 1:
-          tNorm[0] =  0;
-          tNorm[1] =  0;
-          tNorm[2] =  1;
+          tNorm[0] = 0;
+          tNorm[1] = 0;
+          tNorm[2] = 1;
           break;
         case 2:
-          tNorm[0] = -1;
-          tNorm[1] =  0;
-          tNorm[2] =  0;
+          tNorm[0] = 1;
+          tNorm[1] = 0;
+          tNorm[2] = 0;
           break;
         case 3:
-          tNorm[0] =  1;
-          tNorm[1] =  0;
-          tNorm[2] =  0;
+          tNorm[0] = 1;
+          tNorm[1] = 0;
+          tNorm[2] = 0;
           break;
         case 4:
-          tNorm[0] =  0;
-          tNorm[1] = -1;
-          tNorm[2] =  0;
+          tNorm[0] = 0;
+          tNorm[1] = 1;
+          tNorm[2] = 0;
           break;
         case 5:
-          tNorm[0] =  0;
-          tNorm[1] =  1;
-          tNorm[2] =  0;
+          tNorm[0] = 0;
+          tNorm[1] = 1;
+          tNorm[2] = 0;
           break;
       }
 
