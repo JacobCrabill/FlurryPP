@@ -320,13 +320,13 @@ void face::rusanovFlux(void)
 
     // Calculate pressure
     if (params->nDims==2) {
-      pL = (params->gamma-1.0)*(UL(fpt,3)-rhoL*(uL*uL+vL*vL));
-      pR = (params->gamma-1.0)*(UR(fpt,3)-rhoR*(uR*uR+vR*vR));
+      pL = (params->gamma-1.0)*(UL(fpt,3)-0.5*rhoL*(uL*uL+vL*vL));
+      pR = (params->gamma-1.0)*(UR(fpt,3)-0.5*rhoR*(uR*uR+vR*vR));
     }
     else {
       wL = UL(fpt,3)/rhoL;   wR = UR(fpt,3)/rhoR;
-      pL = (params->gamma-1.0)*(UL(fpt,4)-rhoL*(uL*uL+vL*vL+wL*wL));
-      pR = (params->gamma-1.0)*(UR(fpt,4)-rhoR*(uR*uR+vR*vR+wR*wR));
+      pL = (params->gamma-1.0)*(UL(fpt,4)-0.5*rhoL*(uL*uL+vL*vL+wL*wL));
+      pR = (params->gamma-1.0)*(UR(fpt,4)-0.5*rhoR*(uR*uR+vR*vR+wR*wR));
     }
 
     // Get normal fluxes, normal velocities
