@@ -821,6 +821,13 @@ matrix<T> matrix<T>::adjoint(void)
   return adj;
 }
 
+template<typename T>
+T matrix<T>::frobNorm(void)
+{
+  T norm = 0;
+  for (auto &val:this->data) norm += val*val;
+  return norm;
+}
 
 // Method to resize a std Vector to a matrix
 template<typename T>

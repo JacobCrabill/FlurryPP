@@ -1035,46 +1035,11 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
         double eps = 1e-10;
         vector<double> tempU(nFields);
         if (params->equation == NAVIER_STOKES) {
-          if (params->nDims == 2) {
-            // Since flux may give non-unique solution, use discontinuous
-            // sol'n at point to determing correct solution
-            opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
-            vector<double> F(nFields), G(nFields);
-            F = tempF.getRow(0);
-            G = tempF.getRow(1);
-            if (params->nDims == 2) {
-              if (std::abs(G[0])<eps)
-                G[0] = 2.*(0.5-signbit(G[0]))*eps; // +/- eps
-              if (std::abs(F[0])<eps)
-                F[0] = 2.*(0.5-signbit(F[0]))*eps;
+          // Since flux may give non-unique solution, use discontinuous
+          // sol'n at point to determing correct solution
+          opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
 
-              double u = G[1]/G[0];
-              double v = F[2]/F[0];
-              // Ensure u,v not too small for future calculations
-              if (std::abs(u)<eps)
-                u = 2.*(0.5-signbit(u))*eps;
-              if (std::abs(v)<eps)
-                v = 2.*(0.5-signbit(v))*eps;
-              double rho = F[0]*G[0]/std::max(F[2],G[1]);
-              double p = 0.5* ( F[1] - rho*u*u + G[2] - rho*v*v );
-              double rhoE;
-              if (std::abs(u) > std::abs(v))
-                rhoE = F[3]/u - p;
-              else
-                rhoE = G[3]/v - p;
-              U_out[p](i,0) = rho;
-              U_out[p](i,1) = rho*u;
-              U_out[p](i,2) = rho*v;
-              U_out[p](i,3) = rhoE;
-            }
-          }
-          else {
-            // nDims == 3 [TODO]
-            vector<double> F(nFields), G(nFields), H(nFields);
-            F = tempF.getRow(0);
-            G = tempF.getRow(1);
-            H = tempF.getRow(2);
-          }
+          calcSolutionFromFlux(tempF,tempU,params);
         }
         else if (params->equation == ADVECTION_DIFFUSION) {
           // In case one of the advection speeds ~= 0, use max speed

@@ -93,3 +93,7 @@ void getBoundingBox(double *pts, int nPts, int nDims, point &minPt, point &maxPt
 void getBoundingBox(double *pts, int nPts, int nDims, double *bbox);
 
 vector<double> calcError(const vector<double> &U, const point &pos, input *params);
+
+void calcSolutionFromFlux(matrix<double> &F, vector<double> &U, input *params);
+
+void calcFluxJacobian2D(const vector<double> &U, matrix<double> &dFdU, matrix<double> &dGdU, input *params);

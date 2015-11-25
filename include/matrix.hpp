@@ -207,6 +207,9 @@ public:
   /*! Check the matrix for NaN values */
   bool checkNan(void);
 
+  /*! Calculate Frobenius norm */
+  T frobNorm(void);
+
   /* --- Search Operations --- */
 
   /*! Find all unique 'rows' in a Array */

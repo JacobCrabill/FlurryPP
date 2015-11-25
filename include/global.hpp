@@ -282,6 +282,9 @@ std::ostream& operator<<(std::ostream &os, const point &pt);
 std::ostream& operator<<(std::ostream &os, matrix<double> &mat);
 std::ostream& operator<<(std::ostream &os, matrix<int> &mat);
 
+std::ostream& operator<<(std::ostream &os, vector<int> &vec);
+std::ostream& operator<<(std::ostream &os, vector<double> &vec);
+
 double getDist(point a, point b);
 
 //! For clearer notation when a vector is implied, rather than a point

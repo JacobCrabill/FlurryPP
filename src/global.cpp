@@ -177,6 +177,19 @@ std::ostream& operator<<(std::ostream &os, matrix<double> &mat)
   return os;
 }
 
+std::ostream& operator<<(std::ostream &os, vector<int> &vec)
+{
+  for (auto &val:vec) cout << val << ", ";
+  return os;
+}
+
+
+std::ostream& operator<<(std::ostream &os, vector<double> &vec)
+{
+  for (auto &val:vec) cout << val << ", ";
+  return os;
+}
+
 std::ostream& operator<<(std::ostream &os, matrix<int> &mat)
 {
   mat.print();

@@ -27,6 +27,8 @@
  */
 #include "funcs.hpp"
 
+#include "flux.hpp"
+
 vector<double> solveCholesky(matrix<double> A, vector<double> b)
 {
   int m = A.getDim0();
@@ -683,7 +685,7 @@ vector<double> calcError(const vector<double> &U, const point &pos, input *param
       double f = 1.0 - (x*x + y*y);
 
       // Limiting rho to 1e-10 to avoid negative density/pressure issues
-      double rho = max(pow(1. - eps*eps*(gamma-1.)/(8.*gamma*pi*pi)*exp(f), 1.0/(gamma-1.0) + 1e-5), 1e-10);
+      double rho = max(pow(1. - eps*eps*(gamma-1.)/(8.*gamma*pi*pi)*exp(f), 1.0/(gamma-1.0)), 1e-10);
       double vx = 1. - eps*y / (2.*pi) * exp(f/2.);
       double vy = 1. + eps*x / (2.*pi) * exp(f/2.);
       double p = pow(rho,gamma);
@@ -779,4 +781,117 @@ vector<double> calcError(const vector<double> &U, const point &pos, input *param
     for (auto &val:err) val *= val;     // L2 norm
 
   return err;
+}
+
+void calcSolutionFromFlux(matrix<double> &F, vector<double> &U, input *params)
+{
+  // Use Newton iterations to converge to U(F) such that F(U) = F
+  int nFields = params->nFields;
+  int nDims = params->nDims;
+
+  matrix<double> A,B;
+  matrix<double> tempF(nDims,nFields);
+  vector<double> dF(nFields), dG(nFields), dH;
+  if (nDims==3) dH.resize(nFields);
+
+  inviscidFlux(U.data(),tempF,params);
+
+  for (int i=0; i<nFields; i++) {
+    dF[i] = F(0,i) - tempF(0,i);
+    dG[i] = F(1,i) - tempF(1,i);
+    if (nDims==3) dH[i] = F(2,i) - tempF(2,i);
+  }
+
+  // Magnitude of difference between current and desired flux vector
+  double norm = 0.;
+  for (auto &val:dF) norm += val*val;
+  for (auto &val:dG) norm += val*val;
+  for (auto &val:dH) norm += val*val;
+
+  int iter = 0;
+  double tol = 1e-10;
+  if (nDims == 2) {
+    while (norm > tol) {
+      calcFluxJacobian2D(U,A,B,params);
+
+      auto du1 = A.solve(dF);
+      auto du2 = B.solve(dG);
+
+      for (int i=0; i<nFields; i++)
+        U[i] += (du1[i]+du2[i])/2.;
+
+      inviscidFlux(U.data(),tempF,params);
+
+      for (int i=0; i<nFields; i++) {
+        dF[i] = F(0,i) - tempF(0,i);
+        dG[i] = F(1,i) - tempF(1,i);
+      }
+
+      norm = 0.;
+      for (auto &val:dF) norm += val*val;
+      for (auto &val:dG) norm += val*val;
+
+      iter++;
+      if (iter>20) break;
+    }
+  }
+  else {
+
+  }
+}
+
+void calcFluxJacobian2D(const vector<double> &U, matrix<double> &dFdU, matrix<double> &dGdU, input *params)
+{
+  int nFields = U.size();
+  if (nFields != 4) FatalError("flux Jacobian only implemented for 2D Euler.");
+
+  dFdU.setup(4,4);
+  dGdU.setup(4,4);
+
+  double gamma = params->gamma;
+
+  double rho = U[0];
+  double u = U[1]/rho;
+  double v = U[2]/rho;
+  double uv2 = u*u+v*v;
+  double e = U[3];
+  double E = e/rho;
+  double p = (gamma-1.0)*(U[3]-rho*(u*u+v*v));
+
+  double a0 = (gamma-1)*(u*u+v*v);
+  double a1 = a0 - gamma*e/rho;
+
+  // A = dFdU
+  dFdU(0,1) = 1;
+
+  dFdU(1,0) = a0/2. - u*u;
+  dFdU(1,1) = (3-gamma)*u;
+  dFdU(1,2) = (1-gamma)*v;
+  dFdU(1,3) = gamma-1;
+
+  dFdU(2,0) = -u*v;
+  dFdU(2,1) = v;
+  dFdU(2,2) = u;
+
+  dFdU(3,0) = a1*u;
+  dFdU(3,1) = gamma*e/rho - a0/2. - (gamma-1)*u*u;
+  dFdU(3,2) = (1-gamma)*u*v;
+  dFdU(3,3) = gamma*u;
+
+  // B = dGdU
+  dGdU(0,2) = 1;
+
+  dGdU(1,0) = -u*v;
+  dGdU(1,1) = v;
+  dGdU(1,2) = u;
+
+  dGdU(2,0) = a0/2. - v*v;
+  dGdU(2,1) = (1-gamma)*u;
+  dGdU(2,2) = (3-gamma)*v;
+  dGdU(2,3) = gamma-1;
+
+  dGdU(3,0) = a1*v;
+  dGdU(3,1) = (1-gamma)*u*v;
+  dGdU(3,2) = gamma*e/rho - a0/2. - (gamma-1)*v*v;
+  dGdU(3,3) = gamma*v;
 }
