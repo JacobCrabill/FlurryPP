@@ -28,6 +28,8 @@
  */
 #pragma once
 
+#include <iomanip>
+
 #include "global.hpp"
 #include "input.hpp"
 
@@ -97,3 +99,116 @@ vector<double> calcError(const vector<double> &U, const point &pos, input *param
 void calcSolutionFromFlux(matrix<double> &F, vector<double> &U, input *params);
 
 void calcFluxJacobian2D(const vector<double> &U, matrix<double> &dFdU, matrix<double> &dGdU, input *params);
+
+/*!
+ * Nelder-Mead Minimzation Routine.
+ *
+ * minFunc should be a normal or lambda function accepting a vector<double>
+ * and returning a double.
+ */
+template<typename Func>
+vector<double> NelderMead(const vector<double> &U0, Func minFunc)
+{
+  // Use the simple Nelder-Meade algorithm to find the reference location which
+  // maps to the given physical position
+
+  int nVars = U0.size();
+  int nPts = nVars+1;
+  vector<std::pair<double,vector<double>>> FX(nPts);
+
+  // Starting location for search
+  for (int i=0; i<nPts; i++) {
+    FX[i].second = U0;
+    if (i>0) {
+      FX[i].second[i-1] += .03*FX[i].second[i-1];
+    } else {
+      for (int j=0; j<nVars; j++) {
+        FX[i].second[j] -= .01*FX[i].second[j];
+      }
+    }
+  }
+
+  // Evaluate the 'function' at the initial 'points'
+  for (int i=0; i<nPts; i++)
+    FX[i].first = minFunc(FX[i].second);
+
+  std::sort(FX.begin(),FX.end());
+
+  // Use a relative tolerance...?
+  double tol = 1e-7;
+  int iter = 0;
+  while (iter < 300 && FX[0].first>tol) {
+    vector<double> Xn = FX[nVars].second;  // Point with the highest value of F
+    vector<double> X0(nVars);              // Centroid of all other points
+    vector<double> Xr(nVars);              // Reflected point
+
+    // Take centroid of all points besides Xn
+    for (int j=0; j<nPts-1; j++)
+      for (int k=0; k<nVars; k++)
+        X0[k] += FX[j].second[k]/(nPts-1);
+
+    // Reflect Xn around X0
+    for (int k=0; k<nVars; k++)
+      Xr[k] = X0[k] + (X0[k]-Xn[k]);
+
+    double Fr = minFunc(Xr);
+
+    // Determine what to do with the new point
+    if (Fr < FX[nPts-2].first) {
+      // We will be keeping this point
+      if (Fr < FX[0].first) {
+        // This one's good; keep going! Expand from Xr
+        vector<double> Xe(nVars);
+        for (int i=0; i<nVars; i++)
+          Xe[i] = Xr[i] + (X0[i]-Xn[i]);
+        double Fe = minFunc(Xe);
+
+        if (Fe < Fr) {
+          // This one's even better; use it instead
+          FX[nPts-1].first = Fe;
+          FX[nPts-1].second = Xe;
+        }
+        else {
+          // Xe/Fe was no better; stick with Fr, Xr
+          FX[nPts-1].first = Fr;
+          FX[nPts-1].second = Xr;
+        }
+      }
+      else {
+        // This one's somewhere in the middle; replace Xn with Xr
+        FX[nPts-1].first = Fr;
+        FX[nPts-1].second = Xr;
+      }
+    }
+    else {
+      // Try reducing the size of the simplex
+      vector<double> Xc(nVars);
+      for (int i=0; i<nVars; i++)
+        Xc[i] = X0[i] - (X0[i]-Xn[i])*.5;
+      double Fc = minFunc(Xc);
+      if (Fc < FX[nPts-1].first) {
+        // Bringing this point in is better; use it
+        FX[nPts-1].first = Fc;
+        FX[nPts-1].second = Xc;
+      }
+      else {
+        // Bringing this point in didn't work; shrink the simplex onto
+        // the smallest-valued vertex
+        vector<double> X1 = FX[0].second;
+        for (int i=1; i<nPts; i++) {
+          for (int j=0; j<nVars; j++) {
+            FX[i].second[j] = X1[j] + 0.5*(FX[i].second[j]-X1[j]);
+          }
+          FX[i].first = minFunc(FX[i].second);
+        }
+      }
+    }
+
+    std::sort(FX.begin(),FX.end());
+
+    // Continue to iterate
+    iter++;
+  }
+
+  return FX[0].second;
+}

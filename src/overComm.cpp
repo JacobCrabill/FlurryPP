@@ -31,6 +31,7 @@
 
 #include "overComm.hpp"
 
+#include "flux.hpp"
 #include "global.hpp"
 
 overComm::overComm()
@@ -230,7 +231,7 @@ void overComm::matchOversetPoints3D(vector<shared_ptr<ele>> &eles, vector<shared
       if (ic>=0 && eleMap[ic]>=0) {
         int ie = eleMap[ic];
         point refLoc;
-        bool isInEle = eles[ie]->getRefLocNelderMeade(pt,refLoc);
+        bool isInEle = eles[ie]->getRefLocNelderMead(pt,refLoc);
 
         if (!isInEle) FatalError("Unable to match fringe point!");
 
@@ -310,7 +311,7 @@ void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared
       for (auto &ic:cellIDs) {
         if (eleMap[ic]<0) continue;
         point refLoc;
-        bool isInEle = eles[eleMap[ic]]->getRefLocNelderMeade(pt,refLoc);
+        bool isInEle = eles[eleMap[ic]]->getRefLocNelderMead(pt,refLoc);
 
         if (isInEle) {
           foundPts[p].push_back(i);
@@ -500,7 +501,7 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
         targetID[p].push_back(foundCells[p][i]);
         int ic = eleMap[donorID[p].back()];
         point refLoc;
-        bool isInEle = eles[ic]->getRefLocNelderMeade(point(qpts_tmp[j],nDims),refLoc);
+        bool isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
 
         if (!isInEle) {
           cout.precision(16);
@@ -519,7 +520,7 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
 
           _(pos);
           refLoc = point({0,0,0});
-          eles[ic]->getRefLocNelderMeade(pos,refLoc);
+          eles[ic]->getRefLocNelderMead(pos,refLoc);
           _(refLoc);
           FatalError("Quadrature Point Reference Location not found in ele!");
         }
@@ -566,7 +567,7 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
 
       point refLoc;
       point pos = point(qpts_recv[p][i],nDims);
-      bool isInEle = eles[ie]->getRefLocNelderMeade(pos,refLoc);
+      bool isInEle = eles[ie]->getRefLocNelderMead(pos,refLoc);
       if (!isInEle) {
         cout.precision(16);
         cout << "qpt:" << endl;
@@ -908,7 +909,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
       for (int j=0; j<parents_tmp.size(); j++) {
         int ic = eleMap[foundCellDonors[p](i,parents_tmp[j])];
         point refLoc;
-        bool isInEle = eles[ic]->getRefLocNelderMeade(point(qpts_tmp[j],nDims),refLoc);
+        bool isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
 
         if (!isInEle) {
           cout << "qpt: " << qpts_tmp(j,0) << ", " << qpts_tmp(j,1) << endl;
@@ -1039,7 +1040,24 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
           // sol'n at point to determing correct solution
           opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
 
-          calcSolutionFromFlux(tempF,tempU,params);
+          // Function to minimize using Nelder-Mead algorithm
+          auto minFunc = [=](const vector<double> &U_IN) -> double {
+            matrix<double> newF(nDims,nFields);
+            inviscidFlux(U_IN.data(),newF,params);
+
+            // Magnitude of difference between current and desired flux vector
+            double norm = 0.;
+            for (uint dim=0; dim<nDims; dim++)
+              for (uint field=0; field<nFields; field++)
+                norm += (tempF(dim,field) - newF(dim,field))*(tempF(dim,field) - newF(dim,field));
+            return norm;
+          };
+
+          tempU = NelderMead(tempU, minFunc);
+          //calcSolutionFromFlux(tempF,tempU,params);
+
+          for (int k=0; k<nFields; k++)
+            U_out[p](i,k) = tempU[k];
         }
         else if (params->equation == ADVECTION_DIFFUSION) {
           // In case one of the advection speeds ~= 0, use max speed

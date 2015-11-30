@@ -792,7 +792,7 @@ double ele::getDxNelderMeade(point refLoc, point physPos)
   return norm;
 }
 
-bool ele::getRefLocNelderMeade(point pos, point& loc)
+bool ele::getRefLocNelderMead(point pos, point& loc)
 {
   // First, do a quick check to see if the point is even close to being in the element
   double xmin, ymin, zmin;
@@ -911,10 +911,10 @@ bool ele::getRefLocNelderMeade(point pos, point& loc)
     iter++;
   }
 
-  loc = FX[nPts-1].second;
+  loc = FX[0].second;
 
   // Check to see if final location lies within element or not
-  eps = 1e4*tol;
+  eps = 1e-6;
   if (std::abs(loc.x)-eps<=1 && std::abs(loc.y)-eps<=1 && std::abs(loc.z)-eps<=1 && !std::isnan(loc.norm()))
     return true;
   else

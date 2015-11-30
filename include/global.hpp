@@ -279,11 +279,11 @@ bool operator<(const point &a, const point &b); // Just a sort of 'dummy' functi
 
 std::ostream& operator<<(std::ostream &os, const point &pt);
 
-std::ostream& operator<<(std::ostream &os, matrix<double> &mat);
-std::ostream& operator<<(std::ostream &os, matrix<int> &mat);
+std::ostream& operator<<(std::ostream &os, const matrix<double> &mat);
+std::ostream& operator<<(std::ostream &os, const matrix<int> &mat);
 
-std::ostream& operator<<(std::ostream &os, vector<int> &vec);
-std::ostream& operator<<(std::ostream &os, vector<double> &vec);
+std::ostream& operator<<(std::ostream &os, const vector<int> &vec);
+std::ostream& operator<<(std::ostream &os, const vector<double> &vec);
 
 double getDist(point a, point b);
 

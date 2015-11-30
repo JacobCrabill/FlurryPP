@@ -808,6 +808,10 @@ void calcSolutionFromFlux(matrix<double> &F, vector<double> &U, input *params)
   for (auto &val:dG) norm += val*val;
   for (auto &val:dH) norm += val*val;
 
+  // Hackish, yeah...
+  vector<double> maxDU = U;
+  for (auto &val:maxDU) val = std::max(.25*std::abs(val),.1);
+
   int iter = 0;
   double tol = 1e-10;
   if (nDims == 2) {
@@ -817,8 +821,11 @@ void calcSolutionFromFlux(matrix<double> &F, vector<double> &U, input *params)
       auto du1 = A.solve(dF);
       auto du2 = B.solve(dG);
 
-      for (int i=0; i<nFields; i++)
+      for (int i=0; i<nFields; i++) {
+        //du1[i] = signbit(du1[i])*std::min(std::abs(du1[i]),maxDU[i]);
+        //du2[i] = signbit(du2[i])*std::min(std::abs(du2[i]),maxDU[i]);
         U[i] += (du1[i]+du2[i])/2.;
+      }
 
       inviscidFlux(U.data(),tempF,params);
 
@@ -832,7 +839,7 @@ void calcSolutionFromFlux(matrix<double> &F, vector<double> &U, input *params)
       for (auto &val:dG) norm += val*val;
 
       iter++;
-      if (iter>20) break;
+      if (iter>10) break;
     }
   }
   else {

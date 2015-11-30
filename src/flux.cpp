@@ -34,7 +34,7 @@
 #include <array>
 #include <vector>
 
-void inviscidFlux(double* U, matrix<double> &F, input *params)
+void inviscidFlux(const double* U, matrix<double> &F, input *params)
 {
   /* --- Note: Flux matrix expected to be <nDims x nFields> --- */
   if (params->equation == ADVECTION_DIFFUSION) {

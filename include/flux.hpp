@@ -34,7 +34,7 @@
 #include "matrix.hpp"
 
 /*! Calculate the inviscid portion of the Euler or Navier-Stokes flux vector at a point */
-void inviscidFlux(double* U, matrix<double> &F, input *params);
+void inviscidFlux(const double *U, matrix<double> &F, input *params);
 
 /*! Calculate the viscous portion of the Navier-Stokes flux vector at a point */
 void viscousFlux(double *U, matrix<double> &gradU, matrix<double> &Fvis, input *params);

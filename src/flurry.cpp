@@ -74,8 +74,8 @@ int main(int argc, char *argv[]) {
   if (argc<2) FatalError("No input file specified.");
 
 #ifdef _MPI_DEBUG
-  // Uncomment for use with GDB or other debugger
-  /*{
+  /*// Uncomment for use with GDB or other debugger
+  {
     // Useful for debugging in parallel with GDB or similar debugger
     // Sleep until a debugger is attached to rank 0 (change 'blah' once attached to continue)
     if (rank == 0) {
@@ -257,8 +257,6 @@ int main(int argc, char *argv[]) {
     if ((params.iter)%params.plotFreq == 0 || params.iter==params.iterMax) writeData(&Solver,&params);
   }
 
-//MPI_Finalize();
-//exit(0);
   /* Calculate the integral / L1 / L2 error for the final time */
   writeAllError(&Solver,&params);
 
@@ -275,18 +273,14 @@ int main(int argc, char *argv[]) {
       cout << "Integrated Conservation Error for Grid " << Geo.gridID << " = " << err[0] << endl;
   } else {
     params.errorNorm = 0;
-    params.testCase = 0;
     vector<double> err;
     if (params.meshType == OVERSET_MESH)
       err = Solver.integrateErrorOverset();
     else
       err = Solver.integrateError();
-    double EXACT = 10;
-    if (params.icType==0)
-      EXACT = pi*erf(5)*erf(5);
     cout.precision(10);
     if (params.rank==0)
-      cout << "Integrated Conservation Error = " << EXACT - err[0] << endl;
+      cout << "Integrated Conservation Error = " << err[0] << endl;
   }
 
 #ifndef _NO_MPI

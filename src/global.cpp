@@ -171,26 +171,26 @@ std::ostream& operator<<(std::ostream &os, const point &pt)
   return os;
 }
 
-std::ostream& operator<<(std::ostream &os, matrix<double> &mat)
+std::ostream& operator<<(std::ostream &os, const matrix<double> &mat)
 {
   mat.print();
   return os;
 }
 
-std::ostream& operator<<(std::ostream &os, vector<int> &vec)
+std::ostream& operator<<(std::ostream &os, const vector<int> &vec)
 {
   for (auto &val:vec) cout << val << ", ";
   return os;
 }
 
 
-std::ostream& operator<<(std::ostream &os, vector<double> &vec)
+std::ostream& operator<<(std::ostream &os, const vector<double> &vec)
 {
   for (auto &val:vec) cout << val << ", ";
   return os;
 }
 
-std::ostream& operator<<(std::ostream &os, matrix<int> &mat)
+std::ostream& operator<<(std::ostream &os, const matrix<int> &mat)
 {
   mat.print();
   return os;

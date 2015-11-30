@@ -172,7 +172,7 @@ public:
 
   /*! Find the reference location of a point inside an element given its
    *  physical location, using the Nelder-Meade algorithm */
-  bool getRefLocNelderMeade(point pos, point &loc);
+  bool getRefLocNelderMead(point pos, point &loc);
 
   /*! Calculate Jacobian & Inverse Jacobian at a reference location in element */
   void getInverseMapping(const point xi, matrix<double> &J, matrix<double> &Jinv);

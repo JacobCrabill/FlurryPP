@@ -70,9 +70,11 @@ public:
 
   /*! Get dim0 [number of rows] */
   uint getDim0(void) {return this->dims[0];}
+  uint getDim0(void) const {return this->dims[0];}
 
   /*! Get dim1 [number of columns] */
   uint getDim1(void) {return this->dims[1];}
+  uint getDim1(void) const {return this->dims[1];}
 
   /*! Get the size of the underlying data array (total number of Array elements) */
   uint getSize(void) {return data.size();}
@@ -88,6 +90,8 @@ public:
 
   /*! Standard (i,j) access operator */
   T &operator()(int i, int j=0, int k=0, int l=0);
+
+  T operator()(int i, int j=0, int k=0, int l=0) const;
 
   /*! Returns the .data() pointer of the underlying vector<T> data */
   T* getData();
@@ -111,6 +115,8 @@ public:
 
   /*! Standard (i,j) access operator */
   T &operator()(int i, int j=0);
+
+  T operator()(int i, int j=0) const;
 
   /*! Append the input Array as rows at the end of the current Array */
   void appendRows(Array2D<T> &mat);
@@ -202,7 +208,7 @@ public:
   void vecToMatrixResize(vector<T> &A);
 
   /*! Prints the contents of the Array to the console */
-  void print(int prec=8);
+  void print(int prec=8) const;
 
   /*! Check the matrix for NaN values */
   bool checkNan(void);

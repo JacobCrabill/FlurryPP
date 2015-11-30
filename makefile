@@ -301,6 +301,7 @@ obj/superMesh.o: src/superMesh.cpp include/superMesh.hpp \
 	
 obj/overComm.o: src/overComm.cpp include/overComm.hpp \
 		include/global.hpp \
+		include/funcs.hpp \
 		include/geo.hpp \
 		include/input.hpp \
 		include/matrix.hpp \

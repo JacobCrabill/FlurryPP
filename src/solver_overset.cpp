@@ -143,7 +143,7 @@ void solver::donorInclusionTest(int* cellID, double* xyz, int* passFlag, double*
 {
   // Determine if point is in cell: [x,y,z] should all lie between [-1,1]
   point refPt;
-  (*passFlag) = eles[*cellID]->getRefLocNelderMeade(point(xyz),refPt);
+  (*passFlag) = eles[*cellID]->getRefLocNelderMead(point(xyz),refPt);
 
   rst[0] = refPt.x;
   rst[1] = refPt.y;
