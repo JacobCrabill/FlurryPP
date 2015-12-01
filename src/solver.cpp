@@ -535,7 +535,7 @@ void solver::moveMesh(int step)
       OComm->performProjection(eles,opers,Geo->eleMap);
     }
 
-    //if ( !(step==0 && params->RKa[step]==0) )
+    if ( !(step==0 && params->RKa[step]==0) )
       Geo->moveMesh(params->RKa[step]);
 
     for (auto &e:eles) e->move(true);

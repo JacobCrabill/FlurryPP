@@ -678,9 +678,10 @@ vector<double> calcError(const vector<double> &U, const point &pos, input *param
 
       double x = fmod( (pos.x - params->time), (xmax - xmin) );
       double y = fmod( (pos.y - params->time), (ymax - ymin) );
-
-      if (x > (xmax-xmin)/2) x -= (xmax-xmin);
-      if (y > (ymax-ymin)/2) y -= (ymax-ymin);
+      if (x > xmax) x -= (xmax-xmin);
+      if (y > ymax) y -= (ymax-ymin);
+      if (x < xmin) x += (xmax-xmin);
+      if (y < ymin) y += (ymax-ymin);
 
       double f = 1.0 - (x*x + y*y);
 
@@ -720,11 +721,14 @@ vector<double> calcError(const vector<double> &U, const point &pos, input *param
         ymin = -5;  ymax = 5;
       }
 
-      double x = fmod( (pos.x - Uinf*cos(theta)*params->time), (xmax - xmin) );
-      double y = fmod( (pos.y - Uinf*sin(theta)*params->time), (ymax - ymin) );
-
-      if (x > (xmax-xmin)/2) x -= (xmax-xmin);
-      if (y > (ymax-ymin)/2) y -= (ymax-ymin);
+      double advX = Uinf*cos(theta)*params->time;
+      double advY = Uinf*sin(theta)*params->time;
+      double x = (fmod( (pos.x - advX), (xmax - xmin) ));
+      double y = (fmod( (pos.y - advY), (ymax - ymin) ));
+      if (x > xmax) x -= (xmax-xmin);
+      if (x < xmin) x += (xmax-xmin);
+      if (y > ymax) y -= (ymax-ymin);
+      if (y < ymin) y += (ymax-ymin);
 
       double f = -(x*x + y*y) / (rc*rc);
 
@@ -776,7 +780,7 @@ vector<double> calcError(const vector<double> &U, const point &pos, input *param
     err[i] = U[i] - err[i];
 
   if (params->errorNorm == 1)
-    for (auto &val:err) val = abs(val); // L1 norm
+    for (auto &val:err) val = std::abs(val); // L1 norm
   else if (params->errorNorm == 2)
     for (auto &val:err) val *= val;     // L2 norm
 
@@ -822,8 +826,6 @@ void calcSolutionFromFlux(matrix<double> &F, vector<double> &U, input *params)
       auto du2 = B.solve(dG);
 
       for (int i=0; i<nFields; i++) {
-        //du1[i] = signbit(du1[i])*std::min(std::abs(du1[i]),maxDU[i]);
-        //du2[i] = signbit(du2[i])*std::min(std::abs(du2[i]),maxDU[i]);
         U[i] += (du1[i]+du2[i])/2.;
       }
 

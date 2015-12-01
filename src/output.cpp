@@ -154,7 +154,7 @@ void writeParaview(solver *Solver, input *params)
   sprintf(Iter,"%.09d",iter);
 
   if (params->rank == 0)
-    cout << "Writing ParaView file " << params->dataFileName << "_" << string(Iter) << ".vtu...  " << flush;
+    cout << "Writing ParaView file " << fileName << "_" << string(Iter) << ".vtu...  " << flush;
 
 #ifndef _NO_MPI
   // Get # of eles on each rank to avoid printing completely-blanked ranks (if exist)
@@ -738,7 +738,7 @@ void writeError(solver *Solver, input *params)
   if (params->meshType != OVERSET_MESH && !params->testCase) return;
 
   // For implemented test cases, calculcate the L1 error over the overset domain
-
+vector<double> EXACT = {99.804294352079, 89.2676720089582, 44.6338359173803, 2031.69314321021};
   vector<double> err;
 
   if (params->meshType == OVERSET_MESH)

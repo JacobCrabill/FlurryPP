@@ -304,17 +304,20 @@ void input::readInputFile(char *filename)
 
   opts.getScalarValue("timeType",timeType,4);
   opts.getScalarValue("dtType",dtType,0);
-  if (dtType == 1)
+  opts.getScalarValue("iterMax",iterMax);
+  if (dtType == 1) {
     opts.getScalarValue("CFL",CFL);
-  else
+    opts.getScalarValue("maxTime",maxTime);
+  } else {
     opts.getScalarValue("dt",dt);
+    maxTime = iterMax * dt;
+  }
 
   opts.getScalarValue("viscous",viscous,0);
   opts.getScalarValue("motion",motion,0);
   opts.getScalarValue("order",order,3);
   opts.getScalarValue("riemannType",riemannType,0);
   opts.getScalarValue("testCase",testCase,0);
-  opts.getScalarValue("iterMax",iterMax);
 
   if (motion == 4) {
     opts.getScalarValue("moveAx",moveAx);

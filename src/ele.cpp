@@ -1114,10 +1114,12 @@ matrix<double> ele::calcError(void)
       }
 
       for (int spt=0; spt<nSpts; spt++) {
-        double x = abs(fmod( (pos_spts[spt].x - params->time), (xmax-xmin) ));
-        double y = abs(fmod( (pos_spts[spt].y - params->time), (ymax-ymin) ));
-        if (x > (xmax-xmin)/2) x -= (xmax-xmin);
-        if (y > (ymax-ymin)/2) y -= (ymax-ymin);
+        double x = fmod( (pos_spts[spt].x - params->time), (xmax-xmin) );
+        double y = fmod( (pos_spts[spt].y - params->time), (ymax-ymin) );
+        if (x > xmax) x -= (xmax-xmin);
+        if (y > ymax) y -= (ymax-ymin);
+        if (x < xmin) x += (xmax-xmin);
+        if (y < ymin) y += (ymax-ymin);
 
         double f = 1.0 - (x*x + y*y);
 
@@ -1159,10 +1161,12 @@ matrix<double> ele::calcError(void)
       }
 
       for (int spt=0; spt<nSpts; spt++) {
-        double x = abs(fmod( (pos_spts[spt].x - Uinf*cos(theta)*params->time), (xmax-xmin) ));
-        double y = abs(fmod( (pos_spts[spt].y - Uinf*sin(theta)*params->time), (ymax-ymin) ));
-        if (x > (xmax-xmin)/2) x -= (xmax-xmin);
-        if (y > (ymax-ymin)/2) y -= (ymax-ymin);
+        double x = fmod( (pos_spts[spt].x - Uinf*cos(theta)*params->time), (xmax-xmin) );
+        double y = fmod( (pos_spts[spt].y - Uinf*sin(theta)*params->time), (ymax-ymin) );
+        if (x > xmax) x -= (xmax-xmin);
+        if (y > ymax) y -= (ymax-ymin);
+        if (x < xmin) x += (xmax-xmin);
+        if (y < ymin) y += (ymax-ymin);
 
         double f = -(x*x + y*y) / (rc*rc);
 
@@ -1192,16 +1196,13 @@ matrix<double> ele::calcError(void)
       ymin = -5;  ymax = 5;
     }
 
-    double xc = fmod( (params->time - xmin), (xmax - xmin) ) + xmin;
-    double yc = fmod( (params->time - ymin), (ymax - ymin) ) + ymin;
-
     if (params->icType == 0) {
       /* --- Simple Gaussian bump centered at (0,0) --- */
       for (int spt=0; spt<nSpts; spt++) {
-        double x = abs(fmod( (pos_spts[spt].x - params->time), (xmax-xmin) ));
-        double y = abs(fmod( (pos_spts[spt].y - params->time), (ymax-ymin) ));
-        if (x > (xmax-xmin)/2) x -= (xmax-xmin);
-        if (y > (ymax-ymin)/2) y -= (ymax-ymin);
+        double x = std::abs(fmod( (pos_spts[spt].x - params->time), (xmax-xmin) ));
+        double y = std::abs(fmod( (pos_spts[spt].y - params->time), (ymax-ymin) ));
+        if (x > xmax) x -= (xmax-xmin);
+        if (y > ymax) y -= (ymax-ymin);
 
         double r2 = x*x + y*y;
         err(spt,0) = exp(-r2);

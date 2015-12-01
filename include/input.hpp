@@ -130,6 +130,7 @@ public:
   int timeType;
   double rkTime;
   double time;
+  double maxTime;
   int iterMax;
   int initIter;
   int restartIter;

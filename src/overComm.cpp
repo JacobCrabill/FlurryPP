@@ -1037,7 +1037,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
         vector<double> tempU(nFields);
         if (params->equation == NAVIER_STOKES) {
           // Since flux may give non-unique solution, use discontinuous
-          // sol'n at point to determing correct solution
+          // sol'n at point to determine correct solution
           opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
 
           // Function to minimize using Nelder-Mead algorithm
