@@ -601,7 +601,10 @@ void writeResidual(solver *Solver, input *params)
       cout << endl;
       cout << setw(8) << left << "Iter" << "Var  ";
       if (params->equation == ADVECTION_DIFFUSION) {
-        cout << "Residual" << endl;
+        cout << setw(colW) << "Residual";
+        if (params->dtType == 1)
+          cout << setw(colW) << left << "DeltaT";
+        cout << endl;
       }else if (params->equation == NAVIER_STOKES) {
         cout << setw(colW) << left << "rho";
         cout << setw(colW) << left << "rhoU";
@@ -652,7 +655,9 @@ void writeResidual(solver *Solver, input *params)
       histFile << setw(colW) << left << "Time";
       histFile << "Var  ";
       if (params->equation == ADVECTION_DIFFUSION) {
-        histFile << setw(colW) << left << "Residual" << endl;
+        histFile << setw(colW) << left << "Residual";
+        if (params->timeType == 1) histFile << setw(colW) << left << "DeltaT";
+        histFile << endl;
       }else if (params->equation == NAVIER_STOKES) {
         histFile << setw(colW) << left << "rho";
         histFile << setw(colW) << left << "rhoU";

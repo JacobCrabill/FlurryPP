@@ -253,12 +253,13 @@ int main(int argc, char *argv[]) {
     Solver.update();
 
     if ((params.iter)%params.monitorResFreq == 0 || params.iter==params.initIter+1) writeResidual(&Solver,&params);
-    if ((params.iter)%params.monitorErrFreq == 0 || params.iter==params.initIter+1) writeError(&Solver,&params);
+    //if ((params.iter)%params.monitorErrFreq == 0 || params.iter==params.initIter+1) writeError(&Solver,&params);
     if ((params.iter)%params.plotFreq == 0 || params.iter==params.iterMax || params.time>=params.maxTime) writeData(&Solver,&params);
   }
 
   /* Calculate the integral / L1 / L2 error for the final time */
-  writeAllError(&Solver,&params);
+  if (params.nDims==2)
+    writeAllError(&Solver,&params);
 
   // Get simulation wall time
   runTime.stopTimer();
@@ -271,7 +272,7 @@ int main(int argc, char *argv[]) {
     cout.setf(ios::scientific, ios::floatfield);
     if (Geo.gridRank==0)
       cout << "Integrated Conservation Error for Grid " << Geo.gridID << " = " << err[0] << endl;
-  } else {
+  } else if (params.nDims==2) {
     params.errorNorm = 0;
     params.testCase = 0;
     vector<double> EXACT = {99.804294352079, 89.2676720089582, 44.6338359173803, 2031.69314321021}; // For L-M vortex case, 10x10 grid

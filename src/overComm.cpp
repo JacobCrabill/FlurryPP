@@ -995,11 +995,11 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
       }
 
       if (params->oversetMethod == 1) {
-        // Interpolate solution calculated from corrected flux
-        // Need corrected flux for all donor cells, so calc discontinuous Fn & deltaFn
-        //   for correction function scaling
-        // Need to also keep track of whether flux is in ref/phys space and
-        //   transform as required.
+        /* Interpolate solution calculated from corrected flux
+         * Need corrected flux for all donor cells, so calc discontinuous Fn & deltaFn
+         *   for correction function scaling
+         * Need to also keep track of whether flux is in ref/phys space and
+         *   transform as required. */
         if (!correctedEles.count(ic)) {
           correctedEles.insert(ic);
           if (params->motion) {
@@ -1033,11 +1033,10 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
             for (int k=0; k<nFields; k++)
               tempF(dim1,k) += invJaco(dim2,dim1) * tempF_ref(dim2,k) / detJac;
 
-        double eps = 1e-10;
-        vector<double> tempU(nFields);
         if (params->equation == NAVIER_STOKES) {
-          // Since flux may give non-unique solution, use discontinuous
-          // sol'n at point to determine correct solution
+          /* Since flux may give non-unique solution, use discontinuous
+           * sol'n at point to determine correct solution */
+          vector<double> tempU(nFields);
           opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
 
           // Function to minimize using Nelder-Mead algorithm
@@ -1052,9 +1051,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
                 norm += (tempF(dim,field) - newF(dim,field))*(tempF(dim,field) - newF(dim,field));
             return norm;
           };
-
           tempU = NelderMead(tempU, minFunc);
-          //calcSolutionFromFlux(tempF,tempU,params);
 
           for (int k=0; k<nFields; k++)
             U_out[p](i,k) = tempU[k];
