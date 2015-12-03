@@ -854,6 +854,7 @@ void getQuadRuleTet(int order, vector<point> &locQpts, vector<double> &weights)
       locQpts[2].x = loc1; locQpts[2].y = loc2; locQpts[2].z = loc1;
       locQpts[3].x = loc1; locQpts[3].y = loc1; locQpts[3].z = loc2;
       weights = {.25,.25,.25,.25};
+      break;
     }
     case 3: {
       locQpts.resize(8);
@@ -872,6 +873,7 @@ void getQuadRuleTet(int order, vector<point> &locQpts, vector<double> &weights)
       double wt1 = .138527966511862;
       double wt2 = .111472033488138;
       weights = {wt1,wt1,wt1,wt1,wt2,wt2,wt2,wt2};
+      break;
     }
     case 4: {
       locQpts.resize(11);
@@ -888,17 +890,285 @@ void getQuadRuleTet(int order, vector<point> &locQpts, vector<double> &weights)
       locQpts[6].x = loc1; locQpts[6].y = loc2; locQpts[6].z = loc1;
       locQpts[7].x = loc1; locQpts[7].y = loc1; locQpts[7].z = loc2;
       loc1 = .0455037041256497;
-      loc2 = 1-0.5*loc1;
+      loc2 = 0.5-loc1;
       locQpts[8].x  = loc1; locQpts[8].y  = loc1; locQpts[8].z = loc2;
-      locQpts[9].x  = loc1; locQpts[9].y  = loc1; locQpts[9].z = loc1;
+      locQpts[9].x  = loc1; locQpts[9].y  = loc2; locQpts[9].z = loc1;
       locQpts[10].x = loc1; locQpts[10].y = loc2; locQpts[10].z = loc2;
       locQpts[11].x = loc2; locQpts[11].y = loc1; locQpts[11].z = loc2;
       locQpts[12].x = loc2; locQpts[12].y = loc1; locQpts[12].z = loc1;
-      locQpts[13].x = loc2; locQpts[13].y = loc2; locQpts[13].z = loc2;
+      locQpts[13].x = loc2; locQpts[13].y = loc2; locQpts[13].z = loc1;
       double wt1 = .073493043116362;
       double wt2 = .112687925718016;
       double wt3 = .042546020777082;
       weights = {wt1,wt1,wt1,wt1,wt2,wt2,wt2,wt2,wt3,wt3,wt3,wt3,wt3,wt3};
+      break;
+    }
+    case 6: {
+      locQpts.resize(24);
+      double loc1, loc2, loc3;
+      int N = 0;
+      loc1 = .21460287125915202928883921938628499;
+      loc2 = 1-3*loc1;
+      locQpts[N+0].x = loc1; locQpts[N+0].y = loc1; locQpts[N+0].z = loc1;
+      locQpts[N+1].x = loc2; locQpts[N+1].y = loc1; locQpts[N+1].z = loc1;
+      locQpts[N+2].x = loc1; locQpts[N+2].y = loc2; locQpts[N+2].z = loc1;
+      locQpts[N+3].x = loc1; locQpts[N+3].y = loc1; locQpts[N+3].z = loc2;
+      loc1 = .04067395853461135311557944895641006;
+      loc2 = 1-3*loc1;
+      locQpts[N+0].x = loc1; locQpts[N+0].y = loc1; locQpts[N+0].z = loc1;
+      locQpts[N+1].x = loc2; locQpts[N+1].y = loc1; locQpts[N+1].z = loc1;
+      locQpts[N+2].x = loc1; locQpts[N+2].y = loc2; locQpts[N+2].z = loc1;
+      locQpts[N+3].x = loc1; locQpts[N+3].y = loc1; locQpts[N+3].z = loc2;
+      loc1 = .32233789014227551034399447076249213;
+      loc2 = 1-3*loc1;
+      locQpts[N+0].x = loc1; locQpts[N+0].y = loc1; locQpts[N+0].z = loc1;
+      locQpts[N+1].x = loc2; locQpts[N+1].y = loc1; locQpts[N+1].z = loc1;
+      locQpts[N+2].x = loc1; locQpts[N+2].y = loc2; locQpts[N+2].z = loc1;
+      locQpts[N+3].x = loc1; locQpts[N+3].y = loc1; locQpts[N+3].z = loc2;
+      loc1 = .06366100187501752529923552760572698;
+      loc2 = .60300566479164914136743113906093969;
+      loc3 = 1. - 2.*loc1 - loc2;
+      locQpts[N+0].x  = loc1; locQpts[N+0].y  = loc1; locQpts[N+0].z  = loc2;
+      locQpts[N+1].x  = loc1; locQpts[N+1].y  = loc1; locQpts[N+1].z  = loc3;
+      locQpts[N+2].x  = loc1; locQpts[N+2].y  = loc2; locQpts[N+2].z  = loc1;
+      locQpts[N+3].x  = loc1; locQpts[N+3].y  = loc2; locQpts[N+3].z  = loc3;
+      locQpts[N+4].x  = loc1; locQpts[N+4].y  = loc3; locQpts[N+4].z  = loc1;
+      locQpts[N+5].x  = loc1; locQpts[N+5].y  = loc3; locQpts[N+5].z  = loc2;
+      locQpts[N+6].x  = loc2; locQpts[N+6].y  = loc1; locQpts[N+6].z  = loc1;
+      locQpts[N+7].x  = loc2; locQpts[N+7].y  = loc1; locQpts[N+7].z  = loc3;
+      locQpts[N+8].x  = loc2; locQpts[N+8].y  = loc3; locQpts[N+8].z  = loc1;
+      locQpts[N+9].x  = loc3; locQpts[N+9].y  = loc1; locQpts[N+9].z  = loc1;
+      locQpts[N+10].x = loc3; locQpts[N+10].y = loc1; locQpts[N+10].z = loc2;
+      locQpts[N+11].x = loc3; locQpts[N+11].y = loc2; locQpts[N+11].z = loc1;
+      double wt1 = .03992275025816749209969062755747998;
+      double wt2 = .01007721105532064294801323744593686;
+      double wt3 = .05535718154365472209515327785372602;
+      double wt4 = 27./560.;
+      weights = {wt1,wt1,wt1,wt1,
+                 wt2,wt2,wt2,wt2,
+                 wt3,wt3,wt3,wt3,
+                 wt4,wt4,wt4,wt4,wt4,wt4,wt4,wt4,wt4,wt4,wt4,wt4};
+      break;
+    }
+    case 8: {
+      locQpts.resize(46);
+      double loc1, loc2, loc3;
+      int N = 0;
+      loc1 = .03967542307038990126507132953938949;
+      loc2 = 1-3*loc1;
+      locQpts[N+0].x = loc1; locQpts[N+0].y = loc1; locQpts[N+0].z = loc1;
+      locQpts[N+1].x = loc2; locQpts[N+1].y = loc1; locQpts[N+1].z = loc1;
+      locQpts[N+2].x = loc1; locQpts[N+2].y = loc2; locQpts[N+2].z = loc1;
+      locQpts[N+3].x = loc1; locQpts[N+3].y = loc1; locQpts[N+3].z = loc2;
+      N += 4;
+      loc1 = .31448780069809631378416056269714830;
+      loc2 = 1-3*loc1;
+      locQpts[N+0].x = loc1; locQpts[N+0].y = loc1; locQpts[N+0].z = loc1;
+      locQpts[N+1].x = loc2; locQpts[N+1].y = loc1; locQpts[N+1].z = loc1;
+      locQpts[N+2].x = loc1; locQpts[N+2].y = loc2; locQpts[N+2].z = loc1;
+      locQpts[N+3].x = loc1; locQpts[N+3].y = loc1; locQpts[N+3].z = loc2;
+      N += 4;
+      loc1 = .1019866930627033;
+      loc2 = 1-3*loc1;
+      locQpts[N+0].x = loc1; locQpts[N+0].y = loc1; locQpts[N+0].z = loc1;
+      locQpts[N+1].x = loc2; locQpts[N+1].y = loc1; locQpts[N+1].z = loc1;
+      locQpts[N+2].x = loc1; locQpts[N+2].y = loc2; locQpts[N+2].z = loc1;
+      locQpts[N+3].x = loc1; locQpts[N+3].y = loc1; locQpts[N+3].z = loc2;
+      N += 4;
+      loc1 = .18420369694919151227594641734890918;
+      loc2 = 1-3*loc1;
+      locQpts[N+0].x = loc1; locQpts[N+0].y = loc1; locQpts[N+0].z = loc1;
+      locQpts[N+1].x = loc2; locQpts[N+1].y = loc1; locQpts[N+1].z = loc1;
+      locQpts[N+2].x = loc1; locQpts[N+2].y = loc2; locQpts[N+2].z = loc1;
+      locQpts[N+3].x = loc1; locQpts[N+3].y = loc1; locQpts[N+3].z = loc2;
+      N += 4;
+      loc1 = .06343628775453989240514123870189827;
+      loc2 = 0.5-loc1;
+      locQpts[N+0].x = loc1; locQpts[N+0].y = loc1; locQpts[N+0].z = loc2;
+      locQpts[N+1].x = loc1; locQpts[N+1].y = loc2; locQpts[N+1].z = loc1;
+      locQpts[N+2].x = loc1; locQpts[N+2].y = loc2; locQpts[N+2].z = loc2;
+      locQpts[N+3].x = loc2; locQpts[N+3].y = loc1; locQpts[N+3].z = loc2;
+      locQpts[N+4].x = loc2; locQpts[N+4].y = loc1; locQpts[N+4].z = loc1;
+      locQpts[N+5].x = loc2; locQpts[N+5].y = loc2; locQpts[N+5].z = loc1;
+      N += 6;
+      loc1 = .02169016206772800480266248262493018;
+      loc2 = .71993192203946593588943495335273478;
+      loc3 = 1. - 2.*loc1 - loc2;
+      locQpts[N+0].x  = loc1; locQpts[N+0].y  = loc1; locQpts[N+0].z  = loc2;
+      locQpts[N+1].x  = loc1; locQpts[N+1].y  = loc1; locQpts[N+1].z  = loc3;
+      locQpts[N+2].x  = loc1; locQpts[N+2].y  = loc2; locQpts[N+2].z  = loc1;
+      locQpts[N+3].x  = loc1; locQpts[N+3].y  = loc2; locQpts[N+3].z  = loc3;
+      locQpts[N+4].x  = loc1; locQpts[N+4].y  = loc3; locQpts[N+4].z  = loc1;
+      locQpts[N+5].x  = loc1; locQpts[N+5].y  = loc3; locQpts[N+5].z  = loc2;
+      locQpts[N+6].x  = loc2; locQpts[N+6].y  = loc1; locQpts[N+6].z  = loc1;
+      locQpts[N+7].x  = loc2; locQpts[N+7].y  = loc1; locQpts[N+7].z  = loc3;
+      locQpts[N+8].x  = loc2; locQpts[N+8].y  = loc3; locQpts[N+8].z  = loc1;
+      locQpts[N+9].x  = loc3; locQpts[N+9].y  = loc1; locQpts[N+9].z  = loc1;
+      locQpts[N+10].x = loc3; locQpts[N+10].y = loc1; locQpts[N+10].z = loc2;
+      locQpts[N+11].x = loc3; locQpts[N+11].y = loc2; locQpts[N+11].z = loc1;
+      N+=12;
+      loc1 = .20448008063679571424133557487274534;
+      loc2 = .58057719012880922417539817139062041;
+      loc3 = 1. - 2.*loc1 - loc2;
+      locQpts[N+0].x  = loc1; locQpts[N+0].y  = loc1; locQpts[N+0].z  = loc2;
+      locQpts[N+1].x  = loc1; locQpts[N+1].y  = loc1; locQpts[N+1].z  = loc3;
+      locQpts[N+2].x  = loc1; locQpts[N+2].y  = loc2; locQpts[N+2].z  = loc1;
+      locQpts[N+3].x  = loc1; locQpts[N+3].y  = loc2; locQpts[N+3].z  = loc3;
+      locQpts[N+4].x  = loc1; locQpts[N+4].y  = loc3; locQpts[N+4].z  = loc1;
+      locQpts[N+5].x  = loc1; locQpts[N+5].y  = loc3; locQpts[N+5].z  = loc2;
+      locQpts[N+6].x  = loc2; locQpts[N+6].y  = loc1; locQpts[N+6].z  = loc1;
+      locQpts[N+7].x  = loc2; locQpts[N+7].y  = loc1; locQpts[N+7].z  = loc3;
+      locQpts[N+8].x  = loc2; locQpts[N+8].y  = loc3; locQpts[N+8].z  = loc1;
+      locQpts[N+9].x  = loc3; locQpts[N+9].y  = loc1; locQpts[N+9].z  = loc1;
+      locQpts[N+10].x = loc3; locQpts[N+10].y = loc1; locQpts[N+10].z = loc2;
+      locQpts[N+11].x = loc3; locQpts[N+11].y = loc2; locQpts[N+11].z = loc1;
+      double wt1 = .00639714777990232132145142033517302;
+      double wt2 = .04019044802096617248816115847981783;
+      double wt3 = .02430797550477032117486910877192260;
+      double wt4 = .05485889241369744046692412399039144;
+      double wt5 = .03571961223409918246495096899661762;
+      double wt6 = .00718319069785253940945110521980376;
+      double wt7 = .01637218194531911754093813975611913;
+      weights = {wt1,wt1,wt1,wt1,
+                 wt2,wt2,wt2,wt2,
+                 wt3,wt3,wt3,wt3,
+                 wt4,wt4,wt4,wt4,
+                 wt5,wt5,wt5,wt5,wt5,wt5,
+                 wt6,wt6,wt6,wt6,wt6,wt6,wt6,wt6,wt6,wt6,wt6,wt6,
+                 wt7,wt7,wt7,wt7,wt7,wt7,wt7,wt7,wt7,wt7,wt7,wt7};
+      break;
+    }
+    case 10: {
+      locQpts.resize(79);
+      double loc1 = .25;
+      locQpts[0].x = loc1; locQpts[0].y = loc1; locQpts[0].z = loc1;
+      loc1 = .11425191803006935688146412277598412;
+      double loc2 = 1-3*loc1;
+      locQpts[1].x = loc1; locQpts[1].y = loc1; locQpts[1].z = loc1;
+      locQpts[2].x = loc2; locQpts[2].y = loc1; locQpts[2].z = loc1;
+      locQpts[3].x = loc1; locQpts[3].y = loc2; locQpts[3].z = loc1;
+      locQpts[4].x = loc1; locQpts[4].y = loc1; locQpts[4].z = loc2;
+      loc1 = .01063790234539248531264164411274776;
+      loc2 = 1-3*loc1;
+      locQpts[5].x = loc1; locQpts[5].y = loc1; locQpts[5].z = loc1;
+      locQpts[6].x = loc2; locQpts[6].y = loc1; locQpts[6].z = loc1;
+      locQpts[7].x = loc1; locQpts[7].y = loc2; locQpts[7].z = loc1;
+      locQpts[8].x = loc1; locQpts[8].y = loc1; locQpts[8].z = loc2;
+      loc1 = .31274070833535645859816704980806110;
+      loc2 = 1-3*loc1;
+      locQpts[9].x = loc1;  locQpts[9].y = loc1;  locQpts[9].z = loc1;
+      locQpts[10].x = loc2; locQpts[10].y = loc1; locQpts[10].z = loc1;
+      locQpts[11].x = loc1; locQpts[11].y = loc2; locQpts[11].z = loc1;
+      locQpts[12].x = loc1; locQpts[12].y = loc1; locQpts[12].z = loc2;
+      loc1 = .01631296303281644;
+      loc2 = 0.5-loc1;
+      locQpts[13].x = loc1; locQpts[13].y = loc1; locQpts[13].z = loc2;
+      locQpts[14].x = loc1; locQpts[14].y = loc2; locQpts[14].z = loc1;
+      locQpts[15].x = loc1; locQpts[15].y = loc2; locQpts[15].z = loc2;
+      locQpts[16].x = loc2; locQpts[16].y = loc1; locQpts[16].z = loc2;
+      locQpts[17].x = loc2; locQpts[17].y = loc1; locQpts[17].z = loc1;
+      locQpts[18].x = loc2; locQpts[18].y = loc2; locQpts[18].z = loc1;
+      int N = 19;
+      loc1 = .03430622963180452385835196582344460;
+      loc2 = .59830121060139461905983787517050400;
+      double loc3 = 1. - 2.*loc1 - loc2;
+      locQpts[N+0].x  = loc1; locQpts[N+0].y  = loc1; locQpts[N+0].z  = loc2;
+      locQpts[N+1].x  = loc1; locQpts[N+1].y  = loc1; locQpts[N+1].z  = loc3;
+      locQpts[N+2].x  = loc1; locQpts[N+2].y  = loc2; locQpts[N+2].z  = loc1;
+      locQpts[N+3].x  = loc1; locQpts[N+3].y  = loc2; locQpts[N+3].z  = loc3;
+      locQpts[N+4].x  = loc1; locQpts[N+4].y  = loc3; locQpts[N+4].z  = loc1;
+      locQpts[N+5].x  = loc1; locQpts[N+5].y  = loc3; locQpts[N+5].z  = loc2;
+      locQpts[N+6].x  = loc2; locQpts[N+6].y  = loc1; locQpts[N+6].z  = loc1;
+      locQpts[N+7].x  = loc2; locQpts[N+7].y  = loc1; locQpts[N+7].z  = loc3;
+      locQpts[N+8].x  = loc2; locQpts[N+8].y  = loc3; locQpts[N+8].z  = loc1;
+      locQpts[N+9].x  = loc3; locQpts[N+9].y  = loc1; locQpts[N+9].z  = loc1;
+      locQpts[N+10].x = loc3; locQpts[N+10].y = loc1; locQpts[N+10].z = loc2;
+      locQpts[N+11].x = loc3; locQpts[N+11].y = loc2; locQpts[N+11].z = loc1;
+      N += 12;
+      loc1 = .12346418534551115945916818783743644;
+      loc2 = .47120066204746310257913700590727081;
+      loc3 = 1. - 2.*loc1 - loc2;
+      locQpts[N+0].x  = loc1; locQpts[N+0].y  = loc1; locQpts[N+0].z  = loc2;
+      locQpts[N+1].x  = loc1; locQpts[N+1].y  = loc1; locQpts[N+1].z  = loc3;
+      locQpts[N+2].x  = loc1; locQpts[N+2].y  = loc2; locQpts[N+2].z  = loc1;
+      locQpts[N+3].x  = loc1; locQpts[N+3].y  = loc2; locQpts[N+3].z  = loc3;
+      locQpts[N+4].x  = loc1; locQpts[N+4].y  = loc3; locQpts[N+4].z  = loc1;
+      locQpts[N+5].x  = loc1; locQpts[N+5].y  = loc3; locQpts[N+5].z  = loc2;
+      locQpts[N+6].x  = loc2; locQpts[N+6].y  = loc1; locQpts[N+6].z  = loc1;
+      locQpts[N+7].x  = loc2; locQpts[N+7].y  = loc1; locQpts[N+7].z  = loc3;
+      locQpts[N+8].x  = loc2; locQpts[N+8].y  = loc3; locQpts[N+8].z  = loc1;
+      locQpts[N+9].x  = loc3; locQpts[N+9].y  = loc1; locQpts[N+9].z  = loc1;
+      locQpts[N+10].x = loc3; locQpts[N+10].y = loc1; locQpts[N+10].z = loc2;
+      locQpts[N+11].x = loc3; locQpts[N+11].y = loc2; locQpts[N+11].z = loc1;
+      loc1 = .40991962933181117418479812480531207;
+      loc2 = .16546413290740130923509687990363569;
+      loc3 = 1. - 2.*loc1 - loc2;
+      N += 12;
+      locQpts[N+0].x  = loc1; locQpts[N+0].y  = loc1; locQpts[N+0].z  = loc2;
+      locQpts[N+1].x  = loc1; locQpts[N+1].y  = loc1; locQpts[N+1].z  = loc3;
+      locQpts[N+2].x  = loc1; locQpts[N+2].y  = loc2; locQpts[N+2].z  = loc1;
+      locQpts[N+3].x  = loc1; locQpts[N+3].y  = loc2; locQpts[N+3].z  = loc3;
+      locQpts[N+4].x  = loc1; locQpts[N+4].y  = loc3; locQpts[N+4].z  = loc1;
+      locQpts[N+5].x  = loc1; locQpts[N+5].y  = loc3; locQpts[N+5].z  = loc2;
+      locQpts[N+6].x  = loc2; locQpts[N+6].y  = loc1; locQpts[N+6].z  = loc1;
+      locQpts[N+7].x  = loc2; locQpts[N+7].y  = loc1; locQpts[N+7].z  = loc3;
+      locQpts[N+8].x  = loc2; locQpts[N+8].y  = loc3; locQpts[N+8].z  = loc1;
+      locQpts[N+9].x  = loc3; locQpts[N+9].y  = loc1; locQpts[N+9].z  = loc1;
+      locQpts[N+10].x = loc3; locQpts[N+10].y = loc1; locQpts[N+10].z = loc2;
+      locQpts[N+11].x = loc3; locQpts[N+11].y = loc2; locQpts[N+11].z = loc1;
+      loc1 = .17397243903011716743177479785668929;
+      loc2 = .62916375300275643773181882027844514;
+      loc3 = 1. - 2.*loc1 - loc2;
+      N += 12;
+      locQpts[N+0].x  = loc1; locQpts[N+0].y  = loc1; locQpts[N+0].z  = loc2;
+      locQpts[N+1].x  = loc1; locQpts[N+1].y  = loc1; locQpts[N+1].z  = loc3;
+      locQpts[N+2].x  = loc1; locQpts[N+2].y  = loc2; locQpts[N+2].z  = loc1;
+      locQpts[N+3].x  = loc1; locQpts[N+3].y  = loc2; locQpts[N+3].z  = loc3;
+      locQpts[N+4].x  = loc1; locQpts[N+4].y  = loc3; locQpts[N+4].z  = loc1;
+      locQpts[N+5].x  = loc1; locQpts[N+5].y  = loc3; locQpts[N+5].z  = loc2;
+      locQpts[N+6].x  = loc2; locQpts[N+6].y  = loc1; locQpts[N+6].z  = loc1;
+      locQpts[N+7].x  = loc2; locQpts[N+7].y  = loc1; locQpts[N+7].z  = loc3;
+      locQpts[N+8].x  = loc2; locQpts[N+8].y  = loc3; locQpts[N+8].z  = loc1;
+      locQpts[N+9].x  = loc3; locQpts[N+9].y  = loc1; locQpts[N+9].z  = loc1;
+      locQpts[N+10].x = loc3; locQpts[N+10].y = loc1; locQpts[N+10].z = loc2;
+      locQpts[N+11].x = loc3; locQpts[N+11].y = loc2; locQpts[N+11].z = loc1;
+      loc1 = .03002157005631784150255786784038011;
+      loc2 = .81213056814351208262160080755918730;
+      loc3 = 1. - 2.*loc1 - loc2;
+      N += 12;
+      locQpts[N+0].x  = loc1; locQpts[N+0].y  = loc1; locQpts[N+0].z  = loc2;
+      locQpts[N+1].x  = loc1; locQpts[N+1].y  = loc1; locQpts[N+1].z  = loc3;
+      locQpts[N+2].x  = loc1; locQpts[N+2].y  = loc2; locQpts[N+2].z  = loc1;
+      locQpts[N+3].x  = loc1; locQpts[N+3].y  = loc2; locQpts[N+3].z  = loc3;
+      locQpts[N+4].x  = loc1; locQpts[N+4].y  = loc3; locQpts[N+4].z  = loc1;
+      locQpts[N+5].x  = loc1; locQpts[N+5].y  = loc3; locQpts[N+5].z  = loc2;
+      locQpts[N+6].x  = loc2; locQpts[N+6].y  = loc1; locQpts[N+6].z  = loc1;
+      locQpts[N+7].x  = loc2; locQpts[N+7].y  = loc1; locQpts[N+7].z  = loc3;
+      locQpts[N+8].x  = loc2; locQpts[N+8].y  = loc3; locQpts[N+8].z  = loc1;
+      locQpts[N+9].x  = loc3; locQpts[N+9].y  = loc1; locQpts[N+9].z  = loc1;
+      locQpts[N+10].x = loc3; locQpts[N+10].y = loc1; locQpts[N+10].z = loc2;
+      locQpts[N+11].x = loc3; locQpts[N+11].y = loc2; locQpts[N+11].z = loc1;
+      double wt1 = .04574189830483037077884770618329337;
+      double wt2 = .01092727610912416907498417206565671;
+      double wt3 = .00055352334192264689534558564012282;
+      double wt4 = .02569337913913269580782688316792080;
+      double wt5 = .00055387649657283109312967562590035;
+      double wt6 = .01044842402938294329072628200105773;
+      double wt7 = .02513844602651287118280517785487423;
+      double wt8 = .01178620679249594711782155323755017;
+      double wt9 = .01332022473886650471019828463616468;
+      double wt10 = .00615987577565961666092767531756180;
+      weights = {wt1,
+                 wt2,wt2,wt2,wt2,
+                 wt3,wt3,wt3,wt3,
+                 wt4,wt4,wt4,wt4,
+                 wt5,wt5,wt5,wt5,wt5,wt5,
+                 wt6,wt6,wt6,wt6,wt6,wt6,wt6,wt6,wt6,wt6,wt6,wt6,
+                 wt7,wt7,wt7,wt7,wt7,wt7,wt7,wt7,wt7,wt7,wt7,wt7,
+                 wt8,wt8,wt8,wt8,wt8,wt8,wt8,wt8,wt8,wt8,wt8,wt8,
+                 wt9,wt9,wt9,wt9,wt9,wt9,wt9,wt9,wt9,wt9,wt9,wt9,
+                 wt10,wt10,wt10,wt10,wt10,wt10,wt10,wt10,wt10,wt10,wt10,wt10};
+      break;
     }
     default:  {
       stringstream ss; ss << order;
