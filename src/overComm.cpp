@@ -915,9 +915,9 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
           double vz = std::abs(params->advectVz);
           if (nDims == 2) vz = 0.;
 
-          if (vx > vy && vx > vz)
+          if (vx >= vy && vx >= vz)
             U_out[p](i,0) = tempF(0,0) / params->advectVx;
-          else if (vy > vz)
+          else if (vy >= vz)
             U_out[p](i,0) = tempF(1,0) / params->advectVy;
           else
             U_out[p](i,0) = tempF(2,0) / params->advectVz;

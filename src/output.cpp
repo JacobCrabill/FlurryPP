@@ -50,8 +50,9 @@ void writeData(solver *Solver, input *params)
   }
 
   /* Write out mesh in Tecplot format, with IBLANK data [Overset cases only] */
-  if (params->meshType==OVERSET_MESH && params->writeIBLANK)
+  if (params->meshType==OVERSET_MESH && params->writeIBLANK) {
     writeMeshTecplot(Solver,params);
+  }
 }
 
 void writeCSV(solver *Solver, input *params)
@@ -818,6 +819,7 @@ void writeMeshTecplot(solver* Solver, input* params)
   int nNodes = Geo->nVerts;
   int nCells = Geo->nEles;
   int nHex = nCells;
+  int nv = (params->nDims==2) ? 4 : 8; // Ignoring edge nodes for quadratic elements
 
   dataFile << "# " << nPrism << " " << nHex << " " << nNodes << " " << nCells << " " << nNodesWall << " " << nNodesOver << endl;
   dataFile << "TITLE = \"" << fileName << "\"" << endl;
@@ -827,15 +829,19 @@ void writeMeshTecplot(solver* Solver, input* params)
     ET = "QUADRILATERAL";
   else
     ET = "BRICK";
-  dataFile << "ZONE T = \"VOL_MIXED\", N=" << nCells*4 << ", E=" << nCells << ", ET=" << ET << ", F=FEPOINT" << endl;
+  dataFile << "ZONE T = \"VOL_MIXED\", N=" << nCells*nv << ", E=" << nCells << ", ET=" << ET << ", F=FEPOINT" << endl;
 
   for (int ic=0; ic<nCells; ic++) {
-    for (int j=0; j<4; j++) {
-      dataFile << Geo->xv(Geo->c2v(ic,j),0) << " " << Geo->xv(Geo->c2v(ic,j),1) << " " << 0.0 << " " << gridID << " " << Geo->iblank[Geo->c2v(ic,j)] << " " << Geo->iblankCell[ic] << endl;
+    for (int j=0; j<nv; j++) {
+      dataFile << Geo->xv(Geo->c2v(ic,j),0) << " " << Geo->xv(Geo->c2v(ic,j),1) << " ";
+      if (params->nDims == 2)
+        dataFile << 0.0;
+      else
+        dataFile << Geo->xv(Geo->c2v(ic,j),2);
+      dataFile << " " << gridID << " " << Geo->iblank[Geo->c2v(ic,j)] << " " << Geo->iblankCell[ic] << endl;
     }
   }
 
-  int nv = (params->nDims==2) ? 4 : 8; // Ignoring edge nodes for quadratic elements
   for (int ic=0; ic<nCells; ic++) {
     for (int j=0; j<nv; j++) {
       dataFile << ic*nv + j + 1 << " ";
