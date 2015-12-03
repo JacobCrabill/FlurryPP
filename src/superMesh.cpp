@@ -200,7 +200,6 @@ void superMesh::buildSuperMeshTet(void)
   for (uint i=0; i<faces.getDim0(); i++) {
     vector<tetra> newTets;
     vector<int> newParents;
-
     for (uint j=0; j<tets.size(); j++) {
       tetra tet = tets[j];
       auto tmpTets = clipTet(tet, faces.getRow(i), normals[i]);
@@ -490,12 +489,6 @@ vector<tetra> clipTet(tetra &tet, const vector<point> &clipFace, Vec3 &norm)
         Vec3 ab = tet.nodes[ePts[i]] - tet.nodes[kill];
         Vec3 ac = xc - tet.nodes[kill];
         newPts[i] = ab*((norm*ac)/(norm*ab)) + tet.nodes[kill];
-        for (int j=0; j<3; j++) {
-          if (std::abs(newPts[i][j])>5) {
-            for (auto &PT:tet.nodes) _(PT);
-            exit(0);
-          }
-        }
       }
 
       outTets.resize(3);
@@ -563,16 +556,6 @@ vector<tetra> clipTet(tetra &tet, const vector<point> &clipFace, Vec3 &norm)
       ac = xc - a;
       newPts[3] = ab*((norm*ac)/(norm*ab)) + a;
 
-      for (int i=0; i<newPts.size(); i++) {
-        for (int j=0; j<3; j++) {
-          if (std::abs(newPts[i][j])>5) {
-            cout << "CASE 2: pt " << i << endl;
-            for (auto &PT:tet.nodes) _(PT);
-            exit(0);
-          }
-        }
-      }
-
       // Setup the new tets
       outTets.resize(3);
       outTets[0].nodes = {{tet.nodes[ind[1]],newPts[0],newPts[3],tet.nodes[ind[0]]}};
@@ -606,15 +589,6 @@ vector<tetra> clipTet(tetra &tet, const vector<point> &clipFace, Vec3 &norm)
         Vec3 ab = tet.nodes[ePts[i]] - tet.nodes[keep];
         Vec3 ac = xc - tet.nodes[keep];
         outTets[0].nodes[i] = ab*((norm*ac)/(norm*ab)) + tet.nodes[keep];
-
-        point newPt = ab*((norm*ac)/(norm*ab));
-        for (int j=0; j<3; j++) {
-          if (std::abs(newPt[j])>5) {
-            cout << "CASE 3" << endl;
-            for (auto &PT:tet.nodes) _(PT);
-            exit(0);
-          }
-        }
       }
       break;
     }
