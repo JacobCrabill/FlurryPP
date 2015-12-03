@@ -36,6 +36,7 @@
 #include <fstream>
 #include <set>
 #include <map>
+#include <iomanip>
 
 #include "funcs.hpp"
 #include "points.hpp"
@@ -199,6 +200,7 @@ void superMesh::buildSuperMeshTet(void)
   for (uint i=0; i<faces.getDim0(); i++) {
     vector<tetra> newTets;
     vector<int> newParents;
+
     for (uint j=0; j<tets.size(); j++) {
       tetra tet = tets[j];
       auto tmpTets = clipTet(tet, faces.getRow(i), normals[i]);
@@ -374,17 +376,32 @@ void superMesh::printSuperMesh(int rank, int ID)
   string filename = "mesh_" + std::to_string((long long)rank) + "_" + std::to_string((long long)ID) + ".csv";
   ofstream mesh(filename.c_str());
 
-  mesh << "Parent,Triangle,x,y" << endl;
-  for (int i=0; i<tris.size(); i++) {
-    int id = parents[i];
-    point pt = tris[i].nodes[0];
-    mesh << id << "," << i << "," << pt.x << "," << pt.y << endl;
-    pt = tris[i].nodes[1];
-    mesh << id << "," << i << "," << pt.x << "," << pt.y << endl;
-    pt = tris[i].nodes[2];
-    mesh << id << "," << i << "," << pt.x << "," << pt.y << endl;
-//    pt = tris[i].nodes[0];
-//    mesh << id << "," << i << "," << pt.x << "," << pt.y << endl;
+  if (nDims == 2) {
+    mesh << "Parent,Triangle,x,y" << endl;
+    for (int i=0; i<tris.size(); i++) {
+      int id = parents[i];
+      point pt = tris[i].nodes[0];
+      mesh << id << "," << i << "," << pt.x << "," << pt.y << endl;
+      pt = tris[i].nodes[1];
+      mesh << id << "," << i << "," << pt.x << "," << pt.y << endl;
+      pt = tris[i].nodes[2];
+      mesh << id << "," << i << "," << pt.x << "," << pt.y << endl;
+    }
+  } else {
+    mesh << "Parent,Tet,x,y,z" << endl;
+    for (int i=0; i<tets.size(); i++) {
+      int id = parents[i];
+      point pt = tets[i].nodes[0];
+      cout.setf(ios::fixed);
+      cout.precision(8);
+      mesh << id << ", " << i << ", " << right << setw(14) << pt.x << "," << right << setw(14) << pt.y << "," << right << setw(14) << pt.z << endl;
+      pt = tets[i].nodes[1];
+      mesh << id << ", " << i << ", " << right << setw(14) << pt.x << "," << right << setw(14) << pt.y << "," << right << setw(14) << pt.z << endl;
+      pt = tets[i].nodes[2];
+      mesh << id << ", " << i << ", " << right << setw(14) << pt.x << "," << right << setw(14) << pt.y << "," << right << setw(14) << pt.z << endl;
+      pt = tets[i].nodes[3];
+      mesh << id << ", " << i << ", " << right << setw(14) << pt.x << "," << right << setw(14) << pt.y << "," << right << setw(14) << pt.z << endl;
+    }
   }
   mesh.close();
 }
@@ -473,12 +490,18 @@ vector<tetra> clipTet(tetra &tet, const vector<point> &clipFace, Vec3 &norm)
         Vec3 ab = tet.nodes[ePts[i]] - tet.nodes[kill];
         Vec3 ac = xc - tet.nodes[kill];
         newPts[i] = ab*((norm*ac)/(norm*ab)) + tet.nodes[kill];
+        for (int j=0; j<3; j++) {
+          if (std::abs(newPts[i][j])>5) {
+            for (auto &PT:tet.nodes) _(PT);
+            exit(0);
+          }
+        }
       }
 
       outTets.resize(3);
       outTets[0].nodes = {{tet.nodes[ePts[0]], tet.nodes[ePts[1]], newPts[0], tet.nodes[ePts[2]]}};
-      outTets[1].nodes = {{tet.nodes[ePts[2]],newPts[0],newPts[2],newPts[1]}};
-      outTets[2].nodes = {{tet.nodes[ePts[1]],tet.nodes[ePts[2]],newPts[1],newPts[0]}};
+      outTets[1].nodes = {{tet.nodes[ePts[2]], newPts[0], newPts[2], newPts[1]}};
+      outTets[2].nodes = {{tet.nodes[ePts[1]], tet.nodes[ePts[2]], newPts[1],newPts[0]}};
       break;
     }
 
@@ -500,11 +523,11 @@ vector<tetra> clipTet(tetra &tet, const vector<point> &clipFace, Vec3 &norm)
 
       /* Re-orient tet (shuffle nodes) based on kept nodes so that
        * clipping becomes standardized; 'base case' is keeping {0,1}
-       * One possible case for edge edge being removed */
+       * One possible case for each edge being removed */
       map<array<int,2>,array<int,4>> flipTet;
-      flipTet[{{0,1}}] = {{0,1,2,3}};  flipTet[{{0,2}}] = {{1,2,0,3}};
-      flipTet[{{0,3}}] = {{1,3,2,0}};  flipTet[{{1,2}}] = {{2,0,1,3}};
-      flipTet[{{1,3}}] = {{3,0,2,1}};  flipTet[{{2,3}}] = {{3,2,1,0}};
+      flipTet[{{0,1}}] = {{0,1,2,3}};  flipTet[{{0,2}}] = {{0,2,3,1}};
+      flipTet[{{0,3}}] = {{0,3,1,2}};  flipTet[{{1,2}}] = {{1,2,0,3}};
+      flipTet[{{1,3}}] = {{1,3,2,0}};  flipTet[{{2,3}}] = {{2,3,0,1}};
       array<int,4> ind = flipTet[keep];
 
       // Intersect the plane with the edges to get the new points
@@ -540,6 +563,16 @@ vector<tetra> clipTet(tetra &tet, const vector<point> &clipFace, Vec3 &norm)
       ac = xc - a;
       newPts[3] = ab*((norm*ac)/(norm*ab)) + a;
 
+      for (int i=0; i<newPts.size(); i++) {
+        for (int j=0; j<3; j++) {
+          if (std::abs(newPts[i][j])>5) {
+            cout << "CASE 2: pt " << i << endl;
+            for (auto &PT:tet.nodes) _(PT);
+            exit(0);
+          }
+        }
+      }
+
       // Setup the new tets
       outTets.resize(3);
       outTets[0].nodes = {{tet.nodes[ind[1]],newPts[0],newPts[3],tet.nodes[ind[0]]}};
@@ -573,6 +606,15 @@ vector<tetra> clipTet(tetra &tet, const vector<point> &clipFace, Vec3 &norm)
         Vec3 ab = tet.nodes[ePts[i]] - tet.nodes[keep];
         Vec3 ac = xc - tet.nodes[keep];
         outTets[0].nodes[i] = ab*((norm*ac)/(norm*ab)) + tet.nodes[keep];
+
+        point newPt = ab*((norm*ac)/(norm*ab));
+        for (int j=0; j<3; j++) {
+          if (std::abs(newPt[j])>5) {
+            cout << "CASE 3" << endl;
+            for (auto &PT:tet.nodes) _(PT);
+            exit(0);
+          }
+        }
       }
       break;
     }
