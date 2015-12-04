@@ -187,6 +187,11 @@ void tioga::writeData(int nvar,double *q,int interptype)
   mb->writeFlowFile(myid,q,nvar,interptype);
 }
 
+void tioga::writeCellFile(void)
+{
+  mb->writeCellFile(myid);
+}
+
 void tioga::getDonorCount(int *dcount,int *fcount)
 {
   mb->getDonorCount(dcount,fcount);

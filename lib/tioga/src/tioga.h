@@ -88,6 +88,8 @@ class tioga
 
   void writeData(int nvar,double *q,int interptype);
 
+  void writeCellFile(void);
+
   void getDonorCount(int *dcount, int *fcount);
 
   void getDonorInfo(int *receptors,int *indices,double *frac,int *dcount);
