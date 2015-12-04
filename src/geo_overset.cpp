@@ -177,6 +177,8 @@ void geo::setupOverset3D(void)
   tg->registerGridData(gridID,nVerts,xv.getData(),iblank.data(),nwall,nover,iwall.data(),
                        iover.data(),ntypes,nodesPerCell,&nEles,&conn[0]);
 
+  tg->set_cell_iblank(iblankCell.data());
+
   // Get a list of all cells which have an overset-boundary face (for later use with blanking)
   for (int i=0; i<nBndFaces; i++) {
     if (bcType[i]==OVERSET) {
