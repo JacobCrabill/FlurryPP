@@ -432,7 +432,6 @@ void ele::calcTransforms(bool moving)
             Jac_spts[spt](dim1,dim2) += dShape_spts[spt](i,dim2)*nodesRK[i][dim1];
     }
 
-
     if (nDims == 2) {
       // Determinant of transformation matrix
       detJac_spts[spt] = Jac_spts[spt](0,0)*Jac_spts[spt](1,1)-Jac_spts[spt](1,0)*Jac_spts[spt](0,1);
@@ -469,7 +468,6 @@ void ele::calcTransforms(bool moving)
           for (int dim2=0; dim2<nDims; dim2++)
             Jac_fpts[fpt][dim1][dim2] += dShape_fpts[fpt][i][dim2]*nodesRK[i][dim1];
     }
-
 
     if (nDims == 2) {
       detJac_fpts[fpt] = Jac_fpts[fpt](0,0)*Jac_fpts[fpt](1,1)-Jac_fpts[fpt](1,0)*Jac_fpts[fpt](0,1);
@@ -1324,33 +1322,14 @@ vector<matrix<double>> ele::transformFlux_physToRef(void)
     FD.initializeToZero();
   }
 
-  if (nDims == 2) {
-    for (int spt=0; spt<nSpts; spt++) {
+  for (int spt=0; spt<nSpts; spt++) {
+    for (int dim1=0; dim1<nDims; dim1++) {
       for (int k=0; k<nFields; k++) {
-        outF[0](spt,k) =  F_spts[0](spt,k)*Jac_spts[spt](1,1) - F_spts[1](spt,k)*Jac_spts[spt](0,1);
-        outF[1](spt,k) = -F_spts[0](spt,k)*Jac_spts[spt](1,0) + F_spts[1](spt,k)*Jac_spts[spt](0,0);
+        outF[dim1](spt,k) = 0.;
+        for (int dim2=0; dim2<nDims; dim2++) {
+          outF[dim1](spt,k) += JGinv_spts[spt](dim1,dim2)*F_spts[dim2](spt,k);
+        }
       }
-    }
-  } else {
-    for (int spt=0; spt<nSpts; spt++) {
-      // Build the full 4D (space+time) Jacobian matrix & its adjoint
-      matrix<double> Jacobian(4,4);
-      Jacobian(3,3) = 1;
-      for (int i=0; i<3; i++) {
-        for (int j=0; j<3; j++)
-          Jacobian(i,j) = Jac_spts[spt](i,j);
-        Jacobian(i,3) = 0.;
-      }
-      matrix<double> S = Jacobian.adjoint();
-
-      for (int dim1=0; dim1<3; dim1++)
-        for (int dim2=0; dim2<3; dim2++)
-          for (int k=0; k<nFields; k++)
-            outF[dim1](spt,k) += F_spts[dim2](spt,k)*S(dim2,dim1);
-
-      for (int dim=0; dim<3; dim++)
-        for (int k=0; k<nFields; k++)
-          outF[dim](spt,k) += U_spts(spt,k)*S(dim,3);
     }
   }
 
@@ -1360,6 +1339,17 @@ vector<matrix<double>> ele::transformFlux_physToRef(void)
 vector<matrix<double>> ele::transformFlux_refToPhys(void)
 {
   vector<matrix<double>> outF(nDims);
+
+  for (int spt=0; spt<nSpts; spt++) {
+    for (int dim1=0; dim1<nDims; dim1++) {
+      for (int k=0; k<nFields; k++) {
+        outF[dim1](spt,k) = 0.;
+        for (int dim2=0; dim2<nDims; dim2++) {
+          outF[dim1](spt,k) += Jac_spts[spt](dim1,dim2) * F_spts[dim2](spt,k) / detJac_spts[spt];
+        }
+      }
+    }
+  }
 
   return outF;
 }
@@ -1488,12 +1478,19 @@ void ele::calcWaveSpFpts(void)
 {
   if (params->equation == ADVECTION_DIFFUSION) {
     for (int fpt=0; fpt<nFpts; fpt++) {
-      double u = params->advectVx - gridVel_fpts(fpt,0);
-      double v = params->advectVy - gridVel_fpts(fpt,1);
-      double w = params->advectVz - gridVel_fpts(fpt,2);
-      double csq = u*u + v*v;
-      if (nDims == 3)
-        csq += w*w;
+      double u = params->advectVx;
+      double v = params->advectVy;
+      double w = 0.;
+      if (nDims == 3) w = params->advectVz;
+
+      if (params->motion) {
+        u -= gridVel_fpts(fpt,0);
+        v -= gridVel_fpts(fpt,1);
+        w -= gridVel_fpts(fpt,2);
+      }
+
+      double csq = u*u + v*v + w*w;
+
       waveSp_fpts[fpt] = sqrt(csq) / dA_fpts[fpt];
     }
   }
