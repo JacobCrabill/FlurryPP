@@ -1021,7 +1021,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
         matrix<double> tempF_ref = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(tempF_spts, eles[ic]->dFn_fpts, refPos);
 
         // NOW we can transform flux vector back to physical space
-        // [Recall: F_phys = JGinv .dot. F_ref]
+        // [Recall: F_phys = (G/|G|) * F_ref]
         matrix<double> jacobian, invJaco;
         double detJac;
         eles[ic]->calcTransforms_point(jacobian,invJaco,detJac,refPos);
@@ -1031,7 +1031,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
         for (int dim1=0; dim1<nDims; dim1++)
           for (int dim2=0; dim2<nDims; dim2++)
             for (int k=0; k<nFields; k++)
-              tempF(dim1,k) += invJaco(dim2,dim1) * tempF_ref(dim2,k) / detJac;
+              tempF(dim1,k) += jacobian(dim1,dim2) * tempF_ref(dim2,k) / detJac;
 
         if (params->equation == NAVIER_STOKES) {
           /* Since flux may give non-unique solution, use discontinuous
