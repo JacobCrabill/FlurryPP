@@ -247,19 +247,24 @@ int main(int argc, char *argv[]) {
   simTimer runTime;
   runTime.startTimer();
 
+  double maxTime = params.maxTime;
+  int initIter = params.initIter;
+  int iterMax = params.iterMax;
+  int iter = initIter;
+
   /* --- Calculation Loop --- */
-  for (params.iter=params.initIter+1; params.iter<=params.iterMax && params.time<params.maxTime; params.iter++) {
+  while (params.iter < iterMax and params.time < maxTime) {
+    iter++;
 
     Solver.update();
 
-    if ((params.iter)%params.monitorResFreq == 0 || params.iter==params.initIter+1) writeResidual(&Solver,&params);
-    //if ((params.iter)%params.monitorErrFreq == 0 || params.iter==params.initIter+1) writeError(&Solver,&params);
-    if ((params.iter)%params.plotFreq == 0 || params.iter==params.iterMax || params.time>=params.maxTime) writeData(&Solver,&params);
+    if ((iter)%params.monitorResFreq==0 or iter==initIter+1 or params.time>=maxTime) writeResidual(&Solver,&params);
+    if ((iter)%params.monitorErrFreq==0 or iter==initIter+1) writeError(&Solver,&params);
+    if ((iter)%params.plotFreq==0 or iter==iterMax or params.time>=maxTime) writeData(&Solver,&params);
   }
 
   /* Calculate the integral / L1 / L2 error for the final time */
-  if (params.nDims==2)
-    writeAllError(&Solver,&params);
+  writeAllError(&Solver,&params);
 
   // Get simulation wall time
   runTime.stopTimer();
@@ -272,7 +277,7 @@ int main(int argc, char *argv[]) {
     cout.setf(ios::scientific, ios::floatfield);
     if (Geo.gridRank==0)
       cout << "Integrated Conservation Error for Grid " << Geo.gridID << " = " << err[0] << endl;
-  } else if (params.nDims==2) {
+  } else if (params.nDims==2 && params.equation==NAVIER_STOKES) {
     params.errorNorm = 0;
     params.testCase = 0;
     vector<double> EXACT = {99.804294352079, 89.2676720089582, 44.6338359173803, 2031.69314321021}; // For L-M vortex case, 10x10 grid
