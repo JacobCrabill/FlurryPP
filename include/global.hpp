@@ -174,6 +174,20 @@ struct point
     }
   }
 
+  double operator[](int ind) const {
+    switch(ind) {
+      case 0:
+        return x;
+      case 1:
+        return y;
+      case 2:
+        return z;
+      default:
+        cout << "ind = " << ind << ": " << flush;
+        FatalError("Invalid index for point struct.");
+    }
+  }
+
   point operator=(double* a) {
     struct point pt;
     pt.x = a[0];

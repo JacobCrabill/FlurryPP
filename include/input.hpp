@@ -151,6 +151,7 @@ public:
   int monitorResFreq;
   int monitorErrFreq;
   int errorNorm;
+  int quadOrder;
   int plotFreq;
   int plotType;
 

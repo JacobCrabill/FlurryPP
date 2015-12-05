@@ -137,7 +137,7 @@ vector<double> NelderMead(const vector<double> &U0, Func minFunc)
   // Use a relative tolerance...?
   double tol = 1e-8;
   int iter = 0;
-  while (iter < 500 && FX[0].first>tol) {
+  while (iter < 400 && FX[0].first>tol) {
     vector<double> Xn = FX[nVars].second;  // Point with the highest value of F
     vector<double> X0(nVars);              // Centroid of all other points
     vector<double> Xr(nVars);              // Reflected point

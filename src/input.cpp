@@ -411,6 +411,7 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("monitorErrFreq",monitorErrFreq,-1);
   if (monitorErrFreq < 0) monitorErrFreq = INT_MAX;
   opts.getScalarValue("errorNorm",errorNorm,1);
+  opts.getScalarValue("quadOrder",quadOrder,10);
 
   opts.getScalarValue("resType",resType,2);
   opts.getScalarValue("plotFreq",plotFreq,100);

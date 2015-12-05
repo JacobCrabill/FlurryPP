@@ -188,103 +188,52 @@ unordered_set<int> overComm::findCellDonors2D(vector<shared_ptr<ele>> &eles, con
   return hitCells;
 }
 
-void overComm::matchOversetPoints3D(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap)
+void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap, const point &minPt, const point &maxPt)
 {
 #ifndef _NO_MPI
   /* ---- Gather all interpolation point data on each grid ---- */
 
   // Get all of the fringe points on this grid
   overPts.setup(0,0);
+  overNorm.setup(0,0);
   for (auto &oface: overFaces) {
     oface->OComm = this;
     oface->fptOffset = overPts.getDim0();
     auto pts = oface->getPosFpts();
     for (auto &pt:pts)
       overPts.insertRow({pt.x, pt.y, pt.z});
-  }
-
-  nOverPts = overPts.getDim0();
-
-  vector<double> interpPtsPhys;
-
-  gatherData(nOverPts, 3, overPts.getData(), nPts_rank, interpPtsPhys);
-
-  /* ---- Check Every Fringe Point for Donor Cell on This Grid ---- */
-
-  foundPts.resize(nproc);
-  foundEles.resize(nproc);
-  foundLocs.resize(nproc);
-  int offset = 0;
-
-  for (int p=0; p<nproc; p++) {
-    if (p>0) offset += nPts_rank[p-1];
-
-    if (gridIdList[p] == gridID) continue;
-
-    foundPts[p].resize(0);
-    foundEles[p].resize(0);
-    foundLocs[p].resize(0);
-    for (int i=0; i<nPts_rank[p]; i++) {
-      // Get requested interpolation point
-      point pt = point(&interpPtsPhys[3*(offset+i)]);
-      int ic = tg->findPointDonor(&interpPtsPhys[3*(offset+i)]);
-      if (ic>=0 && eleMap[ic]>=0) {
-        int ie = eleMap[ic];
-        point refLoc;
-        bool isInEle = eles[ie]->getRefLocNelderMead(pt,refLoc);
-
-        if (!isInEle) FatalError("Unable to match fringe point!");
-
-        foundPts[p].push_back(i);
-        foundEles[p].push_back(ic); // Local ele id for this grid
-        foundLocs[p].push_back(refLoc);
-      }
+    if (params->oversetMethod==1) {
+      auto norms = oface->getNormFpts();
+      for (auto &vec:norms)
+        overNorm.insertRow({vec.x,vec.y,vec.z});
     }
   }
 
-  /* ---- Prepare for Data Communication ---- */
-
-  // Get the number of matched points for each grid
-  nPtsSend.resize(nproc);
-  for (int p=0; p<nproc; p++) {
-    if (gridIdList[p] == gridID) continue;
-    nPtsSend[p] = foundPts[p].size();
-  }
-#endif
-}
-
-void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap, const point &minPt, const point &maxPt)
-{
-#ifndef _NO_MPI
-  /* ---- Gather all interpolation point data on each grid ---- */
-
-  // Get all of the fringe points on this grid
-  overPts.setup(0,0);
-  for (auto &oface: overFaces) {
-    oface->OComm = this;
-    oface->fptOffset = overPts.getDim0();
-    auto pts = oface->getPosFpts();
-    for (auto &pt:pts)
-      overPts.insertRow({pt.x, pt.y, pt.z});
-  }
-
   nOverPts = overPts.getDim0();
 
   vector<double> interpPtsPhys;
 
   gatherData(nOverPts, 3, overPts.getData(), nPts_rank, interpPtsPhys);
+
+  vector<double> interpNorms;
+  if (params->oversetMethod==1)
+    gatherData(nOverPts, 3, overNorm.getData(), nPts_rank, interpNorms);
 
   /* ---- Check Every Fringe Point for Donor Cell on This Grid ---- */
 
   // For use with ADT
-  if (eleList.size() != eleMap.size()) {
-    eleList.resize(eleMap.size());
-    for (int i=0; i<eleMap.size(); i++) eleList[i] = i;
+  if (params->nDims==2) {
+    if (eleList.size() != eleMap.size()) {
+      eleList.resize(eleMap.size());
+      for (int i=0; i<eleMap.size(); i++) eleList[i] = i;
+    }
   }
 
   foundPts.resize(nproc);
   foundEles.resize(nproc);
   foundLocs.resize(nproc);
+  if (params->oversetMethod==1)
+    foundNorm.resize(nproc);
   int offset = 0;
   double tol = 1e-6;
   for (int p=0; p<nproc; p++) {
@@ -295,31 +244,54 @@ void overComm::matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared
     foundPts[p].resize(0);
     foundEles[p].resize(0);
     foundLocs[p].resize(0);
+    if (params->oversetMethod==1)
+      foundNorm[p].resize(0);
     for (int i=0; i<nPts_rank[p]; i++) {
       // Get requested interpolation point
       point pt = point(&interpPtsPhys[3*(offset+i)]);
 
-      // First, check that point even lies within bounding box of grid
-      if ( (pt.x<minPt.x-tol) || (pt.y<minPt.y-tol) ||
-           (pt.x>maxPt.x+tol) || (pt.y>maxPt.y+tol) )
-        continue;
+      if (params->nDims == 2) {
+        // First, check that point even lies within bounding box of grid
+        if ( (pt.x<minPt.x-tol) || (pt.y<minPt.y-tol) ||
+             (pt.x>maxPt.x+tol) || (pt.y>maxPt.y+tol) )
+          continue;
 
-      // Use ADT to find all cells whose bounding box contains the point
-      unordered_set<int> cellIDs;
-      vector<double> targetBox = {pt.x,pt.y,pt.x,pt.y};
-      adt->searchADT_box(eleList.data(),cellIDs,targetBox.data());
-      for (auto &ic:cellIDs) {
-        if (eleMap[ic]<0) continue;
-        point refLoc;
-        bool isInEle = eles[eleMap[ic]]->getRefLocNelderMead(pt,refLoc);
+        // Use ADT to find all cells whose bounding box contains the point
+        unordered_set<int> cellIDs;
+        vector<double> targetBox = {pt.x,pt.y,pt.x,pt.y};
+        adt->searchADT_box(eleList.data(),cellIDs,targetBox.data());
+        for (auto &ic:cellIDs) {
+          if (eleMap[ic]<0) continue;
+          point refLoc;
+          bool isInEle = eles[eleMap[ic]]->getRefLocNelderMead(pt,refLoc);
 
-        if (isInEle) {
+          if (isInEle) {
+            foundPts[p].push_back(i);
+            foundEles[p].push_back(ic); // Local ele id for this grid
+            foundLocs[p].push_back(refLoc);
+            if (params->oversetMethod==1)
+              foundNorm[p].push_back(point(&interpNorms[3*(offset+i)]));
+            break;
+          }
+        }
+      }
+      else {
+        int ic = tg->findPointDonor(&interpPtsPhys[3*(offset+i)]);
+        if (ic>=0 && eleMap[ic]>=0) {
+          int ie = eleMap[ic];
+          point refLoc;
+          bool isInEle = eles[ie]->getRefLocNelderMead(pt,refLoc);
+
+          if (!isInEle) FatalError("Unable to match fringe point!");
+
           foundPts[p].push_back(i);
           foundEles[p].push_back(ic); // Local ele id for this grid
           foundLocs[p].push_back(refLoc);
-          break;
+          if (params->oversetMethod==1)
+            foundNorm[p].push_back(point(&interpNorms[3*(offset+i)]));
         }
       }
+
     }
   }
 
@@ -978,7 +950,6 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
 void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap)
 {
 #ifndef _NO_MPI
-
   U_out.resize(nproc);
   unordered_set<int> correctedEles;
   for (int p=0; p<nproc; p++) {
@@ -1033,6 +1004,14 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
             for (int k=0; k<nFields; k++)
               tempF(dim1,k) += jacobian(dim1,dim2) * tempF_ref(dim2,k) / detJac;
 
+        Vec3 outNorm = foundNorm[p][i];
+        outNorm.abs();
+
+        vector<double> tempFn(nFields);
+        for (int dim=0; dim<nDims; dim++)
+          for (int field=0; field<nFields; field++)
+            tempFn[field] += tempF(dim,field)*outNorm[dim];
+
         if (params->equation == NAVIER_STOKES) {
           /* Since flux may give non-unique solution, use discontinuous
            * sol'n at point to determine correct solution */
@@ -1044,12 +1023,19 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
             matrix<double> newF(nDims,nFields);
             inviscidFlux(U_IN.data(),newF,params);
 
-            // Magnitude of difference between current and desired flux vector
-            double norm = 0.;
-            for (uint dim=0; dim<nDims; dim++)
-              for (uint field=0; field<nFields; field++)
-                norm += (tempF(dim,field) - newF(dim,field))*(tempF(dim,field) - newF(dim,field));
-            return norm;
+            // Magnitude of relative difference between current and desired flux vector
+            double magDiff = 0.;
+            for (int field=0; field<nFields; field++) {
+              double newFn = 0;
+              for (int dim=0; dim<nDims; dim++) {
+                newFn += newF(dim,field)*outNorm[dim];
+              }
+              magDiff += (newFn-tempFn[field])*(newFn-tempFn[field])/std::max(std::abs(tempFn[field]),1e-10);
+              double du = (U_IN[field]-tempU[field]);
+              magDiff += du*du*du*du;
+            }
+
+            return magDiff;
           };
           tempU = NelderMead(tempU, minFunc);
 
@@ -1058,17 +1044,18 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
         }
         else if (params->equation == ADVECTION_DIFFUSION) {
           // In case one of the advection speeds ~= 0, use max speed
-          double vx = std::abs(params->advectVx);
-          double vy = std::abs(params->advectVy);
-          double vz = std::abs(params->advectVz);
-          if (nDims == 2) vz = 0.;
+          double vn = params->advectVx*outNorm.x + params->advectVy*outNorm.y;
+          if (nDims == 3) vn += params->advectVz*outNorm.z;
 
-          if (vx >= vy && vx >= vz)
-            U_out[p](i,0) = tempF(0,0) / params->advectVx;
-          else if (vy >= vz)
-            U_out[p](i,0) = tempF(1,0) / params->advectVy;
-          else
-            U_out[p](i,0) = tempF(2,0) / params->advectVz;
+          U_out[p](i,0) = tempFn[0]/vn;
+
+
+//          if (vx >= vy && vx >= vz)
+//            U_out[p](i,0) = tempF(0,0) / params->advectVx;
+//          else if (vy >= vz)
+//            U_out[p](i,0) = tempF(1,0) / params->advectVy;
+//          else
+//            U_out[p](i,0) = tempF(2,0) / params->advectVz;
         }
       }
       else {

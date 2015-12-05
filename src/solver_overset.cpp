@@ -72,13 +72,13 @@ void solver::setupOverset(void)
     OComm->tg = Geo->tg;
 
     if (params->oversetMethod != 2)
-      OComm->matchOversetPoints3D(eles,overFaces,Geo->eleMap);
+      OComm->matchOversetPoints(eles,overFaces,Geo->eleMap);
   }
   else {
     OComm = Geo->OComm;
 
     if (params->oversetMethod != 2)
-      OComm->matchOversetPoints2D(eles,overFaces,Geo->eleMap,Geo->minPt,Geo->maxPt);
+      OComm->matchOversetPoints(eles,overFaces,Geo->eleMap,Geo->minPt,Geo->maxPt);
   }
 #endif
 }
@@ -86,7 +86,7 @@ void solver::setupOverset(void)
 vector<double> solver::integrateErrorOverset(void)
 {
 #ifndef _NO_MPI
-  return OComm->integrateErrOverset(eles,opers,Geo->iblankCell,Geo->eleMap,10);
+  return OComm->integrateErrOverset(eles,opers,Geo->iblankCell,Geo->eleMap,params->quadOrder);
 #endif
 }
 

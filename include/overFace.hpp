@@ -67,6 +67,9 @@ public:
   //! Return the physical position of the face's flux points
   vector<point> getPosFpts(void);
 
+  //! Return the outward unit normal at the face's flux points
+  vector<point> getNormFpts();
+
   int fptOffset;         //! Offset within Solver's mesh block-global interp point list
   vector<point> posFpts; //! Physical locations of left ele's flux points
 

@@ -92,3 +92,12 @@ vector<point> overFace::getPosFpts()
   }
   return posFpts;
 }
+
+vector<point> overFace::getNormFpts()
+{
+  vector<Vec3> normFpts(nFptsL);
+  for (uint i=0; i<nFptsL; i++) {
+    normFpts[i] = point(eL->norm_fpts[fptStartL+i],nDims);
+  }
+  return normFpts;
+}

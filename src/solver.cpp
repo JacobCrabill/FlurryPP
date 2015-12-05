@@ -88,6 +88,8 @@ void solver::setup(input *params, geo *Geo)
 
 void solver::update(void)
 {
+  params->iter++;
+
   /* Intermediate residuals for Runge-Kutta time integration */
 
   if (params->dtType == 1) calcDt();
@@ -526,12 +528,12 @@ void solver::moveMesh(int step)
         Geo->updateADT();
       Geo->processBlanks(eles,faces,mpiFaces,overFaces);
       Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
-      OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,10);
+      OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->quadOrder);
       OComm->performProjection(eles,opers,Geo->eleMap);
     }
 
     if (params->oversetMethod == 2) {
-      OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,10);
+      OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->quadOrder);
       OComm->performProjection(eles,opers,Geo->eleMap);
     }
 
@@ -544,10 +546,10 @@ void solver::moveMesh(int step)
 
     if (params->oversetMethod != 2) {
       if (params->nDims==3) {
-        OComm->matchOversetPoints3D(eles,overFaces,Geo->eleMap);
+        OComm->matchOversetPoints(eles,overFaces,Geo->eleMap);
       } else {
         getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
-        OComm->matchOversetPoints2D(eles,overFaces,Geo->eleMap,Geo->minPt,Geo->maxPt);
+        OComm->matchOversetPoints(eles,overFaces,Geo->eleMap,Geo->minPt,Geo->maxPt);
       }
     }
   } else {
@@ -755,7 +757,7 @@ void solver::initializeSolution()
 
   if (params->meshType == OVERSET_MESH && params->motion == 0) {
     // Perform initial LGP to setup connectivity / arrays for remainder of computations
-    OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,10);
+    OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->quadOrder);
     OComm->performProjection(eles,opers,Geo->eleMap);
   }
 
@@ -774,7 +776,7 @@ void solver::initializeSolution()
 
 vector<double> solver::integrateError(void)
 {
-  int quadOrder = 8;
+  int quadOrder = params->quadOrder;
 
   vector<point> qpts;
   if (params->nDims == 2)

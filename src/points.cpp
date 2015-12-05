@@ -876,7 +876,7 @@ void getQuadRuleTet(int order, vector<point> &locQpts, vector<double> &weights)
       break;
     }
     case 4: {
-      locQpts.resize(11);
+      locQpts.resize(14);
       double loc1 = .0927352503108912;
       double loc2 = 1-3*loc1;
       locQpts[0].x = loc1; locQpts[0].y = loc1; locQpts[0].z = loc1;

@@ -102,9 +102,11 @@ public:
   vector<vector<int>> foundRank;   //! gridRank of this process for each found point (for benefit of other processes; probably not needed)
   vector<vector<int>> foundEles;   //! Ele ID which each matched point was found to lie within
   vector<vector<point>> foundLocs; //! Reference location within donor ele of each matched receptor point
+  vector<vector<point>> foundNorm; //! For corrected-flux method: Outward unit normal at fringe boundary point
 
   int nOverPts;                 //! Number of overset (receptor) points on this grid
   matrix<double> overPts;       //! Physical locations of the receptor points on this grid
+  matrix<double> overNorm;      //! Outward unit normals at fringe-boundary points on this grid [corrected-flux interp method]
   vector<int> nPtsRecv;         //! Number of points incoming from each grid (across interComm)
   vector<int> nPtsSend;         //! Number of points outgoing to each grid (across interComm)
   vector<vector<int>> recvPts;  //! Point IDs which will be received from each grid (across interComm) (counter to foundPts)
@@ -152,9 +154,7 @@ public:
    * @param[in] centroid: Centriod of current grid partition
    * @param[in] extents : x,y,z extents (max-min) of current grid partition
    */
-  void matchOversetPoints3D(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap);
-
-  void matchOversetPoints2D(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap, const point &minPt, const point &maxPt);
+  void matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap, const point &minPt = point({0,0,0}), const point &maxPt = point({0,0,0}));
 
   /*!
    * \brief Setup all communication for unblanked cells and faces
