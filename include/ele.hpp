@@ -160,6 +160,8 @@ public:
 
   void getPosSpts(double* posSpts);
 
+  vector<point> getPosSpts();
+
   //! Get a bounding box for the element defined by the minimum and maximum extents
   vector<double> getBoundingBox(void);
 
@@ -281,9 +283,13 @@ public:
   matrix<double> tempF;
   vector<double> tempU;
 
+  /* --- Overset Stuff --- */
+  int sptOffset;  //! Offset within overset data-transfer array to grab solution data
+
   vector<matrix<double>> transformFlux_physToRef(void);
   vector<matrix<double>> transformFlux_refToPhys(void);
   vector<matrix<double>> transformGradU_physToRef(void);
+
 private:
 
   /*! Get the values of the nodal shape bases at a solution point */

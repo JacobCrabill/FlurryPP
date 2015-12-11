@@ -529,12 +529,19 @@ void solver::moveMesh(int step)
       Geo->processBlanks(eles,faces,mpiFaces,overFaces);
       Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
       OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->quadOrder);
-      OComm->performProjection(eles,opers,Geo->eleMap);
+      OComm->performGalerkinProjection(eles,opers,Geo->eleMap);
     }
 
     if (params->oversetMethod == 2) {
-      OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->quadOrder);
-      OComm->performProjection(eles,opers,Geo->eleMap);
+      if (params->projection) {
+        OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->quadOrder);
+        OComm->performGalerkinProjection(eles,opers,Geo->eleMap);
+      } else {
+        OComm->setupFringeCellPoints(eles,Geo->fringeCells,Geo->eleMap);
+        OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
+        OComm->exchangeOversetData(eles,opers,Geo->eleMap);
+        OComm->transferEleData(eles,Geo->fringeCells,Geo->eleMap);
+      }
     }
 
     if ( !(step==0 && params->RKa[step]==0) )
@@ -545,12 +552,10 @@ void solver::moveMesh(int step)
     Geo->updateADT();
 
     if (params->oversetMethod != 2) {
-      if (params->nDims==3) {
-        OComm->matchOversetPoints(eles,overFaces,Geo->eleMap);
-      } else {
+      if (params->nDims==2)
         getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
-        OComm->matchOversetPoints(eles,overFaces,Geo->eleMap,Geo->minPt,Geo->maxPt);
-      }
+      OComm->setupOverFacePoints(overFaces);
+      OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
     }
   } else {
     Geo->moveMesh(params->RKa[step]);
@@ -756,9 +761,17 @@ void solver::initializeSolution()
   }
 
   if (params->meshType == OVERSET_MESH && params->motion == 0) {
-    // Perform initial LGP to setup connectivity / arrays for remainder of computations
-    OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->quadOrder);
-    OComm->performProjection(eles,opers,Geo->eleMap);
+    // Perform initial LGP to setup connectivity / arrays for remainder of computations [Field-interp method]
+    if (params->projection) {
+      OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->quadOrder);
+      OComm->performGalerkinProjection(eles,opers,Geo->eleMap);
+    } else {
+      if (params->nDims==2)
+        getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
+      OComm->setupFringeCellPoints(eles,Geo->fringeCells,Geo->eleMap);
+      OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
+      OComm->exchangeOversetData(eles,opers,Geo->eleMap);
+    }
   }
 
   /* If using CFL-based time-stepping, calc wave speed in each

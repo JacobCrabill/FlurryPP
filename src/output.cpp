@@ -744,7 +744,6 @@ void writeError(solver *Solver, input *params)
   if (params->meshType != OVERSET_MESH && !params->testCase) return;
 
   // For implemented test cases, calculcate the L1 error over the overset domain
-vector<double> EXACT = {99.804294352079, 89.2676720089582, 44.6338359173803, 2031.69314321021};
   vector<double> err;
 
   if (params->meshType == OVERSET_MESH)

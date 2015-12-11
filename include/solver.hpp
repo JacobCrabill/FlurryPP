@@ -304,7 +304,9 @@ public:
   bool checkDensity();
   void checkEntropy();
   void checkEntropyPlot();
-shared_ptr<overComm> OComm;
+
+  shared_ptr<overComm> OComm;
+
 private:
   //! Pointer to the parameters object for the current solution
   input *params;

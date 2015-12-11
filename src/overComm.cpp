@@ -188,11 +188,8 @@ unordered_set<int> overComm::findCellDonors2D(vector<shared_ptr<ele>> &eles, con
   return hitCells;
 }
 
-void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap, const point &minPt, const point &maxPt)
+void overComm::setupOverFacePoints(vector<shared_ptr<overFace>> &overFaces)
 {
-#ifndef _NO_MPI
-  /* ---- Gather all interpolation point data on each grid ---- */
-
   // Get all of the fringe points on this grid
   overPts.setup(0,0);
   overNorm.setup(0,0);
@@ -208,6 +205,39 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_p
         overNorm.insertRow({vec.x,vec.y,vec.z});
     }
   }
+}
+
+void overComm::setupFringeCellPoints(vector<shared_ptr<ele>> &eles, const unordered_set<int> &fringeCells, const vector<int> &eleMap)
+{
+  overPts.setup(0,0);
+  for (auto &ie:fringeCells) {
+    int ic = eleMap[ie];
+    eles[ic]->sptOffset = overPts.getDim0();
+    auto pts = eles[ic]->getPosSpts();
+    for (auto &pt:pts)
+      overPts.insertRow({pt.x, pt.y, pt.z});
+  }
+}
+
+void overComm::transferEleData(vector<shared_ptr<ele>> &eles, const unordered_set<int> &fringeCells, const vector<int> &eleMap)
+{
+  int nFields = params->nFields;
+
+  for (auto &ie:fringeCells) {
+    int ic = eleMap[ie];
+    int Row = eles[ic]->sptOffset;
+    for (int spt=0; spt<eles[ic]->nSpts; spt++) {
+      for (int k=0; k<nFields; k++) {
+        eles[ic]->U_spts(spt,k) = U_in(Row+spt,k);
+      }
+    }
+  }
+}
+
+void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, const vector<int> &eleMap, const point &minPt, const point &maxPt)
+{
+#ifndef _NO_MPI
+  /* ---- Gather all interpolation point data on each grid ---- */
 
   nOverPts = overPts.getDim0();
 
@@ -409,7 +439,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
         // Setup the donor cells [on this grid] for the unblanked cell [on other grid]
         foundCellDonors[p].insertRowUnsized(donorsIDs);
 
-//        if (params->projection == 1) {
+        if (params->projection == 1) {
           Array2D<point> donorPts;
           if (params->motion)
             for (auto &ic:donorsIDs)
@@ -420,7 +450,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
 
           superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,donors.size());
           donors.push_back(mesh);
-//        }
+        }
       }
     }
   }
@@ -434,7 +464,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
 #endif
 }
 
-void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &eleMap)
+void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &eleMap)
 {
 #ifndef _NO_MPI
   int nDims = params->nDims;
@@ -477,23 +507,9 @@ void overComm::performProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,
 
         if (!isInEle) {
           cout.precision(16);
-          point pos = point(qpts_tmp[j],2);
-          _(pos);
-          auto box = eles[ic]->getBoundingBox();
-          cout << "ele box: " << box[0] << ", " << box[1] << "; " << box[3] << ", " << box[4] << endl;
-          for (int n=0; n<4; n++) {
+          _(point(qpts_tmp[j],nDims));
+          for (int n=0; n<4; n++)
             _(eles[ic]->nodes[n]);
-          }
-          point new_pos = eles[ic]->calcPos(refLoc);
-          point dx = pos - new_pos;
-          _(refLoc);
-          _(new_pos);
-          _(dx);
-
-          _(pos);
-          refLoc = point({0,0,0});
-          eles[ic]->getRefLocNelderMead(pos,refLoc);
-          _(refLoc);
           FatalError("Quadrature Point Reference Location not found in ele!");
         }
         qptsD_ref[p].insertRow({refLoc.x,refLoc.x,refLoc.z});
@@ -1048,14 +1064,6 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
           if (nDims == 3) vn += params->advectVz*outNorm.z;
 
           U_out[p](i,0) = tempFn[0]/vn;
-
-
-//          if (vx >= vy && vx >= vz)
-//            U_out[p](i,0) = tempF(0,0) / params->advectVx;
-//          else if (vy >= vz)
-//            U_out[p](i,0) = tempF(1,0) / params->advectVy;
-//          else
-//            U_out[p](i,0) = tempF(2,0) / params->advectVz;
         }
       }
       else {

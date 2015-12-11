@@ -2744,7 +2744,12 @@ void ele::getPosSpts(double* posSpts)
 {
   for (int spt=0; spt<nSpts; spt++)
     for (int dim=0; dim<nDims; dim++)
-      posSpts[spt*3+dim] = pos_spts[spt][dim];
+      posSpts[spt*nDims+dim] = pos_spts[spt][dim];
+}
+
+vector<point> ele::getPosSpts(void)
+{
+  return pos_spts;
 }
 
 uint ele::getNDims() const

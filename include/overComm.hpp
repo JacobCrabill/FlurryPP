@@ -154,7 +154,7 @@ public:
    * @param[in] centroid: Centriod of current grid partition
    * @param[in] extents : x,y,z extents (max-min) of current grid partition
    */
-  void matchOversetPoints(vector<shared_ptr<ele>> &eles, vector<shared_ptr<overFace>> &overFaces, const vector<int> &eleMap, const point &minPt = point({0,0,0}), const point &maxPt = point({0,0,0}));
+  void matchOversetPoints(vector<shared_ptr<ele>> &eles, const vector<int> &eleMap, const point &minPt = point({0,0,0}), const point &maxPt = point({0,0,0}));
 
   /*!
    * \brief Setup all communication for unblanked cells and faces
@@ -167,7 +167,7 @@ public:
    */
   void matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<int>& unblankCells, vector<int>& eleMap, int quadOrder);
 
-  void performProjection(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, vector<int>& eleMap);
+  void performGalerkinProjection(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, vector<int>& eleMap);
 
   void performProjection_static(vector<shared_ptr<ele> >& eles, vector<int>& eleMap);
 
@@ -216,6 +216,15 @@ public:
 
   //! Using nPiecesIn, resize nPiecesOut for each rank
   void setupNPieces(vector<int> &nPiecesIn, vector<int> &nPiecesOut);
+
+  //! Setup the list of overset-boundary flux points to interpolate data to
+  void setupOverFacePoints(vector<shared_ptr<overFace> >& overFaces);
+
+  //! Setup the list of fringe/receptor solution points to interpolate data to
+  void setupFringeCellPoints(vector<shared_ptr<ele> >& eles, const unordered_set<int>& fringeCells, const vector<int>& eleMap);
+
+  //! Transfer the exchanged U_in data to the fringe cells
+  void transferEleData(vector<shared_ptr<ele> >& eles, const unordered_set<int>& fringeCells, const vector<int>& eleMap);
 
 private:
 #ifndef _NO_MPI

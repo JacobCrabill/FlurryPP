@@ -37,7 +37,12 @@ void solver::oversetFieldInterp(void)
   if (params->motion) return;  // For moving problems, projection done in moveMesh()
 
   // Use field interpolation rather than boundary interpolation
-  OComm->performProjection_static(eles,Geo->eleMap);
+  if (params->projection)
+    OComm->performProjection_static(eles,Geo->eleMap);
+  else {
+    OComm->exchangeOversetData(eles,opers,Geo->eleMap);
+    OComm->transferEleData(eles,Geo->fringeCells,Geo->eleMap);
+  }
 #endif
 }
 
@@ -70,16 +75,20 @@ void solver::setupOverset(void)
     OComm->setup(params,nGrids,gridID,gridRank,nprocPerGrid,Geo->gridIdList);
 
     OComm->tg = Geo->tg;
-
-    if (params->oversetMethod != 2)
-      OComm->matchOversetPoints(eles,overFaces,Geo->eleMap);
   }
   else {
     OComm = Geo->OComm;
 
-    if (params->oversetMethod != 2)
-      OComm->matchOversetPoints(eles,overFaces,Geo->eleMap,Geo->minPt,Geo->maxPt);
+    getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
   }
+
+  if (params->oversetMethod == 2 && !params->projection) {
+    OComm->setupFringeCellPoints(eles,Geo->fringeCells,Geo->eleMap);
+  } else if (params->oversetMethod != 2) {
+    OComm->setupOverFacePoints(overFaces);
+  }
+
+  OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
 #endif
 }
 

@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
 
     // Interpolate IC to 2nd grid [from box1 to box2]
     Solver.OComm->matchUnblankCells(Solver.eles,Geo.fringeCells,Geo.eleMap,10);
-    Solver.OComm->performProjection(Solver.eles,Solver.opers,Geo.eleMap);
+    Solver.OComm->performGalerkinProjection(Solver.eles,Solver.opers,Geo.eleMap);
 
     params.dataFileName = "LGP_Test1";
     writeData(&Solver,&params);
@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
 
     // Interpolate IC to 2nd grid [from box2 to box3]
     Solver2.OComm->matchUnblankCells(Solver2.eles,Geo2.fringeCells,Geo2.eleMap,10);
-    Solver2.OComm->performProjection(Solver2.eles,Solver2.opers,Geo2.eleMap);
+    Solver2.OComm->performGalerkinProjection(Solver2.eles,Solver2.opers,Geo2.eleMap);
 
     params2.dataFileName = "LGP_Test2";
     writeData(&Solver2,&params2);
@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
 
     // Interpolate IC to 2nd grid [from box2 to box3]
     Solver3.OComm->matchUnblankCells(Solver3.eles,Geo3.fringeCells,Geo3.eleMap,10);
-    Solver3.OComm->performProjection(Solver3.eles,Solver3.opers,Geo3.eleMap);
+    Solver3.OComm->performGalerkinProjection(Solver3.eles,Solver3.opers,Geo3.eleMap);
 
     params3.dataFileName = "LGP_Test3";
     writeData(&Solver3,&params3);
