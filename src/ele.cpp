@@ -1421,12 +1421,20 @@ void ele::calcWaveSpFpts(void)
 {
   if (params->equation == ADVECTION_DIFFUSION) {
     for (int fpt=0; fpt<nFpts; fpt++) {
-      double u = params->advectVx - gridVel_fpts(fpt,0);
-      double v = params->advectVy - gridVel_fpts(fpt,1);
-      double w = params->advectVz - gridVel_fpts(fpt,2);
-      double csq = u*u + v*v;
-      if (nDims == 3)
-        csq += w*w;
+      double u = params->advectVx;
+      double v = params->advectVy;
+      double w = 0.;
+      if (nDims == 3) w = params->advectVz;
+
+      if (params->motion) {
+        u -= gridVel_fpts(fpt,0);
+        v -= gridVel_fpts(fpt,1);
+        if (nDims == 3)
+          w -= gridVel_fpts(fpt,2);
+      }
+
+      double csq = u*u + v*v + w*w;
+
       waveSp_fpts[fpt] = sqrt(csq) / dA_fpts[fpt];
     }
   }
