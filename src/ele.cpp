@@ -1486,7 +1486,8 @@ void ele::calcWaveSpFpts(void)
       if (params->motion) {
         u -= gridVel_fpts(fpt,0);
         v -= gridVel_fpts(fpt,1);
-        w -= gridVel_fpts(fpt,2);
+        if (nDims == 3)
+          w -= gridVel_fpts(fpt,2);
       }
 
       double csq = u*u + v*v + w*w;
