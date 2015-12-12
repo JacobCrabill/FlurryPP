@@ -439,18 +439,16 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
         // Setup the donor cells [on this grid] for the unblanked cell [on other grid]
         foundCellDonors[p].insertRowUnsized(donorsIDs);
 
-        if (params->projection == 1) {
-          Array2D<point> donorPts;
-          if (params->motion)
-            for (auto &ic:donorsIDs)
-              donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
-          else
-            for (auto &ic:donorsIDs)
-              donorPts.insertRow(eles[eleMap[ic]]->nodes);
+        Array2D<point> donorPts;
+        if (params->motion)
+          for (auto &ic:donorsIDs)
+            donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
+        else
+          for (auto &ic:donorsIDs)
+            donorPts.insertRow(eles[eleMap[ic]]->nodes);
 
-          superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,donors.size());
-          donors.push_back(mesh);
-        }
+        superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,donors.size());
+        donors.push_back(mesh);
       }
     }
   }

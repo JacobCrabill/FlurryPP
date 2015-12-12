@@ -537,6 +537,8 @@ void solver::moveMesh(int step)
         OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->quadOrder);
         OComm->performGalerkinProjection(eles,opers,Geo->eleMap);
       } else {
+        if (params->nDims==2)
+          getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
         OComm->setupFringeCellPoints(eles,Geo->fringeCells,Geo->eleMap);
         OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
         OComm->exchangeOversetData(eles,opers,Geo->eleMap);
