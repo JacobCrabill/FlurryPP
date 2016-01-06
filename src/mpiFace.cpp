@@ -130,8 +130,19 @@ void mpiFace::communicate(void)
   // face on the receiving end of the call
   MPI_Irecv(bufUR.getData(),UR.getSize(),MPI_DOUBLE,procR,ID,myComm,&UR_in);
   MPI_Isend(UL.getData(),UL.getSize(),MPI_DOUBLE,procR,IDR,myComm,&UL_out);
+#endif
+}
 
+void mpiFace::communicateGrad(void)
+{
+#ifndef _NO_MPI
+  /* Send/Get data to/from right element [order reversed to match left ele] */
+
+  // The send/receive pairs are tagged by the processor-local face ID of the
+  // face on the receiving end of the call
   if (params->viscous) {
+    getLeftGradient();
+
     // !!! TEMP HACK !!! Just until I update Matrix class to 3D+
     for (int i=0; i<nFptsL; i++)
       for (int j=0; j<nDims; j++)

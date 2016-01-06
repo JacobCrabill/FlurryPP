@@ -167,8 +167,11 @@ public:
   //! Calculate the inviscid interface flux at all overset-boundary faces
   void calcInviscidFlux_overset(void);
 
-  //! Have all MPI faces begin their communication
+  //! Have all MPI faces begin their communication of solution data
   void doCommunication(void);
+
+  //! Have all MPI faces begin their communication of gradient data
+  void doCommunicationGrad(void);
 
   //! Calculate the gradient of the solution at the solution points
   void calcGradU_spts(void);

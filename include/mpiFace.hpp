@@ -73,6 +73,9 @@ public:
   //! Send the right-state data across the processor boundary using MPI
   void communicate(void);
 
+  //! Send the right-state gradient data across the processor boundary using MPI
+  void communicateGrad();
+
   int procL;               //! Processor ID on left  [this face]
   int procR;               //! Processor ID on right [opposite face]
   int IDR;                 //! Local face ID of face on right processor

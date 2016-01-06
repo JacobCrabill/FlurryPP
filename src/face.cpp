@@ -206,11 +206,11 @@ void face::calcInviscidFlux(void)
 
 void face::calcViscousFlux(void)
 {
-  if (params->equation == NAVIER_STOKES) {
-    if (!isMPI)
-      getLeftGradient();
-    this->getRightGradient(); // TODO: update all faces to getRightGradient();
+  if (!isMPI)
+    getLeftGradient();
+  this->getRightGradient();
 
+  if (params->equation == NAVIER_STOKES) {
     for (int fpt=0; fpt<nFptsL; fpt++) {
       // Calculte common viscous flux at flux points [LDG numerical flux]
       matrix<double> Fc(nDims,nFields);
@@ -577,6 +577,7 @@ void face::ldgSolution()
     for (int fpt=0; fpt<nFptsL; fpt++) {
 
       double penFact = params->penFact;
+
       if (nDims == 2) {
         if ( normL(fpt,0)+normL(fpt,1) < 0 )
           penFact = -params->penFact;

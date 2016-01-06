@@ -306,26 +306,28 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("testCase",testCase,0);
   opts.getScalarValue("iterMax",iterMax);
 
-  if (viscous && equation == NAVIER_STOKES) {
-    opts.getScalarValue("Re",Re);
-    opts.getScalarValue("Lref",Lref,1.0);
-    opts.getScalarValue("muGas",muGas,1.827e-5);
-    opts.getScalarValue("prandtl",prandtl,.72);
-    opts.getScalarValue("SGas",SGas,120.);
-    opts.getScalarValue("TGas",TGas,291.15);
-    opts.getScalarValue("RGas",RGas,286.9);
-    opts.getScalarValue("fixVis",fixVis,0);
-
-    opts.getScalarValue("TWall",TWall,300.);
-    opts.getScalarValue("TBound",TBound,300.);
-    opts.getScalarValue("MachBound",MachBound);
-    opts.getScalarValue("nxBound",nxBound,1.);
-    opts.getScalarValue("nyBound",nyBound,0.);
-    opts.getScalarValue("nzBound",nzBound,0.);
-
+  if (viscous) {
     /* --- LDG Flux Parameters --- */
     opts.getScalarValue("LDG_penFact",penFact,0.0);
     opts.getScalarValue("LDG_tau",tau,1.);
+
+    if (equation == NAVIER_STOKES) {
+      opts.getScalarValue("Re",Re);
+      opts.getScalarValue("Lref",Lref,1.0);
+      opts.getScalarValue("muGas",muGas,1.827e-5);
+      opts.getScalarValue("prandtl",prandtl,.72);
+      opts.getScalarValue("SGas",SGas,120.);
+      opts.getScalarValue("TGas",TGas,291.15);
+      opts.getScalarValue("RGas",RGas,286.9);
+      opts.getScalarValue("fixVis",fixVis,0);
+
+      opts.getScalarValue("TWall",TWall,300.);
+      opts.getScalarValue("TBound",TBound,300.);
+      opts.getScalarValue("MachBound",MachBound);
+      opts.getScalarValue("nxBound",nxBound,1.);
+      opts.getScalarValue("nyBound",nyBound,0.);
+      opts.getScalarValue("nzBound",nzBound,0.);
+    }
   }
 
   opts.getScalarValue("restart",restart,0);
