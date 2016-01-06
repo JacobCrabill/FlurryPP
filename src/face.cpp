@@ -209,18 +209,16 @@ void face::calcViscousFlux(void)
   if (params->equation == NAVIER_STOKES) {
     if (!isMPI)
       getLeftGradient();
-    this->getRightState(); // TODO: update all faces to getRightGradient();
+    this->getRightGradient(); // TODO: update all faces to getRightGradient();
 
     for (int fpt=0; fpt<nFptsL; fpt++) {
-      // Calculate discontinuous viscous flux at flux points
-      viscousFlux(UL[fpt], gradUL[fpt], tempFL, params);
-
       // Calculte common viscous flux at flux points [LDG numerical flux]
       matrix<double> Fc(nDims,nFields);
 
       if (isBnd) {
         if (isBnd > 1) {
           // Adiabatic wall boundary condition (Neumann-type BC)
+          // Calculate discontinuous viscous flux at right flux points
           viscousFlux(UR[fpt], gradUR[fpt], tempFR, params);
           for (int dim=0; dim<nDims; dim++) {
             for (int k=0; k<nFields; k++) {
@@ -230,6 +228,8 @@ void face::calcViscousFlux(void)
         }
         else {
           // All other boundary conditions (Dirichlet-type BC)
+          // Calculate discontinuous viscous flux at left flux points
+          viscousFlux(UL[fpt], gradUL[fpt], tempFL, params);
           for (int dim=0; dim<nDims; dim++) {
             for (int k=0; k<nFields; k++) {
               Fc(dim,k) = tempFL(dim,k) + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
@@ -239,6 +239,7 @@ void face::calcViscousFlux(void)
       }
       else {
         // All general interior-type faces (interior, MPI, overset)
+        viscousFlux(UL[fpt], gradUL[fpt], tempFL, params);
         viscousFlux(UR[fpt], gradUR[fpt], tempFR, params);
         double penFact = params->penFact;
         if (nDims == 2) {

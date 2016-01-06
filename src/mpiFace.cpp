@@ -150,10 +150,6 @@ void mpiFace::getRightState(void)
   // Make sure the communication is complete & transfer from buffer
   MPI_Wait(&UL_out,&status);
   MPI_Wait(&UR_in,&status);
-  if (params->viscous) {
-    MPI_Wait(&gradUL_out,&status);
-    MPI_Wait(&gradUR_in,&status);
-  }
 
   // Copy UR from the buffer to the proper matrix [note that the order of the
   // fpts is reversed between the two faces]
@@ -161,12 +157,6 @@ void mpiFace::getRightState(void)
   for (int i=0; i<nFptsL; i++) {
     for (int j=0; j<nFields; j++)
       UR(fpt,j) = bufUR(fptR[i],j);
-
-    if (params->viscous) {
-      for (int dim=0; dim<nDims; dim++)
-        for (int j=0; j<nFields; j++)
-          gradUR[fpt](dim,j) = bufGradUR(fptR[i],dim,j);
-    }
 
     fpt++;
   }
@@ -176,7 +166,23 @@ void mpiFace::getRightState(void)
 void mpiFace::getRightGradient(void)
 {
 #ifndef _NO_MPI
+  // Make sure the communication is complete & transfer from buffer
+  if (params->viscous) {
+    MPI_Wait(&gradUL_out,&status);
+    MPI_Wait(&gradUR_in,&status);
 
+    // Copy UR from the buffer to the proper matrix [note that the order of the
+    // fpts is reversed between the two faces]
+    int fpt = 0;
+    for (int i=0; i<nFptsL; i++) {
+      for (int j=0; j<nFields; j++)
+        for (int dim=0; dim<nDims; dim++)
+          for (int j=0; j<nFields; j++)
+            gradUR[fpt](dim,j) = bufGradUR(fptR[i],dim,j);
+
+      fpt++;
+    }
+  }
 #endif
 }
 
