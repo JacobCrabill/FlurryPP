@@ -127,20 +127,14 @@ void intFace::getRightState(void)
       dAR[fpt] = (eR->dA_fpts[fptR[fpt]]);
       detJacR[fpt] = (eR->detJac_fpts[fptR[fpt]]);
     }
-
-    if (params->viscous) {
-      for (int dim=0; dim<nDims; dim++)
-        for (int j=0; j<nFields; j++)
-          gradUR[fpt](dim,j) = (eR->dU_fpts[dim](fptR[fpt],j));
-    }
   }
 }
 
 void intFace::getRightGradient(void)
 {
   // Get data from right element [order reversed to match left ele]
-  for (int fpt=0; fpt<nFptsL; fpt++) {
-    if (params->viscous) {
+  if (params->viscous) {
+    for (int fpt=0; fpt<nFptsL; fpt++) {
       for (int dim=0; dim<nDims; dim++)
         for (int j=0; j<nFields; j++)
           gradUR[fpt](dim,j) = (eR->dU_fpts[dim](fptR[fpt],j));

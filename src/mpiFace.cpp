@@ -130,8 +130,19 @@ void mpiFace::communicate(void)
   // face on the receiving end of the call
   MPI_Irecv(bufUR.getData(),UR.getSize(),MPI_DOUBLE,procR,ID,myComm,&UR_in);
   MPI_Isend(UL.getData(),UL.getSize(),MPI_DOUBLE,procR,IDR,myComm,&UL_out);
+#endif
+}
 
+void mpiFace::communicateGrad(void)
+{
+#ifndef _NO_MPI
+  /* Send/Get data to/from right element [order reversed to match left ele] */
+
+  // The send/receive pairs are tagged by the processor-local face ID of the
+  // face on the receiving end of the call
   if (params->viscous) {
+    getLeftGradient();
+
     // !!! TEMP HACK !!! Just until I update Matrix class to 3D+
     for (int i=0; i<nFptsL; i++)
       for (int j=0; j<nDims; j++)
@@ -150,10 +161,6 @@ void mpiFace::getRightState(void)
   // Make sure the communication is complete & transfer from buffer
   MPI_Wait(&UL_out,&status);
   MPI_Wait(&UR_in,&status);
-  if (params->viscous) {
-    MPI_Wait(&gradUL_out,&status);
-    MPI_Wait(&gradUR_in,&status);
-  }
 
   // Copy UR from the buffer to the proper matrix [note that the order of the
   // fpts is reversed between the two faces]
@@ -161,12 +168,6 @@ void mpiFace::getRightState(void)
   for (int i=0; i<nFptsL; i++) {
     for (int j=0; j<nFields; j++)
       UR(fpt,j) = bufUR(fptR[i],j);
-
-    if (params->viscous) {
-      for (int dim=0; dim<nDims; dim++)
-        for (int j=0; j<nFields; j++)
-          gradUR[fpt](dim,j) = bufGradUR(fptR[i],dim,j);
-    }
 
     fpt++;
   }
@@ -176,7 +177,23 @@ void mpiFace::getRightState(void)
 void mpiFace::getRightGradient(void)
 {
 #ifndef _NO_MPI
+  // Make sure the communication is complete & transfer from buffer
+  if (params->viscous) {
+    MPI_Wait(&gradUL_out,&status);
+    MPI_Wait(&gradUR_in,&status);
 
+    // Copy UR from the buffer to the proper matrix [note that the order of the
+    // fpts is reversed between the two faces]
+    int fpt = 0;
+    for (int i=0; i<nFptsL; i++) {
+      for (int j=0; j<nFields; j++)
+        for (int dim=0; dim<nDims; dim++)
+          for (int j=0; j<nFields; j++)
+            gradUR[fpt](dim,j) = bufGradUR(fptR[i],dim,j);
+
+      fpt++;
+    }
+  }
 #endif
 }
 

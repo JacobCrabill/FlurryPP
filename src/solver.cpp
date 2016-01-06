@@ -178,6 +178,10 @@ void solver::calcResidual(int step)
 
     extrapolateGradU();
 
+#ifndef _NO_MPI
+    doCommunicationGrad();
+#endif
+
     calcViscousFlux_spts();
 
     calcViscousFlux_faces();
@@ -351,6 +355,13 @@ void solver::doCommunication()
 {
   for (uint i=0; i<mpiFaces.size(); i++) {
     mpiFaces[i]->communicate();
+  }
+}
+
+void solver::doCommunicationGrad()
+{
+  for (uint i=0; i<mpiFaces.size(); i++) {
+    mpiFaces[i]->communicateGrad();
   }
 }
 
