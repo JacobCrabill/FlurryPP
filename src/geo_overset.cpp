@@ -272,6 +272,7 @@ void geo::updateBlanking(void)
 
 void geo::setCellIblanks(void)
 {
+#ifndef _NO_MPI
   // Use the TIOGA-supplied nodal iblank values, set iblank values for all cells and faces
 
   // Only needed for moving grids: List of current hole cells
@@ -428,6 +429,7 @@ void geo::setCellIblanks(void)
   for (auto &ic:holeCells)
     if (iblankCell[ic] != HOLE)
       unblankCells.insert(ic);
+#endif
 }
 
 void geo::setFaceIblanks(void)
