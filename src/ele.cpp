@@ -635,7 +635,7 @@ point ele::getRefLoc(const point &pos)
   return xin;
 }
 
-point ele::getRefLocNewton(point pos)
+bool ele::getRefLocNewton(point pos, point &loc)
 {
   // First, do a quick check to see if the point is even close to being in the element
   double xmin, ymin, zmin;
@@ -651,72 +651,65 @@ point ele::getRefLocNewton(point pos)
   if (pos.x < xmin-eps || pos.y < ymin-eps || pos.z < zmin-eps ||
       pos.x > xmax+eps || pos.y > ymax+eps || pos.z > zmax+eps) {
     // Point does not lie within cell - return an obviously bad ref position
-    point loc(99.,99.,99.);
-    return loc;
+    loc = {99.,99.,99.};
+    return false;
   }
 
   // Use a relative tolerance to handle extreme grids
   double h = min(xmax-xmin,ymax-ymin);
   if (nDims==3) h = min(h,zmax-zmin);
 
-  double tol = 1e-14*h;
+  double tol = 1e-10*h;
 
-  matrix<double> Hessian(nDims,nDims);
-  vector<double> gradient(nDims);
   vector<double> shape(nNodes);
   matrix<double> dshape(nNodes,nDims);
   matrix<double> grad(nDims,nDims);
-  Array<double,3> ddshape(nNodes,nDims,nDims);
-  Array<double,3> gradgrad(nDims,nDims,nDims);
 
   int iter = 0;
+  int iterMax = 20;
   double norm = 1;
-  point xin;
-  while (norm > tol) {
-    shape_quad(xin,shape,nNodes);
-    dshape_quad(xin,dshape,nNodes);
-    ddshape_quad(xin,ddshape,nNodes);
+  loc = {0, 0, 0};
+  while (norm > tol && iter<iterMax) {
+    shape_quad(loc,shape,nNodes);
+    dshape_quad(loc,dshape,nNodes);
 
-    gradient.assign(nDims,0);
-    Hessian.initializeToZero();
+    point dx = pos;
     grad.initializeToZero();
-    gradgrad.initializeToValue(0.);
-    point xn;
     for (int n=0; n<nNodes; n++) {
       for (int i=0; i<nDims; i++) {
         for (int j=0; j<nDims; j++) {
-          grad(i,j) += dshape(n,j)*nodes[n][i];
-          for (int k=0; k<nDims; k++) {
-            gradgrad(i,j,k) += ddshape(n,i,j)*nodes[n][k];
-          }
+          grad(i,j) += nodesRK[n][i]*dshape(n,j);
         }
-        xn[i] += shape[n]*nodes[n][i];
+        dx[i] -= shape[n]*nodesRK[n][i];
       }
     }
 
-    for (int i=0; i<nDims; i++) {
-      for (int j=0; j<nDims; j++) {
-        gradient[i] += 2*(pos[j] - xn[j])*grad(j,i);
-        for (int k=0; k<nDims; k++) {
-          Hessian(i,j) += -2*(grad(k,i)*grad(k,j)) + 2*(pos[k]-xn[k])*gradgrad(i,j,k);
-        }
-      }
-    }
+    double detJ = grad.det();
 
-    auto dx = Hessian.solve(gradient);
+    point delta;
+    delta.x = 1/detJ*(grad(1,1)*dx.x - grad(0,1)*dx.y);
+    delta.y = 1/detJ*(grad(0,0)*dx.y - grad(1,0)*dx.x);
 
     norm = 0;
     for (int i=0; i<nDims; i++) {
-      norm += dx[i]*dx[i]/4.;
-      xin[i] -= dx[i]/2.;
+      norm += dx[i]*dx[i];
+      loc[i] += delta[i];
+      loc[i] = max(min(loc[i],1.),-1.);
     }
 
     iter++;
-    if (iter > 100)
+    if (iter == iterMax) {
+      cout << "Rank " << params->rank << ": ";
       cout << "WARNING: Newton method not converging for ref-loc lookup" << endl;
+      cout << pos << endl;
+      return false;
+    }
   }
 
-  return xin;
+  if (std::abs(loc.x)>1+eps || std::abs(loc.y)>1-eps)
+    return false;
+  else
+    return true;
 }
 
 void ele::getInverseMapping(const point xi, matrix<double> &J, matrix<double> &Jinv)
@@ -772,7 +765,7 @@ void ele::getInverseMapping(const point xi, matrix<double> &J, matrix<double> &J
   }
 }
 
-double ele::getDxNelderMeade(point refLoc, point physPos)
+double ele::getDxNelderMead(point refLoc, point physPos)
 {
   point pt = calcPos(refLoc);
   Vec3 dx = physPos - pt;
@@ -833,7 +826,7 @@ bool ele::getRefLocNelderMead(point pos, point& loc)
 
   // Evaluate the 'function' at the initial 'points'
   for (int i=0; i<nPts; i++)
-    FX[i].first = getDxNelderMeade(FX[i].second,pos);
+    FX[i].first = getDxNelderMead(FX[i].second,pos);
 
   std::sort(FX.begin(),FX.end());
 
@@ -841,7 +834,7 @@ bool ele::getRefLocNelderMead(point pos, point& loc)
   double h = min(xmax-xmin,ymax-ymin);
   if (nDims==3) h = min(h,zmax-zmin);
 
-  double tol = 1e-12*h;
+  double tol = 1e-10*h;
   int iter = 0;
   while (iter < 300 && FX[0].first>tol) {
     point Xn = FX[nPts-1].second;  // Point with the highest value of F
@@ -854,7 +847,7 @@ bool ele::getRefLocNelderMead(point pos, point& loc)
     // Reflect Xn around X0
     Xr = X0 + (X0-Xn);
 
-    double Fr = getDxNelderMeade(Xr,pos);
+    double Fr = getDxNelderMead(Xr,pos);
 
     // Determine what to do with the new point
     if (Fr < FX[nPts-2].first) {
@@ -862,7 +855,7 @@ bool ele::getRefLocNelderMead(point pos, point& loc)
       if (Fr < FX[0].first) {
         // This one's good; keep going! Expand from Xr
         point Xe = Xr + (X0-Xn);
-        double Fe = getDxNelderMeade(Xe,pos);
+        double Fe = getDxNelderMead(Xe,pos);
 
         if (Fe < Fr) {
           // This one's even better; use it instead
@@ -884,7 +877,7 @@ bool ele::getRefLocNelderMead(point pos, point& loc)
     else {
       // Try reducing the size of the simplex
       point Xc = X0 - (X0-Xn)*.5;
-      double Fc = getDxNelderMeade(Xc,pos);
+      double Fc = getDxNelderMead(Xc,pos);
       if (Fc < FX[nPts-1].first) {
         // Bringing this point in is better; use it
         FX[nPts-1].first = Fc;
@@ -898,7 +891,7 @@ bool ele::getRefLocNelderMead(point pos, point& loc)
           for (int j=0; j<nVars; j++) {
             FX[i].second[j] = X1[j] + 0.5*(FX[i].second[j]-X1[j]);
           }
-          FX[i].first = getDxNelderMeade(FX[i].second,pos);
+          FX[i].first = getDxNelderMead(FX[i].second,pos);
         }
       }
     }

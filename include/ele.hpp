@@ -170,7 +170,7 @@ public:
   point getRefLoc(const point &pos);
 
   //! Use Newton minimization method to solve for ref. location given physical location
-  point getRefLocNewton(point pos);
+  bool getRefLocNewton(point pos, point& loc);
 
   /*! Find the reference location of a point inside an element given its
    *  physical location, using the Nelder-Meade algorithm */
@@ -295,7 +295,7 @@ private:
   /*! Get the values of the nodal shape bases at a solution point */
   void getShape(point loc, vector<double> &shape);
 
-  double getDxNelderMeade(point refLoc, point physPos);
+  double getDxNelderMead(point refLoc, point physPos);
 
   vector<double> tmpShape;  //! To avoid unnecessary mem allocs in calcPos
 };

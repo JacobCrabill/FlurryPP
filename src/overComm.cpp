@@ -293,7 +293,7 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, const vector<in
         for (auto &ic:cellIDs) {
           if (eleMap[ic]<0) continue;
           point refLoc;
-          bool isInEle = eles[eleMap[ic]]->getRefLocNelderMead(pt,refLoc);
+          bool isInEle = eles[eleMap[ic]]->getRefLocNewton(pt,refLoc);
 
           if (isInEle) {
             foundPts[p].push_back(i);
@@ -440,12 +440,13 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
         foundCellDonors[p].insertRowUnsized(donorsIDs);
 
         Array2D<point> donorPts;
-        if (params->motion)
+        if (params->motion) {
           for (auto &ic:donorsIDs)
             donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
-        else
+        } else {
           for (auto &ic:donorsIDs)
             donorPts.insertRow(eles[eleMap[ic]]->nodes);
+        }
 
         superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,donors.size());
         donors.push_back(mesh);
@@ -501,7 +502,12 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
         targetID[p].push_back(foundCells[p][i]);
         int ic = eleMap[donorID[p].back()];
         point refLoc;
-        bool isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
+        bool isInEle;
+        if (nDims==2)
+          isInEle = eles[ic]->getRefLocNewton(point(qpts_tmp[j],nDims),refLoc);
+        else
+          isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
+
 
         if (!isInEle) {
           cout.precision(16);
