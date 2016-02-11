@@ -26,7 +26,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "../include/global.hpp"
+#include "global.hpp"
 
 #include <cstdlib>
 #include <string>
@@ -38,31 +38,29 @@
 /* --- Misc. Common Constants --- */
 double pi = 4.0*atan(1);
 
-map<string,int> bcStr2Num;
+//! Maps a boundary-condition string to its integer enum
+// NOTE: 'symmetry' is just a psuedonym for 'slip_wall' which will not be
+// considered a "wall" boundary condition for overset grids, force calc, etc.
+map<string,int> bcStr2Num = {
+  {"none", NONE},
+  {"fluid", NONE},
+  {"periodic", PERIODIC},
+  {"char", CHAR},
+  {"sup_in", SUP_IN},
+  {"sup_out", SUP_OUT},
+  {"sub_in", SUB_IN},
+  {"sub_out", SUB_OUT},
+  {"slip_wall", SLIP_WALL},
+  {"isothermal_noslip", ISOTHERMAL_NOSLIP},
+  {"adiabatic_noslip", ADIABATIC_NOSLIP},
+  {"overset", OVERSET},
+  {"symmetry", SYMMETRY}
+};
 
 int factorial(int n)
 {
   return (n == 1 || n == 0) ? 1 : factorial(n - 1) * n;
 }
-
-void setGlobalVariables(void) {
-  bcStr2Num["none"] = NONE;
-  bcStr2Num["fluid"] = NONE;
-  bcStr2Num["periodic"] = PERIODIC;
-  bcStr2Num["char"] = CHAR;
-  bcStr2Num["sup_in"] = SUP_IN;
-  bcStr2Num["sup_out"] = SUP_OUT;
-  bcStr2Num["sub_in"] = SUB_IN;
-  bcStr2Num["sub_out"] = SUB_OUT;
-  bcStr2Num["slip_wall"] = SLIP_WALL;
-  bcStr2Num["isothermal_noslip"] = ISOTHERMAL_NOSLIP;
-  bcStr2Num["adiabatic_noslip"] = ADIABATIC_NOSLIP;
-  bcStr2Num["overset"] = OVERSET;
-  bcStr2Num["symmetry"] = SYMMETRY;
-  // NOTE: 'symmetry' is just a psuedonym for 'slip_wall' which will not be
-  // considered a "wall" boundary condition for overset grids, force calc, etc.
-}
-
 
 bool checkNaN(vector<double> &vec)
 {

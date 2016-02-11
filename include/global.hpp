@@ -60,9 +60,10 @@ using namespace std;
 typedef unsigned int uint;
 
 /* --- Misc. Common Constants / Globally-Useful Variables --- */
+
 extern double pi;
 
-extern map<string,int> bcStr2Num; //! Maps a boundary-condition string to its integer enum
+extern map<string,int> bcStr2Num;
 
 /*! enumeration for element type */
 enum ETYPE {
@@ -307,8 +308,6 @@ typedef struct point Vec3;
 matrix<double> createMatrix(vector<point> &pts);
 
 int factorial(int n);
-
-void setGlobalVariables(void);
 
 bool checkNaN(vector<double> &vec);
 
