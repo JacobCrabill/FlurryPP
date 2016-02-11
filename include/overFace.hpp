@@ -70,6 +70,9 @@ public:
   //! Return the outward unit normal at the face's flux points
   vector<point> getNormFpts();
 
+  //! Override normal version when using flux-interp method
+  void rusanovFlux(void);
+
   int fptOffset;         //! Offset within Solver's mesh block-global interp point list
   vector<point> posFpts; //! Physical locations of left ele's flux points
 

@@ -977,7 +977,11 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
   U_out.resize(nproc);
   unordered_set<int> correctedEles;
   for (int p=0; p<nproc; p++) {
-    U_out[p].setup(foundPts[p].size(),nFields);
+    if (params->oversetMethod == 1)
+      U_out[p].setup(foundPts[p].size(),2*nFields);
+    else
+      U_out[p].setup(foundPts[p].size(),nFields);
+
     if (gridIdList[p] == gridID) continue;
     for (int i=0; i<foundPts[p].size(); i++) {
       point refPos = foundLocs[p][i];
@@ -1029,7 +1033,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
               tempF(dim1,k) += jacobian(dim1,dim2) * tempF_ref(dim2,k) / detJac;
 
         Vec3 outNorm = foundNorm[p][i];
-        outNorm.abs(); //! <-- Should this be here?!
+        //outNorm.abs(); //! <-- Should this be here?!
 
         if (params->equation == NAVIER_STOKES) {
           /* Since flux may give non-unique solution, use discontinuous
@@ -1062,29 +1066,31 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
             for (int field=0; field<nFields; field++)
               tempFn[field] += tempF(dim,field)*outNorm[dim];
 
-          // Function to minimize using Nelder-Mead algorithm
-          auto minFunc = [=](const vector<double> &U_IN) -> double {
-            matrix<double> newF(nDims,nFields);
-            inviscidFlux(U_IN.data(),newF,params);
+//          // Function to minimize using Nelder-Mead algorithm
+//          auto minFunc = [=](const vector<double> &U_IN) -> double {
+//            matrix<double> newF(nDims,nFields);
+//            inviscidFlux(U_IN.data(),newF,params);
 
-            // Magnitude of relative difference between current and desired flux vector
-            double magDiff = 0.;
-            for (int field=0; field<nFields; field++) {
-              double newFn = 0;
-              for (int dim=0; dim<nDims; dim++) {
-                newFn += newF(dim,field)*outNorm[dim];
-              }
-              magDiff += (newFn-tempFn[field])*(newFn-tempFn[field])/std::max(std::abs(tempFn[field]),1e-12);
-              double du = (U_IN[field]-tempU[field])/tempU[field];
-              magDiff += du*du*du*du;
-            }
+//            // Magnitude of relative difference between current and desired flux vector
+//            double magDiff = 0.;
+//            for (int field=0; field<nFields; field++) {
+//              double newFn = 0;
+//              for (int dim=0; dim<nDims; dim++) {
+//                newFn += newF(dim,field)*outNorm[dim];
+//              }
+//              magDiff += (newFn-tempFn[field])*(newFn-tempFn[field])/std::max(std::abs(tempFn[field]),1e-12);
+//              double du = (U_IN[field]-tempU[field])/tempU[field];
+//              magDiff += du*du*du*du;
+//            }
 
-            return magDiff;
-          };
-          tempU = NelderMead(tempU, minFunc);
+//            return magDiff;
+//          };
+//          tempU = NelderMead(tempU, minFunc);
 
-          for (int k=0; k<nFields; k++)
+          for (int k=0; k<nFields; k++) {
             U_out[p](i,k) = tempU[k];
+            U_out[p](i,nFields+k) = tempFn[k];
+          }
 
 //          //! ---------- Jameson' Direct-Calculation  Version ----------
 //          if (params->nDims == 2) {
@@ -1227,7 +1233,11 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
     recvPts[p].resize(nPtsRecv[p]);
   }
 
-  sendRecvData(nPtsSend,nPtsRecv,foundPts,recvPts,U_out,U_in,nFields,true);
+  // For flux-interp method, send both solution and normal flux
+  int nVars = nFields;
+  if (params->oversetMethod == 1) nVars *= 2;
+
+  sendRecvData(nPtsSend,nPtsRecv,foundPts,recvPts,U_out,U_in,nVars,true);
 #endif
 }
 

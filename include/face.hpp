@@ -113,8 +113,9 @@ public:
   /*! Calculate the common viscous flux on the face */
   void calcViscousFlux(void);
 
-  /*! Calculate the common flux using the Rusanov method */
-  void rusanovFlux(void);
+  /*! Calculate the common flux using the Rusanov method
+   *  NOTE: Overridden for overFaces due to flux-interp modifications */
+  virtual void rusanovFlux(void);
 
   /*! Calculate the common flux using the Roe method */
   void roeFlux(void);
