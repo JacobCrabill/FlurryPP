@@ -88,8 +88,6 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-  setGlobalVariables();
-
   /* Read input file & set simulation parameters */
   params.readInputFile(argv[1]);
 
