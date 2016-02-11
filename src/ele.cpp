@@ -659,7 +659,7 @@ bool ele::getRefLocNewton(point pos, point &loc)
   double h = min(xmax-xmin,ymax-ymin);
   if (nDims==3) h = min(h,zmax-zmin);
 
-  double tol = 1e-10*h;
+  double tol = 1e-12*h;
 
   vector<double> shape(nNodes);
   matrix<double> dshape(nNodes,nDims);
@@ -675,12 +675,23 @@ bool ele::getRefLocNewton(point pos, point &loc)
 
     point dx = pos;
     grad.initializeToZero();
-    for (int n=0; n<nNodes; n++) {
-      for (int i=0; i<nDims; i++) {
-        for (int j=0; j<nDims; j++) {
-          grad(i,j) += nodesRK[n][i]*dshape(n,j);
+    if (params->motion) {
+      for (int n=0; n<nNodes; n++) {
+        for (int i=0; i<nDims; i++) {
+          for (int j=0; j<nDims; j++) {
+            grad(i,j) += nodesRK[n][i]*dshape(n,j);
+          }
+          dx[i] -= shape[n]*nodesRK[n][i];
         }
-        dx[i] -= shape[n]*nodesRK[n][i];
+      }
+    } else {
+      for (int n=0; n<nNodes; n++) {
+        for (int i=0; i<nDims; i++) {
+          for (int j=0; j<nDims; j++) {
+            grad(i,j) += nodes[n][i]*dshape(n,j);
+          }
+          dx[i] -= shape[n]*nodes[n][i];
+        }
       }
     }
 
@@ -694,19 +705,19 @@ bool ele::getRefLocNewton(point pos, point &loc)
     for (int i=0; i<nDims; i++) {
       norm += dx[i]*dx[i];
       loc[i] += delta[i];
-      loc[i] = max(min(loc[i],1.),-1.);
+      loc[i] = max(min(loc[i],1.1),-1.1);
     }
 
     iter++;
     if (iter == iterMax) {
-      cout << "Rank " << params->rank << ": ";
-      cout << "WARNING: Newton method not converging for ref-loc lookup" << endl;
-      cout << pos << endl;
+//      cout << "Rank " << params->rank << ": ";
+//      cout << "WARNING: Newton method not converging for ref-loc lookup" << endl;
+//      cout << pos << endl;
       return false;
     }
   }
 
-  if (std::abs(loc.x)>1+eps || std::abs(loc.y)>1-eps)
+  if (std::abs(loc.x)>1+eps || std::abs(loc.y)>1+eps)
     return false;
   else
     return true;
@@ -1315,12 +1326,38 @@ vector<matrix<double>> ele::transformFlux_physToRef(void)
     FD.initializeToZero();
   }
 
-  for (int spt=0; spt<nSpts; spt++) {
-    for (int dim1=0; dim1<nDims; dim1++) {
-      for (int k=0; k<nFields; k++) {
-        outF[dim1](spt,k) = 0.;
+  if (params->motion) {
+    // Use space-time transformation
+    for (int spt=0; spt<nSpts; spt++) {
+      matrix<double> jacobian(nDims+1,nDims+1);
+      jacobian(nDims,nDims) = 1;
+      for (int dim1=0; dim1<nDims; dim1++) {
+        jacobian(dim1,nDims) = gridVel_spts(spt,dim1);
         for (int dim2=0; dim2<nDims; dim2++) {
-          outF[dim1](spt,k) += JGinv_spts[spt](dim1,dim2)*F_spts[dim2](spt,k);
+          jacobian(dim1,dim2) = Jac_spts[spt](dim1,dim2);
+        }
+      }
+
+      auto S = jacobian.adjoint();
+
+      for (int k=0; k<nFields; k++) {
+        for (int dim1=0; dim1<nDims; dim1++) {
+          outF[dim1](spt,k) = U_spts(spt,k) * S(dim1,nDims);
+          for (int dim2=0; dim2<nDims; dim2++) {
+            outF[dim1](spt,k) += S(dim1,dim2) * F_spts[dim2](spt,k);
+          }
+        }
+      }
+    }
+  } else {
+    // Standard static transformation
+    for (int spt=0; spt<nSpts; spt++) {
+      for (int dim1=0; dim1<nDims; dim1++) {
+        for (int k=0; k<nFields; k++) {
+          outF[dim1](spt,k) = 0.;
+          for (int dim2=0; dim2<nDims; dim2++) {
+            outF[dim1](spt,k) += JGinv_spts[spt](dim1,dim2)*F_spts[dim2](spt,k);
+          }
         }
       }
     }
