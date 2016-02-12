@@ -518,10 +518,13 @@ void ele::calcTransforms(bool moving)
 
 void ele::calcTransforms_point(matrix<double> &jacobian, matrix<double> &JGinv, double &detJac, const point &loc)
 {
-  jacobian.setup(nDims,nDims);
+  // Static transform, or space-time transform
+  if (params->motion)
+    jacobian.setup(nDims+1,nDims+1);
+  else
+    jacobian.setup(nDims,nDims);
+
   jacobian.initializeToZero();
-  JGinv.setup(nDims,nDims);
-  JGinv.initializeToZero();
 
   matrix<double> dshape;
   if (nDims==2)
@@ -536,28 +539,25 @@ void ele::calcTransforms_point(matrix<double> &jacobian, matrix<double> &JGinv, 
           jacobian(dim1,dim2) += dshape(i,dim2)*nodes[i][dim1];
   }
   else {
-    for (int i=0; i<nNodes; i++)
-      for (int dim1=0; dim1<nDims; dim1++)
-        for (int dim2=0; dim2<nDims; dim2++)
+    vector<double> shape;
+    shape_quad(loc, shape, nNodes);
+    for (int i=0; i<nNodes; i++) {
+      for (int dim1=0; dim1<nDims; dim1++) {
+        for (int dim2=0; dim2<nDims; dim2++) {
           jacobian(dim1,dim2) += dshape(i,dim2)*nodesRK[i][dim1];
+        }
+        jacobian(dim1,nDims) += shape[i]*gridVel_nodes(i,dim1);
+      }
+    }
+    jacobian(nDims,nDims) = 1;
   }
 
-  if (nDims == 2) {
-    // Determinant of transformation matrix
-    detJac = jacobian(0,0)*jacobian(1,1)-jacobian(1,0)*jacobian(0,1);
-    // Inverse of transformation matrix (times its determinant)
-    JGinv(0,0) = jacobian(1,1);  JGinv(0,1) =-jacobian(0,1);
-    JGinv(1,0) =-jacobian(1,0);  JGinv(1,1) = jacobian(0,0);
-  } else {
-    double xr = jacobian(0,0);   double xs = jacobian(0,1);   double xt = jacobian(0,2);
-    double yr = jacobian(1,0);   double ys = jacobian(1,1);   double yt = jacobian(1,2);
-    double zr = jacobian(2,0);   double zs = jacobian(2,1);   double zt = jacobian(2,2);
-    detJac = xr*(ys*zt - yt*zs) - xs*(yr*zt - yt*zr) + xt*(yr*zs - ys*zr);
+  // Determinant of transformation matrix
+  detJac = jacobian.det();
 
-    JGinv(0,0) = ys*zt - yt*zs;  JGinv(0,1) = xt*zs - xs*zt;  JGinv(0,2) = xs*yt - xt*ys;
-    JGinv(1,0) = yt*zr - yr*zt;  JGinv(1,1) = xr*zt - xt*zr;  JGinv(1,2) = xt*yr - xr*yt;
-    JGinv(2,0) = yr*zs - ys*zr;  JGinv(2,1) = xs*zr - xr*zs;  JGinv(2,2) = xr*ys - xs*yr;
-  }
+  // Inverse of transformation matrix (times its determinant)
+  JGinv = jacobian.adjoint();
+
   if (detJac<0) FatalError("Negative Jacobian at given point.");
 }
 

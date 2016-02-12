@@ -1019,6 +1019,9 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
 
         matrix<double> tempF_ref = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(tempF_spts, eles[ic]->dFn_fpts, refPos);
 
+        vector<double> tempU(nFields);
+        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
+
         // NOW we can transform flux vector back to physical space
         // [Recall: F_phys = (G/|G|) * F_ref]
         matrix<double> jacobian, invJaco;
@@ -1032,166 +1035,24 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
             for (int k=0; k<nFields; k++)
               tempF(dim1,k) += jacobian(dim1,dim2) * tempF_ref(dim2,k) / detJac;
 
+        if (params->motion) {
+          for (int dim=0; dim<nDims; dim++)
+            for (int k=0; k<nFields; k++)
+              tempF(dim,k) += jacobian(dim,nDims) * tempU[k];
+        }
+
         Vec3 outNorm = foundNorm[p][i];
-        //outNorm.abs(); //! <-- Should this be here?!
 
         if (params->equation == NAVIER_STOKES) {
-          /* Since flux may give non-unique solution, use discontinuous
-           * sol'n at point to determine correct solution */
-          vector<double> tempU(nFields);
-          opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
-
-          /// HACK - MAKE PERMANENT LATER -------------------------
-          if (params->motion == 4) {
-            double gridVel[2];
-            double Ax = params->moveAx; // Amplitude  (m)
-            double Ay = params->moveAy; // Amplitude  (m)
-            double fx = params->moveFx; // Frequency  (Hz)
-            double fy = params->moveFy; // Frequency  (Hz)
-            if (gridID==0) {
-              gridVel[0] = 2.*pi*fx*Ax*cos(2.*pi*fx*params->rkTime);
-              gridVel[1] = 2.*pi*fy*Ay*sin(2.*pi*fy*params->rkTime);
-            } else {
-              gridVel[0] = 0;
-              gridVel[1] = 0;
-            }
-            for (int dim=0; dim<2; dim++)
-              for (int k=0; k<nFields; k++)
-                tempF(dim,k) += gridVel[dim] * tempU[k];
-          }
-          /// HACK - MAKE PERMANENT LATER -------------------------
-
           vector<double> tempFn(nFields);
           for (int dim=0; dim<nDims; dim++)
             for (int field=0; field<nFields; field++)
               tempFn[field] += tempF(dim,field)*outNorm[dim];
 
-//          // Function to minimize using Nelder-Mead algorithm
-//          auto minFunc = [=](const vector<double> &U_IN) -> double {
-//            matrix<double> newF(nDims,nFields);
-//            inviscidFlux(U_IN.data(),newF,params);
-
-//            // Magnitude of relative difference between current and desired flux vector
-//            double magDiff = 0.;
-//            for (int field=0; field<nFields; field++) {
-//              double newFn = 0;
-//              for (int dim=0; dim<nDims; dim++) {
-//                newFn += newF(dim,field)*outNorm[dim];
-//              }
-//              magDiff += (newFn-tempFn[field])*(newFn-tempFn[field])/std::max(std::abs(tempFn[field]),1e-12);
-//              double du = (U_IN[field]-tempU[field])/tempU[field];
-//              magDiff += du*du*du*du;
-//            }
-
-//            return magDiff;
-//          };
-//          tempU = NelderMead(tempU, minFunc);
-
           for (int k=0; k<nFields; k++) {
             U_out[p](i,k) = tempU[k];
             U_out[p](i,nFields+k) = tempFn[k];
           }
-
-//          //! ---------- Jameson' Direct-Calculation  Version ----------
-//          if (params->nDims == 2) {
-//            // Since flux may give non-unique solution, use discontinuous
-//            // sol'n at point to determing correct solution
-//            double eps = 1e-6;
-//            vector<double> tempU(nFields);
-//            opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
-//            vector<double> F(nFields), G(nFields);
-//            F = tempF.getRow(0);
-//            G = tempF.getRow(1);
-
-//            double tempu = tempU[1]/tempU[0];
-//            double tempv = tempU[2]/tempU[0];
-
-//            double gam = params->gamma;
-
-//            // Solve quadratic equation for u
-//            double a = (2- gam + (gam-1)*(gam-1)/gam) * F[0];
-//            double b = -F[1];
-//            double c = (gam-1)/gam*F[3];
-//            double det = b*b - 4.*a*c;
-//            double u1 = (-b + sqrt(det)) / (2.*a);
-//            double u2 = (-b + sqrt(det)) / (2.*a);
-//            // Pick closer solution
-//            double u = abs(tempu-u1) < abs(tempu-u2) ? u1 : u2;
-
-//            // Solve quadratic equation for u
-//            a = (2- gam + (gam-1)*(gam-1)/gam) * G[0];
-//            b = -G[2];
-//            c = (gam-1) / gam * G[3];
-//            det = b*b - 4.*a*c;
-//            double v1 = (-b + sqrt(det)) / (2.*a);
-//            double v2 = (-b + sqrt(det)) / (2.*a);
-//            // Pick closer solution
-//            double v = abs(tempv-v1) < abs(tempv-v2) ? v1 : v2;
-
-//            double rho = sqrt(F[0]*G[0] / (u*v));
-
-//            U_out[p](i,0) = rho;
-//            U_out[p](i,1) = F[0];
-//            U_out[p](i,2) = G[0];
-//            U_out[p](i,3) = rhoE;
-//          }
-//          //! ---------- End Jameson' Direct-Calculation  Version ----------
-
-//          //! ----------- OLD, DIRECT-CALCULATION VERSION -----------
-//          if (params->nDims == 2) {
-//            // Since flux may give non-unique solution, use discontinuous
-//            // sol'n at point to determing correct solution
-//            double eps = 1e-6;
-//            vector<double> tempU(nFields);
-//            opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
-//            vector<double> F(nFields), G(nFields);
-//            F = tempF.getRow(0);
-//            G = tempF.getRow(1);
-//            if (params->nDims == 2) {
-//              double rhoU = F[0];
-//              double rhoV = G[0];
-//              double rhoUV = outNorm[0]*F[2] + outNorm[1]*G[1];
-//              if (std::abs(rhoU)<.01 || std::abs(rhoV)<.01) {
-//                for (int k=0; k<nFields; k++)
-//                  U_out[p](i,k) = tempU[k];
-//              }
-//              else {
-//                if (std::abs(rhoU)<eps) rhoU = tempU[1];
-//                if (std::abs(rhoV)<eps) rhoV = tempU[2];
-//                if (std::abs(rhoUV)<eps) rhoUV = tempU[1]*tempU[2]/tempU[0];
-
-//                double u = rhoUV/rhoV;
-//                double v = rhoUV/rhoU;
-//                double rho = rhoU*rhoV/std::max(F[2],G[1]);
-//                if (std::abs(rho-tempU[0])/tempU[0] > .05) rho = tempU[0];  // In case issues from F[2] and G[1] being too small
-//                double P = 0.5* ( F[1] - rho*u*u + G[2] - rho*v*v );
-//                double rhoE;
-//                if (std::abs(u)<eps && std::abs(v)<eps) {
-//                  rhoE = tempU[3];
-//                }
-//                else if (std::abs(u)<eps) {
-//                  rhoE = G[3]/v - P;
-//                }
-//                else if (std::abs(v)<eps) {
-//                  rhoE = F[3]/u - P;
-//                }
-//                else {
-//                  rhoE = 0.5*(F[3]/u+G[3]/v) - P;
-//                }
-
-//              double v = (F[1] - G[2]) / (F[0] * F[3] / G[3] - G[0]);
-//              double u = F[3] / G[3] * v;
-//              double rhoUV = outNorm[0]*F[2] + outNorm[1]*G[1];
-//              double rho = (F[0]*G[0]) / rhoUV;
-
-//                U_out[p](i,0) = rho;
-//                U_out[p](i,1) = rho*u;
-//                U_out[p](i,2) = rho*v;
-//                U_out[p](i,3) = rhoE;
-//              }
-//            }
-//          }
-//          //! ----------- END OLD, DIRECT-CALCULATION VERSION -----------
         }
         else if (params->equation == ADVECTION_DIFFUSION) {
           vector<double> tempFn(nFields);
@@ -1206,10 +1067,12 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
           U_out[p](i,0) = tempFn[0]/vn;
         }
       }
+
       else {
         // Interpolate discontinuous solution [Original 'Artificial Boundary' Method]
         opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, U_out[p][i], refPos);
       }
+
     }
   }
 

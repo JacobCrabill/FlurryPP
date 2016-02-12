@@ -165,7 +165,7 @@ void overFace::rusanovFlux(void)
       // Inflow - use external state [previously copied into Fn]
       else {
         for (int k=0; k<params->nFields; k++) {
-          Fn(fpt,k) = Fn(fpt,k) - 0.5*eigR*(UR(fpt,k)-UL(fpt,k));
+          Fn(fpt,k) = Fn(fpt,k) - 0.5*eig*(UR(fpt,k)-UL(fpt,k));
         }
       }
 
