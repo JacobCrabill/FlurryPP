@@ -521,6 +521,9 @@ void writeResidual(solver *Solver, input *params)
   vector<double> res(params->nFields);
   int iter = params->iter;
 
+  if (params->dt < 1e-13)
+    FatalError("Instability detected - dt approaching zero!");
+
   if (params->resType == 3) {
     // Infinity Norm
     for (uint e=0; e<Solver->eles.size(); e++) {

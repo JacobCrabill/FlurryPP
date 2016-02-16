@@ -31,6 +31,7 @@
 #include <array>
 
 #include "flux.hpp"
+#include "points.hpp"
 
 void boundFace::setupRightState(void)
 {
@@ -389,7 +390,7 @@ vector<double> boundFace::computeWallForce(void)
     else
       order = sqrt(nFptsL)-1;
 
-    auto weights = getQuadratureWeights1D(order);
+    auto weights = getQptWeights1D(order);
 
     for (int fpt=0; fpt<nFptsL; fpt++) {
       double weight;

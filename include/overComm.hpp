@@ -52,23 +52,10 @@ class overFace;
 #include "mpi.h"
 #endif
 
-struct dataExchange
-{
-  vector<int> nPts_rank;           //! Number of fringe points for each rank of current grid
-  vector<vector<int>> foundPts;    //! IDs of receptor points from each grid which were found to lie within current grid
-  vector<vector<int>> foundRank;   //! gridRank of this process for each found point (for benefit of other processes; probably not needed)
-  vector<vector<int>> foundEles;   //! Ele ID which each matched point was found to lie within
-  vector<vector<point>> foundLocs; //! Reference location within donor ele of each matched receptor point
-
-  int nOverPts;                 //! Number of overset (receptor) points on this grid
-  matrix<double> overPts;       //! Physical locations of the receptor points on this grid
-  vector<int> nPtsRecv;         //! Number of points incoming from each grid (across interComm)
-  vector<int> nPtsSend;         //! Number of points outgoing to each grid (across interComm)
-  vector<vector<int>> recvPts;  //! Point IDs which will be received from each grid (across interComm) (counter to foundPts)
-
-  matrix<double> U_in;          //! Data received from other grid(s)
-  vector<matrix<double>> U_out; //! Interpolated data being sent to other grid(s)
-};
+#ifndef _NO_MPI
+template<typename T>
+MPI_Datatype getMpiDatatype(void);
+#endif
 
 class overComm
 {
@@ -227,9 +214,6 @@ public:
   void transferEleData(vector<shared_ptr<ele> >& eles, const unordered_set<int>& fringeCells, const vector<int>& eleMap);
 
 private:
-#ifndef _NO_MPI
-  template<typename T> MPI_Datatype getMpiDatatype(void);
-#endif
 
   /* ---- For Static Cases using Field Interpolation ---- */
   vector<matrix<double>> qpts, qptsD_ref, donorBasis, massMatTDRow, ubLHS;

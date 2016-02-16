@@ -34,6 +34,28 @@
 #include "flux.hpp"
 #include "global.hpp"
 
+#ifndef _NO_MPI
+template<typename T>
+MPI_Datatype getMpiDatatype(void)
+{
+  FatalError("MPI Datatype not implemented here");
+}
+
+template<> MPI_Datatype getMpiDatatype<int>(void){ return MPI_INT; }
+
+template<> MPI_Datatype getMpiDatatype<double>(void){ return MPI_DOUBLE; }
+
+template<> MPI_Datatype getMpiDatatype<float>(void){ return MPI_FLOAT; }
+
+template<> MPI_Datatype getMpiDatatype<unsigned int>(void){ return MPI_UNSIGNED; }
+
+template<> MPI_Datatype getMpiDatatype<long>(void){ return MPI_LONG; }
+
+template<> MPI_Datatype getMpiDatatype<short>(void){ return MPI_SHORT; }
+
+template<> MPI_Datatype getMpiDatatype<char>(void){ return MPI_CHAR; }
+#endif
+
 overComm::overComm()
 {
 
@@ -560,10 +582,9 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
       point refLoc;
       point pos = point(qpts_recv[p][i],nDims);
       bool isInEle = eles[ie]->getRefLocNelderMead(pos,refLoc);
+
       if (!isInEle) {
-        cout.precision(16);
-        cout << "qpt:" << endl;
-        _(pos);
+        cout << setprecision(16) << "qpt: " << pos << endl;
         cout << "Ele nodes:" << endl;
         for (int n=0; n<4; n++)
           _(eles[ie]->nodes[n]);
@@ -983,11 +1004,9 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
       point refPos = foundLocs[p][i];
 
       int ic = eleMap[foundEles[p][i]];
-      if (ic<0 || ic>eles.size()) {
-        cout << "!!!! ic = " << ic << " !!!!" << endl;
-        cout << "rank " << params->rank << ", cell " << foundEles[p][i] << endl;
+
+      if (ic<0 || ic>eles.size())
         FatalError("bad value of ic!");
-      }
 
       if (params->oversetMethod == 1) {
         /* Interpolate solution calculated from corrected flux
@@ -1113,11 +1132,9 @@ void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, m
     for (int i=0; i<foundPts[p].size(); i++) {
       point refPos = foundLocs[p][i];
       int ic = eleMap[foundEles[p][i]];
-      if (ic<0 || ic>eles.size()) {
-        cout << "!!!! ic = " << ic << " !!!!" << endl;
-        cout << "rank " << params->rank << ", cell " << foundEles[p][i] << endl;
+
+      if (ic<0 || ic>eles.size())
         FatalError("bad value of ic!");
-      }
 
       // Interpolate corrected gradient
       // Need to also keep track of whether gradient is in ref/phys space and
@@ -1172,28 +1189,6 @@ void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, m
   sendRecvData(nPtsSend,nPtsRecv,foundPts,recvPts,gradU_out,gradU_in,nDims*nFields,true);
 #endif
 }
-
-#ifndef _NO_MPI
-template<typename T>
-MPI_Datatype overComm::getMpiDatatype(void)
-{
-  FatalError("MPI Datatype not implemented here");
-}
-
-template<> MPI_Datatype overComm::getMpiDatatype<int>(void){ return MPI_INT; }
-
-template<> MPI_Datatype overComm::getMpiDatatype<double>(void){ return MPI_DOUBLE; }
-
-template<> MPI_Datatype overComm::getMpiDatatype<float>(void){ return MPI_FLOAT; }
-
-template<> MPI_Datatype overComm::getMpiDatatype<unsigned int>(void){ return MPI_UNSIGNED; }
-
-template<> MPI_Datatype overComm::getMpiDatatype<long>(void){ return MPI_LONG; }
-
-template<> MPI_Datatype overComm::getMpiDatatype<short>(void){ return MPI_SHORT; }
-
-template<> MPI_Datatype overComm::getMpiDatatype<char>(void){ return MPI_CHAR; }
-#endif
 
 template<typename T>
 void overComm::gatherData(int nPieces, int stride, T *values, vector<int>& nPieces_rank, vector<T> &values_all)
