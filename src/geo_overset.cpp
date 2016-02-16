@@ -421,7 +421,11 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
   }
 
   vector<int> mpiFringeFaces;
-  vector<int> iblankEle1 = iblankEle; //(nEles,NORMAL);
+  vector<int> iblankEle1;
+  if (params->oversetMethod != 2)
+    iblankEle1 = iblankEle;
+  else
+    iblankEle1.assign(nEles,NORMAL);
 
   if (params->oversetMethod != 2) {
     // For either of the Artificial Boundary methods
@@ -439,23 +443,23 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
         }
       }
     }
-  }
 
-  if (params->oversetMethod == 1) {
-    // Extra overlap needed - Bring back outermost 'fringe' hole-cut layer as 'normal' cells
-    for (int ic=0; ic<nEles; ic++) {
-      if (iblankEle[ic] == NORMAL) {
-        for (int j=0; j<c2nf[ic]; j++) {
-          int ic2 = c2c(ic,j);
-          if (ic2 > -1) {
-            if (iblankEle1[ic2] == FRINGE) {
-              iblankEle1[ic2] = NORMAL;
-            }
-          } else {
-            // MPI Boundary
-            int F = findFirst(mpiFaces,c2f(ic,j));
-            if (F > -1) {
-              mpiFringeFaces.push_back(mpiFaces[F]);
+    if (params->oversetMethod == 1) {
+      // Extra overlap needed - Bring back outermost 'fringe' hole-cut layer as 'normal' cells
+      for (int ic=0; ic<nEles; ic++) {
+        if (iblankEle[ic] == NORMAL) {
+          for (int j=0; j<c2nf[ic]; j++) {
+            int ic2 = c2c(ic,j);
+            if (ic2 > -1) {
+              if (iblankEle1[ic2] == FRINGE) {
+                iblankEle1[ic2] = NORMAL;
+              }
+            } else {
+              // MPI Boundary
+              int F = findFirst(mpiFaces,c2f(ic,j));
+              if (F > -1) {
+                mpiFringeFaces.push_back(mpiFaces[F]);
+              }
             }
           }
         }
@@ -474,9 +478,9 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
           }
         }
         if (nfringe == c2nv[ic]) {
-          iblankEle[ic] = HOLE;
-        } else if (nfringe > 0) {
           iblankEle[ic] = FRINGE;
+//        } else if (nfringe > 0) {
+//          iblankEle1[ic] = FRINGE;
         }
       }
     }
@@ -484,12 +488,12 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
     // Step back by one layer of cells
 
     for (int ic=0; ic<nEles; ic++) {
-      if (iblankEle[ic] == FRINGE) {
+      if (iblankEle[ic] == NORMAL) {
         for (int j=0; j<c2nf[ic]; j++) {
           int ic2 = c2c(ic,j);
           if (ic2 > -1) {
-            if (iblankEle[ic2] == HOLE) {
-              iblankEle1[ic2] = NORMAL;
+            if (iblankEle[ic2] == FRINGE) {
+              iblankEle1[ic2] = FRINGE;
             }
           } else {
             // MPI Boundary
@@ -520,38 +524,42 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
     }
     MPI_Allgatherv(mpiFringeFaces.data(),mpiFringeFaces.size(),MPI_INT,mpiFringeFaces_proc.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
 
-    int SEARCH_TYPE, CHANGE_TYPE;
     if (params->oversetMethod == 1) {
-      SEARCH_TYPE = FRINGE;
-      CHANGE_TYPE = NORMAL;
-    } else {
-      SEARCH_TYPE = HOLE;
-      CHANGE_TYPE = FRINGE;
-    }
-
-    for (int F=0; F<nMpiFaces; F++) {
-      int ff = mpiFaces[F];
-      int fr = faceID_R[F];
-      if (iblankEle1[f2c(ff,0)] == SEARCH_TYPE) {
-        int p = procR[F];
-        for (int i=0; i<recvCnts[p]; i++) {
-          int fr2 = mpiFringeFaces_proc(p,i);
-          if (fr == fr2) {
-            iblankEle1[f2c(ff,0)] = CHANGE_TYPE;
-            break;
+      for (int F=0; F<nMpiFaces; F++) {
+        int ff = mpiFaces[F];
+        int fr = faceID_R[F];
+        if (iblankEle1[f2c(ff,0)] == FRINGE) {
+          int p = procR[F];
+          for (int i=0; i<recvCnts[p]; i++) {
+            int fr2 = mpiFringeFaces_proc(p,i);
+            if (fr == fr2) {
+              iblankEle1[f2c(ff,0)] = NORMAL;
+              break;
+            }
           }
         }
       }
     }
 
-    if (params->oversetMethod == 2) {
-      for (int ic=0; ic<nEles; ic++)
-        if (iblankEle[ic] == FRINGE)
-          iblankEle[ic] = NORMAL;
+    else if (params->oversetMethod == 2) {
+      for (int F=0; F<nMpiFaces; F++) {
+        int ff = mpiFaces[F];
+        int fr = faceID_R[F];
+        if (iblankEle[f2c(ff,0)] == FRINGE) {
+          int p = procR[F];
+          for (int i=0; i<recvCnts[p]; i++) {
+            int fr2 = mpiFringeFaces_proc(p,i);
+            if (fr == fr2) {
+              iblankEle1[f2c(ff,0)] = FRINGE;
+              break;
+            }
+          }
+        }
+      }
 
       for (int ic=0; ic<nEles; ic++) {
-        if (iblankEle1[ic] == FRINGE) {
-          iblankEle[ic] = FRINGE;
+        if (iblankEle1[ic] == NORMAL && iblankEle[ic] == FRINGE) {
+          iblankEle[ic] = HOLE;
         }
       }
 
