@@ -264,35 +264,6 @@ void matrix<T>::timesMatrix(matrix<T> &A, matrix<T> &B)
   }
 }
 
-/*matrix<int> operator*(matrix<int> &A, matrix<int> &B)
-{
-  FatalError("Not expecting to use operator* for integer matrices.");
-}
-
-matrix<double*> operator*(matrix<double*> &A, matrix<double*> &B)
-{
-  FatalError("operator* not supported for non-arithmatic data types.");
-}
-
-matrix<double> operator*(matrix<double> &A, matrix<double> &B)
-{
-  uint p = A.dims[1];
-
-  if (A.dims[1] != B.dims[0]) FatalError("Incompatible matrix sizes in matrix multiplication!");
-
-  matrix<double> out(A.dims[0],B.dims[1]);
-  out.initializeToZero();
-
-  for (uint i=0; i<A.dims[0]; i++) {
-    for (uint j=0; j<B.dims[1]; j++) {
-      for (uint k=0; k<p; k++) {
-        out(i,j) += A(i,k)*B(k,j);
-      }
-    }
-  }
-}*/
-
-
 template <typename T>
 void matrix<T>::timesMatrixPlus(matrix<T> &A, matrix<T> &B)
 {
@@ -790,7 +761,10 @@ double matrix<T>::det()
   if (this->dims[0]!=this->dims[1])
     FatalErrorST("Determinant only meaningful for square matrices.");
 
-  if (this->dims[0] == 2) {
+  if (this->dims[0] == 1) {
+    return this->data[0];
+  }
+  else if (this->dims[0] == 2) {
     // Base case
     return this->data[0]*this->data[3] - this->data[1]*this->data[2];
   }

@@ -513,13 +513,9 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
           isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
         }
 
-        if (!isInEle) {
-          cout.precision(16);
-          _(point(qpts_tmp[j],nDims));
-          for (int n=0; n<4; n++)
-            _(eles[ic]->nodes[n]);
+        if (!isInEle)
           FatalError("Quadrature Point Reference Location not found in ele!");
-        }
+
         qptsD_ref[p].insertRow({refLoc.x,refLoc.x,refLoc.z});
 
         vector<double> basisTmp;

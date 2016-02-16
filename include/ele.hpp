@@ -166,18 +166,12 @@ public:
   vector<double> getBoundingBox(void);
 
   /*! Find the reference location of a point inside an element given its
-   *  physical position */
-  point getRefLoc(const point &pos);
-
-  //! Use Newton minimization method to solve for ref. location given physical location
+   *  physical location, using the Newton root-finding method */
   bool getRefLocNewton(point pos, point& loc);
 
   /*! Find the reference location of a point inside an element given its
    *  physical location, using the Nelder-Meade algorithm */
   bool getRefLocNelderMead(point pos, point &loc);
-
-  /*! Calculate Jacobian & Inverse Jacobian at a reference location in element */
-  void getInverseMapping(const point xi, matrix<double> &J, matrix<double> &Jinv);
 
   uint getNDims() const;
   void setNDims(int value);

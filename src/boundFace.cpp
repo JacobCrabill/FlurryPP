@@ -255,7 +255,7 @@ void boundFace::applyBCs(void)
         ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
       }
 
-      // Characteristic
+      // Characteristic [Copied from HiFiLES]
       else if (bcType == CHAR) {
         double one_over_s;
         double h_free_stream;
