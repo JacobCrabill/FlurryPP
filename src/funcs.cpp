@@ -266,8 +266,7 @@ void dshape_quad(const point &in_rs, matrix<double> &out_dshape, int nNodes)
   double eta = in_rs.y;
   out_dshape.setup(nNodes,2);
 
-  switch(nNodes) {
-  case 4:
+  if (nNodes == 4) {
     out_dshape(0,0) = -0.25*(1-eta);
     out_dshape(1,0) =  0.25*(1-eta);
     out_dshape(2,0) =  0.25*(1+eta);
@@ -277,9 +276,8 @@ void dshape_quad(const point &in_rs, matrix<double> &out_dshape, int nNodes)
     out_dshape(1,1) = -0.25*(1+xi);
     out_dshape(2,1) =  0.25*(1+xi);
     out_dshape(3,1) =  0.25*(1-xi);
-    break;
-
-  case 8:
+  }
+  else if (nNodes == 8) {
     out_dshape(0,0) = -0.25*(-1+eta)*(2*xi+eta);
     out_dshape(1,0) =  0.25*(-1+eta)*(eta - 2*xi);
     out_dshape(2,0) =  0.25*( 1+eta)*(2*xi+eta);
@@ -297,7 +295,60 @@ void dshape_quad(const point &in_rs, matrix<double> &out_dshape, int nNodes)
     out_dshape(5,1) =  -eta*( 1+xi);
     out_dshape(6,1) = -0.5 *( 1+xi)*(-1+xi);
     out_dshape(7,1) =   eta*(-1+xi);
-    break;
+  }
+  else {
+    int nSide = sqrt(nNodes);
+
+    if (nSide*nSide != nNodes)
+      FatalError("For Lagrange quad of order N, must have (N+1)^2 shape points.");
+
+    vector<double> xlist(nSide);
+    double dxi = 2./(nSide-1);
+
+    for (int i=0; i<nSide; i++)
+      xlist[i] = -1. + i*dxi;
+
+    int nLevels = nSide / 2;
+    int isOdd = nSide % 2;
+
+    /* Recursion for all high-order Lagrange elements:
+     * 4 corners, each edge's points, interior points */
+    int nPts = 0;
+    for (int i = 0; i < nLevels; i++) {
+      // Corners
+      int i2 = (nSide-1) - i;
+      out_dshape(nPts+0,0) = dLagrange(xlist, xi, i)  * Lagrange(xlist, eta, i);
+      out_dshape(nPts+1,0) = dLagrange(xlist, xi, i2) * Lagrange(xlist, eta, i);
+      out_dshape(nPts+2,0) = dLagrange(xlist, xi, i2) * Lagrange(xlist, eta, i2);
+      out_dshape(nPts+3,0) = dLagrange(xlist, xi, i)  * Lagrange(xlist, eta, i2);
+
+      out_dshape(nPts+0,1) = Lagrange(xlist, xi, i)  * dLagrange(xlist, eta, i);
+      out_dshape(nPts+1,1) = Lagrange(xlist, xi, i2) * dLagrange(xlist, eta, i);
+      out_dshape(nPts+2,1) = Lagrange(xlist, xi, i2) * dLagrange(xlist, eta, i2);
+      out_dshape(nPts+3,1) = Lagrange(xlist, xi, i)  * dLagrange(xlist, eta, i2);
+      nPts += 4;
+
+      // Edges
+      int nSide2 = nSide - 2 * (i+1);
+      for (int j = 0; j < nSide2; j++) {
+        out_dshape(nPts+0*nSide2+j,0) = dLagrange(xlist, xi, i+j)  * Lagrange(xlist, eta, i);
+        out_dshape(nPts+1*nSide2+j,0) = dLagrange(xlist, xi, i2)   * Lagrange(xlist, eta, i+j);
+        out_dshape(nPts+2*nSide2+j,0) = dLagrange(xlist, xi, i2-j) * Lagrange(xlist, eta, i2);
+        out_dshape(nPts+3*nSide2+j,0) = dLagrange(xlist, xi, i)    * Lagrange(xlist, eta, i2-j);
+
+        out_dshape(nPts+0*nSide2+j,1) = Lagrange(xlist, xi, i+j)  * dLagrange(xlist, eta, i);
+        out_dshape(nPts+1*nSide2+j,1) = Lagrange(xlist, xi, i2)   * dLagrange(xlist, eta, i+j);
+        out_dshape(nPts+2*nSide2+j,1) = Lagrange(xlist, xi, i2-j) * dLagrange(xlist, eta, i2);
+        out_dshape(nPts+3*nSide2+j,1) = Lagrange(xlist, xi, i)    * dLagrange(xlist, eta, i2-j);
+      }
+      nPts += 4*nSide2;
+    }
+
+    // Center node for even-ordered Lagrange quads (odd value of nSide)
+    if (isOdd) {
+      out_dshape(nNodes-1,0) = dLagrange(xlist, xi, nSide/2) * Lagrange(xlist, eta, nSide/2);
+      out_dshape(nNodes-1,1) = Lagrange(xlist, xi, nSide/2) * dLagrange(xlist, eta, nSide/2);
+    }
   }
 }
 
