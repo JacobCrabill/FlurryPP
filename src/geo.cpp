@@ -1192,6 +1192,38 @@ void geo::readGmsh(string fileName)
           meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
           break;
 
+        case 36:
+          // cubic (16-node Lagrange) quadrangle
+          c2nv.push_back(16);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          for (int i = 0; i < 16; i++) meshFile >> c2v_tmp[i];
+          break;
+
+        case 37:
+          // quartic (25-node Lagrange) quadrangle
+          c2nv.push_back(25);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          for (int i = 0; i < 25; i++) meshFile >> c2v_tmp[i];
+          break;
+
+        case 38:
+          // quintic (36-node Lagrange) quadrangle
+          c2nv.push_back(36);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          for (int i = 0; i < 36; i++) meshFile >> c2v_tmp[i];
+          break;
+
+        case 47:
+          // 6th-order 49-node Lagrange quadrangle
+          c2nv.push_back(49);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          for (int i = 0; i < 49; i++) meshFile >> c2v_tmp[i];
+          break;
+
         case 5:
           // Linear hexahedron
           c2nv.push_back(8);
