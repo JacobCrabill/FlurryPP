@@ -27,6 +27,8 @@
  */
 #include "funcs.hpp"
 
+#include "polynomials.hpp"
+
 vector<double> solveCholesky(matrix<double> A, vector<double> b)
 {
   int m = A.getDim0();
@@ -133,24 +135,64 @@ void shape_quad(const point &in_rs, double* out_shape, int nNodes)
 {
   double xi  = in_rs.x;
   double eta = in_rs.y;
-  switch(nNodes) {
-  case 4:
-    out_shape[0] = 0.25*(1-xi)*(1-eta);
-    out_shape[1] = 0.25*(1+xi)*(1-eta);
-    out_shape[2] = 0.25*(1+xi)*(1+eta);
-    out_shape[3] = 0.25*(1-xi)*(1+eta);
-    break;
+  if (nNodes == 4) {
+      out_shape[0] = 0.25*(1-xi)*(1-eta);
+      out_shape[1] = 0.25*(1+xi)*(1-eta);
+      out_shape[2] = 0.25*(1+xi)*(1+eta);
+      out_shape[3] = 0.25*(1-xi)*(1+eta);
+  }
+  else if (nNodes == 8) {
+      out_shape[0] = -0.25*(1-xi)*(1-eta)*(1+eta+xi);
+      out_shape[1] = -0.25*(1+xi)*(1-eta)*(1+eta-xi);
+      out_shape[2] = -0.25*(1+xi)*(1+eta)*(1-eta-xi);
+      out_shape[3] = -0.25*(1-xi)*(1+eta)*(1-eta+xi);
+      out_shape[4] = 0.5*(1-xi)*(1+ xi)*(1-eta);
+      out_shape[5] = 0.5*(1+xi)*(1+eta)*(1-eta);
+      out_shape[6] = 0.5*(1-xi)*(1+ xi)*(1+eta);
+      out_shape[7] = 0.5*(1-xi)*(1+eta)*(1-eta);
+  }
+  else {
+    int nSide = sqrt(nNodes);
 
-  case 8:
-    out_shape[0] = -0.25*(1-xi)*(1-eta)*(1+eta+xi);
-    out_shape[1] = -0.25*(1+xi)*(1-eta)*(1+eta-xi);
-    out_shape[2] = -0.25*(1+xi)*(1+eta)*(1-eta-xi);
-    out_shape[3] = -0.25*(1-xi)*(1+eta)*(1-eta+xi);
-    out_shape[4] = 0.5*(1-xi)*(1+ xi)*(1-eta);
-    out_shape[5] = 0.5*(1+xi)*(1+eta)*(1-eta);
-    out_shape[6] = 0.5*(1-xi)*(1+ xi)*(1+eta);
-    out_shape[7] = 0.5*(1-xi)*(1+eta)*(1-eta);
-    break;
+    if (nSide*nSide != nNodes)
+      FatalError("For Lagrange quad of order N, must have (N+1)^2 shape points.");
+
+    vector<double> xlist(nSide);
+    double dxi = 2./(nSide-1);
+
+    for (int i=0; i<nSide; i++)
+      xlist[i] = -1. + i*dxi;
+
+    int nLevels = nSide / 2;
+    int isOdd = nSide % 2;
+
+    /* Recursion for all high-order Lagrange elements:
+     * 4 corners, each edge's points, interior points */
+    int nPts = 0;
+    for (int i = 0; i < nLevels; i++) {
+      // Corners
+      int i2 = (nSide-1) - i;
+      out_shape[nPts+0] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i);
+      out_shape[nPts+1] = Lagrange(xlist, xi, i2) * Lagrange(xlist, eta, i);
+      out_shape[nPts+2] = Lagrange(xlist, xi, i2) * Lagrange(xlist, eta, i2);
+      out_shape[nPts+3] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i2);
+      nPts += 4;
+
+      // Edges
+      int nSide2 = nSide - 2 * (i+1);
+      for (int j = 0; j < nSide2; j++) {
+        out_shape[nPts+0*nSide2+j] = Lagrange(xlist, xi, i+j) * Lagrange(xlist, eta, i);
+        out_shape[nPts+1*nSide2+j] = Lagrange(xlist, xi, i2) * Lagrange(xlist, eta, i+j);
+        out_shape[nPts+2*nSide2+j] = Lagrange(xlist, xi, i2-j) * Lagrange(xlist, eta, i2);
+        out_shape[nPts+3*nSide2+j] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i2-j);
+      }
+      nPts += 4*nSide2;
+    }
+
+    // Center node for even-ordered Lagrange quads (odd value of nSide)
+    if (isOdd) {
+      out_shape[nNodes-1] = Lagrange(xlist, xi, nSide/2) * Lagrange(xlist, eta, nSide/2);
+    }
   }
 }
 
