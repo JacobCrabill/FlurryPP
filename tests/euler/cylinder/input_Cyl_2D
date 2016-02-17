@@ -18,6 +18,7 @@ advectVy      1    # Advection wave speed, y-component
 icType       0    
 testCase     0
 iterMax       5000
+maxTime       50
 restart       0
 restartIter   10
 resType       3

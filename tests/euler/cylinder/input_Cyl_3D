@@ -8,6 +8,7 @@ dtType        1    (0: Fixed, 1: CFL-based)
 CFL           .7
 dt            .005
 iterMax       100       
+maxTime       10
 restart       0
 restartIter   20
 
