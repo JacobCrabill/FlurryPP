@@ -190,13 +190,13 @@ void shape_quad(const point &in_rs, double* out_shape, int nNodes)
       out_shape[nPts+3] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i2);
       nPts += 4;
 
-      // Edges
+      // Edges: Bottom, right, top, left
       int nSide2 = nSide - 2 * (i+1);
       for (int j = 0; j < nSide2; j++) {
-        out_shape[nPts+0*nSide2+j] = Lagrange(xlist, xi, i+j) * Lagrange(xlist, eta, i);
-        out_shape[nPts+1*nSide2+j] = Lagrange(xlist, xi, i2) * Lagrange(xlist, eta, i+j);
-        out_shape[nPts+2*nSide2+j] = Lagrange(xlist, xi, i2-j) * Lagrange(xlist, eta, i2);
-        out_shape[nPts+3*nSide2+j] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i2-j);
+        out_shape[nPts+0*nSide2+j] = Lagrange(xlist, xi, i+1+j) * Lagrange(xlist, eta, i);
+        out_shape[nPts+1*nSide2+j] = Lagrange(xlist, xi, i2) * Lagrange(xlist, eta, i+1+j);
+        out_shape[nPts+2*nSide2+j] = Lagrange(xlist, xi, i2-1-j) * Lagrange(xlist, eta, i2);
+        out_shape[nPts+3*nSide2+j] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i2-1-j);
       }
       nPts += 4*nSide2;
     }
@@ -331,15 +331,15 @@ void dshape_quad(const point &in_rs, matrix<double> &out_dshape, int nNodes)
       // Edges
       int nSide2 = nSide - 2 * (i+1);
       for (int j = 0; j < nSide2; j++) {
-        out_dshape(nPts+0*nSide2+j,0) = dLagrange(xlist, xi, i+j)  * Lagrange(xlist, eta, i);
-        out_dshape(nPts+1*nSide2+j,0) = dLagrange(xlist, xi, i2)   * Lagrange(xlist, eta, i+j);
-        out_dshape(nPts+2*nSide2+j,0) = dLagrange(xlist, xi, i2-j) * Lagrange(xlist, eta, i2);
-        out_dshape(nPts+3*nSide2+j,0) = dLagrange(xlist, xi, i)    * Lagrange(xlist, eta, i2-j);
+        out_dshape(nPts+0*nSide2+j,0) = dLagrange(xlist, xi, i+1+j)  * Lagrange(xlist, eta, i);
+        out_dshape(nPts+1*nSide2+j,0) = dLagrange(xlist, xi, i2)   * Lagrange(xlist, eta, i+1+j);
+        out_dshape(nPts+2*nSide2+j,0) = dLagrange(xlist, xi, i2-1-j) * Lagrange(xlist, eta, i2);
+        out_dshape(nPts+3*nSide2+j,0) = dLagrange(xlist, xi, i)    * Lagrange(xlist, eta, i2-1-j);
 
-        out_dshape(nPts+0*nSide2+j,1) = Lagrange(xlist, xi, i+j)  * dLagrange(xlist, eta, i);
-        out_dshape(nPts+1*nSide2+j,1) = Lagrange(xlist, xi, i2)   * dLagrange(xlist, eta, i+j);
-        out_dshape(nPts+2*nSide2+j,1) = Lagrange(xlist, xi, i2-j) * dLagrange(xlist, eta, i2);
-        out_dshape(nPts+3*nSide2+j,1) = Lagrange(xlist, xi, i)    * dLagrange(xlist, eta, i2-j);
+        out_dshape(nPts+0*nSide2+j,1) = Lagrange(xlist, xi, i+1+j)  * dLagrange(xlist, eta, i);
+        out_dshape(nPts+1*nSide2+j,1) = Lagrange(xlist, xi, i2)   * dLagrange(xlist, eta, i+1+j);
+        out_dshape(nPts+2*nSide2+j,1) = Lagrange(xlist, xi, i2-1-j) * dLagrange(xlist, eta, i2);
+        out_dshape(nPts+3*nSide2+j,1) = Lagrange(xlist, xi, i)    * dLagrange(xlist, eta, i2-1-j);
       }
       nPts += 4*nSide2;
     }
