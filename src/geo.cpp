@@ -2283,7 +2283,10 @@ void geo::partitionMesh(void)
 {
 #ifndef _NO_MPI
 
-  if (nproc <= 1) return;
+  if (nproc <= 1) {
+    gridComm = MPI_COMM_WORLD;
+    return;
+  }
 
   if (meshType == OVERSET_MESH) {
     // Partitioning each grid independantly; local 'grid rank' is the important rank
@@ -2298,6 +2301,7 @@ void geo::partitionMesh(void)
   else {
     if (rank == 0) cout << "Geo: Partitioning mesh across " << nproc << " processes" << endl;
     if (rank == 0) cout << "Geo:   Number of elements globally: " << nEles << endl;
+
     gridComm = MPI_COMM_WORLD;
   }
 
