@@ -426,3 +426,34 @@ vector<double> boundFace::computeWallForce(void)
 
   return force;
 }
+
+vector<double> boundFace::computeMassFlux(void)
+{
+  vector<double> flux(nFields);
+
+  if (bcType == CHAR || bcType == SUP_IN || bcType == SUP_OUT || bcType == SUB_IN || bcType == SUB_OUT) {
+    int order;
+    if (params->nDims == 2)
+      order = nFptsL-1;
+    else
+      order = sqrt(nFptsL)-1;
+
+    auto weights = getQptWeights1D(order);
+
+    for (int fpt=0; fpt<nFptsL; fpt++) {
+      double weight;
+      if (nDims==2) {
+        weight = weights[fpt];
+      } else {
+        int ifpt = fpt%(order+1);
+        int jfpt = floor(fpt/(order+1));
+        weight = weights[ifpt]*weights[jfpt];
+      }
+
+      for (int k=0; k<nFields; k++)
+        flux[k] += Fn(fpt,k)*weight;
+    }
+  }
+
+  return flux;
+}

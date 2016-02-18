@@ -107,6 +107,9 @@ public:
   /*! Compute the force on any wall boundary conditions */
   virtual vector<double> computeWallForce(void) =0;
 
+  /*! For inlet/outlet boundary conditions, compute the force on the wall */
+  virtual vector<double> computeMassFlux(void) =0;
+
   /*! Calculate the common inviscid flux on the face */
   void calcInviscidFlux(void);
 

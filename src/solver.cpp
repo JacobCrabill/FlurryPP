@@ -595,6 +595,20 @@ vector<double> solver::computeWallForce(void)
   return force;
 }
 
+vector<double> solver::computeMassFlux(void)
+{
+  vector<double> flux(params->nFields);
+
+  for (uint i=0; i<faces.size(); i++) {
+    auto fTmp = faces[i]->computeMassFlux();
+
+    for (int j=0; j<params->nFields; j++)
+      flux[j] += fTmp[j];
+  }
+
+  return flux;
+}
+
 void solver::setupOperators()
 {
   if (params->rank==0) cout << "Solver: Setting up FR operators" << endl;

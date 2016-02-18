@@ -88,6 +88,13 @@ vector<double> overFace::computeWallForce()
   return force;
 }
 
+vector<double> overFace::computeMassFlux()
+{
+  // Not an inlet/outlet boundary - return 0
+  vector<double> force(nFields);
+  return force;
+}
+
 vector<point> overFace::getPosFpts()
 {
   for (uint i=0; i<nFptsL; i++) {

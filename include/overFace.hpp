@@ -64,6 +64,9 @@ public:
   //! Do nothing [not a wall boundary]
   vector<double> computeWallForce(void);
 
+  //! Do nothing [not an inlet/outlet boundary]
+  vector<double> computeMassFlux(void);
+
   //! Return the physical position of the face's flux points
   vector<point> getPosFpts(void);
 

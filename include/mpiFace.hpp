@@ -70,6 +70,9 @@ public:
   //! Do nothing [not a wall boundary]
   vector<double> computeWallForce(void);
 
+  //! Do nothing [not an inlet/outlet boundary]
+  vector<double> computeMassFlux(void);
+
   //! Send the right-state data across the processor boundary using MPI
   void communicate(void);
 

@@ -162,3 +162,10 @@ vector<double> intFace::computeWallForce()
   vector<double> force = {0,0,0,0,0,0};
   return force;
 }
+
+vector<double> intFace::computeMassFlux()
+{
+  // Not an inlet/outlet boundary - return 0
+  vector<double> force(nFields);
+  return force;
+}

@@ -65,6 +65,9 @@ public:
   /*! For wall boundary conditions, compute the force on the wall */
   vector<double> computeWallForce(void);
 
+  /*! For inlet/outlet boundary conditions, compute the force on the wall */
+  vector<double> computeMassFlux(void);
+
 private:
   int bcType;  //! Boundary condition to apply to this face
 

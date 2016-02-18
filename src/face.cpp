@@ -123,7 +123,7 @@ void face::getLeftState()
     }
 
     // For dynamic grids, need to update geometry-related data
-    if ((params->iter == params->initIter+1) || (params->motion != 0)) {
+    if ((params->iter <= params->initIter+1) || (params->motion != 0)) {
       for (int dim=0; dim<nDims; dim++) {
         normL(fpt,dim) = (eL->norm_fpts(i,dim));
       }

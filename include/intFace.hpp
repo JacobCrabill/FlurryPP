@@ -58,6 +58,9 @@ public:
   //! Do nothing [not a wall boundary]
   vector<double> computeWallForce(void);
 
+  //! Do nothing [not an inlet/outlet boundary]
+  vector<double> computeMassFlux(void);
+
 private:
   int faceID_R;              //! Right element's face ID
   int relRot;              //! Relative rotation of right element's face (for 3D)

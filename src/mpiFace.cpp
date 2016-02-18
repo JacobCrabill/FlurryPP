@@ -217,3 +217,10 @@ vector<double> mpiFace::computeWallForce()
   vector<double> force = {0,0,0,0,0,0};
   return force;
 }
+
+vector<double> mpiFace::computeMassFlux()
+{
+  // Not an inlet/outlet boundary - return 0
+  vector<double> force(nFields);
+  return force;
+}

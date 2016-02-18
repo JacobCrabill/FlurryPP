@@ -216,7 +216,11 @@ public:
   //! Apply mesh motion
   void moveMesh(int step);
 
+  //! Integrate forces on all wall-type boundaries
   vector<double> computeWallForce(void);
+
+  //! Integrate fluxes on all inlet/outlet boundaries [Primarily for internal flows]
+  vector<double> computeMassFlux(void);
 
   //! For implemented test cases, calculate the L1 error over the domain
   vector<double> integrateError(void);
