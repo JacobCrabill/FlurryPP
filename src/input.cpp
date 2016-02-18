@@ -433,6 +433,11 @@ void input::readInputFile(char *filename)
 
   opts.getScalarValue("squeeze",squeeze,0);
 
+  /* --- Multigrid --- */
+  opts.getScalarValue("PMG",PMG,0);
+  opts.getScalarValue("lowOrder",lowOrder,0);
+  opts.getScalarValue("smoothSteps",smoothSteps,1);
+
   /* --- Cleanup ---- */
   opts.closeFile();
 

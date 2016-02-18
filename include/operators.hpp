@@ -117,6 +117,9 @@ public:
 
   matrix<double> interpolateCorrectedFlux(vector<matrix<double> >& F_spts, matrix<double>& dFn_fpts, point refLoc);
 
+  matrix<double> opp_prolong;   //! PMG Prolongation operator
+  matrix<double> opp_restrict;  //! PMG Restriction operator
+
 private:
   geo *Geo;
   input *params;
@@ -129,7 +132,8 @@ private:
   matrix<double> opp_div_spts;
   matrix<double> opp_correction;
   vector<matrix<double>> opp_correctU;
-  vector<matrix<double>> opp_correctF ;
+  vector<matrix<double>> opp_correctF;
+
 
   void setupCorrectF(vector<point> &loc_spts);
 
@@ -151,4 +155,7 @@ private:
   void setupVandermonde(vector<point> &loc_spts);
   void setupSensingMatrix(void);
   void setupFilterMatrix(void);
+
+  /* P-Multigrid */
+  void setupPMG(int my_order);
 };

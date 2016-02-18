@@ -766,7 +766,7 @@ void geo::matchMPIFaces(void)
 #endif
 }
 
-void geo::setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec, vector<shared_ptr<overFace>> &overFacesVec)
+void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mpiFacesVec, vector<shared_ptr<overFace>> &overFacesVec)
 {
   if (nEles<=0) FatalError("Cannot setup elements array - nEles = 0");
 

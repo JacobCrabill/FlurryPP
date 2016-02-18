@@ -126,6 +126,12 @@ public:
   /*! Perform final advancement of Runge-Kutta time integration */
   void timeStepB(int step, double rkVal);
 
+  /*! Advance intermediate stages of Runge-Kutta time integration [With PMG source term] */
+  void timeStepA_source(int step, double rkVal);
+
+  /*! Perform final advancement of Runge-Kutta time integration [With PMG source term] */
+  void timeStepB_source(int step, double rkVal);
+
   /*! Copy U0_spts into U_spts for final time advancement */
   void copyU0_Uspts(void);
   void copyUspts_U0(void);
@@ -267,6 +273,9 @@ public:
 
   // Shock Capturing variables
   double sensor;
+
+  // Multigrid Variables
+  matrix<double> corr_spts, src_spts, sol_spts;
 
   // Other
   matrix<double> S_spts;      //! Entropy-adjoint variable used as error indicator for Euler

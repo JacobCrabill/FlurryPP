@@ -74,7 +74,7 @@ public:
   void processConnectivity();
 
   //! Create the elements and faces needed for the simulation
-  void setupElesFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec, vector<shared_ptr<overFace> >& overFacesVec);
+  void setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec, vector<shared_ptr<overFace> >& overFacesVec);
 
   //! Update nodal positions and velocities for moving-grid cases
   void moveMesh(double rkVal);

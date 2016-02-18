@@ -59,9 +59,10 @@ void solver::setup(input *params, geo *Geo)
 #endif
 
   params->time = 0.;
+  order = params->order;
 
   /* Setup the FR elements & faces which will be computed on */
-  Geo->setupElesFaces(eles,faces,mpiFaces,overFaces);
+  Geo->setupElesFaces(params,eles,faces,mpiFaces,overFaces);
 
   nGrids = Geo->nGrids;
   gridID = Geo->gridID;
@@ -86,7 +87,7 @@ void solver::setup(input *params, geo *Geo)
 #endif
 }
 
-void solver::update(void)
+void solver::update(bool PMG_Source)
 {
   params->iter++;
 
@@ -103,7 +104,7 @@ void solver::update(void)
 
     calcResidual(step);
 
-    timeStepA(step);
+    timeStepA(step, PMG_Source);
   }
 
   /* Final Runge-Kutta time advancement step */
@@ -119,7 +120,7 @@ void solver::update(void)
     copyU0_Uspts();
 
   for (int step=0; step<nRKSteps; step++)
-    timeStepB(step);
+    timeStepB(step, PMG_Source);
 
   params->time += params->dt;
 }
@@ -221,32 +222,70 @@ void solver::calcDt(void)
   params->dt = dt;
 }
 
-void solver::timeStepA(int step)
+void solver::timeStepA(int step, bool PMG_Source)
 {
-  if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
-    for (uint i=0; i<eles.size(); i++) {
-      if (Geo->iblankCell[eles[i]->ID] == NORMAL)
-        eles[i]->timeStepA(step,params->RKa[step+1]);
-    }
-  } else {
+  if (PMG_Source)
+  {
+    /* --- Include PMG Source Term --- */
+    if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
+      for (uint i=0; i<eles.size(); i++) {
+        if (Geo->iblankCell[eles[i]->ID] == NORMAL)
+          eles[i]->timeStepA_source(step,params->RKa[step+1]);
+      }
+    } else {
 #pragma omp parallel for
-    for (uint i=0; i<eles.size(); i++) {
-      eles[i]->timeStepA(step,params->RKa[step+1]);
+      for (uint i=0; i<eles.size(); i++) {
+        eles[i]->timeStepA_source(step,params->RKa[step+1]);
+      }
+    }
+  }
+  else
+  {
+    /* --- Normal Time Advancement --- */
+    if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
+      for (uint i=0; i<eles.size(); i++) {
+        if (Geo->iblankCell[eles[i]->ID] == NORMAL)
+          eles[i]->timeStepA(step,params->RKa[step+1]);
+      }
+    } else {
+#pragma omp parallel for
+      for (uint i=0; i<eles.size(); i++) {
+        eles[i]->timeStepA(step,params->RKa[step+1]);
+      }
     }
   }
 }
 
-void solver::timeStepB(int step)
+void solver::timeStepB(int step, bool PMG_Source)
 {
-  if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
-    for (uint i=0; i<eles.size(); i++) {
-      if (Geo->iblankCell[eles[i]->ID] == NORMAL)
-        eles[i]->timeStepB(step,params->RKb[step]);
-    }
-  } else {
+  if (PMG_Source)
+  {
+    /* --- Include PMG Source Term --- */
+    if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
+      for (uint i=0; i<eles.size(); i++) {
+        if (Geo->iblankCell[eles[i]->ID] == NORMAL)
+          eles[i]->timeStepB_source(step,params->RKb[step]);
+      }
+    } else {
 #pragma omp parallel for
-    for (uint i=0; i<eles.size(); i++) {
-      eles[i]->timeStepB(step,params->RKb[step]);
+      for (uint i=0; i<eles.size(); i++) {
+        eles[i]->timeStepB_source(step,params->RKb[step]);
+      }
+    }
+  }
+  else
+  {
+    /* --- Normal Time Advancement --- */
+    if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
+      for (uint i=0; i<eles.size(); i++) {
+        if (Geo->iblankCell[eles[i]->ID] == NORMAL)
+          eles[i]->timeStepB(step,params->RKb[step]);
+      }
+    } else {
+#pragma omp parallel for
+      for (uint i=0; i<eles.size(); i++) {
+        eles[i]->timeStepB(step,params->RKb[step]);
+      }
     }
   }
 }

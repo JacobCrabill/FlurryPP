@@ -178,6 +178,15 @@ void ele::setupArrays(void)
     S_mpts.setup(nMpts,1);
   }
 
+  if (params->PMG) {
+    corr_spts.setup(nSpts,nFields);
+    sol_spts.setup(nSpts,nFields);
+    src_spts.setup(nSpts,nFields);
+    corr_spts.initializeToZero();
+    sol_spts.initializeToZero();
+    src_spts.initializeToZero();
+  }
+
   tempF.setup(nDims,nFields);
   tempU.assign(nFields,0);
 }
@@ -1477,6 +1486,24 @@ void ele::timeStepB(int step, double rkVal)
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
       U_spts(spt,i) -= rkVal * params->dt*divF_spts[step](spt,i)/detJac_spts[spt];
+    }
+  }
+}
+
+void ele::timeStepA_source(int step, double rkVal)
+{
+  for (int spt=0; spt<nSpts; spt++) {
+    for (int i=0; i<nFields; i++) {
+      U_spts(spt,i) = U0(spt,i) - rkVal * params->dt*divF_spts[step](spt,i)/detJac_spts[spt] + src_spts(spt,i);
+    }
+  }
+}
+
+void ele::timeStepB_source(int step, double rkVal)
+{
+  for (int spt=0; spt<nSpts; spt++) {
+    for (int i=0; i<nFields; i++) {
+      U_spts(spt,i) -= rkVal * params->dt*divF_spts[step](spt,i)/detJac_spts[spt] + src_spts(spt,i);
     }
   }
 }

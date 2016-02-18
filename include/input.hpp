@@ -139,6 +139,11 @@ public:
   int nRKSteps;
   vector<double> RKa, RKb;
 
+  /* --- Multigrid Options --- */
+  int PMG;         //! P-Multigrid flag [default: off/0]
+  int lowOrder;    //! Minimum order to use with PMG [default: 0]
+  int smoothSteps; //! Number of 'smoothing' iterations to use on coarse levels
+
   int iter;
 
   /* --- Moving-Grid Parameters --- */

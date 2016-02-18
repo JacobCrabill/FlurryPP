@@ -81,6 +81,10 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
 
     setupFilterMatrix();
   }
+
+  if (params->PMG) {
+    setupPMG(order);
+  }
 }
 
 void oper::setupExtrapolateSptsFpts(vector<point> &loc_fpts)
@@ -1280,4 +1284,52 @@ double oper::shockCaptureInEle(matrix<double> &U_spts, double threshold)
     }
   }
   return sensor;
+}
+
+void oper::setupPMG(int my_order)
+{
+  /* Allocate memory for operators */
+  unsigned int nSpts_pro_1D = order+2;
+  unsigned int nSpts_res_1D = order;
+  unsigned int nSpts_pro = nSpts_pro_1D * nSpts_pro_1D;
+  unsigned int nSpts_res = nSpts_res_1D * nSpts_res_1D;
+
+  auto loc_spts = getPts1D(sptsType,my_order);
+
+  vector<double> loc(nDims, 0.0);
+
+//  if (order != params->order) {  /// <- not sure if this is relavant for me...
+    /* Setup prolongation operator */
+    opp_prolong.setup(nSpts_pro, nSpts);
+
+    auto loc_spts_pro_1D = getPts1D(sptsType,order+1);
+
+    for (uint spt = 0; spt < nSpts; spt++) {
+      uint ispt = spt % (nSpts/(order+1));
+      uint jspt = floor(spt/(order+1));
+      for (uint pspt = 0; pspt < nSpts_pro; pspt++) {
+        loc[0] = loc_spts_pro_1D[pspt%nSpts_pro_1D];
+        loc[1] = loc_spts_pro_1D[floor(pspt/nSpts_pro_1D)];
+
+        opp_prolong(pspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt);
+      }
+    }
+//  }
+
+  if (order != 0) {
+    /* Setup restriction operator */
+    opp_restrict.setup(nSpts_res, nSpts);
+
+    auto loc_spts_res_1D = getPts1D(sptsType,order-1);
+
+    for (uint spt = 0; spt < nSpts; spt++) {
+      uint ispt = spt % (nSpts/(order+1));
+      uint jspt = floor(spt/(order+1));
+      for (uint rspt = 0; rspt < nSpts_res; rspt++) {
+        loc[0] = loc_spts_res_1D[rspt%nSpts_res_1D];
+        loc[1] = loc_spts_res_1D[floor(rspt/nSpts_res_1D)];
+        opp_restrict(rspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt);
+      }
+    }
+  }
 }

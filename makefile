@@ -64,6 +64,7 @@ OBJECTS = 	obj/global.o \
 		obj/flurry.o \
 		obj/solver.o \
 		obj/solver_overset.o \
+		obj/multigrid.o \
 		obj/superMesh.o \
 		obj/overComm.o
 
@@ -292,6 +293,14 @@ obj/solver_overset.o: src/solver_overset.cpp include/solver.hpp \
 		include/overComm.hpp \
 		include/overFace.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/solver_overset.o src/solver_overset.cpp
+
+obj/multigrid.o: src/multigrid.cpp include/multigrid.hpp \
+	include/input.hpp \
+	include/solver.hpp \
+	include/ele.hpp \
+	include/operators.hpp \
+	include/matrix.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/multigrid.o src/multigrid.cpp
 
 obj/superMesh.o: src/superMesh.cpp include/superMesh.hpp \
 	include/global.hpp \

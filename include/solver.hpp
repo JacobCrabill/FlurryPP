@@ -94,6 +94,8 @@ public:
 
   int nGrids, gridID, gridRank, nprocPerGrid;
 
+  int order;  //! Baseline solution order
+
   /* === Setup Functions === */
 
   solver();
@@ -120,7 +122,7 @@ public:
   //! Apply the initial condition to all elements
   void initializeSolution();
 
-  void update(void);
+  void update(bool PMG_Source = false);
 
   //! Perform one full step of computation
   void calcResidual(int step);
@@ -129,10 +131,10 @@ public:
   void calcDt(void);
 
   //! Advance solution in time - Generate intermediate RK stage
-  void timeStepA(int step);
+  void timeStepA(int step, bool PMG_Source = false);
 
   //! Advance solution in time - Final RK stage [assemble intermediate stages]
-  void timeStepB(int step);
+  void timeStepB(int step, bool PMG_Source = false);
 
   //! For RK time-stepping - store solution at time 'n'
   void copyUspts_U0(void);

@@ -39,11 +39,13 @@
 #endif
 
 #include "funcs.hpp"
+#include "multigrid.hpp"
 
 int main(int argc, char *argv[]) {
   input params;
   geo Geo;
   solver Solver;
+  multiGrid pmg;
 
   int rank = 0;
   int nproc = 1;
@@ -98,6 +100,11 @@ int main(int argc, char *argv[]) {
   /* Setup the solver, all elements and faces, and all FR operators for computation */
   Solver.setup(&params,&Geo);
 
+  /* Setup the P-Multigrid class if requested */
+  if (params.PMG) {
+    pmg.setup(params.order,&params,&Geo);
+  }
+
   /* Apply the initial condition */
   Solver.initializeSolution();
 
@@ -123,6 +130,10 @@ int main(int argc, char *argv[]) {
     iter++;
 
     Solver.update();
+
+    /* If using multigrid, perform correction cycle */
+    if (params.PMG)
+      pmg.cycle(Solver);
 
     if ((iter)%params.monitorResFreq==0 or iter==initIter+1 or params.time>=maxTime) writeResidual(&Solver,&params);
     if ((iter)%params.monitorErrFreq==0 or iter==initIter+1) writeError(&Solver,&params);
