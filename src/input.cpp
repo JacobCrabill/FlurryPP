@@ -305,7 +305,7 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("timeType",timeType,4);
   opts.getScalarValue("dtType",dtType,0);
   opts.getScalarValue("iterMax",iterMax);
-  if (dtType == 1) {
+  if (dtType != 0) {
     opts.getScalarValue("CFL",CFL);
     opts.getScalarValue("maxTime",maxTime);
   } else {

@@ -295,6 +295,8 @@ public:
 
 private:
 
+  double dt;  //! CFL-based dt for element
+
   /*! Get the values of the nodal shape bases at a solution point */
   void getShape(point loc, vector<double> &shape);
 

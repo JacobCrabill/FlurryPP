@@ -1474,36 +1474,44 @@ void ele::calcWaveSpFpts(void)
 
 void ele::timeStepA(int step, double rkVal)
 {
+  if (params->dtType != 2) dt = params->dt;
+
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
-      U_spts(spt,i) = U0(spt,i) - rkVal * params->dt*divF_spts[step](spt,i)/detJac_spts[spt];
+      U_spts(spt,i) = U0(spt,i) - rkVal * dt * divF_spts[step](spt,i)/detJac_spts[spt];
     }
   }
 }
 
 void ele::timeStepB(int step, double rkVal)
 {
+  if (params->dtType != 2) dt = params->dt;
+
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
-      U_spts(spt,i) -= rkVal * params->dt*divF_spts[step](spt,i)/detJac_spts[spt];
+      U_spts(spt,i) -= rkVal * dt * divF_spts[step](spt,i)/detJac_spts[spt];
     }
   }
 }
 
 void ele::timeStepA_source(int step, double rkVal)
 {
+  if (params->dtType != 2) dt = params->dt;
+
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
-      U_spts(spt,i) = U0(spt,i) - rkVal * params->dt * (divF_spts[step](spt,i)/detJac_spts[spt] + src_spts(spt,i));
+      U_spts(spt,i) = U0(spt,i) - rkVal * dt * (divF_spts[step](spt,i) + src_spts(spt,i)) / detJac_spts[spt];
     }
   }
 }
 
 void ele::timeStepB_source(int step, double rkVal)
 {
+  if (params->dtType != 2) dt = params->dt;
+
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
-      U_spts(spt,i) -= rkVal * params->dt * (divF_spts[step](spt,i)/detJac_spts[spt] + src_spts(spt,i));
+      U_spts(spt,i) -= rkVal * dt * (divF_spts[step](spt,i) + src_spts(spt,i)) / detJac_spts[spt];
     }
   }
 }
@@ -1515,7 +1523,7 @@ double ele::calcDt(void)
     if (dA_fpts[fpt] > 0) // ignore collapsed edges
       waveSp = max(waveSp,waveSp_fpts[fpt]);
 
-  double dt = (params->CFL) * getCFLLimit(order) * (2.0 / (waveSp+1.e-10));
+  dt = (params->CFL) * getCFLLimit(order) * (2.0 / (waveSp+1.e-10));
   return dt;
 }
 

@@ -93,7 +93,7 @@ void solver::update(bool PMG_Source)
 
   /* Intermediate residuals for Runge-Kutta time integration */
 
-  if (params->dtType == 1) calcDt();
+  if (params->dtType != 0) calcDt();
 
   for (int step=0; step<nRKSteps-1; step++) {
     params->rkTime = params->time + params->RKa[step]*params->dt;
@@ -842,7 +842,7 @@ void solver::initializeSolution()
 
   /* If using CFL-based time-stepping, calc wave speed in each
    * ele for initial dt calculation */
-  if (params->dtType == 1) {
+  if (params->dtType != 0) {
     extrapolateU();
 #pragma omp parallel for
     for (uint i=0; i<eles.size(); i++) {

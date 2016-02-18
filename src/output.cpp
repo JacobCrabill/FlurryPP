@@ -606,7 +606,7 @@ void writeResidual(solver *Solver, input *params)
       cout << setw(8) << left << "Iter" << "Var  ";
       if (params->equation == ADVECTION_DIFFUSION) {
         cout << setw(colW) << "Residual";
-        if (params->dtType == 1)
+        if (params->dtType != 0)
           cout << setw(colW) << left << "DeltaT";
         cout << endl;
       }else if (params->equation == NAVIER_STOKES) {
@@ -616,7 +616,7 @@ void writeResidual(solver *Solver, input *params)
         if (params->nDims == 3)
           cout << setw(colW) << left << "rhoW";
         cout << setw(colW) << left << "rhoE";
-        if (params->dtType == 1)
+        if (params->dtType != 0)
           cout << setw(colW) << left << "deltaT";
         cout << setw(colW) << left << "CD";
         cout << setw(colW) << left << "CL";
@@ -633,7 +633,7 @@ void writeResidual(solver *Solver, input *params)
     }
 
     // Print time step (for CFL time-stepping)
-    if (params->dtType == 1)
+    if (params->dtType != 0)
       cout << setw(colW) << left << params->dt;
 
     // Print wall force coefficients
@@ -669,7 +669,7 @@ void writeResidual(solver *Solver, input *params)
         if (params->nDims == 3)
           histFile << setw(colW) << left << "rhoW";
         histFile << setw(colW) << left << "rhoE";
-        if (params->dtType == 1)
+        if (params->dtType != 0)
           histFile << setw(colW) << left << "deltaT";
         histFile << setw(colW) << left << "CDinv";
         histFile << setw(colW) << left << "CLinv";
@@ -698,7 +698,7 @@ void writeResidual(solver *Solver, input *params)
     }
 
     // Write time step (for CFL time-stepping)
-    if (params->dtType == 1)
+    if (params->dtType != 0)
       histFile << setw(colW) << left << params->dt;
 
     // Write inviscid wall force coefficients
