@@ -51,6 +51,6 @@ class multiGrid
     void compute_source_term(solver &grid);
 
   public:
-    void setup(int order, input *params, geo *Geo);
+    void setup(int order, input *params);
     void cycle(solver &Solver);
 };

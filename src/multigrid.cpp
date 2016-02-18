@@ -36,7 +36,7 @@
 #include "input.hpp"
 #include "solver.hpp"
 
-void multiGrid::setup(int order, input *params, geo *Geo)
+void multiGrid::setup(int order, input *params)
 {
   this->order = order;
   this->params = params;
@@ -50,7 +50,7 @@ void multiGrid::setup(int order, input *params, geo *Geo)
     Inputs[P] = *params;
     Inputs[P].order = P;
     grids.push_back(std::make_shared<solver>());
-    grids[P]->setup(&Inputs[P],Geo);
+    grids[P]->setup(&Inputs[P]);
   }
 }
 

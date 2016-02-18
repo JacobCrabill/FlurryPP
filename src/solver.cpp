@@ -50,10 +50,13 @@ solver::~solver()
 
 }
 
-void solver::setup(input *params, geo *Geo)
+void solver::setup(input *params)
 {
   this->params = params;
-  this->Geo = Geo;
+
+  Geo = new geo();
+  Geo->setup(params);
+
 #ifndef _NO_MPI
   this->tg = Geo->tg; // Geo will have initialized this already if needed
 #endif

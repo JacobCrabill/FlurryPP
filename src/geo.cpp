@@ -57,7 +57,6 @@ geo::~geo()
 {
   if (nodesPerCell != NULL) {
     delete[] nodesPerCell;
-    //nodesPerCell = NULL;
   }
 }
 

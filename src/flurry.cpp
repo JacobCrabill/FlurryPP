@@ -43,7 +43,6 @@
 
 int main(int argc, char *argv[]) {
   input params;
-  geo Geo;
   solver Solver;
   multiGrid pmg;
 
@@ -94,15 +93,12 @@ int main(int argc, char *argv[]) {
   /* Read input file & set simulation parameters */
   params.readInputFile(argv[1]);
 
-  /* Setup the mesh and connectivity for the simulation */
-  Geo.setup(&params);
-
-  /* Setup the solver, all elements and faces, and all FR operators for computation */
-  Solver.setup(&params,&Geo);
+  /* Setup the solver, grid, all elements and faces, and all FR operators for computation */
+  Solver.setup(&params);
 
   /* Setup the P-Multigrid class if requested */
   if (params.PMG) {
-    pmg.setup(params.order,&params,&Geo);
+    pmg.setup(params.order,&params);
   }
 
   /* Apply the initial condition */
