@@ -120,7 +120,7 @@ public:
   /* === Functions Related to Basic FR Process === */
 
   //! Apply the initial condition to all elements
-  void initializeSolution();
+  void initializeSolution(bool PMG = false);
 
   void update(bool PMG_Source = false);
 

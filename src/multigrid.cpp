@@ -51,6 +51,7 @@ void multiGrid::setup(int order, input *params)
     Inputs[P].order = P;
     grids.push_back(std::make_shared<solver>());
     grids[P]->setup(&Inputs[P]);
+    grids[P]->initializeSolution(true);
   }
 }
 

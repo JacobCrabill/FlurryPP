@@ -808,11 +808,11 @@ void solver::readRestartFile(void) {
   if (params->rank==0) cout << "Solver: Done reading restart file." << endl;
 }
 
-void solver::initializeSolution()
+void solver::initializeSolution(bool PMG)
 {
   if (params->rank==0) cout << "Solver: Initializing Solution... " << flush;
 
-  if (params->restart) {
+  if (params->restart && !PMG) {
 
     readRestartFile();
 

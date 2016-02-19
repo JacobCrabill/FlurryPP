@@ -76,6 +76,8 @@ void face::setupFace(void)
   detJacL.resize(nFptsL);
   waveSp.resize(nFptsL);
 
+  Fn.initializeToZero();
+
   if (params->viscous) {
     UC.setup(nFptsL,nFields);
     UcL.resize(nFptsL);
