@@ -741,68 +741,44 @@ void writeAllError(solver *Solver, input *params)
     // Get the latest flux data; need to go through a lot of calcRes, so keep it simple
     Solver->calcResidual(0);
 
-    vector<double> flux(6);
-    auto fTmp = Solver->computeMassFlux();
-
-#ifndef _NO_MPI
-    MPI_Reduce(fTmp.data(), flux.data(), params->nFields, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-#else
-    flux = fTmp;
-#endif
-
-    if (params->rank == 0) {
-      int colW = 16;
-      cout.precision(6);
-      cout.setf(ios::scientific, ios::floatfield);
-      cout << setw(18) << "Total Mass Flux:";
-      if (params->equation == ADVECTION_DIFFUSION) {
-        cout << setw(colW) << "U";
-        cout << endl;
-        cout << setw(18) << " ";
-        cout << setw(colW) << flux[0];
-        cout << endl;
-      }
-      else {
-        cout << setw(colW) << "rho";
-        cout << setw(colW) << "rhoU";
-        cout << setw(colW) << "rhoV";
-        if (params->nDims == 3)
-          cout << setw(colW) << "rhoW";
-        cout << setw(colW) << "rhoE";
-        cout << endl;
-
-        cout << setw(18) << " ";
-        cout << setw(colW) << flux[0];
-        cout << setw(colW) << flux[1];
-        cout << setw(colW) << flux[2];
-        if (params->nDims == 3)
-          cout << setw(colW) << flux[3];
-        cout << setw(colW) << flux[params->nDims+1];
-        cout << endl;
-      }
-    }
+    if (params->rank == 0)
+      cout << "Net Mass Flux Through Domain:" << endl;
+    writeError(Solver,params);
   }
-//  else {
-//    params->errorNorm = 0;
-//    if (params->rank == 0)
-//      cout << "Integrated conservative variables:" << endl;
-//    writeError(Solver,params);
-//  }
+  else if (params->testCase == 3) {
+    /* Calculate total amount of conserved quantities in domain */
+    params->errorNorm = 0;
+    if (params->rank == 0)
+      cout << "Integrated conservative variables:" << endl;
+    writeError(Solver,params);
+  }
 }
 
 void writeError(solver *Solver, input *params)
 {
-  if (params->testCase != 1) return;
+  if (params->testCase == 0) return;
 
-  // For implemented test cases, calculcate the L1 error over the overset domain
+  // For implemented test cases, calculcate the L1/L2 error over the overset domain
   vector<double> err;
 
-  if (params->meshType == OVERSET_MESH)
-    err = Solver->integrateErrorOverset();
-  else
-    err = Solver->integrateError();
+  if (params->testCase == 1)
+  {
+    /* --- Standard error calculation wrt analytical solution --- */
 
-  if (params->rank == 0) {
+    if (params->meshType == OVERSET_MESH)
+      err = Solver->integrateErrorOverset();
+    else
+      err = Solver->integrateError();
+  }
+  else if (params->testCase == 2)
+  {
+    /* --- Internal-Flow Test Cases: Calculate Net Mass-Flux Error --- */
+
+    err = Solver->computeMassFlux();
+  }
+
+  if (params->rank == 0)
+  {
     /* --- Write the error out to the terminal --- */
 
     int colw = 16;

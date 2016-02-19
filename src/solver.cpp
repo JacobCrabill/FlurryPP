@@ -648,6 +648,11 @@ vector<double> solver::computeMassFlux(void)
       flux[j] += fTmp[j];
   }
 
+#ifndef _NO_MPI
+    auto fTmp = flux;
+    MPI_Reduce(fTmp.data(), flux.data(), params->nFields, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+#endif
+
   return flux;
 }
 
