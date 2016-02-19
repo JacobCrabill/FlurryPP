@@ -96,13 +96,16 @@ int main(int argc, char *argv[]) {
   /* Setup the solver, grid, all elements and faces, and all FR operators for computation */
   Solver.setup(&params);
 
+  /* Apply the initial condition */
+  Solver.initializeSolution();
+
   /* Setup the P-Multigrid class if requested */
   if (params.PMG) {
     pmg.setup(params.order,&params);
+    // Still some weird bug in initialization of PMG solvers; this is a workaround
+    pmg.cycle(Solver);
+    Solver.initializeSolution();
   }
-
-  /* Apply the initial condition */
-  Solver.initializeSolution();
 
   /* Write initial data file */
   writeData(&Solver,&params);
