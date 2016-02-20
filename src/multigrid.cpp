@@ -36,23 +36,59 @@
 #include "input.hpp"
 #include "solver.hpp"
 
-void multiGrid::setup(int order, input *params)
+void multiGrid::setup(int order, input *params, solver &Solver)
 {
   this->order = order;
   this->params = params;
 
   Inputs.resize(order);
 
+  if (params->HMG)
+  {
+    Inputs.push_back(*params);
+    Inputs.back().order = 0;
+    for (int H = 0; H < params->n_h_levels; H++)
+    {
+      hGrids.push_back(make_shared<solver>());
+      hGeos.push_back(make_shared<geo>());
+
+      /* Refine the initial coarse grid to produce the fine grids */
+      setup_h_level(*Solver.Geo, *hGeos.back(), H+1);
+
+      hGrids[H]->setup(&Inputs.back(), &(*hGeos.back()));
+
+    }
+
+    /* Swap the initial (coarse-grid) solver for the new fine-grid solver */
+    pGrids.push_back(make_shared<solver>(Solver)); // does this do what I want it to do?
+    Solver = *hGrids.back();
+  }
+
   /* Instantiate coarse grid solvers */
   for (int P = 0; P < order; P++)
   {
-    if (params->rank == 0) std::cout << "P = " << P << std::endl;
-    Inputs[P] = *params;
-    Inputs[P].order = P;
-    grids.push_back(std::make_shared<solver>());
-    grids[P]->setup(&Inputs[P]);
-    grids[P]->initializeSolution(true);
+    if (P < params->lowOrder)
+    {
+      pGrids.push_back(NULL);
+    }
+    else
+    {
+      if (params->rank == 0) std::cout << "P = " << P << std::endl;
+      Inputs[P] = *params;
+      Inputs[P].order = P;
+      pGrids.push_back(make_shared<solver>());
+      pGrids[P]->setup(&Inputs[P]);
+      pGrids[P]->initializeSolution(true);
+    }
   }
+}
+
+void multiGrid::setup_h_level(geo &mesh_c, geo &mesh_f, int level)
+{
+  /* use shape_quad, mesh_c.xv/c2v/e2c?/etc. to split all edges, add eles &
+   * points, etc.
+   * Add param 'shape_order' to control order of fine-grid elements [assuming
+   * coarse grid is of high-order] */
 }
 
 void multiGrid::cycle(solver &Solver)
@@ -60,39 +96,39 @@ void multiGrid::cycle(solver &Solver)
   /* Update residual on finest grid level and restrict */
   Solver.calcResidual(0);
 
-  restrict_pmg(Solver, *grids[order-1]);
+  restrict_pmg(Solver, *pGrids[order-1]);
 
   for (int P = order-1; P >= (int) params->lowOrder; P--)
   {
     /* Generate source term */
-    compute_source_term(*grids[P]);
+    compute_source_term(*pGrids[P]);
 
     /* Copy initial solution to solution storage */
 #pragma omp parallel for
-    for (uint e = 0; e < grids[P]->eles.size(); e++)
+    for (uint e = 0; e < pGrids[P]->eles.size(); e++)
     {
-      grids[P]->eles[e]->sol_spts = grids[P]->eles[e]->U_spts;
+      pGrids[P]->eles[e]->sol_spts = pGrids[P]->eles[e]->U_spts;
     }
 
     /* Update solution on coarse level */
     for (uint step = 0; step < params->smoothSteps; step++)
     {
-      grids[P]->update(true);
+      pGrids[P]->update(true);
     }
 
     if (P-1 >= (int) params->lowOrder)
     {
       /* Update residual and add source */
-      grids[P]->calcResidual(0);
+      pGrids[P]->calcResidual(0);
 
 #pragma omp parallel for
-      for (uint e = 0; e < grids[P]->eles.size(); e++)
+      for (uint e = 0; e < pGrids[P]->eles.size(); e++)
       {
-        grids[P]->eles[e]->divF_spts[0] += grids[P]->eles[e]->src_spts;
+        pGrids[P]->eles[e]->divF_spts[0] += pGrids[P]->eles[e]->src_spts;
       }
 
       /* Restrict to next coarse grid */
-      restrict_pmg(*grids[P], *grids[P-1]);
+      restrict_pmg(*pGrids[P], *pGrids[P-1]);
     }
   }
 
@@ -101,26 +137,26 @@ void multiGrid::cycle(solver &Solver)
     /* Advance again (v-cycle)*/
     for (unsigned int step = 0; step < params->smoothSteps; step++)
     {
-      grids[P]->update(true);
+      pGrids[P]->update(true);
     }
 
     /* Generate error */
 #pragma omp parallel for
-    for (int e = 0; e < grids[P]->eles.size(); e++)
+    for (int e = 0; e < pGrids[P]->eles.size(); e++)
     {
-      grids[P]->eles[e]->corr_spts  = grids[P]->eles[e]->U_spts;
-      grids[P]->eles[e]->corr_spts -= grids[P]->eles[e]->sol_spts;
+      pGrids[P]->eles[e]->corr_spts  = pGrids[P]->eles[e]->U_spts;
+      pGrids[P]->eles[e]->corr_spts -= pGrids[P]->eles[e]->sol_spts;
     }
 
     /* Prolong error and add to fine grid solution */
     if (P < order-1)
     {
-      prolong_err(*grids[P], *grids[P+1]);
+      prolong_err(*pGrids[P], *pGrids[P+1]);
     }
   }
 
   /* Prolong correction and add to finest grid solution */
-  prolong_err(*grids[order-1], Solver);
+  prolong_err(*pGrids[order-1], Solver);
 }
 
 void multiGrid::restrict_pmg(solver &grid_f, solver &grid_c)
@@ -189,4 +225,14 @@ void multiGrid::compute_source_term(solver &grid)
   {
     grid.eles[e]->src_spts -= grid.eles[e]->divF_spts[0];
   }
+}
+
+void multiGrid::restrict_hmg(solver &grid_f, solver&grid_c)
+{
+
+}
+
+void multiGrid::prolong_hmg(solver &grid_c, solver&grid_f)
+{
+
 }

@@ -435,8 +435,15 @@ void input::readInputFile(char *filename)
 
   /* --- Multigrid --- */
   opts.getScalarValue("PMG",PMG,0);
-  opts.getScalarValue("lowOrder",lowOrder,0);
-  opts.getScalarValue("smoothSteps",smoothSteps,1);
+  if (PMG) {
+    opts.getScalarValue("lowOrder",lowOrder,0);
+    opts.getScalarValue("smoothSteps",smoothSteps,1);
+  }
+  opts.getScalarValue("HMG",HMG,0);
+  if (PMG) {
+    opts.getScalarValue("n_h_levels",n_h_levels,1);
+    opts.getScalarValue("shape_order",shape_order,2);
+  }
 
   /* --- Cleanup ---- */
   opts.closeFile();

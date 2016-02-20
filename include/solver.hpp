@@ -103,7 +103,7 @@ public:
   ~solver();
 
   //! Setup the solver with the given simulation parameters & geometry
-  void setup(input *params);
+  void setup(input *params, geo* Geo = NULL);
 
   //! Setup the FR operators for all ele types and polynomial orders which will be used in computation
   void setupOperators();

@@ -43,14 +43,19 @@ class multiGrid
     input *params = NULL;
     vector<input> Inputs;
     int order;
-    vector<shared_ptr<solver>> grids;
+    vector<shared_ptr<solver>> pGrids, hGrids;
+    vector<shared_ptr<geo>> hGeos;
 
     void restrict_pmg(solver &grid_fine, solver &grid_coarse);
     void prolong_pmg(solver &grid_fine, solver &grid_coarse);
     void prolong_err(solver &grid_c, solver &grid_f);
     void compute_source_term(solver &grid);
 
+    void restrict_hmg(solver &grid_f, solver&grid_c);
+    void prolong_hmg(solver &grid_c, solver&grid_f);
+    void setup_h_level(geo& mesh_c, geo& mesh_f, int level);
+
   public:
-    void setup(int order, input *params);
+    void setup(int order, input *params, solver& Solver);
     void cycle(solver &Solver);
 };
