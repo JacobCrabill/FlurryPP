@@ -41,54 +41,89 @@ void multiGrid::setup(int order, input *params, solver &Solver)
   this->order = order;
   this->params = params;
 
-  Inputs.resize(order);
+  pInputs.assign(order, *params);
+  pGrids.resize(order);
 
+  /* H-P Multigrid using Refinement Method */
   if (params->HMG)
   {
-    Inputs.push_back(*params);
-    Inputs.back().order = 0;
+    parent_cells.resize(params->n_h_levels);
+    child_cells.resize(params->n_h_levels);
+
+    hInputs.assign(params->n_h_levels, *params);
+    hGrids.resize(params->n_h_levels);
+    hGeos.resize(params->n_h_levels);
+
     for (int H = 0; H < params->n_h_levels; H++)
     {
-      hGrids.push_back(make_shared<solver>());
-      hGeos.push_back(make_shared<geo>());
+      hGrids[H] = make_shared<solver>();
+      hGeos[H] = make_shared<geo>();
 
       /* Refine the initial coarse grid to produce the fine grids */
-      setup_h_level(*Solver.Geo, *hGeos.back(), H+1);
+      setup_h_level(*Solver.Geo, *hGeos[H], params->n_h_levels - H - 1);
 
-      hGrids[H]->setup(&Inputs.back(), &(*hGeos.back()));
-
+      hGrids[H]->setup(&hInputs[H], params->lowOrder, &(*hGeos[H]));
+      hGrids[H]->initializeSolution(true);
     }
 
-    /* Swap the initial (coarse-grid) solver for the new fine-grid solver */
-    pGrids.push_back(make_shared<solver>(Solver)); // does this do what I want it to do?
-    Solver = *hGrids.back();
+    /* Create final fine grid and re-setup the given solver */
+    fine_grid = make_shared<geo>();
+    setup_h_level(*Solver.Geo, *fine_grid, params->n_h_levels);
+    Solver.setup(params, order, &(*fine_grid));
+    Solver.initializeSolution();
+
+    /* Instantiate P-grid solvers using finest mesh */
+    for (int P = 0; P < order; P++)
+    {
+      if (P < params->lowOrder)
+      {
+        pGrids[P] = NULL;
+      }
+      else
+      {
+        if (params->rank == 0) std::cout << "P = " << P << std::endl;
+        pGrids[P]->setup(&pInputs[P], P, &(*fine_grid));
+        pGrids[P]->initializeSolution(true);
+      }
+    }
   }
 
-  /* Instantiate coarse grid solvers */
-  for (int P = 0; P < order; P++)
-  {
-    if (P < params->lowOrder)
+  /* P-Multigrid Alone */
+  else {
+    /* Instantiate coarse grid solvers */
+    for (int P = 0; P < order; P++)
     {
-      pGrids.push_back(NULL);
-    }
-    else
-    {
-      if (params->rank == 0) std::cout << "P = " << P << std::endl;
-      Inputs[P] = *params;
-      Inputs[P].order = P;
-      pGrids.push_back(make_shared<solver>());
-      pGrids[P]->setup(&Inputs[P]);
-      pGrids[P]->initializeSolution(true);
+      if (P < params->lowOrder)
+      {
+        pGrids.push_back(NULL);
+      }
+      else
+      {
+        if (params->rank == 0) std::cout << "P = " << P << std::endl;
+        pGrids[P]->setup(&pInputs[P], P);
+        pGrids[P]->initializeSolution(true);
+      }
     }
   }
 }
 
 void multiGrid::setup_h_level(geo &mesh_c, geo &mesh_f, int level)
 {
-  /* use shape_quad, mesh_c.xv/c2v/e2c?/etc. to split all edges, add eles &
-   * points, etc.
-   * Add param 'shape_order' to control order of fine-grid elements [assuming
-   * coarse grid is of high-order] */
+  if (level > 0)
+    refineGrid2D(mesh_c, mesh_f, level, mesh_c.nNodesPerCell, params->shape_order);
+  else
+    mesh_f = mesh_c;
+
+  parent_cells[level].resize(mesh_f.nEles);
+  child_cells[level].setup(mesh_f.nEles, 4);
+
+  for (int e = 0; e < mesh_f.nEles; e++) {
+    parent_cells[level][e] = e / 4;
+    child_cells[level](e, 0) = e * 4;
+    child_cells[level](e, 1) = e * 4 + 1;
+    child_cells[level](e, 2) = e * 4 + 2;
+    child_cells[level](e, 3) = e * 4 + 3;
+  }
 }
 
 void multiGrid::cycle(solver &Solver)
@@ -227,12 +262,31 @@ void multiGrid::compute_source_term(solver &grid)
   }
 }
 
-void multiGrid::restrict_hmg(solver &grid_f, solver&grid_c)
+void multiGrid::restrict_hmg(solver &grid_f, solver &grid_c)
 {
+  uint nSplit = 1 << params->nDims;
 
+#pragma omp parallel for
+  for (uint e = 0; e < grid_c.nEles; e++)
+  {
+    auto &e_c = *grid_c.eles[e];
+    e_c.U_spts.initializeToZero();
+    e_c.divF_spts[0].initializeToZero();
+
+    for (uint j = 0; j < nSplit; j++)
+    {
+      // what to do...? Take avg (Josh's simple method), or do Galerkin projection?
+    }
+  }
 }
 
-void multiGrid::prolong_hmg(solver &grid_c, solver&grid_f)
+void multiGrid::prolong_hmg(solver &grid_c, solver &grid_f, uint H)
 {
-
+#pragma omp parallel for
+  for (uint e = 0; e < grid_f.nEles; e++)
+  {
+    auto &e_f = *grid_f.eles[e];
+    auto &e_c = *grid_c.eles[parent_cells[H][e]];
+    // what to do...? Copy value (Josh's simple method), or do Galerkin projection?
+  }
 }

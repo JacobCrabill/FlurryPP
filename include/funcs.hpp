@@ -100,6 +100,12 @@ void calcSolutionFromFlux(matrix<double> &F, vector<double> &U, input *params);
 
 void calcFluxJacobian2D(const vector<double> &U, matrix<double> &dFdU, matrix<double> &dGdU, input *params);
 
+//! Given basic grid connectivity for quad mesh, refine by splitting
+void refineGridBySplitting2D(matrix<int> &c2v, matrix<int> &c2f, matrix<int> &f2v, vector<point> &xv,
+                             vector<int> &parentCell, vector<int> &parentFace);
+
+void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shapeOrder_f);
+
 /*!
  * Nelder-Mead Minimzation Routine.
  *

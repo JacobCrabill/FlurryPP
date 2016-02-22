@@ -485,7 +485,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
 #endif
 }
 
-void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &eleMap)
+void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &eleMap, int order)
 {
 #ifndef _NO_MPI
   int nDims = params->nDims;
@@ -501,8 +501,8 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
   donorID.resize(nproc);
 
   vector<matrix<double>> donorU(nproc);
-  int nSpts = (params->order+1)*(params->order+1);
-  if (nDims == 3) nSpts *= (params->order+1);
+  int nSpts = (order+1)*(order+1);
+  if (nDims == 3) nSpts *= (order+1);
   int offset = 0;
   for (int p=0; p<nproc; p++) {
     if (p>0) offset += foundCells[p-1].size();
@@ -699,7 +699,7 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
 #endif
 }
 
-void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<int> &eleMap)
+void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<int> &eleMap, int order)
 {
 #ifndef _NO_MPI
   int nDims = params->nDims;
@@ -711,8 +711,8 @@ void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<in
   // the reference location of the points within the donor cells
 
   vector<matrix<double>> donorU(nproc);
-  int nSpts = (params->order+1)*(params->order+1);
-  if (nDims == 3) nSpts *= (params->order+1);
+  int nSpts = (order+1)*(order+1);
+  if (nDims == 3) nSpts *= (order+1);
   int offset = 0;
   for (int p=0; p<nproc; p++) {
     if (p>0) offset += foundCells[p-1].size();
@@ -782,7 +782,7 @@ void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<in
 #endif
 }
 
-vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &iblankCell, vector<int> &eleMap, int quadOrder)
+vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &iblankCell, vector<int> &eleMap, int order, int quadOrder)
 {
 #ifndef _NO_MPI
   /* ---- Send Unblanked-Cell Nodes to All Grids ---- */
@@ -909,8 +909,8 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   // Get the locations of the quadrature points for each target cell, and
   // interpolate the solution error to them
   vector<matrix<double>> superErr(supers.size());
-  int nSpts = (params->order+1)*(params->order+1);
-  if (nDims == 3) nSpts *= (params->order+1);
+  int nSpts = (order+1)*(order+1);
+  if (nDims == 3) nSpts *= (order+1);
   offset = 0;
   for (int p=0; p<nproc; p++) {
     if (p>0) offset += foundCells[p-1].size();

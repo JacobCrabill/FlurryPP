@@ -129,6 +129,7 @@ public:
   int nEles, nVerts, nEdges, nFaces, nIntFaces, nBndFaces, nMpiFaces;
   int nBounds;  //! Number of boundaries
   int meshType;
+  int nNodesPerCell;
 
   // Basic [essential] Connectivity Data
   matrix<int> c2v;
@@ -212,6 +213,8 @@ public:
 
   void setIterIblanks(void);
   void setIblankEles(vector<int>& iblankVert, vector<int>& iblankEle);
+  void refineGrid2D(geo &outGrid, int nLevels, int shapeOrder);
+
 private:
 
   input *params;

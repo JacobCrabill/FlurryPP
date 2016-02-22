@@ -50,7 +50,7 @@ solver::~solver()
 
 }
 
-void solver::setup(input *params, geo *Geo)
+void solver::setup(input *params, int order, geo *Geo)
 {
   this->params = params;
 
@@ -67,7 +67,7 @@ void solver::setup(input *params, geo *Geo)
 #endif
 
   params->time = 0.;
-  order = params->order;
+  this->order = order;
 
   /* Setup the FR elements & faces which will be computed on */
   Geo->setupElesFaces(params,eles,faces,mpiFaces,overFaces);
@@ -587,13 +587,13 @@ void solver::moveMesh(int step)
       Geo->processBlanks(eles,faces,mpiFaces,overFaces);
       Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
       OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->quadOrder);
-      OComm->performGalerkinProjection(eles,opers,Geo->eleMap);
+      OComm->performGalerkinProjection(eles,opers,Geo->eleMap,order);
     }
 
     if (params->oversetMethod == 2) {
       if (params->projection) {
         OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->quadOrder);
-        OComm->performGalerkinProjection(eles,opers,Geo->eleMap);
+        OComm->performGalerkinProjection(eles,opers,Geo->eleMap,order);
       } else {
         if (params->nDims==2)
           getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
@@ -843,7 +843,7 @@ void solver::initializeSolution(bool PMG)
     // Perform initial LGP to setup connectivity / arrays for remainder of computations [Field-interp method]
     if (params->projection) {
       OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->quadOrder);
-      OComm->performGalerkinProjection(eles,opers,Geo->eleMap);
+      OComm->performGalerkinProjection(eles,opers,Geo->eleMap,order);
     } else {
       if (params->nDims==2)
         getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);

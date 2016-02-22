@@ -38,7 +38,7 @@ void solver::oversetFieldInterp(void)
 
   // Use field interpolation rather than boundary interpolation
   if (params->projection)
-    OComm->performProjection_static(eles,Geo->eleMap);
+    OComm->performProjection_static(eles,Geo->eleMap,order);
   else {
     OComm->exchangeOversetData(eles,opers,Geo->eleMap);
     OComm->transferEleData(eles,Geo->fringeCells,Geo->eleMap);
@@ -95,7 +95,7 @@ void solver::setupOverset(void)
 vector<double> solver::integrateErrorOverset(void)
 {
 #ifndef _NO_MPI
-  return OComm->integrateErrOverset(eles,opers,Geo->iblankCell,Geo->eleMap,params->quadOrder);
+  return OComm->integrateErrOverset(eles,opers,Geo->iblankCell,Geo->eleMap,order,params->quadOrder);
 #endif
 }
 

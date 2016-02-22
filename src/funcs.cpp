@@ -27,7 +27,11 @@
  */
 #include "funcs.hpp"
 
+#include <set>
+
 #include "flux.hpp"
+#include "geo.hpp"
+#include "global.hpp"
 #include "polynomials.hpp"
 
 vector<double> solveCholesky(matrix<double> A, vector<double> b)
@@ -995,4 +999,280 @@ void calcFluxJacobian2D(const vector<double> &U, matrix<double> &dFdU, matrix<do
   dGdU(3,1) = (1-gamma)*u*v;
   dGdU(3,2) = gamma*e/rho - a0/2. - (gamma-1)*v*v;
   dGdU(3,3) = gamma*v;
+}
+
+
+/*! FATAL FLAW: new points created from edge-splitting do not follow high-order
+ *  curvature as needed! */
+//void refineGridBySplitting2D(matrix<int> &c2v, matrix<int> &c2f, matrix<int> &f2v, vector<point> &xv,
+//                             vector<int> &parentCell, vector<int> &parentFace)
+//{
+//  matrix<int> c2v_r, c2f_r, f2v_r;
+//  vector<point> xv_r;
+
+//  uint nsplit = 4;
+//  uint nEles_c = c2v.getDim0();
+//  uint nEles_f = nEles_c * nSplit;
+//  uint nFaces_c = f2v.getDim0();
+//  uint nFaces_f = 2 * nFaces_c + 4 * nEles_c;
+//  uint nVerts_c = xv.size();
+//  uint nVerts_f = nVerts_c + nEles_c + nFaces_c;
+
+//  xv_r = xv;
+
+//  /* Add center point to all cells */
+//  for (uint ic = 0; ic < nEles_c; ic++) {
+
+//  }
+
+//  /* Split all edges [faces] */
+
+
+//  set<uint> faceList;
+//  for (uint ic = 0; ic < nEles_c; ic++) {
+//    for (uint j = 0; j < 4; j++) {
+//      uint iv = c2v(ic,j);
+
+//      uint F = c2f(ic,j);
+//      if (!faceList.count(F)) {
+//        faceList.insert(F);
+//        point pt;
+//        for (int k = 0; k < nFacePt; k++) {
+//          pt += point(xv[f2v(F,k)],nDims) * / 2;
+//        }
+//        xvFace.push_back(pt);
+//      }
+//    }
+//  }
+
+//  /* Begine the refinement by splitting all edges [faces] */
+
+
+//  /* Copy out new grid connectivity */
+//  c2v = c2v_f;
+//  c2f = c2f_r;
+//  f2v = f2v_r;
+//  xv = xv_r;
+//}
+
+void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shapeOrder_f)
+{
+  /*! ALTERNATE METHOD
+   * Split all cells by nLevels straight away
+   * Use c2f/parentFace concept and brute-force distance-based point-matching
+   * to remove duplicate points */
+
+  int nCellSplit = 1 << (nLevels + 1);
+  int nFaceSplit = nLevels + 1;
+
+  int shapeOrder_c;
+  if (nNodes_c == 4)
+    shapeOrder_c = 1;
+  else if (nNodes_c == 8)
+    shapeOrder_c = 2;
+  else
+    shapeOrder_c = std::sqrt(nNodes_c) - 1;
+
+  int nSide_c = shapeOrder_c + 1;
+  int nSide_f = shapeOrder_f + 1;
+  int nNodes_f = nSide_f * nSide_f;
+
+  int nEles_c = grid_c.c2v.getDim0();
+  int nEles_f = nEles_c * nCellSplit;
+
+  int nFaces_c = grid_c.f2v.getDim0();
+  int nFaces_f = nFaces_c * nFaceSplit
+               + (1 - pow(nCellSplit, nLevels+1)) / (1 - nCellSplit) - 1;
+
+  grid_f.c2v.setup(nEles_f, nNodes_f);
+
+  vector<point> xv_new;
+
+  /* Setup arrays for introducing new nodes inside each coarse-grid cell */
+  int ndSplit1D = shapeOrder_f * nLevels + 1;
+  double dxi_nd = 2. / (ndSplit1D - 1.);
+  vector<double> xiList(ndSplit1D);
+  for (int i = 0; i < ndSplit1D; i++)
+    xiList[i] = -1. + i * dxi_nd;
+
+  for (int ic = 0; ic < nEles_c; ic++) {
+    int nv_cur = xv_new.size();
+
+    /* Get physical position of new nodes */
+    vector<double> shape_tmp;
+    for (int i = 0; i < ndSplit1D; i++) {
+      for (int j = 0; j < ndSplit1D; j++) {
+        point loc = {xiList[i], xiList[j], 0.};
+        point pos;
+        shape_quad(loc, shape_tmp, nNodes_c);
+        for (int n = 0; n < nNodes_c; n++) {
+          pos.x += shape_tmp[n] * grid_c.xv(grid_c.c2v(ic,n), 0);
+          pos.y += shape_tmp[n] * grid_c.xv(grid_c.c2v(ic,n), 1);
+        }
+        xv_new.push_back(pos);
+      }
+    }
+
+    /* Setup connectivity of new fine-grid sub-cells */
+    for (int i = 0; i < nLevels + 1; i++) {
+      for (int j = 0; j < nLevels + 1; j++) {
+        // i,j coords of 'bottom-left' node in new cell
+        int ioff = i * shapeOrder_f;
+        int joff = j * shapeOrder_f;
+        int ic_new = ic*nCellSplit + i * (nLevels + 1) + j;
+
+        /* Recursion for high-order shape functions:
+         * 4 corners, each edge's points, interior points
+         * i is 'row', j is 'col', starting from bottom-left */
+        int nSLevels = nSide_f / 2;
+        int isOdd = nSide_f % 2;
+
+        int nPts = 0;
+        int start = nv_cur + ioff * ndSplit1D + joff;
+
+        auto getCoord = [=](int row, int col) -> int {
+          return start + row * ndSplit1D + col;
+        };
+
+        for (int ii = 0; ii < nSLevels; ii++) {
+          // Corners
+          int i2 = (nSide_f-1) - ii;
+          grid_f.c2v(ic_new, nPts+0) = getCoord(ii, ii);
+          grid_f.c2v(ic_new, nPts+1) = getCoord(ii, i2);
+          grid_f.c2v(ic_new, nPts+2) = getCoord(i2, i2);
+          grid_f.c2v(ic_new, nPts+3) = getCoord(i2, ii);
+          nPts += 4;
+
+          // Edges: Bottom, right, top, left
+          int nSide2 = nSide_f - 2 * (ii+1);
+          for (int jj = 0; jj < nSide2; jj++) {
+            grid_f.c2v(ic_new, nPts+0*nSide2+jj) = getCoord(ii, ii+1+jj);
+            grid_f.c2v(ic_new, nPts+1*nSide2+jj) = getCoord(ii+1+jj, i2);
+            grid_f.c2v(ic_new, nPts+2*nSide2+jj) = getCoord(i2, i2-1-jj);
+            grid_f.c2v(ic_new, nPts+3*nSide2+jj) = getCoord(i2-1-jj, ii);
+          }
+          nPts += 4*nSide2;
+        }
+
+        // Center node for even-ordered Lagrange quads (odd value of nSide)
+        if (isOdd) {
+          grid_f.c2v(ic_new, nNodes_f-1) = getCoord(nSide_f/2, nSide_f/2);
+        }
+      }
+    }
+  }
+
+
+  /* Use c2f & f2c to find possible duplicate points, then use ptMap to redirect
+   * higher-numbered duplicate node to lower-numbered node */
+  int nVerts_f = xv_new.size();
+  vector<vector<int>> boundPoints(grid_c.nBounds);
+  vector<int> ptMap(nVerts_f);
+  for (int iv = 0; iv < nVerts_f; iv++) ptMap[iv] = iv;
+
+  grid_f.bcList = grid_c.bcList;
+  grid_f.nBounds = grid_c.nBounds;
+  grid_f.nBndPts.resize(grid_f.nBounds);
+
+  for (int F = 0; F < nFaces_c; F++) {
+    int ic1 = grid_c.f2c(F,0);
+    int ic2 = grid_c.f2c(F,1);
+    if (ic2 >= 0) {
+      // Screw it - just do brute-force comparison
+      int start1 = ic1 * ndSplit1D * ndSplit1D;
+      int start2 = ic2 * ndSplit1D * ndSplit1D;
+      for (int i = 0; i < ndSplit1D*ndSplit1D; i++) {
+        point pt1 = xv_new[start1+i];
+        for (int j = 0; j < ndSplit1D*ndSplit1D; j++) {
+          Vec3 D = xv_new[start2+j] - pt1;
+          double dist = D.norm();
+          if (abs(dist) < 1e-12) {
+            if (ic1 > ic2)
+              ptMap[start1+i] = start2+j;
+            else
+              ptMap[start2+j] = start1+i;
+          }
+        }
+      }
+    }
+    else {
+      // Boundary face - figure out which bnd and add points to BC pt list
+      auto cellFaces = grid_c.c2f.getRow(ic1);
+      int locF = findFirst(cellFaces,F);
+      int bfID = findFirst(grid_c.bndFaces,F);
+      int BC = grid_c.bcType[bfID];
+      int bcid = findFirst(grid_c.bcList, BC);
+
+      int start, stride;
+      if (locF == 0) {
+        // Bottom
+        start = ic1 * ndSplit1D * ndSplit1D;
+        stride = 1;
+      }
+      else if (locF == 1) {
+        // Right
+        start = ic1 * ndSplit1D * ndSplit1D + ndSplit1D - 1;
+        stride = ndSplit1D;
+      }
+      else if (locF == 2) {
+        // Top
+        start = ndSplit1D * ndSplit1D - 1;
+        stride = -1;
+      }
+      else if (locF == 3) {
+        // Left
+        start = ic1 * ndSplit1D * ndSplit1D;
+        stride = ndSplit1D;
+      }
+      else
+        FatalError("Improper locF value.");
+
+      for (int i = 0; i < ndSplit1D; i++) {
+        boundPoints[bcid].push_back(start + i * stride);
+      }
+    }
+  }
+
+  /* Remove duplicated nodes */
+
+  for (int iv = nVerts_f - 1; iv >= 0; iv--) {
+    if (ptMap[iv] < iv) {
+      xv_new.erase(xv_new.begin()+iv);
+      for (int iv2 = iv + 1; iv2 < nVerts_f; iv2++) {
+        if (ptMap[iv2] > iv)
+          ptMap[iv2]--;
+      }
+    }
+  }
+
+  /* Update connectivity */
+
+  for (int ic = 0; ic < nEles_f; ic++)
+    for (int j = 0; j < nNodes_f; j++)
+      grid_f.c2v(ic,j) = ptMap[grid_f.c2v(ic,j)];
+
+  for (int F = 0; F < nFaces_f; F++)
+    for (int j = 0; j < nSide_f; j++)
+      grid_f.f2v(F,j) = ptMap[grid_f.f2v(F,j)];
+
+  /* Setup boundary-condition data */
+
+  for (auto &bndVec:boundPoints) {
+    for (auto &iv:bndVec)
+      iv = ptMap[iv];
+
+    auto it = std::unique(bndVec.begin(), bndVec.end());
+    bndVec.resize(std::distance(bndVec.begin(), it));
+  }
+
+  for (int bc = 0; bc < grid_f.nBounds; bc++)
+    grid_f.nBndPts[bc] = boundPoints[bc].size();
+
+  int maxNBndPts = getMax(grid_f.nBndPts);
+  grid_f.bndPts.setup(grid_f.nBounds,maxNBndPts);
+  for (int bc = 0; bc < grid_f.nBounds; bc++) {
+    for (int j = 0; j < grid_f.nBndPts[bc]; j++) {
+      grid_f.bndPts(bc,j) = boundPoints[bc][j];
+    }
+  }
 }

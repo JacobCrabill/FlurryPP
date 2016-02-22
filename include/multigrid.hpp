@@ -41,10 +41,15 @@ class multiGrid
 {
   private:
     input *params = NULL;
-    vector<input> Inputs;
+    vector<input> pInputs, hInputs;
     int order;
     vector<shared_ptr<solver>> pGrids, hGrids;
     vector<shared_ptr<geo>> hGeos;
+    shared_ptr<geo> fine_grid;
+
+    //! For nested HMG method
+    vector<vector<int>> parent_cells;
+    vector<matrix<int>> child_cells;
 
     void restrict_pmg(solver &grid_fine, solver &grid_coarse);
     void prolong_pmg(solver &grid_fine, solver &grid_coarse);

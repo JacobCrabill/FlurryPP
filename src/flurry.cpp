@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
   params.readInputFile(argv[1]);
 
   /* Setup the solver, grid, all elements and faces, and all FR operators for computation */
-  Solver.setup(&params);
+  Solver.setup(&params,params.order);
 
   /* Apply the initial condition */
   Solver.initializeSolution();

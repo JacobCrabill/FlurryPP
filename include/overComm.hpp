@@ -154,12 +154,12 @@ public:
    */
   void matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<int>& unblankCells, vector<int>& eleMap, int quadOrder);
 
-  void performGalerkinProjection(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, vector<int>& eleMap);
+  void performGalerkinProjection(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, vector<int>& eleMap, int order);
 
-  void performProjection_static(vector<shared_ptr<ele> >& eles, vector<int>& eleMap);
+  void performProjection_static(vector<shared_ptr<ele> >& eles, vector<int>& eleMap, int order);
 
   //! Integrate the solution error over the entire domain, accounting for overset overlap
-  vector<double> integrateErrOverset(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, vector<int>& iblankCell, vector<int>& eleMap, int quadOrder);
+  vector<double> integrateErrOverset(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, vector<int>& iblankCell, vector<int>& eleMap, int order, int quadOrder);
 
   //! Perform the interpolation and communicate data across all grids
   void exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap);
