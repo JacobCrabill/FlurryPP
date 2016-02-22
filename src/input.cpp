@@ -442,7 +442,7 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("HMG",HMG,0);
   if (PMG) {
     opts.getScalarValue("n_h_levels",n_h_levels,1);
-    opts.getScalarValue("shape_order",shape_order,2);
+    opts.getScalarValue("shapeOrder",shapeOrder,2);
   }
 
   /* --- Cleanup ---- */

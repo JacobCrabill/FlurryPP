@@ -52,4 +52,4 @@ void writeAllError(solver *Solver, input *params);
 void writeError(solver *Solver, input *params);
 
 /*! Write a Tecplot mesh file compatible with TIOGA's testTioga FORTRAN interface */
-void writeMeshTecplot(solver* Solver, input* params);
+void writeMeshTecplot(geo *Geo, input* params);

@@ -86,7 +86,7 @@ void geo::splitGridProcs(void)
 
   /* --- Balance the processes across the grids --- */
 
-  nProcsGrid.resize(nGrids);
+  vector<int> nProcsGrid(nGrids);
   for (int i=0; i<nGrids; i++) {
     double eleRatio = (double)nElesGrid[i]/nElesTotal;
     nProcsGrid[i] = round(eleRatio*nproc);

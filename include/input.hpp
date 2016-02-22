@@ -145,7 +145,7 @@ public:
   int smoothSteps; //! Number of 'smoothing' iterations to use on coarse levels
   int HMG;         //! H-Multigrid flag [default: off/0]
   int n_h_levels;  //! Number of h-levels to cycle [default: 1]
-  int shape_order; //! Shape-function order to use on generated fine grids
+  int shapeOrder; //! Shape-function order to use on generated fine grids
 
   int iter;
 

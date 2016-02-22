@@ -102,6 +102,23 @@ void geo::setup(input* params)
   processConnectivity();
 }
 
+void geo::setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid)
+{
+  this->params = params;
+
+  nDims = params->nDims;
+  nFields = params->nFields;
+  meshType = params->meshType;
+  rank = params->rank;
+  nproc = params->nproc;
+
+  gridID = _gridID;
+  gridRank = _gridRank;
+  nProcGrid = _nProcGrid;
+
+  processConnectivity();
+}
+
 void geo::processConnectivity()
 {
   if (params->rank==0) cout << "Geo: Processing element connectivity" << endl;
@@ -776,6 +793,11 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
       cout << "Geo: Setting up elements" << endl;
   }
 
+  eles.resize(0);
+  faces.resize(0);
+  mpiFacesVec.resize(0);
+  overFacesVec.resize(0);
+
   // Setup the elements
 
   eleMap.assign(nEles,-1);
@@ -1210,6 +1232,7 @@ void geo::readGmsh(string fileName)
         case 38:
           // quintic (36-node Lagrange) quadrangle
           c2nv.push_back(36);
+          c2v_tmp.resize(36);
           c2nf.push_back(4);
           ctype.push_back(QUAD);
           for (int i = 0; i < 36; i++) meshFile >> c2v_tmp[i];
@@ -1218,9 +1241,28 @@ void geo::readGmsh(string fileName)
         case 47:
           // 6th-order 49-node Lagrange quadrangle
           c2nv.push_back(49);
+          c2v_tmp.resize(49);
           c2nf.push_back(4);
           ctype.push_back(QUAD);
           for (int i = 0; i < 49; i++) meshFile >> c2v_tmp[i];
+          break;
+
+        case 48:
+          // 7th-order 64-node Lagrange quadrangle
+          c2nv.push_back(64);
+          c2v_tmp.resize(64);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          for (int i = 0; i < 64; i++) meshFile >> c2v_tmp[i];
+          break;
+
+        case 49:
+          // 8th-order 81-node Lagrange quadrangle
+          c2nv.push_back(81);
+          c2v_tmp.resize(81);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          for (int i = 0; i < 81; i++) meshFile >> c2v_tmp[i];
           break;
 
         case 5:
@@ -1342,6 +1384,10 @@ void geo::readGmsh(string fileName)
 
         case 28: // Quintic Edge
           nPtsFace = 6;
+          break;
+
+        case 64: // Order 8
+          nPtsFace = 9;
           break;
 
         default:
@@ -2509,134 +2555,3 @@ void geo::moveMesh(double rkVal)
     }
   }
 }
-
-//void geo::refineGrid2D(geo &outGrid, int nLevels, int shapeOrder)
-//{
-//  int nSplit = 1 << nDims;
-//  int nCorners = nSplit;
-//  int nFacePt = (nDims==2) ? 2 : 4;
-//  int nNodes_f = (shapeOrder+1) * (shapeOrder+1);
-//  outGrid.c2v.setup(nEles*nSplit*nLevels, nNodes_f);
-
-//  /* Assebmle a list of all current corner nodes to start with */
-//  matrix<int> c2v_new(nEles,nCorners), f2v_new(nFaces,nFacePt), c2f_new;
-//  vector<point> xv_new;
-//  set<uint> ptList;
-//  vector<int> ptMap, invPtMap(nVerts,-1);
-//  for (uint ic = 0; ic < nEles; ic++) {
-//    for (uint j = 0; j < nCorners; j++) {
-//      uint iv = c2v(ic,j);
-//      if (!ptList.count(iv)) {
-//        invPtMap[iv] = ptMap.size();
-//        ptMap.push_back(iv);
-//        ptList.insert(iv);
-//        xv_new.push_back(point(xv[iv],nDims));
-//      }
-//      c2v_new(ic,j) = invPtMap[iv];
-//    }
-//  }
-
-//  for (uint F = 0; F < nFaces; F++) {
-//    for (uint j = 0; j < nFacePt; j++) {
-//      f2v_new(F,j) = invPtMap[f2v(F,j)];
-//    }
-//  }
-
-//  /* Call refinement recursion */
-//  c2f_new = c2f;
-//  vector<int> parentCell, parentFace;
-//  for (uint L = 0; L < nLevels; L++) {
-//    if (nDims == 2)
-//      refineGridBySplitting2D(c2v_new,c2f_new,f2v_new,xv_new,parentCell,parentFace);
-//    else
-//      FatalError("RefineBySplitting not yet supported for 3D.");
-//  }
-
-//  /* Assign boundary conditions */
-//  // need bndPts, bcList for processConn2D() and setupOverset2D/3D()
-//  // setup bndFaces first using parentFace, then setup bcPts using f2v
-//  matrix<int> bndPts_new;
-
-//  /* Add additional points to each element to reach high-order */
-//  if (shapeOrder > 1) {
-//    /* Since duplicate mid-face nodes don't matter, do this the inefficient (but
-//     * simpler) way and add points cell-by-cell
-//     * Using standard Lagrange shape basis for arbitrary orders */
-//    int nSide = shapeOrder + 1;
-//    int nNodes_new = pow(nSide, nDims);
-//    vector<double> shape;
-//    for (int ic = 0; ic < c2v_new.getDim0(); ic++) {
-//      int parentCell = new_ic / (nLevels * nSplit);
-//      int locID = new_ic % (nLevels * nSplit); // 'Local id' of cell within parent cell
-//      // i,j coords of cell within parent cell
-//      int IDi = locID % (nLevels+1);
-//      int IDj = locID / (nLevels+1);
-//      double dxi = 2 / (nLevels + 1); // Width of refined elements in parent domain
-//      double xiMin  = -1 + IDi * dxi;
-//      double etaMin = -1 + IDj * dxi;
-
-//      vector<double> xiList(nSide), etaList(nSide);
-//      for (int i = 0; i < nSide; i++) {
-//        xiList[i] = xiMin + i * (dxi / shapeOrder);
-//        etaList[i] = etaMin + i * (dxi / shapeOrder);
-//      }
-
-//      // copy basic recursion from shape_quad() here for node setup
-
-////      int nLevels = nSide / 2;
-////      int isOdd = nSide % 2;
-
-////      /* Recursion for all high-order Lagrange elements:
-////       * 4 corners, each edge's points, interior points */
-////      int nPts = 0;
-////      for (int i = 0; i < nLevels; i++) {
-////        // Corners
-////        int i2 = (nSide-1) - i;
-////        out_shape[nPts+0] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i);
-////        out_shape[nPts+1] = Lagrange(xlist, xi, i2) * Lagrange(xlist, eta, i);
-////        out_shape[nPts+2] = Lagrange(xlist, xi, i2) * Lagrange(xlist, eta, i2);
-////        out_shape[nPts+3] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i2);
-////        nPts += 4;
-
-////        // Edges: Bottom, right, top, left
-////        int nSide2 = nSide - 2 * (i+1);
-////        for (int j = 0; j < nSide2; j++) {
-////          out_shape[nPts+0*nSide2+j] = Lagrange(xlist, xi, i+1+j) * Lagrange(xlist, eta, i);
-////          out_shape[nPts+1*nSide2+j] = Lagrange(xlist, xi, i2) * Lagrange(xlist, eta, i+1+j);
-////          out_shape[nPts+2*nSide2+j] = Lagrange(xlist, xi, i2-1-j) * Lagrange(xlist, eta, i2);
-////          out_shape[nPts+3*nSide2+j] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i2-1-j);
-////        }
-////        nPts += 4*nSide2;
-////      }
-
-////      // Center node for even-ordered Lagrange quads (odd value of nSide)
-////      if (isOdd) {
-////        out_shape[nNodes-1] = Lagrange(xlist, xi, nSide/2) * Lagrange(xlist, eta, nSide/2);
-////      }
-
-//      point loc; // from xiList, etaList, aforementioned recursion
-//      shape_quad(loc, shape, c2nv[parentCell]);
-//      point pos;
-//      for (int j = 0; j < c2nv[parentCell]; j++) {
-//        pos += shape[j] * xv(c2v(ic,j));
-//      }
-//      xv_new.push_back(pos);
-//      // c2v_new(ic,jj) = xv_new.size();
-//    }
-//  }
-
-//  matrix<double> xv_new_mat;
-//  for (auto &pt:xv_new) {
-//    if (nDims == 2)
-//      xv_new_mat.insertRow({pt.x,pt.y},INSERT_AT_END,2);
-//    else
-//      xv_new_mat.insertRow({pt.x,pt.y,pt.z},INSERT_AT_END,3);
-//  }
-
-//  /* Setup the new output grid */
-
-//  outGrid.c2v = c2v_new;
-//  outGrid.xv = xv_new_mat;
-//  outGrid.bndPts = bndPts_new;
-//  outGrid.bcList = bcList;
-//}

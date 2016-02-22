@@ -50,16 +50,16 @@ solver::~solver()
 
 }
 
-void solver::setup(input *params, int order, geo *Geo)
+void solver::setup(input *params, int order, geo *_Geo)
 {
   this->params = params;
 
-  if (Geo == NULL) {
-    this->Geo = new geo();
-    this->Geo->setup(params);
+  if (_Geo == NULL) {
+    Geo = new geo;
+    Geo->setup(params);
   }
   else {
-    this->Geo = Geo;
+    Geo = _Geo;
   }
 
 #ifndef _NO_MPI

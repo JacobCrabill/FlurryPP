@@ -51,7 +51,7 @@ void writeData(solver *Solver, input *params)
 
   /* Write out mesh in Tecplot format, with IBLANK data [Overset cases only] */
   if (params->meshType==OVERSET_MESH && params->writeIBLANK) {
-    writeMeshTecplot(Solver,params);
+    writeMeshTecplot(Solver->Geo,params);
   }
 }
 
@@ -810,14 +810,12 @@ void writeError(solver *Solver, input *params)
   }
 }
 
-void writeMeshTecplot(solver* Solver, input* params)
+void writeMeshTecplot(geo *Geo, input* params)
 {
   ofstream dataFile;
 
   char fileNameC[100];
   string fileName = params->dataFileName;
-
-  geo* Geo = Solver->Geo;
 
 #ifndef _NO_MPI
   /* --- All processors write their solution to their own .vtu file --- */
@@ -866,7 +864,7 @@ void writeMeshTecplot(solver* Solver, input* params)
   int nNodes = Geo->nVerts;
   int nCells = Geo->nEles;
   int nHex = nCells;
-  int nv = (params->nDims==2) ? 4 : 8; // Ignoring edge nodes for quadratic elements
+  int nv = (params->nDims==2) ? 4 : 8; // Ignoring edge/inner nodes for high-order elements
 
   dataFile << "# " << nPrism << " " << nHex << " " << nNodes << " " << nCells << " " << nNodesWall << " " << nNodesOver << endl;
   dataFile << "TITLE = \"" << fileName << "\"" << endl;
@@ -885,7 +883,11 @@ void writeMeshTecplot(solver* Solver, input* params)
         dataFile << 0.0;
       else
         dataFile << Geo->xv(Geo->c2v(ic,j),2);
-      dataFile << " " << gridID << " " << Geo->iblank[Geo->c2v(ic,j)] << " " << Geo->iblankCell[ic] << endl;
+
+      if (params->meshType == OVERSET_MESH)
+        dataFile << " " << gridID << " " << Geo->iblank[Geo->c2v(ic,j)] << " " << Geo->iblankCell[ic] << endl;
+      else
+        dataFile << " " << gridID << " " << 1 << " " << 1 << endl;
     }
   }
 

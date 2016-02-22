@@ -27,6 +27,7 @@
  */
 #include "funcs.hpp"
 
+#include <cmath>
 #include <set>
 
 #include "flux.hpp"
@@ -1001,69 +1002,10 @@ void calcFluxJacobian2D(const vector<double> &U, matrix<double> &dFdU, matrix<do
   dGdU(3,3) = gamma*v;
 }
 
-
-/*! FATAL FLAW: new points created from edge-splitting do not follow high-order
- *  curvature as needed! */
-//void refineGridBySplitting2D(matrix<int> &c2v, matrix<int> &c2f, matrix<int> &f2v, vector<point> &xv,
-//                             vector<int> &parentCell, vector<int> &parentFace)
-//{
-//  matrix<int> c2v_r, c2f_r, f2v_r;
-//  vector<point> xv_r;
-
-//  uint nsplit = 4;
-//  uint nEles_c = c2v.getDim0();
-//  uint nEles_f = nEles_c * nSplit;
-//  uint nFaces_c = f2v.getDim0();
-//  uint nFaces_f = 2 * nFaces_c + 4 * nEles_c;
-//  uint nVerts_c = xv.size();
-//  uint nVerts_f = nVerts_c + nEles_c + nFaces_c;
-
-//  xv_r = xv;
-
-//  /* Add center point to all cells */
-//  for (uint ic = 0; ic < nEles_c; ic++) {
-
-//  }
-
-//  /* Split all edges [faces] */
-
-
-//  set<uint> faceList;
-//  for (uint ic = 0; ic < nEles_c; ic++) {
-//    for (uint j = 0; j < 4; j++) {
-//      uint iv = c2v(ic,j);
-
-//      uint F = c2f(ic,j);
-//      if (!faceList.count(F)) {
-//        faceList.insert(F);
-//        point pt;
-//        for (int k = 0; k < nFacePt; k++) {
-//          pt += point(xv[f2v(F,k)],nDims) * / 2;
-//        }
-//        xvFace.push_back(pt);
-//      }
-//    }
-//  }
-
-//  /* Begine the refinement by splitting all edges [faces] */
-
-
-//  /* Copy out new grid connectivity */
-//  c2v = c2v_f;
-//  c2f = c2f_r;
-//  f2v = f2v_r;
-//  xv = xv_r;
-//}
-
 void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shapeOrder_f)
 {
-  /*! ALTERNATE METHOD
-   * Split all cells by nLevels straight away
-   * Use c2f/parentFace concept and brute-force distance-based point-matching
-   * to remove duplicate points */
-
-  int nCellSplit = 1 << (nLevels + 1);
-  int nFaceSplit = nLevels + 1;
+  int nCellSplit = pow(4, nLevels);
+  int nFaceSplit = 2 * nLevels;
 
   int shapeOrder_c;
   if (nNodes_c == 4)
@@ -1084,12 +1026,14 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
   int nFaces_f = nFaces_c * nFaceSplit
                + (1 - pow(nCellSplit, nLevels+1)) / (1 - nCellSplit) - 1;
 
+
+  grid_f.nEles = nEles_f;
   grid_f.c2v.setup(nEles_f, nNodes_f);
 
   vector<point> xv_new;
 
   /* Setup arrays for introducing new nodes inside each coarse-grid cell */
-  int ndSplit1D = shapeOrder_f * nLevels + 1;
+  int ndSplit1D = shapeOrder_f * nFaceSplit + 1;
   double dxi_nd = 2. / (ndSplit1D - 1.);
   vector<double> xiList(ndSplit1D);
   for (int i = 0; i < ndSplit1D; i++)
@@ -1100,8 +1044,8 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
 
     /* Get physical position of new nodes */
     vector<double> shape_tmp;
-    for (int i = 0; i < ndSplit1D; i++) {
-      for (int j = 0; j < ndSplit1D; j++) {
+    for (int j = 0; j < ndSplit1D; j++) {
+      for (int i = 0; i < ndSplit1D; i++) {
         point loc = {xiList[i], xiList[j], 0.};
         point pos;
         shape_quad(loc, shape_tmp, nNodes_c);
@@ -1114,12 +1058,12 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
     }
 
     /* Setup connectivity of new fine-grid sub-cells */
-    for (int i = 0; i < nLevels + 1; i++) {
-      for (int j = 0; j < nLevels + 1; j++) {
+    for (int i = 0; i < nFaceSplit; i++) {
+      for (int j = 0; j < nFaceSplit; j++) {
         // i,j coords of 'bottom-left' node in new cell
         int ioff = i * shapeOrder_f;
         int joff = j * shapeOrder_f;
-        int ic_new = ic*nCellSplit + i * (nLevels + 1) + j;
+        int ic_new = ic*nCellSplit + i * (nFaceSplit) + j;
 
         /* Recursion for high-order shape functions:
          * 4 corners, each edge's points, interior points
@@ -1163,8 +1107,8 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
   }
 
 
-  /* Use c2f & f2c to find possible duplicate points, then use ptMap to redirect
-   * higher-numbered duplicate node to lower-numbered node */
+  /* Use ptMap to redirect higher-numbered duplicate node to lower-numbered node */
+
   int nVerts_f = xv_new.size();
   vector<vector<int>> boundPoints(grid_c.nBounds);
   vector<int> ptMap(nVerts_f);
@@ -1186,11 +1130,11 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
         for (int j = 0; j < ndSplit1D*ndSplit1D; j++) {
           Vec3 D = xv_new[start2+j] - pt1;
           double dist = D.norm();
-          if (abs(dist) < 1e-12) {
+          if (std::abs(dist) < 1e-12) {
             if (ic1 > ic2)
-              ptMap[start1+i] = start2+j;
+              ptMap[start1+i] = ptMap[start2+j];
             else
-              ptMap[start2+j] = start1+i;
+              ptMap[start2+j] = ptMap[start1+i];
           }
         }
       }
@@ -1245,15 +1189,20 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
     }
   }
 
+  /* Copy nodes into grid */
+
+  grid_f.nVerts = xv_new.size();
+  grid_f.xv.setup(xv_new.size(), 2);
+  for (int iv = 0; iv < grid_f.nVerts; iv++) {
+    grid_f.xv(iv,0) = xv_new[iv].x;
+    grid_f.xv(iv,1) = xv_new[iv].y;
+  }
+
   /* Update connectivity */
 
   for (int ic = 0; ic < nEles_f; ic++)
     for (int j = 0; j < nNodes_f; j++)
       grid_f.c2v(ic,j) = ptMap[grid_f.c2v(ic,j)];
-
-  for (int F = 0; F < nFaces_f; F++)
-    for (int j = 0; j < nSide_f; j++)
-      grid_f.f2v(F,j) = ptMap[grid_f.f2v(F,j)];
 
   /* Setup boundary-condition data */
 
@@ -1275,4 +1224,10 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
       grid_f.bndPts(bc,j) = boundPoints[bc][j];
     }
   }
+
+  /* Other */
+
+  grid_f.ctype.assign(nEles_f, QUAD);
+  grid_f.c2nv.assign(nEles_f, nNodes_f);
+  grid_f.c2nf.assign(nEles_f, 4);
 }

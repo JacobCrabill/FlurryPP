@@ -174,6 +174,12 @@ public:
   //! Subtract another Array to the current Array
   matrix<double>& operator-=(matrix<double> &A);
 
+  //! Multiply by scalar
+  matrix<double>& operator*=(double a);
+
+  //! Divide by scalar
+  matrix<double>& operator/=(double a);
+
   //! Add two matrices
   friend matrix<T> operator+(matrix<T> A, const matrix<T> &B) { return A += B; }
 

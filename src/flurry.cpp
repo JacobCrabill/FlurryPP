@@ -102,6 +102,7 @@ int main(int argc, char *argv[]) {
   /* Setup the P-Multigrid class if requested */
   if (params.PMG) {
     pmg.setup(params.order,&params,Solver);
+    writeParaview(&Solver, &params);
     // Still some weird bug in initialization of PMG solvers; this is a workaround
     pmg.cycle(Solver);
     Solver.initializeSolution();

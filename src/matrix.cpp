@@ -152,6 +152,20 @@ matrix<double>& matrix<double>::operator-=(matrix<double> &A)
   return *this;
 }
 
+template<>
+matrix<double>& matrix<double>::operator*=(double a)
+{
+  for (auto &val:this->data) val *= a;
+  return *this;
+}
+
+template<>
+matrix<double>& matrix<double>::operator/=(double a)
+{
+  for (auto &val:this->data) val /= a;
+  return *this;
+}
+
 template<typename T, uint N>
 T* Array<T,N>::operator[](int inRow)
 {

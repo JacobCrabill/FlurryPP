@@ -70,6 +70,9 @@ public:
   //! Setup the geomery using input parameters
   void setup(input* params);
 
+  //! Multigrid-specific setup function [from mesh-refinement method]
+  void setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid);
+
   //! Take the basic connectivity data and generate the rest
   void processConnectivity();
 
@@ -170,7 +173,7 @@ public:
   int gridRank;           //! MPI rank of process *within* the grid block [0 to nprocPerGrid-1]
   int rank;
   int nproc;
-  vector<int> nProcsGrid; //! Number of processes for each (overset) grid block
+  //vector<int> nProcsGrid; //! Number of processes for each (overset) grid block
   vector<int> gridIdList; //! gridID for each MPI rank
   vector<int> iblank;     //! Output of TIOGA: flag for whether vertex is normal, blanked, or receptor
   vector<int> iblankCell; //! Output? of TIOGA: flag for whether cell is normal, blanked, or receptor
