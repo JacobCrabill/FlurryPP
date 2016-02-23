@@ -102,7 +102,7 @@ void geo::setup(input* params)
   processConnectivity();
 }
 
-void geo::setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid)
+void geo::setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, const vector<int> &_gridIdList)
 {
   this->params = params;
 
@@ -111,10 +111,17 @@ void geo::setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid)
   meshType = params->meshType;
   rank = params->rank;
   nproc = params->nproc;
+  nGrids = params->nGrids;
 
   gridID = _gridID;
   gridRank = _gridRank;
   nProcGrid = _nProcGrid;
+  gridIdList = _gridIdList;
+
+  if (params->meshType == OVERSET_MESH) {
+    // Apperently MPI_Comm objects don't like being copied?  Whatever, just re-create.
+    MPI_Comm_split(MPI_COMM_WORLD, gridID, params->rank, &gridComm);
+  }
 
   processConnectivity();
 }

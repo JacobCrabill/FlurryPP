@@ -54,9 +54,12 @@ void multiGrid::setup(int order, input *params, solver &Solver)
     hInputs.assign(params->n_h_levels, *params);
     hGrids.resize(params->n_h_levels);
     hGeos.resize(params->n_h_levels);
+    pGeos.resize(params->order);
 
     for (int H = 0; H < params->n_h_levels; H++)
     {
+      if (params->rank == 0) cout << endl << "H-Multigrid: Setting up H = " << H << endl;
+
       hInputs[H].dataFileName += "_H" + std::to_string(H) + "_";
       hGrids[H] = make_shared<solver>();
       hGeos[H] = make_shared<geo>();
@@ -64,7 +67,6 @@ void multiGrid::setup(int order, input *params, solver &Solver)
       /* Refine the initial coarse grid to produce the fine grids */
       setup_h_level(*Solver.Geo, *hGeos[H], H+1, params->n_h_levels - H - 1);
 
-      if (params->rank == 0) cout << "H = " << H << endl;
       hGrids[H]->setup(&hInputs[H], params->lowOrder, &(*hGeos[H]));
       hGrids[H]->initializeSolution(true);
     }
@@ -84,13 +86,22 @@ void multiGrid::setup(int order, input *params, solver &Solver)
       }
       else
       {
-        if (params->rank == 0) cout << "P = " << P << endl;
+        if (params->rank == 0) cout << endl << "P-Multigrid: Setting up P = " << P << endl;
+
         pInputs[P].dataFileName += "_P" + std::to_string(P) + "_";
+        pGeos[P] = make_shared<geo>(*fine_grid);
         pGrids[P] = make_shared<solver>();
-        pGrids[P]->setup(&pInputs[P], P, &(*fine_grid));
+
+        pGeos[P]->setup_hmg(&pInputs[P], fine_grid->gridID, fine_grid->gridRank, fine_grid->nProcGrid, fine_grid->gridIdList);
+        pGrids[P]->setup(&pInputs[P], P, &(*pGeos[P]));
         pGrids[P]->initializeSolution(true);
       }
     }
+
+    /* Still some weird bug in initialization of PMG solvers; this is a
+     * workaround for the moment */
+    cycle(Solver);
+    Solver.initializeSolution();
   }
 
   /* P-Multigrid Alone */
@@ -104,7 +115,8 @@ void multiGrid::setup(int order, input *params, solver &Solver)
       }
       else
       {
-        if (params->rank == 0) std::cout << "P = " << P << std::endl;
+        if (params->rank == 0) cout << endl << "P-Multigrid: Setting up P = " << P << endl;
+
         pInputs[P].dataFileName += "_P" + std::to_string(P) + "_";
         pGrids[P] = make_shared<solver>();
         pGrids[P]->setup(&pInputs[P], P);
@@ -121,7 +133,7 @@ void multiGrid::setup_h_level(geo &mesh_c, geo &mesh_f, int H, int refine_level)
   else
     mesh_f = mesh_c;
 
-  mesh_f.setup_hmg(params, mesh_c.gridID, mesh_c.gridRank, mesh_c.nProcGrid);
+  mesh_f.setup_hmg(params, mesh_c.gridID, mesh_c.gridRank, mesh_c.nProcGrid, mesh_c.gridIdList);
 
   parent_cells[H].resize(mesh_f.nEles);
   child_cells[H].setup(mesh_f.nEles, 4);

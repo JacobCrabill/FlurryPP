@@ -44,7 +44,7 @@ class multiGrid
     vector<input> pInputs, hInputs;
     int order;
     vector<shared_ptr<solver>> pGrids, hGrids;
-    vector<shared_ptr<geo>> hGeos;
+    vector<shared_ptr<geo>> pGeos, hGeos;
     shared_ptr<geo> fine_grid;
 
     //! For nested HMG method

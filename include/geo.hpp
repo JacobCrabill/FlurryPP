@@ -71,7 +71,7 @@ public:
   void setup(input* params);
 
   //! Multigrid-specific setup function [from mesh-refinement method]
-  void setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid);
+  void setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, const vector<int> &_gridIdList = {0});
 
   //! Take the basic connectivity data and generate the rest
   void processConnectivity();
