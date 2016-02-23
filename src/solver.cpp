@@ -684,7 +684,7 @@ void solver::setupElesFaces(void) {
 
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    eles[i]->setup(params,Geo);
+    eles[i]->setup(params,Geo,order);
   }
 
   // Finish setting up internal & boundary faces

@@ -656,7 +656,8 @@ void writeResidual(solver *Solver, input *params)
     if (iter==params->initIter+1 || (iter/params->monitorResFreq)%25==0) {
       histFile << endl;
       histFile << setw(8) << left << "Iter";
-      histFile << setw(colW) << left << "Time";
+      histFile << setw(colW) << left << "Flow Time";
+      histFile << setw(colW) << left << "Wall Time";
       histFile << "Var  ";
       if (params->equation == ADVECTION_DIFFUSION) {
         histFile << setw(colW) << left << "Residual";
@@ -680,11 +681,11 @@ void writeResidual(solver *Solver, input *params)
           histFile << setw(colW) << left << "CLvis";
           if (params->nDims == 3)
             histFile << setw(colW) << left << "CNvis";
+          histFile << setw(colW) << left << "CDtot";
+          histFile << setw(colW) << left << "CLtot";
+          if (params->nDims == 3)
+            histFile << setw(colW) << left << "CNtot";
         }
-        histFile << setw(colW) << left << "CDtot";
-        histFile << setw(colW) << left << "CLtot";
-        if (params->nDims == 3)
-          histFile << setw(colW) << left << "CNtot";
       }
       histFile << endl;
     }
@@ -692,6 +693,7 @@ void writeResidual(solver *Solver, input *params)
     // Write residuals
     histFile << setw(8) << left << iter;
     histFile << setw(colW) << left << params->time;
+    histFile << setw(colW) << left << params->timer.getElapsedTime();
     histFile << "Res  ";
     for (int i=0; i<params->nFields; i++) {
       histFile << setw(colW) << left << res[i];
@@ -801,6 +803,7 @@ void writeError(solver *Solver, input *params)
 
     histFile << setw(8) << left << params->iter;
     histFile << setw(colw) << left << params->time;
+    histFile << setw(colw) << left << params->timer.getElapsedTime();
     histFile << "Err  ";
     for (int i=0; i<params->nFields; i++) {
       histFile << setw(colw) << left << std::abs(err[i]);

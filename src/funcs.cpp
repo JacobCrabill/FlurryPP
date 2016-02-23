@@ -1005,7 +1005,7 @@ void calcFluxJacobian2D(const vector<double> &U, matrix<double> &dFdU, matrix<do
 void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shapeOrder_f)
 {
   int nCellSplit = pow(4, nLevels);
-  int nFaceSplit = 2 * nLevels;
+  int nFaceSplit = pow(2, nLevels);
 
   int shapeOrder_c;
   if (nNodes_c == 4)
@@ -1024,8 +1024,7 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
 
   int nFaces_c = grid_c.f2v.getDim0();
   int nFaces_f = nFaces_c * nFaceSplit
-               + (1 - pow(nCellSplit, nLevels+1)) / (1 - nCellSplit) - 1;
-
+               + nEles_c * 4 * (nCellSplit - 1.) / (3.);
 
   grid_f.nEles = nEles_f;
   grid_f.c2v.setup(nEles_f, nNodes_f);
@@ -1126,15 +1125,17 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
       int start1 = ic1 * ndSplit1D * ndSplit1D;
       int start2 = ic2 * ndSplit1D * ndSplit1D;
       for (int i = 0; i < ndSplit1D*ndSplit1D; i++) {
-        point pt1 = xv_new[start1+i];
+        int iv1 = start1 + i;
+        point pt1 = xv_new[iv1];
         for (int j = 0; j < ndSplit1D*ndSplit1D; j++) {
-          Vec3 D = xv_new[start2+j] - pt1;
+          int iv2 = start2 + j;
+          Vec3 D = xv_new[iv2] - pt1;
           double dist = D.norm();
           if (std::abs(dist) < 1e-12) {
-            if (ic1 > ic2)
-              ptMap[start1+i] = ptMap[start2+j];
+            if (iv1 > iv2)
+              ptMap[iv1] = ptMap[iv2];
             else
-              ptMap[start2+j] = ptMap[start1+i];
+              ptMap[iv2] = ptMap[iv1];
           }
         }
       }
@@ -1144,35 +1145,38 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
       auto cellFaces = grid_c.c2f.getRow(ic1);
       int locF = findFirst(cellFaces,F);
       int bfID = findFirst(grid_c.bndFaces,F);
-      int BC = grid_c.bcType[bfID];
-      int bcid = findFirst(grid_c.bcList, BC);
+      if (bfID >= 0) {
+        int BC = grid_c.bcType[bfID];
+        int bcid = findFirst(grid_c.bcList, BC);
 
-      int start, stride;
-      if (locF == 0) {
-        // Bottom
-        start = ic1 * ndSplit1D * ndSplit1D;
-        stride = 1;
-      }
-      else if (locF == 1) {
-        // Right
-        start = ic1 * ndSplit1D * ndSplit1D + ndSplit1D - 1;
-        stride = ndSplit1D;
-      }
-      else if (locF == 2) {
-        // Top
-        start = ndSplit1D * ndSplit1D - 1;
-        stride = -1;
-      }
-      else if (locF == 3) {
-        // Left
-        start = ic1 * ndSplit1D * ndSplit1D;
-        stride = ndSplit1D;
-      }
-      else
-        FatalError("Improper locF value.");
+        int start, stride;
+        int ic_start = ic1 * ndSplit1D * ndSplit1D;
+        if (locF == 0) {
+          // Bottom
+          start = ic_start;
+          stride = 1;
+        }
+        else if (locF == 1) {
+          // Right
+          start = ic_start + ndSplit1D - 1;
+          stride = ndSplit1D;
+        }
+        else if (locF == 2) {
+          // Top
+          start = ic_start + ndSplit1D * ndSplit1D - 1;
+          stride = -1;
+        }
+        else if (locF == 3) {
+          // Left
+          start = ic_start + ndSplit1D * (ndSplit1D - 1);
+          stride = -ndSplit1D;
+        }
+        else
+          FatalError("Improper locF value.");
 
-      for (int i = 0; i < ndSplit1D; i++) {
-        boundPoints[bcid].push_back(start + i * stride);
+        for (int i = 0; i < ndSplit1D; i++) {
+          boundPoints[bcid].push_back(start + i * stride);
+        }
       }
     }
   }
@@ -1210,6 +1214,7 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
     for (auto &iv:bndVec)
       iv = ptMap[iv];
 
+    std::sort(bndVec.begin(), bndVec.end());
     auto it = std::unique(bndVec.begin(), bndVec.end());
     bndVec.resize(std::distance(bndVec.begin(), it));
   }
@@ -1220,7 +1225,7 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
   int maxNBndPts = getMax(grid_f.nBndPts);
   grid_f.bndPts.setup(grid_f.nBounds,maxNBndPts);
   for (int bc = 0; bc < grid_f.nBounds; bc++) {
-    for (int j = 0; j < grid_f.nBndPts[bc]; j++) {
+    for (int j = 0; j < boundPoints[bc].size(); j++) {
       grid_f.bndPts(bc,j) = boundPoints[bc][j];
     }
   }

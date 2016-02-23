@@ -96,6 +96,8 @@ public:
 
   void nonDimensionalize(void);
 
+  simTimer timer;
+
   /* --- Basic Problem Variables --- */
   int equation;  //! {0 | Advection/diffusion} {1 | Euler/Navier-Stokes}
   int viscous;   //! {0 | No diffusion/Viscosity} {1 | Diffusion/Viscosity}

@@ -58,7 +58,7 @@ class multiGrid
 
     void restrict_hmg(solver &grid_f, solver&grid_c, uint H);
     void prolong_hmg(solver &grid_c, solver&grid_f, uint H);
-    void setup_h_level(geo& mesh_c, geo& mesh_f, int level);
+    void setup_h_level(geo& mesh_c, geo& mesh_f, int H, int refine_level);
 
   public:
     void setup(int order, input *params, solver& Solver);

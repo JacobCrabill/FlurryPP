@@ -70,7 +70,7 @@ public:
 
   void initialize(void);
 
-  void setup(input *inParams, geo *inGeo);
+  void setup(input *inParams, geo *inGeo, int in_order = -1);
 
   void move(bool doTransforms = true);
 

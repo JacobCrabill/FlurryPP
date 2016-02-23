@@ -102,7 +102,6 @@ int main(int argc, char *argv[]) {
   /* Setup the P-Multigrid class if requested */
   if (params.PMG) {
     pmg.setup(params.order,&params,Solver);
-    writeParaview(&Solver, &params);
     // Still some weird bug in initialization of PMG solvers; this is a workaround
     pmg.cycle(Solver);
     Solver.initializeSolution();
@@ -117,8 +116,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Start timer for simulation (ignoring pre-processing) */
-  simTimer runTime;
-  runTime.startTimer();
+  params.timer.startTimer();
 
   double maxTime = params.maxTime;
   int initIter = params.initIter;
@@ -144,8 +142,8 @@ int main(int argc, char *argv[]) {
   writeAllError(&Solver,&params);
 
   // Get simulation wall time
-  runTime.stopTimer();
-  runTime.showTime();
+  params.timer.stopTimer();
+  params.timer.showTime();
 
 #ifndef _NO_MPI
  MPI_Finalize();

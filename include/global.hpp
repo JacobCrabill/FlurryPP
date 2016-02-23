@@ -475,5 +475,5 @@ public:
   void startTimer();
   void stopTimer();
   void showTime(int precision=3);
-
+  double getElapsedTime(void);
 };

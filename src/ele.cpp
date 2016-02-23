@@ -62,13 +62,17 @@ void ele::initialize(void)
 
 }
 
-void ele::setup(input *inParams, geo *inGeo)
+void ele::setup(input *inParams, geo *inGeo, int in_order)
 {
   /* --- Basic Stuff --- */
   params = inParams;
   Geo = inGeo;
 
-  order = params->order;
+  if (in_order >= 0)
+    order = in_order;
+  else
+    order = params->order;
+
   nDims = params->nDims;
   nFields = params->nFields;
 

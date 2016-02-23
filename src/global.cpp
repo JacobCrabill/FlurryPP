@@ -182,6 +182,13 @@ void simTimer::stopTimer(void)
   finalTime = std::chrono::high_resolution_clock::now();
 }
 
+double simTimer::getElapsedTime(void)
+{
+  finalTime = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( finalTime - initTime ).count();
+  return (double) duration / 1000.;
+}
+
 void simTimer::showTime(int precision)
 {
   int rank = 0;

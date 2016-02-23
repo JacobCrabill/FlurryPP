@@ -57,13 +57,13 @@ void multiGrid::setup(int order, input *params, solver &Solver)
 
     for (int H = 0; H < params->n_h_levels; H++)
     {
+      hInputs[H].dataFileName += "_H" + std::to_string(H) + "_";
       hGrids[H] = make_shared<solver>();
       hGeos[H] = make_shared<geo>();
 
       /* Refine the initial coarse grid to produce the fine grids */
-      setup_h_level(*Solver.Geo, *hGeos[H], params->n_h_levels - H);
+      setup_h_level(*Solver.Geo, *hGeos[H], H+1, params->n_h_levels - H - 1);
 
-      writeMeshTecplot(&(*hGeos[H]), params);
       if (params->rank == 0) cout << "H = " << H << endl;
       hGrids[H]->setup(&hInputs[H], params->lowOrder, &(*hGeos[H]));
       hGrids[H]->initializeSolution(true);
@@ -71,7 +71,7 @@ void multiGrid::setup(int order, input *params, solver &Solver)
 
     /* Create final fine grid and re-setup the given solver */
     fine_grid = make_shared<geo>();
-    setup_h_level(*Solver.Geo, *fine_grid, params->n_h_levels);
+    setup_h_level(*Solver.Geo, *fine_grid, 0, params->n_h_levels);
     Solver.setup(params, order, &(*fine_grid));
     Solver.initializeSolution();
 
@@ -85,6 +85,7 @@ void multiGrid::setup(int order, input *params, solver &Solver)
       else
       {
         if (params->rank == 0) cout << "P = " << P << endl;
+        pInputs[P].dataFileName += "_P" + std::to_string(P) + "_";
         pGrids[P] = make_shared<solver>();
         pGrids[P]->setup(&pInputs[P], P, &(*fine_grid));
         pGrids[P]->initializeSolution(true);
@@ -104,6 +105,7 @@ void multiGrid::setup(int order, input *params, solver &Solver)
       else
       {
         if (params->rank == 0) std::cout << "P = " << P << std::endl;
+        pInputs[P].dataFileName += "_P" + std::to_string(P) + "_";
         pGrids[P] = make_shared<solver>();
         pGrids[P]->setup(&pInputs[P], P);
         pGrids[P]->initializeSolution(true);
@@ -112,24 +114,24 @@ void multiGrid::setup(int order, input *params, solver &Solver)
   }
 }
 
-void multiGrid::setup_h_level(geo &mesh_c, geo &mesh_f, int level)
+void multiGrid::setup_h_level(geo &mesh_c, geo &mesh_f, int H, int refine_level)
 {
-  if (level > 0)
-    refineGrid2D(mesh_c, mesh_f, level, mesh_c.nNodesPerCell, params->shapeOrder);
+  if (refine_level > 0)
+    refineGrid2D(mesh_c, mesh_f, refine_level, mesh_c.nNodesPerCell, params->shapeOrder);
   else
     mesh_f = mesh_c;
 
   mesh_f.setup_hmg(params, mesh_c.gridID, mesh_c.gridRank, mesh_c.nProcGrid);
 
-  parent_cells[level].resize(mesh_f.nEles);
-  child_cells[level].setup(mesh_f.nEles, 4);
+  parent_cells[H].resize(mesh_f.nEles);
+  child_cells[H].setup(mesh_f.nEles, 4);
 
   for (int e = 0; e < mesh_f.nEles; e++) {
-    parent_cells[level][e] = e / 4;
-    child_cells[level](e, 0) = e * 4;
-    child_cells[level](e, 1) = e * 4 + 1;
-    child_cells[level](e, 2) = e * 4 + 2;
-    child_cells[level](e, 3) = e * 4 + 3;
+    parent_cells[H][e] = e / 4;
+    child_cells[H](e, 0) = e * 4;
+    child_cells[H](e, 1) = e * 4 + 1;
+    child_cells[H](e, 2) = e * 4 + 2;
+    child_cells[H](e, 3) = e * 4 + 3;
   }
 }
 
@@ -172,6 +174,23 @@ void multiGrid::cycle(solver &Solver)
       /* Restrict to next coarse grid */
       restrict_pmg(*pGrids[P], *pGrids[P-1]);
     }
+
+    else if (params->HMG)
+    {
+      /* Update residual and add source */
+      pGrids[P]->calcResidual(0);
+
+#pragma omp parallel for
+      for (uint e = 0; e < pGrids[P]->eles.size(); e++)
+      {
+        pGrids[P]->eles[e]->divF_spts[0] += pGrids[P]->eles[e]->src_spts;
+      }
+    }
+
+    //! DEBUGGING -- Plot updated solution
+    if ((params->iter)%params->plotFreq==0) {
+      //writeParaview(&(*pGrids[P]), &pInputs[P]);
+    }
   }
 
   if (params->HMG)
@@ -183,6 +202,11 @@ void multiGrid::cycle(solver &Solver)
     {
       /* Generate source term */
       compute_source_term(*hGrids[H]);
+
+      //! DEBUGGING -- Plot restricted solution
+      if ((params->iter)%params->plotFreq==0) {
+        //writeParaview(&(*hGrids[H]), &hInputs[H]);
+      }
 
       /* Copy initial solution to solution storage */
   #pragma omp parallel for
@@ -197,7 +221,7 @@ void multiGrid::cycle(solver &Solver)
         hGrids[H]->update(true);
       }
 
-      if (H+1 <= params->n_h_levels)
+      if (H+1 < params->n_h_levels)
       {
         /* Update residual and add source */
         hGrids[H]->calcResidual(0);
@@ -349,14 +373,21 @@ void multiGrid::restrict_hmg(solver &grid_f, solver &grid_c, uint H)
     e_c.U_spts.initializeToZero();
     e_c.divF_spts[0].initializeToZero();
 
+    double vol = 0.;
     for (uint j = 0; j < nSplit; j++)
     {
       // what to do...? Take avg (Josh's simple method), or do Galerkin projection?
       // For the moment: take avg value [Only remotely reasonable for P = 0]
-      auto &e_f = *grid_f.eles[child_cells[H](e,j)];
-      e_c.U_spts += e_f.U_spts;
+      //auto &e_f = *grid_f.eles[child_cells[H+1](e,j)];
+      auto &e_f = *grid_f.eles[e*4+j];
+      for (int k = 0; k < e_f.nFields; k++) {
+        e_c.U_spts(0,k) += e_f.U_spts(0,k);// * e_f.detJac_spts[0] * 4;
+        e_c.divF_spts[0](0,k) += e_f.divF_spts[0](0,k);// * e_f.detJac_spts[0] * 4;
+      }
+      vol += e_f.detJac_spts[0] * 4;
     }
-    e_c.U_spts /= nSplit;
+    e_c.U_spts /= 4;//vol;
+    e_c.divF_spts[0] /= 4;//vol;
   }
 }
 
@@ -366,7 +397,7 @@ void multiGrid::prolong_hmg(solver &grid_c, solver &grid_f, uint H)
   for (uint e = 0; e < grid_f.eles.size(); e++)
   {
     auto &e_f = *grid_f.eles[e];
-    auto &e_c = *grid_c.eles[parent_cells[H][e]];
+    auto &e_c = *grid_c.eles[e/4];
     // what to do...? Copy value (Josh's simple method), or do Galerkin projection?
     // For the moment: simple method [Only remotely reasonable for P = 0]
     e_f.U_spts += e_c.corr_spts;
