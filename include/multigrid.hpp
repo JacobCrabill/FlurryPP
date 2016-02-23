@@ -52,7 +52,6 @@ class multiGrid
     vector<matrix<int>> child_cells;
 
     void restrict_pmg(solver &grid_fine, solver &grid_coarse);
-    void prolong_pmg(solver &grid_fine, solver &grid_coarse);
     void prolong_err(solver &grid_c, solver &grid_f);
     void compute_source_term(solver &grid);
 

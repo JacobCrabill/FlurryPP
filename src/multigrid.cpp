@@ -160,7 +160,7 @@ void multiGrid::cycle(solver &Solver)
       pGrids[P]->update(true);
     }
 
-    if (P-1 >= (int) params->lowOrder)
+    if (P-1 >= (int) params->lowOrder || params->HMG)
     {
       /* Update residual and add source */
       pGrids[P]->calcResidual(0);
@@ -171,25 +171,11 @@ void multiGrid::cycle(solver &Solver)
         pGrids[P]->eles[e]->divF_spts[0] += pGrids[P]->eles[e]->src_spts;
       }
 
-      /* Restrict to next coarse grid */
-      restrict_pmg(*pGrids[P], *pGrids[P-1]);
-    }
-
-    else if (params->HMG)
-    {
-      /* Update residual and add source */
-      pGrids[P]->calcResidual(0);
-
-#pragma omp parallel for
-      for (uint e = 0; e < pGrids[P]->eles.size(); e++)
+      if (P-1 >= (int) params->lowOrder)
       {
-        pGrids[P]->eles[e]->divF_spts[0] += pGrids[P]->eles[e]->src_spts;
+        /* Restrict to next coarse grid */
+        restrict_pmg(*pGrids[P], *pGrids[P-1]);
       }
-    }
-
-    //! DEBUGGING -- Plot updated solution
-    if ((params->iter)%params->plotFreq==0) {
-      //writeParaview(&(*pGrids[P]), &pInputs[P]);
     }
   }
 
@@ -202,11 +188,6 @@ void multiGrid::cycle(solver &Solver)
     {
       /* Generate source term */
       compute_source_term(*hGrids[H]);
-
-      //! DEBUGGING -- Plot restricted solution
-      if ((params->iter)%params->plotFreq==0) {
-        //writeParaview(&(*hGrids[H]), &hInputs[H]);
-      }
 
       /* Copy initial solution to solution storage */
   #pragma omp parallel for
@@ -314,21 +295,6 @@ void multiGrid::restrict_pmg(solver &grid_f, solver &grid_c)
   }
 }
 
-void multiGrid::prolong_pmg(solver &grid_c, solver &grid_f)
-{
-  if (grid_f.order - grid_c.order > 1)
-    FatalError("Cannot prolong more than 1 order currently!");
-
-#pragma omp parallel for
-  for (uint e = 0; e < grid_c.eles.size(); e++)
-  {
-    auto &e_c = *grid_c.eles[e];
-    auto &e_f = *grid_f.eles[e];
-    auto &opp_pro = grid_c.opers[e_c.eType][e_c.order].opp_prolong;
-    opp_pro.timesMatrix(e_c.U_spts, e_f.U_spts);
-  }
-}
-
 void multiGrid::prolong_err(solver &grid_c, solver &grid_f)
 {
 #pragma omp parallel for
@@ -340,7 +306,6 @@ void multiGrid::prolong_err(solver &grid_c, solver &grid_f)
     opp_pro.timesMatrixPlus(e_c.corr_spts, e_f.U_spts);
   }
 }
-
 
 void multiGrid::compute_source_term(solver &grid)
 {
@@ -373,31 +338,28 @@ void multiGrid::restrict_hmg(solver &grid_f, solver &grid_c, uint H)
     e_c.U_spts.initializeToZero();
     e_c.divF_spts[0].initializeToZero();
 
-    double vol = 0.;
     for (uint j = 0; j < nSplit; j++)
     {
       // what to do...? Take avg (Josh's simple method), or do Galerkin projection?
       // For the moment: take avg value [Only remotely reasonable for P = 0]
-      //auto &e_f = *grid_f.eles[child_cells[H+1](e,j)];
-      auto &e_f = *grid_f.eles[e*4+j];
-      for (int k = 0; k < e_f.nFields; k++) {
-        e_c.U_spts(0,k) += e_f.U_spts(0,k);// * e_f.detJac_spts[0] * 4;
-        e_c.divF_spts[0](0,k) += e_f.divF_spts[0](0,k);// * e_f.detJac_spts[0] * 4;
-      }
-      vol += e_f.detJac_spts[0] * 4;
+      auto &e_f = *grid_f.eles[e*nSplit+j];
+      e_c.U_spts += e_f.U_spts;
+      e_c.divF_spts[0] += e_f.divF_spts[0];
     }
-    e_c.U_spts /= 4;//vol;
-    e_c.divF_spts[0] /= 4;//vol;
+    e_c.U_spts /= nSplit;
+    e_c.divF_spts[0] /= nSplit;
   }
 }
 
 void multiGrid::prolong_hmg(solver &grid_c, solver &grid_f, uint H)
 {
+  int nSplit = 1 << params->nDims;
+
 #pragma omp parallel for
   for (uint e = 0; e < grid_f.eles.size(); e++)
   {
     auto &e_f = *grid_f.eles[e];
-    auto &e_c = *grid_c.eles[e/4];
+    auto &e_c = *grid_c.eles[e/nSplit];
     // what to do...? Copy value (Josh's simple method), or do Galerkin projection?
     // For the moment: simple method [Only remotely reasonable for P = 0]
     e_f.U_spts += e_c.corr_spts;
