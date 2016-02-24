@@ -592,11 +592,8 @@ void geo::matchMPIFaces(void)
 #ifndef _NO_MPI
   if (nProcGrid <= 1) return;
 
-  if (gridRank == 0) {
-    if (meshType == OVERSET_MESH)
-      cout << "Geo: Grid " << gridID << ": Matching MPI faces" << endl;
-    else
-      cout << "Geo: Matching MPI faces" << endl;
+  if (params->rank == 0) {
+    cout << "Geo: Matching MPI faces" << endl;
   }
 
   // 1) Get a list of all the MPI faces on the processor
@@ -789,11 +786,8 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
 {
   if (nEles<=0) FatalError("Cannot setup elements array - nEles = 0");
 
-  if (gridRank==0) {
-    if (meshType == OVERSET_MESH)
-      cout << "Geo: Grid " << gridID << ": Setting up elements" << endl;
-    else
-      cout << "Geo: Setting up elements" << endl;
+  if (params->rank == 0) {
+    cout << "Geo: Setting up elements" << endl;
   }
 
   eles.resize(0);
@@ -856,11 +850,8 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
 
   vector<int> cellFaces;
 
-  if (gridRank==0) {
-    if (meshType == OVERSET_MESH)
-      cout << "Geo: Grid " << gridID << ": Setting up internal faces" << endl;
-    else
-      cout << "Geo: Setting up internal faces" << endl;
+  if (params->rank==0) {
+    cout << "Geo: Setting up internal faces" << endl;
   }
 
   faceMap.assign(nFaces,-1);
@@ -901,11 +892,8 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
   // New # of internal faces (after excluding blanked faces)
   nIntFaces = faces.size();
 
-  if (gridRank==0) {
-    if (meshType == OVERSET_MESH)
-      cout << "Geo: Grid " << gridID << ": Setting up boundary faces" << endl;
-    else
-      cout << "Geo: Setting up boundary faces" << endl;
+  if (params->rank==0) {
+    cout << "Geo: Setting up boundary faces" << endl;
   }
 
   // Boundary Faces
@@ -944,11 +932,8 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
   // MPI Faces
   if (params->nproc > 1) {
 
-    if (gridRank==0) {
-      if (meshType == OVERSET_MESH)
-        cout << "Geo: Grid " << gridID << ": Setting up MPI faces" << endl;
-      else
-        cout << "Geo: Setting up MPI faces" << endl;
+    if (params->rank==0) {
+      cout << "Geo: Setting up MPI faces" << endl;
     }
 
     for (int i=0; i<nMpiFaces; i++) {

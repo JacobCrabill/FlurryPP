@@ -51,6 +51,9 @@ void multiGrid::setup(int order, input *params, solver &Solver)
     if (params->lowOrder != 0)
       FatalError("H-Multigrid only supported for PMG lowOrder = 0.");
 
+    if (params->nDims == 3)
+      FatalError("H-Multigrid only supported for 2D currently.");
+
     geo coarse_grid;
     coarse_grid.setup(params,true);
 
