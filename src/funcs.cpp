@@ -1015,6 +1015,9 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
   else
     shapeOrder_c = std::sqrt(nNodes_c) - 1;
 
+  if (shapeOrder_c < 5 && grid_c.rank == 0)
+    cout << "WARNING: For best results when refining grids, use a very high order shape representation on the coarse grid!" << endl;
+
   int nSide_c = shapeOrder_c + 1;
   int nSide_f = shapeOrder_f + 1;
   int nNodes_f = nSide_f * nSide_f;

@@ -1253,6 +1253,24 @@ void geo::readGmsh(string fileName)
           for (int i = 0; i < 81; i++) meshFile >> c2v_tmp[i];
           break;
 
+        case 50:
+          // 9th-order 100-node Lagrange quadrangle
+          c2nv.push_back(100);
+          c2v_tmp.resize(100);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          for (int i = 0; i < 100; i++) meshFile >> c2v_tmp[i];
+          break;
+
+        case 51:
+          // 10th-order 121-node Lagrange quadrangle
+          c2nv.push_back(121);
+          c2v_tmp.resize(121);
+          c2nf.push_back(4);
+          ctype.push_back(QUAD);
+          for (int i = 0; i < 121; i++) meshFile >> c2v_tmp[i];
+          break;
+
         case 5:
           // Linear hexahedron
           c2nv.push_back(8);
@@ -1376,6 +1394,14 @@ void geo::readGmsh(string fileName)
 
         case 64: // Order 8
           nPtsFace = 9;
+          break;
+
+        case 65: // Order 9
+          nPtsFace = 10;
+          break;
+
+        case 66: // Order 10
+          nPtsFace = 11;
           break;
 
         default:
