@@ -60,7 +60,7 @@ geo::~geo()
   }
 }
 
-void geo::setup(input* params)
+void geo::setup(input* params, bool HMG)
 {
   this->params = params;
 
@@ -95,14 +95,26 @@ void geo::setup(input* params)
       FatalError("Mesh type not recognized.");
   }
 
+  if (HMG)
+  {
 #ifndef _NO_MPI
-  partitionMesh();
+    getMpiPartitions();
 #endif
-
-  processConnectivity();
+    if (nDims == 2)
+      processConn2D();
+    else
+      processConn3D();
+  }
+  else
+  {
+#ifndef _NO_MPI
+    partitionMesh();
+#endif
+    processConnectivity();
+  }
 }
 
-void geo::setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, const vector<int> &_gridIdList)
+void geo::setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, const vector<int> &_gridIdList, const vector<int> &_epart)
 {
   this->params = params;
 
@@ -118,10 +130,17 @@ void geo::setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, c
   nProcGrid = _nProcGrid;
   gridIdList = _gridIdList;
 
+#ifndef _NO_MPI
   if (params->meshType == OVERSET_MESH) {
     // Apperently MPI_Comm objects don't like being copied?  Whatever, just re-create.
     MPI_Comm_split(MPI_COMM_WORLD, gridID, params->rank, &gridComm);
+  } else {
+    gridComm = MPI_COMM_WORLD;
   }
+
+  if (nProcGrid > 1 && _epart[0] != -1)
+    partitionFromEpart(_epart);
+#endif
 
   processConnectivity();
 }
@@ -212,6 +231,9 @@ void geo::processConn2D(void)
   nIntFaces = 0;
   nBndFaces = 0;
   nMpiFaces = 0;
+
+  intFaces.resize(0);
+  bndFaces.resize(0);
 
   for (uint i=0; i<iE.size(); i++) {
     if (iE[i]!=-1) {
@@ -516,33 +538,6 @@ void geo::processConnExtra(void)
   else
     maxNC = 26;
 
-//  c2ac.setup(nEles,maxNC); // ALL cell surrounding each cell (all cells sharing at least 1 vertex)
-//  c2ac.initializeToValue(-1);
-//  for (int ic=0; ic<nEles; ic++) {
-//    set<int> tmpIC;
-//    for (int j=0; j<c2nv[ic]; j++) {
-//      int iv = c2v(ic,j);
-//      for (int ic2=0; ic2<nEles; ic2++) {
-//        if (ic2 == ic) continue;
-//        for (int k=0; k<c2nv[ic2]; k++) {
-//          if (c2v(ic2,k)==iv) {
-//            tmpIC.insert(ic2);
-//          }
-//        }
-//      }
-//    }
-
-//    int nc = 0;
-//    if (tmpIC.size()>8) {
-//      _print(ic,tmpIC.size());
-
-//    }
-//    for (auto &ic2:tmpIC) {
-//      c2ac(ic,nc) = ic2;
-//      nc++;
-//    }
-//  }
-
   getBoundingBox(xv,minPt,maxPt);
 
   // Get vertex to vertex/edge connectivity
@@ -609,6 +604,7 @@ void geo::matchMPIFaces(void)
   // remaining unmatched bcType == PERIODIC faces)
   // - Copy over to mpiFaces
   mpiPeriodic.resize(0);
+  mpiFaces.resize(0);
   for (int i=0; i<nBndFaces; i++) {
     if (bcType[i] <= 0) {
       int ff = bndFaces[i];
@@ -2377,7 +2373,7 @@ void geo::partitionMesh(void)
   }
 
   int objval;
-  vector<int> epart(nEles);
+  epart.resize(nEles);
   vector<int> npart(nVerts);
 
   // int errVal = METIS PartMeshDual(idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind, idx_t *vwgt, idx_t *vsize,
@@ -2407,7 +2403,180 @@ void geo::partitionMesh(void)
   c2nv_g    = c2nv;     c2nv.resize(0);
   c2ne_g    = c2nf;     c2nf.resize(0);
   bndPts_g  = bndPts;   bndPts.setup(0,0);
-  nBndPts_g = nBndPts;  nBndPts.resize(0);
+  nBndPts_g = nBndPts;  nBndPts.resize(nBounds);
+
+  // Each processor will now grab its own data according to its rank (proc ID)
+  for (int i=0; i<nEles; i++) {
+    if (epart[i] == rank) {
+      c2v.insertRow(c2v_g[i],-1,c2nv_g[i]);
+      ic2icg.push_back(i);
+      ctype.push_back(ctype_g[i]);
+      c2nv.push_back(c2nv_g[i]);
+      c2nf.push_back(c2ne_g[i]);
+    }
+  }
+
+  nEles = c2v.getDim0();
+
+  // Get list of all vertices (their global IDs) used in new partition
+  set<int> myNodes;
+  for (int i=0; i<nEles; i++) {
+    for (int j=0; j<c2nv[i]; j++) {
+      myNodes.insert(c2v(i,j));
+    }
+  }
+
+  nVerts = myNodes.size();
+
+  // Map from global to local to reset c2v array using local data
+  vector<int> ivg2iv;
+  ivg2iv.assign(nVerts_g,-1);
+
+  // Transfer over all needed vertices to local array
+  int nv = 0;
+  for (auto &iv: myNodes) {
+    xv.insertRow(xv_g.getRow(iv));
+    iv2ivg.push_back(iv);
+    ivg2iv[iv] = nv;
+    nv++;
+  }
+
+  // bndPts array was already setup globally, so remake keeping only local nodes
+  vector<set<int>> boundPoints(nBounds);
+
+  for (int i=0; i<nBounds; i++) {
+    for (int j=0; j<nBndPts_g[i]; j++) {
+      if (findFirst(iv2ivg,bndPts_g(i,j)) != -1) {
+        boundPoints[i].insert(bndPts_g(i,j));
+      }
+    }
+  }
+
+  int maxNBndPts = 0;
+  for (int i=0; i<nBounds; i++) {
+    nBndPts[i] = boundPoints[i].size();
+    maxNBndPts = max(maxNBndPts,nBndPts[i]);
+  }
+
+  // Copy temp boundPoints data into bndPts matrix
+  // [Transform global node IDs --> local]
+  bndPts.setup(nBounds,maxNBndPts);
+  for (int i=0; i<nBounds; i++) {
+    int j = 0;
+    for (auto& it:boundPoints[i]) {
+      bndPts(i,j) = ivg2iv[it];
+      j++;
+    }
+  }
+
+  // Lastly, update c2v from global --> local node IDs
+  std::transform(c2v.getData(),c2v.getData()+c2v.getSize(),c2v.getData(), [=](int ivg){return ivg2iv[ivg];});
+
+  if (meshType == OVERSET_MESH)
+    cout << "Geo:   Grid " << gridID << " on rank " << rank << ": nEles = " << nEles << endl;
+  else
+    cout << "Geo:   On rank " << rank << ": nEles = " << nEles << endl;
+
+  if (rank == 0) cout << "Geo: Done partitioning mesh" << endl;
+#endif
+}
+
+void geo::getMpiPartitions(void)
+{
+#ifndef _NO_MPI
+
+  if (nproc <= 1) {
+    gridComm = MPI_COMM_WORLD;
+    return;
+  }
+
+  if (meshType == OVERSET_MESH) {
+    // Partitioning each grid independantly; local 'grid rank' is the important rank
+    rank = gridRank;
+    nproc = nProcGrid;
+
+    if (rank == 0) cout << "Geo: Partitioning mesh block " << gridID << " across " << nProcGrid << " processes" << endl;
+    if (rank == 0) cout << "Geo:   Number of elements in block " << gridID << " : " << nEles << endl;
+
+    if (nproc <= 1) return; // No additional partitioning needed
+  }
+  else {
+    if (rank == 0) cout << "Geo: Partitioning mesh across " << nproc << " processes" << endl;
+    if (rank == 0) cout << "Geo:   Number of elements globally: " << nEles << endl;
+
+    gridComm = MPI_COMM_WORLD;
+  }
+
+  vector<idx_t> eptr(nEles+1);
+  vector<idx_t> eind;
+
+  int nn = 0;
+  for (int i=0; i<nEles; i++) {
+    eind.push_back(c2v(i,0));
+    nn++;
+    for (int j=1; j<c2nv[i]; j++) {
+      if (c2v(i,j)==c2v(i,j-1)) {
+        continue; // To deal with collapsed edges
+      }
+      eind.push_back(c2v(i,j));
+      nn++;
+    }
+    eptr[i+1] = nn;
+  }
+
+  int objval;
+  epart.resize(nEles);
+  vector<int> npart(nVerts);
+
+  // int errVal = METIS PartMeshDual(idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind, idx_t *vwgt, idx_t *vsize,
+  // idx_t *ncommon, idx_t *nparts, real_t *tpwgts, idx_t *options, idx_t *objval,idx_t *epart, idx_t *npart)
+
+  int ncommon; // 2 for 2D, ~3 for 3D [#nodes per face: 2 for quad/tri, 3 for tet, 4 for hex]
+  if (nDims == 2) ncommon = 2;
+  else if (nDims == 3) ncommon = 4;
+
+  idx_t options[METIS_NOPTIONS];
+  METIS_SetDefaultOptions(options);
+  options[METIS_OPTION_NUMBERING] = 0;
+  options[METIS_OPTION_IPTYPE] = METIS_IPTYPE_NODE;
+  options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT; // Reduces # of final MPI faces
+  options[METIS_OPTION_PTYPE] = METIS_PTYPE_KWAY;
+  options[METIS_OPTION_NCUTS] = 5;  // Allows better partitioning (less cuts) to be found [at negligible expense for CFD grids]
+
+  METIS_PartMeshDual(&nEles,&nVerts,eptr.data(),eind.data(),NULL,NULL,
+                     &ncommon,&nproc,NULL,options,&objval,epart.data(),npart.data());
+#endif
+}
+
+void geo::partitionFromEpart(const vector<int>& _epart)
+{
+#ifndef _NO_MPI
+  epart = _epart;
+  if (params->nproc <= 1) {
+    gridComm = MPI_COMM_WORLD;
+    return;
+  }
+
+  if (meshType == OVERSET_MESH) {
+    // Partitioning each grid independantly; local 'grid rank' is the important rank
+    rank = gridRank;
+    nproc = nProcGrid;
+    if (nproc <= 1) return; // No additional partitioning needed
+  }
+  else {
+    gridComm = MPI_COMM_WORLD;
+  }
+
+  // Copy data to the global arrays & reset local arrays
+  nEles_g   = nEles;
+  nVerts_g  = nVerts;
+  c2v_g     = c2v;      c2v.setup(0,0);
+  xv_g      = xv;       xv.setup(0,0);
+  ctype_g   = ctype;    ctype.resize(0);
+  c2nv_g    = c2nv;     c2nv.resize(0);
+  c2ne_g    = c2nf;     c2nf.resize(0);
+  bndPts_g  = bndPts;   bndPts.setup(0,0);
+  nBndPts_g = nBndPts;  nBndPts.resize(nBounds);
 
   // Each processor will now grab its own data according to its rank (proc ID)
   for (int i=0; i<nEles; i++) {

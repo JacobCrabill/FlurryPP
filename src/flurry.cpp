@@ -93,15 +93,19 @@ int main(int argc, char *argv[]) {
   /* Read input file & set simulation parameters */
   params.readInputFile(argv[1]);
 
-  /* Setup the solver, grid, all elements and faces, and all FR operators for computation */
-  Solver.setup(&params,params.order);
-
-  /* Apply the initial condition */
-  Solver.initializeSolution();
-
-  /* Setup the P-Multigrid class if requested */
   if (params.PMG)
+  {
+    /* Setup the P-Multigrid class if requested */
     pmg.setup(params.order,&params,Solver);
+  }
+  else
+  {
+    /* Setup the solver, grid, all elements and faces, and all FR operators for computation */
+    Solver.setup(&params,params.order);
+
+    /* Apply the initial condition */
+    Solver.initializeSolution();
+  }
 
   /* Write initial data file */
   writeData(&Solver,&params);

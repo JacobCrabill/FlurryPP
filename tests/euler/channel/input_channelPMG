@@ -4,8 +4,8 @@
 equation      1    (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
 order         2    (Polynomial order to use)
 timeType      4    (0: Forward Euler, 4: RK44)
-dtType        2    (0: Fixed, 1: CFL-based)
-CFL           .3
+dtType        2    (0: Fixed, 1: Global CFL-based, 2: Local CFL-based)
+CFL           .2
 dt            .0005
 iterMax       15000
 maxTime       500

@@ -48,8 +48,11 @@ void multiGrid::setup(int order, input *params, solver &Solver)
   /* H-P Multigrid using Refinement Method */
   if (params->HMG)
   {
-    parent_cells.resize(params->n_h_levels+1);
-    child_cells.resize(params->n_h_levels+1);
+    if (params->lowOrder != 0)
+      FatalError("H-Multigrid only supported for PMG lowOrder = 0.");
+
+    geo coarse_grid;
+    coarse_grid.setup(params,true);
 
     hInputs.assign(params->n_h_levels, *params);
     hGrids.resize(params->n_h_levels);
@@ -65,15 +68,16 @@ void multiGrid::setup(int order, input *params, solver &Solver)
       hGeos[H] = make_shared<geo>();
 
       /* Refine the initial coarse grid to produce the fine grids */
-      setup_h_level(*Solver.Geo, *hGeos[H], H+1, params->n_h_levels - H - 1);
+      setup_h_level(coarse_grid, *hGeos[H], params->n_h_levels - H - 1);
 
       hGrids[H]->setup(&hInputs[H], params->lowOrder, &(*hGeos[H]));
       hGrids[H]->initializeSolution(true);
     }
 
     /* Create final fine grid and re-setup the given solver */
+    if (params->rank == 0) cout << endl << "H-Multigrid: Setting up fine grid solver" << endl;
     fine_grid = make_shared<geo>();
-    setup_h_level(*Solver.Geo, *fine_grid, 0, params->n_h_levels);
+    setup_h_level(coarse_grid, *fine_grid, params->n_h_levels);
     Solver.setup(params, order, &(*fine_grid));
     Solver.initializeSolution();
 
@@ -97,11 +101,6 @@ void multiGrid::setup(int order, input *params, solver &Solver)
         pGrids[P]->initializeSolution(true);
       }
     }
-
-    /* Still some weird bug in initialization of PMG solvers; this is a
-     * workaround for the moment */
-    cycle(Solver);
-    Solver.initializeSolution();
   }
 
   /* P-Multigrid Alone */
@@ -123,28 +122,39 @@ void multiGrid::setup(int order, input *params, solver &Solver)
         pGrids[P]->initializeSolution(true);
       }
     }
+
+    if (params->rank == 0) cout << endl << "P-Multigrid: Setting up P = " << params->order << endl;
+    Solver.setup(params, params->order);
+    Solver.initializeSolution();
   }
+
+  /* Still some weird bug in initialization of PMG solvers; this is a
+   * workaround for the moment */
+  cycle(Solver);
+  Solver.initializeSolution();
 }
 
-void multiGrid::setup_h_level(geo &mesh_c, geo &mesh_f, int H, int refine_level)
+void multiGrid::setup_h_level(geo &mesh_c, geo &mesh_f, int refine_level)
 {
   if (refine_level > 0)
     refineGrid2D(mesh_c, mesh_f, refine_level, mesh_c.nNodesPerCell, params->shapeOrder);
   else
     mesh_f = mesh_c;
 
-  mesh_f.setup_hmg(params, mesh_c.gridID, mesh_c.gridRank, mesh_c.nProcGrid, mesh_c.gridIdList);
+  vector<int> epart(0);
+#ifndef _NO_MPI
+  if (mesh_c.nproc > 1) {
+    int nSplit = 1 << params->nDims;
+    nSplit = std::pow(nSplit, refine_level);
 
-  parent_cells[H].resize(mesh_f.nEles);
-  child_cells[H].setup(mesh_f.nEles, 4);
-
-  for (int e = 0; e < mesh_f.nEles; e++) {
-    parent_cells[H][e] = e / 4;
-    child_cells[H](e, 0) = e * 4;
-    child_cells[H](e, 1) = e * 4 + 1;
-    child_cells[H](e, 2) = e * 4 + 2;
-    child_cells[H](e, 3) = e * 4 + 3;
+    epart.resize(mesh_f.nEles);
+    for (uint e = 0; e < mesh_f.nEles; e++) {
+      epart[e] = mesh_c.epart[e/nSplit];
+    }
   }
+#endif
+
+  mesh_f.setup_hmg(params, mesh_c.gridID, mesh_c.gridRank, mesh_c.nProcGrid, mesh_c.gridIdList, epart);
 }
 
 void multiGrid::cycle(solver &Solver)

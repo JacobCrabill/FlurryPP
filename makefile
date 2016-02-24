@@ -298,6 +298,7 @@ obj/multigrid.o: src/multigrid.cpp include/multigrid.hpp \
 	include/input.hpp \
 	include/solver.hpp \
 	include/ele.hpp \
+	include/geo.hpp \
 	include/operators.hpp \
 	include/matrix.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/multigrid.o src/multigrid.cpp

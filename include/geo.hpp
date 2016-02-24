@@ -68,10 +68,10 @@ public:
   /* === Primay setup routines === */
 
   //! Setup the geomery using input parameters
-  void setup(input* params);
+  void setup(input* params, bool HMG = false);
 
   //! Multigrid-specific setup function [from mesh-refinement method]
-  void setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, const vector<int> &_gridIdList = {0});
+  void setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, const vector<int> &_gridIdList = {0}, const vector<int>& _epart = {-1});
 
   //! Take the basic connectivity data and generate the rest
   void processConnectivity();
@@ -196,6 +196,8 @@ public:
   MPI_Comm interComm; //! Inter-grid communicator (matched by gridRank)
 #endif
 
+  vector<int> epart;  //! Cell partition data
+
   /* --- Moving-Overset-Grid-Related Variables --- */
   unordered_set<int> holeCells;     //! List of cells in mesh which are currently blanked
   unordered_set<int> holeFaces;     //! List of faces in mesh which are currently blanked
@@ -217,6 +219,12 @@ public:
   void setIterIblanks(void);
   void setIblankEles(vector<int>& iblankVert, vector<int>& iblankEle);
   void refineGrid2D(geo &outGrid, int nLevels, int shapeOrder);
+
+  //! Get the partitions from METIS, but do not spilt the grid yet
+  void getMpiPartitions(void);
+
+  //! Use existing epart data to partition grid
+  void partitionFromEpart(const vector<int>& _epart);
 
 private:
 
