@@ -653,12 +653,10 @@ void writeResidual(solver *Solver, input *params)
 
     histFile.precision(5);
     histFile.setf(ios::scientific, ios::floatfield);
-    if (iter==params->initIter+1 || (iter/params->monitorResFreq)%25==0) {
-      histFile << endl;
+    if (iter==params->initIter+1) {
       histFile << setw(8) << left << "Iter";
       histFile << setw(colW) << left << "Flow Time";
       histFile << setw(colW) << left << "Wall Time";
-      histFile << "Var  ";
       if (params->equation == ADVECTION_DIFFUSION) {
         histFile << setw(colW) << left << "Residual";
         if (params->timeType == 1) histFile << setw(colW) << left << "DeltaT";
@@ -694,7 +692,6 @@ void writeResidual(solver *Solver, input *params)
     histFile << setw(8) << left << iter;
     histFile << setw(colW) << left << params->time;
     histFile << setw(colW) << left << params->timer.getElapsedTime();
-    histFile << "Res  ";
     for (int i=0; i<params->nFields; i++) {
       histFile << setw(colW) << left << res[i];
     }
@@ -707,11 +704,12 @@ void writeResidual(solver *Solver, input *params)
     if (params->equation == NAVIER_STOKES) {
       for (int dim=0; dim<params->nDims; dim++)
         histFile << setw(colW) << left << force[dim];              // Convective force coeffs.
-      if (params->viscous)
+      if (params->viscous) {
         for (int dim=0; dim<params->nDims; dim++)
           histFile << setw(colW) << left << force[3+dim];          // Viscous force coeffs.
-      for (int dim=0; dim<params->nDims; dim++)
-        histFile << setw(colW) << left << force[dim]+force[3+dim]; // Total force coeffs.
+        for (int dim=0; dim<params->nDims; dim++)
+          histFile << setw(colW) << left << force[dim]+force[3+dim]; // Total force coeffs.
+      }
     }
 
     histFile << endl;
@@ -794,22 +792,38 @@ void writeError(solver *Solver, input *params)
 
     /* --- Write the error out to the history file --- */
 
-    ofstream histFile;
-    string fileName = params->dataFileName + ".hist";
-    histFile.open(fileName.c_str(),ofstream::app);
+    ofstream errFile;
+    string fileName = params->dataFileName + ".err";
+    errFile.open(fileName.c_str(),ofstream::app);
 
-    histFile.precision(5);
-    histFile.setf(ios::scientific, ios::floatfield);
+    errFile.precision(5);
+    errFile.setf(ios::scientific, ios::floatfield);
 
-    histFile << setw(8) << left << params->iter;
-    histFile << setw(colw) << left << params->time;
-    histFile << setw(colw) << left << params->timer.getElapsedTime();
-    histFile << "Err  ";
-    for (int i=0; i<params->nFields; i++) {
-      histFile << setw(colw) << left << std::abs(err[i]);
+    if (params->iter==params->initIter+1) {
+      errFile << setw(8) << left << "Iter";
+      errFile << setw(colw) << left << "Flow Time";
+      errFile << setw(colw) << left << "Wall Time";
+      if (params->equation == ADVECTION_DIFFUSION) {
+        errFile << setw(colw) << left << "Error" << endl;
+      } else if (params->equation == NAVIER_STOKES) {
+        errFile << setw(colw) << left << "rho";
+        errFile << setw(colw) << left << "rhoU";
+        errFile << setw(colw) << left << "rhoV";
+        if (params->nDims == 3)
+          errFile << setw(colw) << left << "rhoW";
+        errFile << setw(colw) << left << "rhoE";
+      }
+      errFile << endl;
     }
-    histFile << endl;
-    histFile.close();
+
+    errFile << setw(8) << left << params->iter;
+    errFile << setw(colw) << left << params->time;
+    errFile << setw(colw) << left << params->timer.getElapsedTime();
+    for (int i=0; i<params->nFields; i++) {
+      errFile << setw(colw) << left << std::abs(err[i]);
+    }
+    errFile << endl;
+    errFile.close();
   }
 }
 

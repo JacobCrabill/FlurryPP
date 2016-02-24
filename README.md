@@ -10,15 +10,17 @@ Aerospace Computing Lab, Stanford University
 Current Capabilities
 ====================
 
-The code is currently capable of running scalar advection/diffusion or Euler/Navier-Stokes cases on unstructured mixed grids of quadrilaterals and triangles (2D) or hexahedrons (3D) in the Gmsh format.  Both linear and quadratic elements are supported, allowing for accurate representations of curved boundaries.
+The code is currently capable of running scalar advection/diffusion or Euler/Navier-Stokes cases on unstructured mixed grids of quadrilaterals and triangles (2D) or hexahedrons (3D) in the Gmsh format.  Both linear and quadratic elements are supported in 3D, and up to 10th-order quadrilaterals in 2D, allowing for accurate representations of curved boundaries.
 
-CFL-based time stepping is available for ease (and safety) of use, along with both Forward Euler and RK45 time-stepping.
+Local/Global CFL-based time stepping is available for ease (and safety) of use, along with both Forward Euler and RK45 time-stepping.
+
+Convergence accleration is available with the use of P- or HP-multigrid.  The use of H multigrid is only in addition to P multigrid down to order 0, and uses a somewhat novel grid-generation technique in which the solver accepts the coarsest grid level to run on, and recursively refines the mesh to generate the intermediate levels up to a final refined grid.  See the tests/euler/channel test case for examples of using both MG methods.
 
 Shock capturing has been implemented, but is still under development and is not fully tested yet. Additionally, a highly robust stabilization procedure invented by Chi-Wang Shu and further developed by Yu Lv is available; however, its usage tends to disrupt convergence of steady-state problems.
 
 Moving grids are supported by the solver, but there are not yet any grid-motion functions implemented beyond several simple test-case functions.
 
-Lastly, overset grids in 3D are supported by using the "artificial boundary" method, with Jay Sitaraman's TIOGA library being used for hole-blanking whenever solid bodies are embedded inside a mesh.  Moving overset grids are also supported now for 2D, with 3D nearing completion.
+Lastly, overset grids in 3D are supported by using the "artificial boundary" method, with Jay Sitaraman's TIOGA library being used for hole-blanking whenever solid bodies are embedded inside a mesh.  Moving overset grids are also supported now for 2D and 3D.
 
 Background / Goals of the Project
 =================================
@@ -62,7 +64,7 @@ Test Cases
 
 Several basic test cases have been created to verify the functionality of the code.  The first test case is for the advection equation (in 'tests/advection'), and is simply the advection of a Gaussian bump in a periodic domain.
 
-The other two test cases are for the inviscid Navier-Stokes (Euler) equations. One is for supersonic flow over a wedge, and the other is for subsonic flow over a circular cylinder.  
+The other two test cases are for the inviscid Navier-Stokes (Euler) equations. One is for supersonic flow over a wedge, another is for subsonic flow over a circular cylinder, and another is for inviscid channel flow over a Gaussian bump..  
 Note that although Flurry does have a shock-capturing method implemented, it is still in the developmental phase, so general transonic and supersonic cases should be approached with caution.
 The cylinder test case uses a very coarse mesh, and is intended purely for the purpose of testing the functionality of the code on arbitrary unstructured quad meshes from Gmsh, and demonstrating the method for applying boundary conditions to Gmsh meshes.
 
@@ -74,7 +76,7 @@ Post-Processing
 
 Flurry currently has two options for viewing simulation data: ParaView .vtu files, and a super-simple .csv file.  In both cases, the output values are the primitive variables, not the conservative variables.
 
-ParaView is a free, cross-platform visualization tool that works quite well for visualizing CFD data, both 2D and 3D; you can get it from http://www.paraview.org/.
+ParaView is a free, cross-platform visualization tool that works quite well for visualizing CFD data, both 2D and 3D; you can get the latest version from http://www.paraview.org/.
 
 The CSV output method, on the other hand, simply outputs the x,y,z coordinates of the solution points in each element, along with the solution vector at each point. This can either be plotted using the provided Matlab script.
 If you write any similar scripts for plotting in other languages (e.g. Python or Julia), please let me know so I can add them here!
@@ -123,18 +125,8 @@ Basic Classes
   + Creates a local supermesh of a target element from one or more donor elements for use with Galerkin projection (see Farrell and Maddison, 2010).
 - Solver
   + Applies the various FR operations to a solution (set of eles, faces, operators, and geometry)
-
-
-Potential Classes (Food for thought)
-------------------------------------
-- Mortar Face
-  + Allow for neighboring elements to have different polynomials, as is needed for p-adaptation or certain types of h-adaptation with hanging nodes
-
-
-Future Classes
-------------------
-- H/P Multigrid
-  + Borrow implementation details from Josh's ZEFR code to implement P-multigrid (which should also work for H-multigrid, as well).
+- MultiGrid
+  + Sets up the additional solvers needed to run P- or HP-multigrid, and performs a V-cycle multigrid update.
 
 
 Flurry++ is distributed under the [GNU General Public License Version 3](http://www.gnu.org/licenses/gpl-3.0.txt).
