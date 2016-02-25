@@ -1453,6 +1453,8 @@ void geo::createMesh()
   if (params->rank==0)
     cout << "Geo: Creating " << nx << "x" << ny << "x" << nz << " cartesian mesh" << endl;
 
+  nNodesPerCell = (nDims==2) ? 4 : 8;
+
   double xmin = params->xmin;
   double xmax = params->xmax;
   double ymin = params->ymin;

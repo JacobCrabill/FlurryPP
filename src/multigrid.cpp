@@ -67,6 +67,7 @@ void multiGrid::setup(int order, input *params, solver &Solver)
       if (params->rank == 0) cout << endl << "H-Multigrid: Setting up H = " << H << endl;
 
       hInputs[H].dataFileName += "_H" + std::to_string(H) + "_";
+      hInputs[H].dualTime = 0;
       hGrids[H] = make_shared<solver>();
       hGeos[H] = make_shared<geo>();
 
@@ -96,10 +97,13 @@ void multiGrid::setup(int order, input *params, solver &Solver)
         if (params->rank == 0) cout << endl << "P-Multigrid: Setting up P = " << P << endl;
 
         pInputs[P].dataFileName += "_P" + std::to_string(P) + "_";
-        pGeos[P] = make_shared<geo>(*fine_grid);
+        pInputs[P].dualTime = 0;
+        //pGeos[P] = make_shared<geo>(*fine_grid);
+        pGeos[P] = make_shared<geo>();
+        setup_h_level(coarse_grid, *pGeos[P], params->n_h_levels);
         pGrids[P] = make_shared<solver>();
 
-        pGeos[P]->setup_hmg(&pInputs[P], fine_grid->gridID, fine_grid->gridRank, fine_grid->nProcGrid, fine_grid->gridIdList);
+        //pGeos[P]->setup_hmg(&pInputs[P], fine_grid->gridID, fine_grid->gridRank, fine_grid->nProcGrid, fine_grid->gridIdList);
         pGrids[P]->setup(&pInputs[P], P, &(*pGeos[P]));
         pGrids[P]->initializeSolution(true);
       }
@@ -120,6 +124,7 @@ void multiGrid::setup(int order, input *params, solver &Solver)
         if (params->rank == 0) cout << endl << "P-Multigrid: Setting up P = " << P << endl;
 
         pInputs[P].dataFileName += "_P" + std::to_string(P) + "_";
+        pInputs[P].dualTime = 0;
         pGrids[P] = make_shared<solver>();
         pGrids[P]->setup(&pInputs[P], P);
         pGrids[P]->initializeSolution(true);

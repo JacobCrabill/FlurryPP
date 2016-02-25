@@ -171,8 +171,10 @@ void shape_quad(const point &in_rs, double* out_shape, int nNodes)
   else {
     int nSide = sqrt(nNodes);
 
-    if (nSide*nSide != nNodes)
+    if (nSide*nSide != nNodes) {
+      cout << "nNodes = " << nNodes << endl;
       FatalError("For Lagrange quad of order N, must have (N+1)^2 shape points.");
+    }
 
     vector<double> xlist(nSide);
     double dxi = 2./(nSide-1);

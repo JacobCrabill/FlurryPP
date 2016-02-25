@@ -289,6 +289,9 @@ public:
   /* --- Overset Stuff --- */
   int sptOffset;  //! Offset within overset data-transfer array to grab solution data
 
+  /* --- Dual Time Stepping --- */
+  matrix<double> Un0_spts, Un1_spts; //! Previous physical-time solutions for DTS source term
+
   vector<matrix<double>> transformFlux_physToRef(void);
   vector<matrix<double>> transformFlux_refToPhys(void);
   vector<matrix<double>> transformGradU_physToRef(void);

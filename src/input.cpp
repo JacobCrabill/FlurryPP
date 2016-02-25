@@ -302,9 +302,18 @@ void input::readInputFile(char *filename)
       nFields = 5;
   }
 
+  opts.getScalarValue("dualTime",dualTime,0);
   opts.getScalarValue("timeType",timeType,4);
   opts.getScalarValue("dtType",dtType,0);
   opts.getScalarValue("iterMax",iterMax);
+
+  if (dualTime) {
+    opts.getScalarValue("dt",dt);
+    opts.getScalarValue("physDT",physDT);
+    opts.getScalarValue("dtsResTol",dtsResTol,1e-6);
+    maxTime = iterMax * physDT;
+  }
+
   if (dtType != 0) {
     opts.getScalarValue("CFL",CFL);
     opts.getScalarValue("maxTime",maxTime);
@@ -312,6 +321,7 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("dt",dt);
     maxTime = iterMax * dt;
   }
+
 
   opts.getScalarValue("viscous",viscous,0);
   opts.getScalarValue("motion",motion,0);
@@ -475,7 +485,15 @@ void input::readInputFile(char *filename)
     exps0 = 0.0*pBound/(pow(rhoBound,gamma));
   }
 
-  iter = initIter;
+  if (dualTime)
+  {
+    physIter = initIter;
+    iter = 0;
+  }
+  else
+  {
+    iter = initIter;
+  }
 
   // Calculate U_infinity for force-coefficient normalization
   if (nDims==2) wBound = 0;

@@ -215,6 +215,9 @@ public:
   //! Apply the correction function & add to the divergence of the flux
   void correctDivFlux(int step);
 
+  //! Add the dU/dt source term needed for dual time stepping
+  void addDualTimeSource(int step);
+
   //! Apply mesh motion
   void moveMesh(int step);
 
@@ -315,6 +318,12 @@ public:
   void checkEntropyPlot();
 
   shared_ptr<overComm> OComm;
+
+  //! Update solution arrays for next physical time step for dual time stepping
+  void updatePhysTime_DTS();
+
+  //! Get the residual norm for the input field
+  double getNormResidual(int field = 0);
 
 private:
   //! Pointer to the parameters object for the current solution

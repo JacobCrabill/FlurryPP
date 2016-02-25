@@ -124,18 +124,52 @@ int main(int argc, char *argv[]) {
   int iter = initIter;
 
   /* --- Calculation Loop --- */
-  while (params.iter < iterMax and params.time < maxTime) {
-    iter++;
+  if (!params.dualTime)
+  {
+    while (params.iter < iterMax and params.time < maxTime) {
+      iter++;
 
-    Solver.update();
+      Solver.update();
 
-    /* If using multigrid, perform correction cycle */
-    if (params.PMG)
-      pmg.cycle(Solver);
+      /* If using multigrid, perform correction cycle */
+      if (params.PMG)
+        pmg.cycle(Solver);
 
-    if ((iter)%params.monitorResFreq==0 or iter==initIter+1 or params.time>=maxTime) writeResidual(&Solver,&params);
-    if ((iter)%params.monitorErrFreq==0 or iter==initIter+1) writeError(&Solver,&params);
-    if ((iter)%params.plotFreq==0 or iter==iterMax or params.time>=maxTime) writeData(&Solver,&params);
+      if ((iter)%params.monitorResFreq==0 or iter==initIter+1 or params.time>=maxTime) writeResidual(&Solver,&params);
+      if ((iter)%params.monitorErrFreq==0 or iter==initIter+1) writeError(&Solver,&params);
+      if ((iter)%params.plotFreq==0 or iter==iterMax or params.time>=maxTime) writeData(&Solver,&params);
+    }
+  }
+  else
+  {
+    while (params.physIter < iterMax and params.physTime < maxTime) {
+      iter++;
+
+      params.iter = 0;
+      params.time = 0;
+
+      Solver.calcResidual(0);
+
+      int subIter = 0;
+      while (Solver.getNormResidual(0) > params.dtsResTol) {
+        Solver.update();
+
+        /* If using multigrid, perform correction cycle */
+        if (params.PMG)
+          pmg.cycle(Solver);
+
+        if (subIter%50==0)
+          writeResidual(&Solver, &params);
+        subIter++;
+      }
+
+      params.iter = iter;
+      if ((iter)%params.monitorResFreq==0 or iter==initIter+1 or params.physTime>=maxTime) writeResidual(&Solver,&params);
+      if ((iter)%params.monitorErrFreq==0 or iter==initIter+1) writeError(&Solver,&params);
+      if ((iter)%params.plotFreq==0 or iter==iterMax or params.physTime>=maxTime) writeData(&Solver,&params);
+
+      Solver.updatePhysTime_DTS();
+    }
   }
 
   /* Calculate the integral / L1 / L2 error for the final time */

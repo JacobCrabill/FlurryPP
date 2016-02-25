@@ -116,6 +116,11 @@ void ele::setupArrays(void)
   if (nRKSteps>1)
     U0 = U_spts;
 
+  if (params->dualTime) {
+    Un0_spts = U_spts;
+    Un1_spts = U_spts;
+  }
+
   if (params->motion || params->viscous) {
     dU_spts.resize(nDims);
     dU_fpts.resize(nDims);
@@ -994,6 +999,11 @@ void ele::setInitialCondition()
       for (int spt=0; spt<nSpts; spt++)
         U_spts(spt,0) = cos(2*pi*pos_spts[spt].x/6.)*cos(2*pi*pos_spts[spt].y/6.)*cos(2*pi*pos_spts[spt].z/6.);
     }
+  }
+
+  if (params->dualTime) {
+    Un0_spts = U_spts;
+    Un1_spts = U_spts;
   }
 }
 

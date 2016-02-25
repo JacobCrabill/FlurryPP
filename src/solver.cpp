@@ -67,6 +67,7 @@ void solver::setup(input *params, int order, geo *_Geo)
 #endif
 
   params->time = 0.;
+  params->physTime = 0.;
   this->order = order;
 
   /* Setup the FR elements & faces which will be computed on */
@@ -211,6 +212,33 @@ void solver::calcResidual(int step)
   calcFluxDivergence(step);
 
   correctDivFlux(step);
+
+  if (params->dualTime) {
+    addDualTimeSource(step);
+  }
+}
+
+void solver::updatePhysTime_DTS()
+{
+
+#pragma omp parallel for
+  for (uint i = 0; i < eles.size(); i++) {
+    auto tmp = eles[i]->U_spts;
+
+    // Predictor for next physical time step [initialize DTS cycle] [U = Un + dUn/dt]
+    for (uint spt = 0; spt < eles[i]->nSpts; spt++)
+      for (uint k = 0; k < params->nFields; k++)
+        eles[i]->U_spts(spt,k) = (5./2.)*eles[i]->U_spts(spt,k) - 2.*eles[i]->Un0_spts(spt,k) + .5*eles[i]->Un1_spts(spt,k);
+
+    eles[i]->Un1_spts = eles[i]->Un0_spts;
+    eles[i]->Un0_spts = tmp;
+  }
+
+  params->physTime += params->physDT;
+  params->physIter++;
+
+  params->iter = params->physIter;
+  params->time = params->physTime;
 }
 
 void solver::calcDt(void)
@@ -575,6 +603,31 @@ void solver::calcEntropyErr_spts(void)
   }
 }
 
+void solver::addDualTimeSource(int step)
+{
+  if (params->physIter == params->initIter)
+  {
+#pragma omp parallel for
+    for (uint i = 0; i < eles.size(); i++)
+    {
+      for (uint spt = 0; spt < eles[i]->nSpts; spt++)
+        for (uint k = 0; k < params->nFields; k++)
+          eles[i]->divF_spts[step](spt,k) += eles[i]->detJac_spts[spt] * (eles[i]->U_spts(spt,k) -  eles[i]->Un0_spts(spt,k)) / params->physDT;
+    }
+  }
+
+  else
+  {
+#pragma omp parallel for
+    for (uint i = 0; i < eles.size(); i++)
+    {
+      for (uint spt = 0; spt < eles[i]->nSpts; spt++)
+        for (uint k = 0; k < params->nFields; k++)
+          eles[i]->divF_spts[step](spt,k) += eles[i]->detJac_spts[spt] * (3.*eles[i]->U_spts(spt,k) -  4.*eles[i]->Un0_spts(spt,k) +  eles[i]->Un1_spts(spt,k)) / (2*params->physDT);
+    }
+  }
+}
+
 void solver::moveMesh(int step)
 {
   if (!params->motion) return;
@@ -784,6 +837,9 @@ void solver::readRestartFile(void) {
   if (params->meshType == OVERSET_MESH and !foundIBTag)
     cout << "WARNING: IblankCell data not found in restart file for rank " << params->rank << endl;
 
+  if (params->dualTime)
+    params->physTime = params->time;
+
   /* -- Set the geometry to the current restart time -- */
 
   moveMesh(0);
@@ -904,6 +960,28 @@ vector<double> solver::integrateError(void)
     for (auto &val:LpErr) val = std::sqrt(std::abs(val));
 
   return LpErr;
+}
+
+double solver::getNormResidual(int field)
+{
+  double res_field = 0;
+
+#pragma omp parallel for
+  for (uint i = 0; i < eles.size(); i++) {
+    auto res = eles[i]->getNormResidual(params->resType);
+    res_field += res[field];
+  }
+
+#ifndef _NO_MPI
+  double tmpRes = res_field;
+  MPI_Allreduce(&tmpRes, &res_field, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  if (params->resType == 2) {
+    res_field = sqrt(res_field);
+  }
+
+  return res_field;
 }
 
 // Method for shock capturing

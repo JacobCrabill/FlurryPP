@@ -149,6 +149,13 @@ public:
   int n_h_levels;  //! Number of h-levels to cycle [default: 1]
   int shapeOrder; //! Shape-function order to use on generated fine grids
 
+  /* --- Dual Time Stepping Options --- */
+  int dualTime;     //! Dual time stepping flag  [default: off/0]
+  double physDT;    //! Physical time step to use (variable 'dt' will become psuedo-time step)
+  double physTime;  //! Physical flow time (as opposed to psuedo-time)
+  int physIter;     //! Physical time-step counter
+  double dtsResTol; //! Convergence tolerance on psuedo-time residual
+
   int iter;
 
   /* --- Moving-Grid Parameters --- */
