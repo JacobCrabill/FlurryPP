@@ -2364,17 +2364,60 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
   if (nDims == 2) {
     order = sqrt(nCells) - 2;
     nSpts = (order+1)*(order+1);
-    nFpts = 4*(order+1);
   }
   else if (nDims == 3) {
     order = cbrt(nCells) - 2;
     nSpts = (order+1)*(order+1)*(order+1);
-    nFpts = 6*(order+1)*(order+1);
   }
 
+  matrix<double> opp_interp;
+  int nSpts_final;
   if (order != params->order) {
-    cout << "ele order = " << order << ", input order = " << params->order << endl;
-    FatalError("Cannot restart a simulation using a different polynomial order.");
+    U_spts.setup(nSpts,nFields);
+
+    /* Setup inter-order interpolation operator */
+
+    if (nDims == 2)
+      nSpts_final = (params->order+1)*(params->order+1);
+    else
+      nSpts_final = (params->order+1)*(params->order+1)*(params->order+1);
+
+    opp_interp.setup(nSpts_final, nSpts);
+
+    auto loc_spts_r = getPts1D(sptsType,order);
+    auto loc_spts_f = getPts1D(sptsType,params->order);
+
+    point loc;
+    if (nDims == 2) {
+      for (uint spt = 0; spt < nSpts_final; spt++) {
+        loc.x = loc_spts_f[spt%(params->order+1)];
+        loc.y = loc_spts_f[floor(spt/(params->order+1))];
+        for (uint rspt = 0; rspt < nSpts; rspt++) {
+          uint ispt = rspt % (order+1);
+          uint jspt = floor(rspt/(order+1));
+          opp_interp(spt, rspt) = Lagrange(loc_spts_r,loc.x,ispt) * Lagrange(loc_spts_r,loc.y,jspt);
+        }
+      }
+    }
+    else {
+      for (uint rspt = 0; rspt < nSpts; rspt++) {
+        uint ksptr = rspt / ((order+1)*(order+1));
+        uint jsptr = (rspt-(order+1)*(order+1)*ksptr)/(order+1);
+        uint isptr = rspt - (order+1)*jsptr - (order+1)*(order+1)*ksptr;
+        for (uint fspt = 0; fspt < nSpts_final; fspt++) {
+          uint ksptf = fspt / ((params->order+1)*(params->order+1));
+          uint jsptf = (fspt-(params->order+1)*(params->order+1)*ksptf)/(params->order+1);
+          uint isptf = fspt - (params->order+1)*jsptf - (params->order+1)*(params->order+1)*ksptf;
+          loc.x = loc_spts_f[isptf];
+          loc.y = loc_spts_f[jsptf];
+          loc.z = loc_spts_f[ksptf];
+
+          opp_interp(fspt, rspt) = Lagrange(loc_spts_r,loc.x,isptr) * Lagrange(loc_spts_r,loc.y,jsptr) * Lagrange(loc_spts_r,loc.z,ksptr);
+        }
+      }
+    }
+    //cout << "ele order = " << order << ", input order = " << params->order << endl;
+    //FatalError("Cannot restart a simulation using a different polynomial order.");
   }
 
   if (eType == QUAD || eType == HEX)
@@ -2685,6 +2728,17 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
   getline(file,str);
   while(str.find("</Piece>")==string::npos)
     getline(file,str);
+
+  if (order != params->order) {
+    /* Use interpolation operator to interpolate from restart order to final order */
+    matrix<double>  tmpU(nSpts_final,nFields);
+    opp_interp.timesMatrix(U_spts, tmpU);
+
+    nSpts = nSpts_final;
+    order = params->order;
+    U_spts.setup(nSpts,nFields);
+    U_spts = tmpU;
+  }
 }
 
 vector<double> ele::getNormResidual(int normType)

@@ -101,7 +101,7 @@ void oper::setupExtrapolateSptsFpts(vector<point> &loc_fpts)
         case QUAD: {
           vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
           // First, get the i an j ID of the spt
-          ispt = spt%(nSpts/(order+1));
+          ispt = spt%(order+1);
           jspt = floor(spt/(order+1));
           opp_spts_to_fpts(fpt,spt) = Lagrange(locSpts1D,loc_fpts[fpt].x,ispt) * Lagrange(locSpts1D,loc_fpts[fpt].y,jspt);
           break;
@@ -1298,23 +1298,21 @@ void oper::setupPMG(int my_order)
 
   vector<double> loc(nDims, 0.0);
 
-//  if (order != params->order) {  /// <- not sure if this is relavant for me...
-    /* Setup prolongation operator */
-    opp_prolong.setup(nSpts_pro, nSpts);
+  /* Setup prolongation operator */
+  opp_prolong.setup(nSpts_pro, nSpts);
 
-    auto loc_spts_pro_1D = getPts1D(sptsType,order+1);
+  auto loc_spts_pro_1D = getPts1D(sptsType,order+1);
 
-    for (uint spt = 0; spt < nSpts; spt++) {
-      uint ispt = spt % (nSpts/(order+1));
-      uint jspt = floor(spt/(order+1));
-      for (uint pspt = 0; pspt < nSpts_pro; pspt++) {
-        loc[0] = loc_spts_pro_1D[pspt%nSpts_pro_1D];
-        loc[1] = loc_spts_pro_1D[floor(pspt/nSpts_pro_1D)];
+  for (uint spt = 0; spt < nSpts; spt++) {
+    uint ispt = spt % (nSpts/(order+1));
+    uint jspt = floor(spt/(order+1));
+    for (uint pspt = 0; pspt < nSpts_pro; pspt++) {
+      loc[0] = loc_spts_pro_1D[pspt%nSpts_pro_1D];
+      loc[1] = loc_spts_pro_1D[floor(pspt/nSpts_pro_1D)];
 
-        opp_prolong(pspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt);
-      }
+      opp_prolong(pspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt);
     }
-//  }
+  }
 
   if (order != 0) {
     /* Setup restriction operator */
