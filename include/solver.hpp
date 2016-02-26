@@ -66,7 +66,7 @@ public:
   geo *Geo;
 
   //! Map from eType to order to element- & order-specific operator
-  map<int, map<int,oper> > opers;
+  map<int, oper> opers;
 
   //! Vector of all eles handled by this solver
   vector<shared_ptr<ele>> eles;
@@ -87,6 +87,21 @@ public:
   //! Pointer to Tioga object for processing overset grids
   shared_ptr<tioga> tg;
 #endif
+
+  /* === Solution Variables === */
+  uint nEles, nFaces;
+  uint nSpts, nFpts, nMpts;
+  uint nDims, nFields;
+
+  Array<double,3> U0, U_spts, U_fpts, U_mpts; //! Global solution arrays for solver
+  Array<double,4> F_spts, F_fpts, dU_spts, dU_fpts;   //! dim, spt, ele, field?
+  Array<double,3> disFn_fpts, Fn_fpts;  //! fpt, face, field
+  Array2D<Array<double,3>> dF_spts; //! dim_grad, dim_flux, spt, ele, field
+
+  vector<Array<double,3>> divF_spts;
+
+  /* Multigrid Variables */
+  Array<double,3> sol_spts, corr_spts, src_spts;
 
   /* ==== Misc. Commonly-Used Variables ==== */
 
@@ -330,8 +345,6 @@ private:
   vector<int> r_adapt_cells, h_adapt_cells, p_adapt_cells;
 
   /* ---- Overset Grid Variables / Functions ---- */
-
-  vector<double> U_spts; //! Global solution vector for solver (over all elements)
 
   //shared_ptr<overComm> OComm;
 

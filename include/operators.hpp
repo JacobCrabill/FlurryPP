@@ -120,7 +120,7 @@ public:
   matrix<double> opp_prolong;   //! PMG Prolongation operator
   matrix<double> opp_restrict;  //! PMG Restriction operator
 
-private:
+//private:
   geo *Geo;
   input *params;
   uint nDims, nFields, eType, order, nSpts, nFpts;

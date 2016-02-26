@@ -137,7 +137,7 @@ void intFace::getRightGradient(void)
     for (int fpt=0; fpt<nFptsL; fpt++) {
       for (int dim=0; dim<nDims; dim++)
         for (int j=0; j<nFields; j++)
-          gradUR[fpt](dim,j) = (eR->dU_fpts[dim](fptR[fpt],j));
+          gradUR[fpt](dim,j) = (eR->dU_fpts(dim,fptR[fpt],j));
     }
   }
 }

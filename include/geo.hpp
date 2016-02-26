@@ -112,10 +112,10 @@ public:
   void processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
 
   //! Setup cells and faces which were tagged for un-blanking
-  void processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
+  void processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces, solver* Solver);
 
   //! Create and insert elements into the eles vector
-  void insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &uEles);
+  void insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &uEles, solver* Solver);
 
   //! Create and insert faces into the face vectors
   void insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,

@@ -485,7 +485,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
 #endif
 }
 
-void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &eleMap, int order)
+void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int, oper > &opers, vector<int> &eleMap, int order)
 {
 #ifndef _NO_MPI
   int nDims = params->nDims;
@@ -541,14 +541,14 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
         qptsD_ref[p].insertRow({refLoc.x,refLoc.x,refLoc.z});
 
         vector<double> basisTmp;
-        opers[eles[ic]->eType][eles[ic]->order].getBasisValues(refLoc,basisTmp);
+        opers[eles[ic]->order].getBasisValues(refLoc,basisTmp);
         donorBasis[p].insertRow(basisTmp);
       }
 
       for (int id=0; id<foundCellNDonors[p][i]; id++) {
         int ic = eleMap[foundCellDonors[p](i,id)];
         for (int spt=0; spt<nSpts; spt++)
-          donorU[p].insertRow(eles[ic]->U_spts[spt],INSERT_AT_END,nFields);
+          donorU[p].insertRow(&eles[ic]->U_spts(spt,0),INSERT_AT_END,nFields);
       }
     }
   }
@@ -596,7 +596,7 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
       qpts_recv[p](i,2) = refLoc.z;
 
       vector<double> basisTmp;
-      opers[eles[ie]->eType][eles[ie]->order].getBasisValues(refLoc,basisTmp);
+      opers[eles[ie]->order].getBasisValues(refLoc,basisTmp);
 
       sendBasis[p].insertRow(basisTmp);
     }
@@ -690,7 +690,7 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
   // Apply the new values to the unblank ele objects
   for (int i=0; i<nUnblanks; i++) {
     int ic = ubCells[i];
-    eles[ic]->U_spts.initializeToZero();
+/////    eles[ic]->U_spts.initializeToZero();
     auto unblankU = solveCholesky(ubLHS[i],ubRHS[i]);
     for (int spt=0; spt<nSpts; spt++)
       for (int k=0; k<nFields; k++)
@@ -720,7 +720,7 @@ void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<in
       for (int id=0; id<foundCellNDonors[p][i]; id++) {
         int ic = eleMap[foundCellDonors[p](i,id)];
         for (int spt=0; spt<nSpts; spt++)
-          donorU[p].insertRow(eles[ic]->U_spts[spt],INSERT_AT_END,nFields);
+          donorU[p].insertRow(&eles[ic]->U_spts(spt,0),INSERT_AT_END,nFields);
       }
     }
   }
@@ -773,7 +773,7 @@ void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<in
   // Apply the new values to the unblank ele objects
   for (int i=0; i<nUnblanks; i++) {
     int ic = ubCells[i];
-    eles[ic]->U_spts.initializeToZero();
+/////    eles[ic]->U_spts.initializeToZero();
     auto unblankU = solveCholesky(ubLHS[i],ubRHS[i]);
     for (int spt=0; spt<nSpts; spt++)
       for (int k=0; k<nFields; k++)
@@ -782,7 +782,7 @@ void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<in
 #endif
 }
 
-vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &iblankCell, vector<int> &eleMap, int order, int quadOrder)
+vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<int, oper> &opers, vector<int> &iblankCell, vector<int> &eleMap, int order, int quadOrder)
 {
 #ifndef _NO_MPI
   /* ---- Send Unblanked-Cell Nodes to All Grids ---- */
@@ -933,7 +933,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
         }
 
         vector<double> tmpU(nFields);
-        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tmpU.data(), refLoc);
+/////        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tmpU.data(), refLoc);
         vector<double> tmpErr = calcError(tmpU,point(qpts_tmp[j],nDims),params);
         superErr[offset+i].insertRow(tmpErr);
       }
@@ -958,8 +958,8 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   vector<double> detJac_qpts;
   for (uint ic=0; ic<eles.size(); ic++) {
     if (iblankCell[eles[ic]->ID]!=NORMAL) continue;
-    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts, U_qpts, quadPoints);
-    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
+/////    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts, U_qpts, quadPoints);
+    opers[eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
     for (uint i=0; i<qpts.size(); i++) {
       auto tmpErr = calcError(U_qpts.getRow(i), eles[ic]->calcPos(qpts[i]), params);
       for (int j=0; j<nFields; j++)
@@ -988,7 +988,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
 #endif
 }
 
-void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap)
+void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper> &opers, vector<int> &eleMap)
 {
 #ifndef _NO_MPI
   U_out.resize(nproc);
@@ -1017,9 +1017,9 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
         if (!correctedEles.count(ic)) {
           correctedEles.insert(ic);
           if (params->motion) {
-            opers[eles[ic]->eType][eles[ic]->order].applyExtrapolateFn(eles[ic]->F_spts,eles[ic]->norm_fpts,eles[ic]->disFn_fpts,eles[ic]->dA_fpts);
+/////            opers[eles[ic]->eType][eles[ic]->order].applyExtrapolateFn(eles[ic]->F_spts,eles[ic]->norm_fpts,eles[ic]->disFn_fpts,eles[ic]->dA_fpts);
           } else {
-            opers[eles[ic]->eType][eles[ic]->order].applyExtrapolateFn(eles[ic]->F_spts,eles[ic]->tNorm_fpts,eles[ic]->disFn_fpts);
+/////            opers[eles[ic]->eType][eles[ic]->order].applyExtrapolateFn(eles[ic]->F_spts,eles[ic]->tNorm_fpts,eles[ic]->disFn_fpts);
           }
           eles[ic]->calcDeltaFn();
         }
@@ -1029,13 +1029,13 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
           // Flux vector must be in ref. space in order to apply correction functions
           tempF_spts = eles[ic]->transformFlux_physToRef();
         } else {
-          tempF_spts = eles[ic]->F_spts;
+/////          tempF_spts = eles[ic]->F_spts;
         }
 
-        matrix<double> tempF_ref = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(tempF_spts, eles[ic]->dFn_fpts, refPos);
+        matrix<double> tempF_ref = opers[eles[ic]->order].interpolateCorrectedFlux(tempF_spts, eles[ic]->dFn_fpts, refPos);
 
         vector<double> tempU(nFields);
-        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
+/////        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
 
         // NOW we can transform flux vector back to physical space
         // [Recall: F_phys = (G/|G|) * F_ref]
@@ -1085,7 +1085,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
 
       else {
         // Interpolate discontinuous solution [Original 'Artificial Boundary' Method]
-        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, U_out[p][i], refPos);
+/////        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, U_out[p][i], refPos);
       }
 
     }
@@ -1119,7 +1119,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
 #endif
 }
 
-void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap)
+void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, oper> &opers, vector<int> &eleMap)
 {
 #ifndef _NO_MPI
   int nDims = params->nDims;
@@ -1146,12 +1146,12 @@ void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, m
         // Gradient vector must be in ref. space in order to apply correction functions
         tempDU_spts = eles[ic]->transformGradU_physToRef();
       } else {
-        tempDU_spts = eles[ic]->dU_spts;
+/////        tempDU_spts = eles[ic]->dU_spts;
       }
 
       matrix<double> tempDU_ref(nDims,nFields);
       for (int dim=0; dim<nDims; dim++)
-        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(tempDU_spts[dim], tempDU_ref[dim], refPos);
+        opers[eles[ic]->order].interpolateToPoint(tempDU_spts[dim], tempDU_ref[dim], refPos);
 
       // NOW we can transform flux vector back to physical space
       // [Recall: F_phys = JGinv .dot. F_ref]

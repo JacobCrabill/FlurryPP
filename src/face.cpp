@@ -150,7 +150,7 @@ void face::getLeftGradient()
     if (params->viscous) {
       for (int dim=0; dim<nDims; dim++)
         for (int j=0; j<nFields; j++)
-          gradUL[fpt](dim,j) = (eL->dU_fpts[dim](i,j));
+          gradUL[fpt](dim,j) = eL->dU_fpts(dim,i,j);
     }
 
     fpt++;

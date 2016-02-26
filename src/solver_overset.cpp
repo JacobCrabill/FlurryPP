@@ -101,39 +101,39 @@ vector<double> solver::integrateErrorOverset(void)
 
 /* ---- Basic Tioga-Based Overset-Grid Functions ---- */
 
-void solver::setupOversetData(void)
-{
-  // Allocate storage for global solution vector (for use with Tioga)
-  // and initialize to 0
-  int nSptsTotal = 0;
-  for (uint i=0; i<eles.size(); i++) nSptsTotal += eles[i]->getNSpts();
-  U_spts.assign(nSptsTotal*params->nFields,0);
-}
+//void solver::setupOversetData(void)
+//{
+//  // Allocate storage for global solution vector (for use with Tioga)
+//  // and initialize to 0
+//  int nSptsTotal = 0;
+//  for (uint i=0; i<eles.size(); i++) nSptsTotal += eles[i]->getNSpts();
+//  U_spts.assign(nSptsTotal*params->nFields,0);
+//}
 
-void solver::setGlobalSolutionArray(void)
-{
-  int ind = 0;
-  for (uint i=0; i<eles.size(); i++) {
-    eles[i]->getUSpts(&U_spts[ind]);
-    ind += eles[i]->getNSpts() * params->nFields;
-  }
-}
+//void solver::setGlobalSolutionArray(void)
+//{
+//  int ind = 0;
+//  for (uint i=0; i<eles.size(); i++) {
+//    eles[i]->getUSpts(&U_spts[ind]);
+//    ind += eles[i]->getNSpts() * params->nFields;
+//  }
+//}
 
-void solver::updateElesSolutionArrays(void)
-{
-  int ind = 0;
-  for (uint i=0; i<eles.size(); i++) {
-    eles[i]->setUSpts(&U_spts[ind]);
-    ind += eles[i]->getNSpts() * params->nFields;
-  }
-}
+//void solver::updateElesSolutionArrays(void)
+//{
+//  int ind = 0;
+//  for (uint i=0; i<eles.size(); i++) {
+//    eles[i]->setUSpts(&U_spts[ind]);
+//    ind += eles[i]->getNSpts() * params->nFields;
+//  }
+//}
 
-void solver::callDataUpdateTIOGA(void)
-{
-#ifndef _NO_MPI
-  tg->dataUpdate_highorder(params->nFields,U_spts.data(),0);
-#endif
-}
+//void solver::callDataUpdateTIOGA(void)
+//{
+//#ifndef _NO_MPI
+//  tg->dataUpdate_highorder(params->nFields,U_spts.data(),0);
+//#endif
+//}
 
 /* ---- Callback Functions for TIOGA Overset Grid Library ---- */
 
@@ -173,7 +173,7 @@ void solver::donorWeights(int* cellID, double* xyz, int* nWeights, int* iNode, d
   for (int i=0; i<(*nWeights); i++)
     iNode[i] = iStart + i;
 
-  opers[eles[ic]->eType][eles[ic]->order].getBasisValues(rst,weights);
+  opers[eles[ic]->order].getBasisValues(rst,weights);
 }
 
 void solver::convertToModal(int* cellID, int* nPtsIn, double* uIn, int* nPtsOut, int* iStart, double* uOut)

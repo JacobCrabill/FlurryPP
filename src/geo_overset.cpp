@@ -727,7 +727,7 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
 #endif
 }
 
-void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
+void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces, solver *Solver)
 {
   /* --- Set Unblank/Blank Faces for All Unblank Elements --- */
 
@@ -815,7 +815,7 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
     if (overFaces.count(ff))
       blankOFaces.insert(ff);
 
-  insertEles(eles,unblankCells);
+  insertEles(eles,unblankCells,Solver);
   removeFaces(faces,mFaces,oFaces,blankIFaces,blankMFaces,blankOFaces);
   insertFaces(eles,faces,mFaces,oFaces,ubIntFaces,ubMpiFaces,ubOFaces);
 
@@ -845,7 +845,7 @@ void geo::removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEle
   }
 }
 
-void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles)
+void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles, solver *Solver)
 {
   /* --- Setup & Insert Unblanked Elements --- */
 
@@ -889,7 +889,7 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles)
       e->faceID[k] = c2f(ic,k);
     }
 
-    e->setup(params,this);
+    e->setup(params,Solver,this);
 
     eles.insert(eles.begin()+ind,1,e);
 

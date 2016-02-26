@@ -21,6 +21,12 @@ METIS_INC_DIR = /usr/local/include/
 # Location of mpi.h 
 MPI_INC_DIR   = /usr/lib/openmpi/include
 
+# Location of cblas.h, libcblas.a, libatlas.a
+BLAS_INC_DIR = /usr/include
+BLAS_LIB_DIR = /usr/lib
+#BLAS_INC_DIR = /usr/lib/atlas-base/include
+#BLAS_LIB_DIR = /usr/lib/atlas-base/lib
+
 # Location of libtioga.a
 TIOGA_INC   = ./lib/tioga/src
 TIOGA_LIB   = #./lib/tioga/src/libtioga.a
@@ -29,6 +35,12 @@ CXX_BASE    = -pipe -Wunused-parameter -Wuninitialized -std=c++11 -I./include -I
 CXX_STD     = -g -O2
 CXX_DEBUG   = -g -pg -O0 -rdynamic -fno-omit-frame-pointer #-fsanitize=address 
 CXX_RELEASE = -Ofast -fno-finite-math-only
+
+CXX_BLAS = -I$(BLAS_DIR) -L$(BLAS_DIR)
+LD_BLAS = -L$(BLAS_LIB_DIR) -latlas -lcblas
+
+CXX_BASE += $(CXX_BLAS)
+LIBS += $(LD_BLAS)
 
 CXXFLAGS_RELEASE = $(CXX_BASE) $(CXX_RELEASE) -Wno-unknown-pragmas -D_NO_MPI $(DEFINES)
 CXXFLAGS_DEBUG   = $(CXX_BASE) $(CXX_DEBUG) -Wno-unknown-pragmas -D_NO_MPI $(DEFINES)

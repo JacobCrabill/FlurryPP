@@ -35,6 +35,8 @@
 class intFace;
 class boundFace;
 
+#include "cblas.h"
+
 #include "input.hpp"
 #include "geo.hpp"
 #include "intFace.hpp"
@@ -300,34 +302,29 @@ void solver::timeStepB(int step, bool PMG_Source)
 
 void solver::copyUspts_U0(void)
 {
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    eles[i]->copyUspts_U0();
-  }
+  U0 = U_spts;
 }
 
 void solver::copyU0_Uspts(void)
 {
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    eles[i]->copyU0_Uspts();
-  }
+  U_spts = U0;
 }
 
 void solver::extrapolateU(void)
 {
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    opers[eles[i]->eType][eles[i]->order].applySptsFpts(eles[i]->U_spts,eles[i]->U_fpts);
-  }
+  auto &A = opers[order].opp_spts_to_fpts(0,0);
+  auto &B = U_spts(0,0,0);
+  auto &C = U_fpts(0,0,0);
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, nFpts, nEles * nFields,
+        nSpts, 1.0, &A, nFpts, &B, nSpts, 0.0, &C, nFpts);
 }
 
 void solver::calcAvgSolution()
 {
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    opers[eles[i]->eType][eles[i]->order].calcAvgU(eles[i]->U_spts,eles[i]->detJac_spts,eles[i]->Uavg);
-  }
+//#pragma omp parallel for
+//  for (uint i=0; i<eles.size(); i++) {
+//    opers[order].calcAvgU(eles[i]->U_spts,eles[i]->detJac_spts,eles[i]->Uavg);
+//  }
 }
 
 bool solver::checkDensity()
@@ -360,17 +357,18 @@ void solver::checkEntropyPlot()
 
 void solver::extrapolateUMpts(void)
 {
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    opers[eles[i]->eType][eles[i]->order].applySptsMpts(eles[i]->U_spts,eles[i]->U_mpts);
-  }
+  auto &A = opers[order].opp_spts_to_mpts(0,0);
+  auto &B = U_spts(0,0,0);
+  auto &C = U_mpts(0,0,0);
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, nMpts, nEles * nFields,
+        nSpts, 1.0, &A, nFpts, &B, nSpts, 0.0, &C, nMpts);
 }
 
 void solver::extrapolateGridVelMpts(void)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    opers[eles[i]->eType][eles[i]->order].applySptsMpts(eles[i]->gridVel_spts,eles[i]->gridVel_mpts);
+    opers[order].applySptsMpts(eles[i]->gridVel_spts,eles[i]->gridVel_mpts);
   }
 }
 
@@ -378,7 +376,7 @@ void solver::extrapolateSMpts(void)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    opers[eles[i]->eType][eles[i]->order].applySptsMpts(eles[i]->S_spts,eles[i]->S_mpts);
+    opers[order].applySptsMpts(eles[i]->S_spts,eles[i]->S_mpts);
   }
 }
 
@@ -386,7 +384,7 @@ void solver::extrapolateSFpts(void)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    opers[eles[i]->eType][eles[i]->order].applySptsFpts(eles[i]->S_spts,eles[i]->S_fpts);
+    opers[order].applySptsFpts(eles[i]->S_spts,eles[i]->S_fpts);
   }
 }
 
@@ -472,9 +470,18 @@ void solver::calcViscousFlux_overset()
 
 void solver::calcGradF_spts(void)
 {
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    opers[eles[i]->eType][eles[i]->order].applyGradFSpts(eles[i]->F_spts,eles[i]->dF_spts);
+  int m = nSpts;
+  int n = nEles * nFields;
+  int k = nSpts;
+
+  for (uint dim1=0; dim1<nDims; dim1++) {
+    for (uint dim2=0; dim2<nDims; dim2++) {
+      auto &A = opers[order].opp_grad_spts[dim2](0,0);
+      auto &B = F_spts(dim1,0,0,0);
+      auto &C = dF_spts(dim2,dim1)(0,0,0);
+      cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n,
+            k, 1.0, &A, k, &B, n, 0.0, &C, n);
+    }
   }
 }
 
@@ -507,28 +514,28 @@ void solver::calcFluxDivergence(int step)
 
 void solver::calcDivF_spts(int step)
 {
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    opers[eles[i]->eType][eles[i]->order].applyDivFSpts(eles[i]->F_spts,eles[i]->divF_spts[step]);
-  }
+//#pragma omp parallel for
+//  for (uint i=0; i<eles.size(); i++) {
+//    opers[order].applyDivFSpts(eles[i]->F_spts,eles[i]->divF_spts[step]);
+//  }
 }
 
 void solver::extrapolateNormalFlux(void)
 {
-  if (params->motion) {
-    /* Extrapolate physical normal flux */
-#pragma omp parallel for
-    for (uint i=0; i<eles.size(); i++) {
-      opers[eles[i]->eType][eles[i]->order].applyExtrapolateFn(eles[i]->F_spts,eles[i]->norm_fpts,eles[i]->disFn_fpts,eles[i]->dA_fpts);
-    }
-  }
-  else {
-    /* Extrapolate transformed normal flux */
-#pragma omp parallel for
-    for (uint i=0; i<eles.size(); i++) {
-      opers[eles[i]->eType][eles[i]->order].applyExtrapolateFn(eles[i]->F_spts,eles[i]->tNorm_fpts,eles[i]->disFn_fpts);
-    }
-  }
+//  if (params->motion) {
+//    /* Extrapolate physical normal flux */
+//#pragma omp parallel for
+//    for (uint i=0; i<eles.size(); i++) {
+//      opers[order].applyExtrapolateFn(eles[i]->F_spts,eles[i]->norm_fpts,eles[i]->disFn_fpts,eles[i]->dA_fpts);
+//    }
+//  }
+//  else {
+//    /* Extrapolate transformed normal flux */
+//#pragma omp parallel for
+//    for (uint i=0; i<eles.size(); i++) {
+//      opers[order].applyExtrapolateFn(eles[i]->F_spts,eles[i]->tNorm_fpts,eles[i]->disFn_fpts);
+//    }
+//  }
 }
 
 void solver::correctDivFlux(int step)
@@ -536,35 +543,42 @@ void solver::correctDivFlux(int step)
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i]->calcDeltaFn();
-    opers[eles[i]->eType][eles[i]->order].applyCorrectDivF(eles[i]->dFn_fpts,eles[i]->divF_spts[step]);
+    opers[order].applyCorrectDivF(eles[i]->dFn_fpts,eles[i]->divF_spts[step]);
   }
 }
 
 void solver::calcGradU_spts(void)
 {
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    opers[eles[i]->eType][eles[i]->order].applyGradSpts(eles[i]->U_spts,eles[i]->dU_spts);
+  int m = nSpts;
+  int n = nEles * nFields;
+  int k = nSpts;
+
+  for (uint dim1=0; dim1<nDims; dim1++) {
+    auto &A = opers[order].opp_grad_spts[dim1](0,0);
+    auto &B = U_spts(0,0,0);
+    auto &C = dU_spts(dim1,0,0,0);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n,
+                k, 1.0, &A, k, &B, n, 0.0, &C, n);
   }
 }
 
 void solver::correctGradU(void)
 {
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    eles[i]->calcDeltaUc();
-    opers[eles[i]->eType][eles[i]->order].applyCorrectGradU(eles[i]->dUc_fpts,eles[i]->dU_spts,eles[i]->JGinv_spts,eles[i]->detJac_spts);
-  }
+//#pragma omp parallel for
+//  for (uint i=0; i<eles.size(); i++) {
+//    eles[i]->calcDeltaUc();
+//    opers[order].applyCorrectGradU(eles[i]->dUc_fpts,eles[i]->dU_spts,eles[i]->JGinv_spts,eles[i]->detJac_spts);
+//  }
 }
 
 void solver::extrapolateGradU()
 {
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    for (int dim=0; dim<params->nDims; dim++) {
-      opers[eles[i]->eType][eles[i]->order].applySptsFpts(eles[i]->dU_spts[dim],eles[i]->dU_fpts[dim]);
-    }
-  }
+//#pragma omp parallel for
+//  for (uint i=0; i<eles.size(); i++) {
+//    for (int dim=0; dim<params->nDims; dim++) {
+//      opers[order].applySptsFpts(eles[i]->dU_spts[dim],eles[i]->dU_fpts[dim]);
+//    }
+//  }
 }
 
 void solver::calcEntropyErr_spts(void)
@@ -585,7 +599,7 @@ void solver::moveMesh(int step)
       if (params->RKa[nRKSteps-1]!=1.)
         Geo->updateADT();
       Geo->processBlanks(eles,faces,mpiFaces,overFaces);
-      Geo->processUnblanks(eles,faces,mpiFaces,overFaces);
+      Geo->processUnblanks(eles,faces,mpiFaces,overFaces,this);
       OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->quadOrder);
       OComm->performGalerkinProjection(eles,opers,Geo->eleMap,order);
     }
@@ -665,17 +679,10 @@ void solver::setupOperators()
 {
   if (params->rank==0) cout << "Solver: Setting up FR operators" << endl;
 
-  // Get all element types & olynomial orders in mesh
-  for (auto& e:eles) {
-    eTypes.insert(e->eType);
-    polyOrders[e->eType].insert(e->order);
-  }
-
-  for (auto& e: eTypes) {
-    for (auto& p: polyOrders[e]) {
-      opers[e][p].setupOperators(e,p,Geo,params);
-    }
-  }
+  if (params->nDims == 2)
+    opers[order].setupOperators(QUAD,order,Geo,params);
+  else
+    opers[order].setupOperators(HEX,order,Geo,params);
 }
 
 void solver::setupElesFaces(void) {
@@ -684,7 +691,7 @@ void solver::setupElesFaces(void) {
 
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    eles[i]->setup(params,Geo,order);
+    eles[i]->setup(params,this,Geo,order);
   }
 
   // Finish setting up internal & boundary faces
@@ -886,8 +893,8 @@ vector<double> solver::integrateError(void)
   vector<double> detJac_qpts;
   for (uint ic=0; ic<eles.size(); ic++) {
     //if (params->meshType == OVERSET_MESH and Geo->iblankCell[eles[ic]->ID]!=NORMAL) continue;
-    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts, U_qpts, quadPoints);
-    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
+/////    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts, U_qpts, quadPoints);
+/////    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
     for (uint i=0; i<qpts.size(); i++) {
       auto tmpErr = calcError(U_qpts.getRow(i), eles[ic]->calcPos(qpts[i]), params);
       for (int j=0; j<params->nFields; j++)
@@ -911,6 +918,6 @@ void solver::shockCapture(void)
 {
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
-    eles[i]->sensor = opers[eles[i]->eType][eles[i]->order].shockCaptureInEle(eles[i]->U_spts,params->threshold);
+/////    eles[i]->sensor = opers[order].shockCaptureInEle(eles[i]->U_spts,params->threshold);
   }
 }
