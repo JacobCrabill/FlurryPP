@@ -893,6 +893,7 @@ template class Array2D<int>;
 template class Array2D<double>;
 template class Array2D<point>;
 template class Array2D<Array<double,3>>;
+template class Array<Array<double,3>,2>;
 
 template class matrix<int>;
 template class matrix<double>;

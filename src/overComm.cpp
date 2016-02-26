@@ -934,7 +934,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
 
         vector<double> tmpU(nFields);
 /////        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tmpU.data(), refLoc);
-        vector<double> tmpErr = calcError(tmpU,point(qpts_tmp[j],nDims),params);
+        vector<double> tmpErr = calcError(tmpU.data(),point(qpts_tmp[j],nDims),params);
         superErr[offset+i].insertRow(tmpErr);
       }
     }
@@ -961,7 +961,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
 /////    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts, U_qpts, quadPoints);
     opers[eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
     for (uint i=0; i<qpts.size(); i++) {
-      auto tmpErr = calcError(U_qpts.getRow(i), eles[ic]->calcPos(qpts[i]), params);
+      auto tmpErr = calcError(U_qpts[i], eles[ic]->calcPos(qpts[i]), params);
       for (int j=0; j<nFields; j++)
         intErr[j] += tmpErr[j] * wts[i] * detJac_qpts[i];
     }
@@ -1021,7 +1021,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>
           } else {
 /////            opers[eles[ic]->eType][eles[ic]->order].applyExtrapolateFn(eles[ic]->F_spts,eles[ic]->tNorm_fpts,eles[ic]->disFn_fpts);
           }
-          eles[ic]->calcDeltaFn();
+/////          eles[ic]->calcDeltaFn();
         }
 
         vector<matrix<double>> tempF_spts;
@@ -1146,7 +1146,10 @@ void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, o
         // Gradient vector must be in ref. space in order to apply correction functions
         tempDU_spts = eles[ic]->transformGradU_physToRef();
       } else {
-/////        tempDU_spts = eles[ic]->dU_spts;
+        for (uint dim = 0; dim < params->nDims; dim++)
+          for (uint spt = 0; spt < eles[ic]->nSpts; spt++)
+            for (uint k = 0; k < params->nFields; k++)
+              tempDU_spts[dim](spt,k) = eles[ic]->dU_spts(dim,spt,k);
       }
 
       matrix<double> tempDU_ref(nDims,nFields);

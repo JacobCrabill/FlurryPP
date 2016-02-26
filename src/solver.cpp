@@ -71,30 +71,76 @@ void solver::setup(input *params, int order, geo *_Geo)
   params->time = 0.;
   this->order = order;
 
+  nDims = params->nDims;
+  nFields = params->nFields;
+  nMpts = (nDims==2) ? 4 : 8;
+  nRKSteps = params->nRKSteps;
+
   /* Setup the FR elements & faces which will be computed on */
   Geo->setupElesFaces(params,eles,faces,mpiFaces,overFaces);
+
+  nEles = eles.size();
 
   nGrids = Geo->nGrids;
   gridID = Geo->gridID;
   gridRank = Geo->gridRank;
   nprocPerGrid = Geo->nProcGrid;
 
+  /* Setup the FR operators for computation */
+  setupOperators();
+
+  nSpts = opers[order].nSpts;
+  nFpts = opers[order].nFpts;
+
+  setupArrays();
+
   setupElesFaces();
 
   if (params->meshType == OVERSET_MESH)
     setupOverset();
 
-  /* Setup the FR operators for computation */
-  setupOperators();
-
   /* Additional Setup */
-
-  // Time advancement setup
-  nRKSteps = params->nRKSteps;
 
 #ifndef _NO_MPI
   finishMpiSetup();
 #endif
+}
+
+void solver::setupArrays(void)
+{
+  U_spts.setup(nSpts, nEles, nFields);
+  U_fpts.setup(nFpts, nEles, nFields);
+
+  F_spts.setup(nDims, nSpts, nEles, nFields);
+  F_fpts.setup(nDims, nFpts, nEles, nFields);
+
+  if (params->viscous || params->motion)
+  {
+    dU_spts.setup(nDims, nSpts, nEles, nFields);
+    dU_fpts.setup(nDims, nFpts, nEles, nFields);
+  }
+
+  dF_spts.setup(nDims, nDims);
+  for (auto &mat:dF_spts.data)
+    mat.setup(nSpts, nEles, nFields);
+
+  U0.setup(nSpts, nEles, nFields);
+  U_mpts.setup(nMpts, nEles, nFields);
+
+  disFn_fpts.setup(nFpts, nEles, nFields);
+  Fn_fpts.setup(nFpts, nEles, nFields);
+
+  divF_spts.resize(nRKSteps);
+  for (auto &divF:divF_spts)
+    divF.setup(nSpts, nEles, nFields);
+
+  /* Multigrid Variables */
+  if (params->PMG)
+  {
+    sol_spts.setup(nSpts, nEles, nFields);
+    corr_spts.setup(nSpts, nEles, nFields);
+    src_spts.setup(nSpts, nEles, nFields);
+  }
 }
 
 void solver::update(bool PMG_Source)
@@ -234,33 +280,38 @@ void solver::calcDt(void)
 
 void solver::timeStepA(int step, bool PMG_Source)
 {
+  //! TODO
+//  if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
+//    for (uint i=0; i<eles.size(); i++) {
+//      if (Geo->iblankCell[eles[i]->ID] == NORMAL)
+
   if (PMG_Source)
   {
     /* --- Include PMG Source Term --- */
-    if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
-      for (uint i=0; i<eles.size(); i++) {
-        if (Geo->iblankCell[eles[i]->ID] == NORMAL)
-          eles[i]->timeStepA_source(step,params->RKa[step+1]);
-      }
-    } else {
-#pragma omp parallel for
-      for (uint i=0; i<eles.size(); i++) {
-        eles[i]->timeStepA_source(step,params->RKa[step+1]);
+#pragma omp parallel for collapse(3)
+    for (uint spt = 0; spt < nSpts; spt++) {
+      for (uint e = 0; e < nEles; e++) {
+        for (uint k = 0; k < nFields; k++) {
+          if (params->dtType != 2)
+            U_spts(spt,e,k) = U0(spt,e,k) - params->RKa[step+1] * (divF_spts[step](spt,e,k) + src_spts(spt,e,k)) / eles[e]->detJac_spts[spt] * params->dt;
+          else
+            U_spts(spt,e,k) = U0(spt,e,k) - params->RKa[step+1] * (divF_spts[step](spt,e,k) + src_spts(spt,e,k)) / eles[e]->detJac_spts[spt] * eles[e]->dt;
+        }
       }
     }
   }
   else
   {
     /* --- Normal Time Advancement --- */
-    if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
-      for (uint i=0; i<eles.size(); i++) {
-        if (Geo->iblankCell[eles[i]->ID] == NORMAL)
-          eles[i]->timeStepA(step,params->RKa[step+1]);
-      }
-    } else {
-#pragma omp parallel for
-      for (uint i=0; i<eles.size(); i++) {
-        eles[i]->timeStepA(step,params->RKa[step+1]);
+#pragma omp parallel for collapse(3)
+    for (uint spt = 0; spt < nSpts; spt++) {
+      for (uint e = 0; e < nEles; e++) {
+        for (uint k = 0; k < nFields; k++) {
+          if (params->dtType != 2)
+            U_spts(spt, e, k) = U0(spt,e,k) - params->RKa[step+1] * divF_spts[step](spt,e,k) / eles[e]->detJac_spts[spt] * params->dt;
+          else
+            U_spts(spt, e, k) = U0(spt,e,k) - params->RKa[step+1] * divF_spts[step](spt,e,k) / eles[e]->detJac_spts[spt] * eles[e]->dt;
+        }
       }
     }
   }
@@ -271,30 +322,30 @@ void solver::timeStepB(int step, bool PMG_Source)
   if (PMG_Source)
   {
     /* --- Include PMG Source Term --- */
-    if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
-      for (uint i=0; i<eles.size(); i++) {
-        if (Geo->iblankCell[eles[i]->ID] == NORMAL)
-          eles[i]->timeStepB_source(step,params->RKb[step]);
-      }
-    } else {
-#pragma omp parallel for
-      for (uint i=0; i<eles.size(); i++) {
-        eles[i]->timeStepB_source(step,params->RKb[step]);
+#pragma omp parallel for collapse(3)
+    for (uint spt = 0; spt < nSpts; spt++) {
+      for (uint e = 0; e < nEles; e++) {
+        for (uint k = 0; k < nFields; k++) {
+          if (params->dtType != 2)
+            U_spts(spt,e,k) -= params->RKb[step] * (divF_spts[step](spt,e,k) + src_spts(spt,e,k)) / eles[e]->detJac_spts[spt] * params->dt;
+          else
+            U_spts(spt,e,k) -= params->RKb[step] * (divF_spts[step](spt,e,k) + src_spts(spt,e,k)) / eles[e]->detJac_spts[spt] * eles[e]->dt;
+        }
       }
     }
   }
   else
   {
     /* --- Normal Time Advancement --- */
-    if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
-      for (uint i=0; i<eles.size(); i++) {
-        if (Geo->iblankCell[eles[i]->ID] == NORMAL)
-          eles[i]->timeStepB(step,params->RKb[step]);
-      }
-    } else {
-#pragma omp parallel for
-      for (uint i=0; i<eles.size(); i++) {
-        eles[i]->timeStepB(step,params->RKb[step]);
+#pragma omp parallel for collapse(3)
+    for (uint spt = 0; spt < nSpts; spt++) {
+      for (uint e = 0; e < nEles; e++) {
+        for (uint k = 0; k < nFields; k++) {
+          if (params->dtType != 2)
+            U_spts(spt,e,k) -= params->RKb[step] * divF_spts[step](spt,e,k) / eles[e]->detJac_spts[spt] * params->dt;
+          else
+            U_spts(spt,e,k) -= params->RKb[step] * divF_spts[step](spt,e,k) / eles[e]->detJac_spts[spt] * eles[e]->dt;
+        }
       }
     }
   }
@@ -302,21 +353,33 @@ void solver::timeStepB(int step, bool PMG_Source)
 
 void solver::copyUspts_U0(void)
 {
-  U0 = U_spts;
+#pragma omp parallel for collapse(3)
+    for (uint spt = 0; spt < nSpts; spt++)
+      for (uint e = 0; e < nEles; e++)
+        for (uint k = 0; k < nFields; k++)
+          U0(spt, e, k) = U_spts(spt, e, k);
 }
 
 void solver::copyU0_Uspts(void)
 {
-  U_spts = U0;
+#pragma omp parallel for collapse(3)
+    for (uint spt = 0; spt < nSpts; spt++)
+      for (uint e = 0; e < nEles; e++)
+        for (uint k = 0; k < nFields; k++)
+          U_spts(spt, e, k) = U0(spt, e, k);
 }
 
 void solver::extrapolateU(void)
 {
+  int m = nFpts;
+  int n = nEles * nFields;
+  int k = nSpts;
+
   auto &A = opers[order].opp_spts_to_fpts(0,0);
   auto &B = U_spts(0,0,0);
   auto &C = U_fpts(0,0,0);
-  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, nFpts, nEles * nFields,
-        nSpts, 1.0, &A, nFpts, &B, nSpts, 0.0, &C, nFpts);
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
 }
 
 void solver::calcAvgSolution()
@@ -357,11 +420,15 @@ void solver::checkEntropyPlot()
 
 void solver::extrapolateUMpts(void)
 {
+  int m = nMpts;
+  int n = nEles * nFields;
+  int k = nSpts;
+
   auto &A = opers[order].opp_spts_to_mpts(0,0);
   auto &B = U_spts(0,0,0);
   auto &C = U_mpts(0,0,0);
-  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, nMpts, nEles * nFields,
-        nSpts, 1.0, &A, nFpts, &B, nSpts, 0.0, &C, nMpts);
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
 }
 
 void solver::extrapolateGridVelMpts(void)
@@ -479,14 +546,16 @@ void solver::calcGradF_spts(void)
       auto &A = opers[order].opp_grad_spts[dim2](0,0);
       auto &B = F_spts(dim1,0,0,0);
       auto &C = dF_spts(dim2,dim1)(0,0,0);
-      cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n,
-            k, 1.0, &A, k, &B, n, 0.0, &C, n);
+      cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                  1.0, &A, k, &B, n, 0.0, &C, n);
     }
   }
 }
 
 void solver::transformGradF_spts(int step)
 {
+  divF_spts[step].initializeToValue(0);
+
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i]->transformGradF_spts(step);
@@ -504,7 +573,7 @@ void solver::calcFluxDivergence(int step)
 
     transformGradF_spts(step);
 
-  }else{
+  } else {
 
     /* Standard conservative form */
     calcDivF_spts(step);
@@ -514,10 +583,23 @@ void solver::calcFluxDivergence(int step)
 
 void solver::calcDivF_spts(int step)
 {
-//#pragma omp parallel for
-//  for (uint i=0; i<eles.size(); i++) {
-//    opers[order].applyDivFSpts(eles[i]->F_spts,eles[i]->divF_spts[step]);
-//  }
+  int m = nSpts;
+  int n = nEles * nFields;
+  int k = nSpts;
+
+  auto &C = divF_spts[step](0,0,0);
+
+  auto &A = opers[order].opp_grad_spts[0](0,0);
+  auto &B = F_spts(0,0,0,0);
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+
+  for (uint dim = 1; dim < nDims; dim++) {
+    auto &A = opers[order].opp_grad_spts[dim](0,0);
+    auto &B = F_spts(dim,0,0,0);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 1.0, &C, n);
+  }
 }
 
 void solver::extrapolateNormalFlux(void)
@@ -530,21 +612,46 @@ void solver::extrapolateNormalFlux(void)
 //    }
 //  }
 //  else {
-//    /* Extrapolate transformed normal flux */
-//#pragma omp parallel for
-//    for (uint i=0; i<eles.size(); i++) {
-//      opers[order].applyExtrapolateFn(eles[i]->F_spts,eles[i]->tNorm_fpts,eles[i]->disFn_fpts);
-//    }
-//  }
+
+  /* Extrapolate transformed normal flux */
+
+  int m = nFpts;
+  int n = nEles * nFields;
+  int k = nSpts;
+
+  auto &C = disFn_fpts(0, 0, 0);
+
+  auto &A = opers[order].opp_extrapolateFn[0](0,0);
+  auto &B = F_spts(0, 0, 0, 0);
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+
+  for (uint dim = 1; dim < nDims; dim++) {
+    auto &A = opers[order].opp_extrapolateFn[dim](0,0);
+    auto &B = F_spts(dim, 0, 0, 0);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 1.0, &C, n);
+  }
 }
 
 void solver::correctDivFlux(int step)
 {
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    eles[i]->calcDeltaFn();
-    opers[order].applyCorrectDivF(eles[i]->dFn_fpts,eles[i]->divF_spts[step]);
-  }
+#pragma omp parallel for collapse(3)
+  for (uint fpt = 0; fpt < nFpts; fpt++)
+    for (uint e = 0; e < nEles; e++)
+      for (uint k = 0; k < nFields; k++)
+        disFn_fpts(fpt, e, k) = Fn_fpts(fpt, e, k) - disFn_fpts(fpt, e, k);
+
+  int m = nSpts;
+  int n = nEles * nFields;
+  int k = nFpts;
+
+  auto &A = opers[order].opp_correction(0,0);
+  auto &B = disFn_fpts(0,0,0);
+  auto &C = divF_spts[step](0,0,0);
+
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 1.0, &C, n);
 }
 
 void solver::calcGradU_spts(void)
@@ -557,28 +664,40 @@ void solver::calcGradU_spts(void)
     auto &A = opers[order].opp_grad_spts[dim1](0,0);
     auto &B = U_spts(0,0,0);
     auto &C = dU_spts(dim1,0,0,0);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n,
-                k, 1.0, &A, k, &B, n, 0.0, &C, n);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 0.0, &C, n);
   }
 }
 
 void solver::correctGradU(void)
 {
-//#pragma omp parallel for
-//  for (uint i=0; i<eles.size(); i++) {
-//    eles[i]->calcDeltaUc();
-//    opers[order].applyCorrectGradU(eles[i]->dUc_fpts,eles[i]->dU_spts,eles[i]->JGinv_spts,eles[i]->detJac_spts);
-//  }
+  //auto &B = dUc_fpts(0,0,0);
+
+  for (uint dim = 0; dim < nDims; dim++) {
+    auto &A = opers[order].opp_correctU[dim](0,0);
+    auto &C = dU_spts(dim,0,0,0);
+    //cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n,
+    //            k, 1.0, &A, k, &B, n, 1.0, &C, n);
+  }
+
+  /* Transform back to physical space */
+  // ...
 }
 
 void solver::extrapolateGradU()
 {
-//#pragma omp parallel for
-//  for (uint i=0; i<eles.size(); i++) {
-//    for (int dim=0; dim<params->nDims; dim++) {
-//      opers[order].applySptsFpts(eles[i]->dU_spts[dim],eles[i]->dU_fpts[dim]);
-//    }
-//  }
+  int m = nFpts;
+  int n = nEles * nFields;
+  int k = nSpts;
+
+  auto &A = opers[order].opp_spts_to_fpts(0,0);
+
+  for (uint dim=0; dim<nDims; dim++) {
+    auto &B = dU_spts(dim,0,0,0);
+    auto &C = dU_fpts(dim,0,0,0);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 0.0, &C, n);
+  }
 }
 
 void solver::calcEntropyErr_spts(void)
@@ -889,15 +1008,34 @@ vector<double> solver::integrateError(void)
   for (auto &pt: qpts) quadPoints.insertRow({pt.x,pt.y,pt.z});
 
   vector<double> LpErr(params->nFields);
-  matrix<double> U_qpts;
   vector<double> detJac_qpts;
+
+  /* Interpolate solution to quadrature points */
+
+  auto opp_spts_qpts = opers[order].setupInterpolateSptsIpts(quadPoints);
+
+  U_qpts.setup(qpts.size(), nEles, nFields);
+
+  int m = qpts.size();
+  int n = nEles * nFields;
+  int k = nSpts;
+
+  auto &A = opp_spts_qpts(0,0);
+  auto &B = U_spts(0,0,0);
+  auto &C = U_qpts(0,0,0);
+
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+
+  /* Integrate error over each element */
+
   for (uint ic=0; ic<eles.size(); ic++) {
     //if (params->meshType == OVERSET_MESH and Geo->iblankCell[eles[ic]->ID]!=NORMAL) continue;
-/////    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts, U_qpts, quadPoints);
-/////    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
+    opp_spts_qpts.timesVector(eles[ic]->detJac_spts, detJac_qpts);
+
     for (uint i=0; i<qpts.size(); i++) {
-      auto tmpErr = calcError(U_qpts.getRow(i), eles[ic]->calcPos(qpts[i]), params);
-      for (int j=0; j<params->nFields; j++)
+      auto tmpErr = calcError(&U_qpts(i, ic, 0), eles[ic]->calcPos(qpts[i]), params);
+      for (uint j=0; j<params->nFields; j++)
         LpErr[j] += tmpErr[j] * wts[i] * detJac_qpts[i];
     }
   }

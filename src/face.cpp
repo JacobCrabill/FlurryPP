@@ -104,7 +104,7 @@ void face::getPointers(void)
   // Get access to data at left element
   int fpt = 0;
   for (int i=fptStartL; i<fptEndL; i++) {
-    FnL[fpt] = (eL->Fn_fpts[i]);
+    FnL[fpt] = &(eL->Fn_fpts(i,0));
     waveSp[fpt] = &(eL->waveSp_fpts[i]);
 
     if (params->viscous) {

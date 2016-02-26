@@ -148,4 +148,6 @@ int main(int argc, char *argv[]) {
 #ifndef _NO_MPI
  MPI_Finalize();
 #endif
+
+ return 0;
 }

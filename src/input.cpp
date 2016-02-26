@@ -470,18 +470,20 @@ void input::readInputFile(char *filename)
       FatalError("Time-Stepping type not supported.");
   }
 
-  if (squeeze) {
-    // Entropy bound for polynomial squeezing
-    exps0 = 0.0*pBound/(pow(rhoBound,gamma));
-  }
-
   iter = initIter;
 
-  // Calculate U_infinity for force-coefficient normalization
-  if (nDims==2) wBound = 0;
-  Uinf = sqrt(uBound*uBound+vBound*vBound+wBound*wBound);
+  if (equation == NAVIER_STOKES) {
+    if (squeeze) {
+      // Entropy bound for polynomial squeezing
+      exps0 = 0.0*pBound/(pow(rhoBound,gamma));
+    }
 
-  if (viscous) nonDimensionalize();
+    // Calculate U_infinity for force-coefficient normalization
+    if (nDims==2) wBound = 0;
+    Uinf = sqrt(uBound*uBound+vBound*vBound+wBound*wBound);
+
+    if (viscous) nonDimensionalize();
+  }
 }
 
 

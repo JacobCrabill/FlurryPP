@@ -33,6 +33,8 @@
 #include <sstream>
 #include <omp.h>
 
+#include "cblas.h"
+
 #include "input.hpp"
 #include "output.hpp"
 #include "solver.hpp"
@@ -186,10 +188,13 @@ void multiGrid::cycle(solver &Solver)
       /* Update residual and add source */
       pGrids[P]->calcResidual(0);
 
-#pragma omp parallel for
-      for (uint e = 0; e < pGrids[P]->eles.size(); e++)
-      {
-        pGrids[P]->eles[e]->divF_spts[0] += pGrids[P]->eles[e]->src_spts;
+#pragma omp parallel for collapse(3)
+      for (uint spt = 0; spt < pGrids[P]->nSpts; spt++) {
+        for (uint e = 0; e < pGrids[P]->nEles; e++) {
+          for (uint k = 0; k < params->nFields; k++) {
+            pGrids[P]->divF_spts[0](spt,e,k) += pGrids[P]->src_spts(spt,e,k);
+          }
+        }
       }
 
       if (P-1 >= (int) params->lowOrder)
@@ -224,11 +229,14 @@ void multiGrid::cycle(solver &Solver)
         /* Update residual and add source */
         hGrids[H]->calcResidual(0);
 
-#pragma omp parallel for
-        for (uint e = 0; e < hGrids[H]->eles.size(); e++)
-        {
-          hGrids[H]->eles[e]->divF_spts[0] += hGrids[H]->eles[e]->src_spts;
+#pragma omp parallel for collapse(3)
+      for (uint spt = 0; spt < hGrids[H]->nSpts; spt++) {
+        for (uint e = 0; e < hGrids[H]->nEles; e++) {
+          for (uint k = 0; k < params->nFields; k++) {
+            hGrids[H]->divF_spts[0](spt,e,k) += hGrids[H]->src_spts(spt,e,k);
+          }
         }
+      }
 
         /* Restrict to next coarse grid */
         restrict_hmg(*hGrids[H], *hGrids[H+1], H+1);
@@ -245,7 +253,7 @@ void multiGrid::cycle(solver &Solver)
       }
 
       /* Generate error */
-#pragma omp parallel for collapse:3
+#pragma omp parallel for collapse(3)
       for (uint e = 0; e < hGrids[H]->eles.size(); e++) {
         for (uint spt = 0; spt < hGrids[H]->eles[0]->nSpts; spt++) {
           for (uint k = 0; k < params->nFields; k++) {
@@ -277,7 +285,7 @@ void multiGrid::cycle(solver &Solver)
     }
 
     /* Generate error */
-#pragma omp parallel for collapse:3
+#pragma omp parallel for collapse(3)
     for (uint e = 0; e < pGrids[P]->eles.size(); e++) {
       for (uint spt = 0; spt < pGrids[P]->eles[0]->nSpts; spt++) {
         for (uint k = 0; k < params->nFields; k++) {
@@ -303,52 +311,60 @@ void multiGrid::restrict_pmg(solver &grid_f, solver &grid_c)
   if (grid_f.order - grid_c.order > 1)
     FatalError("Cannot restrict more than 1 order currently!");
 
-#pragma omp parallel for
-  for (uint e = 0; e < grid_f.eles.size(); e++)
-  {
-    auto &e_f = *grid_f.eles[e];
-    auto &e_c = *grid_c.eles[e];
-    auto &opp_res = grid_f.opers[grid_f.order].opp_restrict;
+  int m = grid_c.nSpts;
+  int k = grid_f.nSpts;
+  int n = grid_c.nEles * grid_c.nFields;
 
-    /* Restrict solution */
-/////    opp_res.timesMatrix(e_f.U_spts, e_c.U_spts);
+  auto &opp_res = grid_f.opers[grid_f.order].opp_restrict(0,0);
 
-    /* Restrict residual */
-/////    opp_res.timesMatrix(e_f.divF_spts[0], e_c.divF_spts[0]);
-  }
+  auto &UF = grid_f.U_spts(0,0,0);
+  auto &UC = grid_c.U_spts(0,0,0);
+
+  auto &dfF = grid_f.divF_spts[0](0,0,0);
+  auto &dfC = grid_c.divF_spts[0](0,0,0);
+
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &opp_res, k, &UF, n, 1.0, &UC, n);
+
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &opp_res, k, &dfF, n, 1.0, &dfC, n);
 }
 
 void multiGrid::prolong_err(solver &grid_c, solver &grid_f)
 {
-  auto &opp_pro = grid_c.opers[grid_c.order].opp_prolong;
-#pragma omp parallel for
-  for (uint e = 0; e < grid_c.eles.size(); e++)
-  {
-    auto &e_c = *grid_c.eles[e];
-    auto &e_f = *grid_f.eles[e];
+  int m = grid_f.nSpts;
+  int k = grid_c.nSpts;
+  int n = grid_c.nEles * grid_c.nFields;
 
-/////    opp_pro.timesMatrixPlus(e_c.corr_spts, e_f.U_spts);
-  }
+  auto &opp_pro = grid_c.opers[grid_c.order].opp_prolong(0,0);
+  auto &corr = grid_c.corr_spts(0,0,0);
+  auto &U = grid_c.U_spts(0,0,0);
+
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &opp_pro, k, &corr, n, 1.0, &U, n);
 }
 
 void multiGrid::compute_source_term(solver &grid)
 {
   /* Copy restricted fine grid residual to source term */
-#pragma omp parallel for
-  for (uint e = 0; e < grid.eles.size(); e++)
-  {
-    grid.eles[e]->src_spts = grid.eles[e]->divF_spts[0];
+#pragma omp parallel for collapse(3)
+  for (uint spt = 0; spt < grid.nSpts; spt++) {
+    for (uint e = 0; e < grid.nEles; e++) {
+      for (uint k = 0; k < params->nFields; k++) {
+        grid.src_spts(spt,e,k) = grid.divF_spts[0](spt,e,k);
+      }
+    }
   }
 
   /* Update residual on current coarse grid */
   grid.calcResidual(0);
 
   /* Subtract to generate source term */
-#pragma omp parallel for
-  for (uint e = 0; e < grid.eles.size(); e++) {
-    for (uint spt = 0; spt < grid.eles[0]->nSpts; spt++) {
+#pragma omp parallel for collapse(3)
+  for (uint spt = 0; spt < grid.nSpts; spt++) {
+    for (uint e = 0; e < grid.nEles; e++) {
       for (uint k = 0; k < params->nFields; k++) {
-        grid.src_spts(e,spt,k) -= grid.divF_spts[0](e,spt,k);
+        grid.src_spts(spt,e,k) -= grid.divF_spts[0](spt,e,k);
       }
     }
   }

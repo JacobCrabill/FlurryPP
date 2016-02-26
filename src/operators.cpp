@@ -67,6 +67,8 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
 
   setupGradSpts(loc_spts);
 
+  setupExtrapolateFn();
+
   setupCorrection(loc_spts,loc_fpts);
 
   if (params->viscous) {
@@ -569,6 +571,90 @@ void oper::setupGradSpts(vector<point> &loc_spts)
   }
   else {
     FatalError("Element type not yet supported.");
+  }
+}
+
+void oper::setupExtrapolateFn(void)
+{
+  opp_extrapolateFn.resize(nDims);
+  for (auto &dim:opp_extrapolateFn) {
+    dim.setup(nFpts,nSpts);
+    dim.initializeToZero();
+  }
+
+  if (eType == QUAD) {
+    for(uint spt=0; spt<nSpts; spt++) {
+      for(uint fpt=0; fpt<nFpts; fpt++) {
+        uint iFace = floor(fpt / (order+1));
+
+        double tNorm[2];
+        switch(iFace) {
+          case(0):
+            tNorm[0] = 0;
+            tNorm[1] = -1;
+            break;
+          case(1):
+            tNorm[0] = 1;
+            tNorm[1] = 0;
+            break;
+          case(2):
+            tNorm[0] = 0;
+            tNorm[1] = 1;
+            break;
+          case(3):
+            tNorm[0] = -1;
+            tNorm[1] = 0;
+            break;
+        }
+
+        for (int dim=0; dim<nDims; dim++)
+          opp_extrapolateFn[dim](fpt,spt) = opp_spts_to_fpts(fpt,spt) * tNorm[dim];
+      }
+    }
+  }
+  else if (eType == HEX) {
+    for(uint spt=0; spt<nSpts; spt++) {
+      for(uint fpt=0; fpt<nFpts; fpt++) {
+        uint iFace = floor(fpt / ((order+1)*(order+1)));
+
+        double tNorm[3];
+        switch(iFace) {
+          case 0:
+            tNorm[0] =  0;
+            tNorm[1] =  0;
+            tNorm[2] = -1;
+            break;
+          case 1:
+            tNorm[0] =  0;
+            tNorm[1] =  0;
+            tNorm[2] =  1;
+            break;
+          case 2:
+            tNorm[0] = -1;
+            tNorm[1] =  0;
+            tNorm[2] =  0;
+            break;
+          case 3:
+            tNorm[0] =  1;
+            tNorm[1] =  0;
+            tNorm[2] =  0;
+            break;
+          case 4:
+            tNorm[0] =  0;
+            tNorm[1] = -1;
+            tNorm[2] =  0;
+            break;
+          case 5:
+            tNorm[0] =  0;
+            tNorm[1] =  1;
+            tNorm[2] =  0;
+            break;
+        }
+
+        for (int dim=0; dim<nDims; dim++)
+          opp_extrapolateFn[dim](fpt,spt) = opp_spts_to_fpts(fpt,spt) * tNorm[dim];
+      }
+    }
   }
 }
 

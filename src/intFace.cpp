@@ -104,7 +104,7 @@ void intFace::getPointersRight(void)
 {
   // Get access to normal flux storage at right element [use look-up table to get right fpt]
   for (int i=0; i<nFptsL; i++) {
-    FnR[i] = (eR->Fn_fpts[fptR[i]]);
+    FnR[i] = &(eR->Fn_fpts(fptR[i],0));
 
     if (params->viscous)
       UcR[i] = (eR->Uc_fpts[fptR[i]]);

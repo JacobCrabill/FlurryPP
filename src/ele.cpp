@@ -102,17 +102,14 @@ void ele::setup(input *inParams, solver *inSolver, geo *inGeo, int in_order)
 
 void ele::setupArrays(void)
 {
-//  U_spts.setup(nSpts,nFields);
-//  U_fpts.setup(nFpts,nFields);
-  U_mpts.setup(nMpts,nFields);
-  disFn_fpts.setup(nFpts,nFields);
+//  disFn_fpts.setup(nFpts,nFields);
   dFn_fpts.setup(nFpts,nFields);
-  Fn_fpts.setup(nFpts,nFields);
-  Fn_fpts.initializeToZero();
+//  Fn_fpts.setup(nFpts,nFields);
+//  Fn_fpts.initializeToZero();
 
   nRKSteps = params->nRKSteps;
-  divF_spts.resize(nRKSteps);
-  for (auto& dF:divF_spts) dF.setup(nSpts,nFields);
+//  divF_spts.resize(nRKSteps);
+//  for (auto& dF:divF_spts) dF.setup(nSpts,nFields);
 
 //  if (nRKSteps>1)
 //    U0 = U_spts;
@@ -239,9 +236,24 @@ double& ele::F_fpts(int dim, int fpt, int field)
   return Solver->F_fpts(dim, fpt, ID, field);
 }
 
+double& ele::Fn_fpts(int fpt, int field)
+{
+  return Solver->Fn_fpts(fpt, ID, field);
+}
+
 double& ele::dU_fpts(int dim, int fpt, int field)
 {
   return Solver->dU_fpts(dim, fpt, ID, field);
+}
+
+double& ele::divF_spts(int step, int spt, int field)
+{
+  return Solver->divF_spts[step](spt, ID, field);
+}
+
+double& ele::U_mpts(int mpt, int field)
+{
+  return Solver->U_mpts(mpt, ID, field);
 }
 
 void ele::move(bool doTransforms)
@@ -1215,28 +1227,27 @@ void ele::calcInviscidFlux_spts()
 {
   for (int spt=0; spt<nSpts; spt++) {
 
-    inviscidFlux(&Solver->U_spts(ID,spt), tempF, params);
+    inviscidFlux(&U_spts(spt,0), tempF, params);
 
     if (params->motion) {
       /* --- Don't transform yet; that will be handled later --- */
-      for (int i=0; i<nDims; i++) {
+      for (int dim=0; dim<nDims; dim++) {
         for (int k=0; k<nFields; k++) {
-          Solver->F_spts(i,ID,spt,k) = tempF(i,k);
+          F_spts(dim,spt,k) = tempF(dim,k);
         }
       }
     }
     else {
       /* --- Transform back to reference domain --- */
-      for (int i=0; i<nDims; i++) {
+      for (int dim1=0; dim1<nDims; dim1++) {
         for (int k=0; k<nFields; k++) {
-          Solver->F_spts(i,ID,spt,k) = 0.;
-          for (int j=0; j<nDims; j++) {
-            Solver->F_spts(i,ID,spt,k) += JGinv_spts[spt](i,j)*tempF(j,k);
+          F_spts(dim1,spt,k) = 0.;
+          for (int dim2=0; dim2<nDims; dim2++) {
+            F_spts(dim1,spt,k) += JGinv_spts[spt](dim1,dim2)*tempF(dim2,k);
           }
         }
       }
     }
-
   }
 }
 
@@ -1248,7 +1259,7 @@ void ele::calcViscousFlux_spts()
     matrix<double> tempDU(nDims,nFields);
     for (int dim=0; dim<nDims; dim++) {
       for (int k=0; k<nFields; k++) {
-        tempDU(dim,k) = Solver->dU_spts(dim,ID,spt,k);
+        tempDU(dim,k) = dU_spts(dim,spt,k);
       }
     }
 
@@ -1259,18 +1270,18 @@ void ele::calcViscousFlux_spts()
 
     if (params->motion) {
       /* --- Don't transform yet; that will be handled later --- */
-      for (int i=0; i<nDims; i++) {
+      for (int dim=0; dim<nDims; dim++) {
         for (int k=0; k<nFields; k++) {
-          Solver->F_spts(i,ID,spt,k) += tempF(i,k);
+          F_spts(dim,spt,k) += tempF(dim,k);
         }
       }
     }
     else {
       /* --- Transform back to reference domain --- */
       for (int k=0; k<nFields; k++) {
-        for (int i=0; i<nDims; i++) {
+        for (int dim=0; dim<nDims; dim++) {
           for (int j=0; j<nDims; j++) {
-            Solver->F_spts(i,ID,spt,k) += JGinv_spts[spt](i,j)*tempF(j,k);
+            F_spts(dim,spt,k) += JGinv_spts[spt](dim,j)*tempF(j,k);
           }
         }
       }
@@ -1376,11 +1387,11 @@ void ele::transformGradF_spts(int step)
       for (int k=0; k<nFields; k++) {
         dF_spts(0,0,spt,k) =  dF_spts(0,0,spt,k)*Jac_spts[spt](1,1) - dF_spts(0,1,spt,k)*Jac_spts[spt](0,1) + dU_spts(0,spt,k)*A;
         dF_spts(1,1,spt,k) = -dF_spts(1,0,spt,k)*Jac_spts[spt](1,0) + dF_spts(1,1,spt,k)*Jac_spts[spt](0,0) + dU_spts(1,spt,k)*B;
-        divF_spts[step](spt,k) = dF_spts(0,0,spt,k)+dF_spts(1,1,spt,k);
+        divF_spts(step,spt,k) = dF_spts(0,0,spt,k)+dF_spts(1,1,spt,k);
       }
     }
   } else {
-    divF_spts[step].initializeToZero();
+    /////divF_spts[step].initializeToZero();
     for (int spt=0; spt<nSpts; spt++) {
       // Build the full 4D (space+time) Jacobian matrix & its adjoint
       matrix<double> Jacobian(4,4);
@@ -1395,23 +1406,23 @@ void ele::transformGradF_spts(int step)
       for (int dim1=0; dim1<3; dim1++)
         for (int dim2=0; dim2<3; dim2++)
           for (int k=0; k<nFields; k++)
-            divF_spts[step](spt,k) += dF_spts(dim2,dim1,spt,k)*S(dim2,dim1);
+            divF_spts(step,spt,k) += dF_spts(dim2,dim1,spt,k)*S(dim2,dim1);
 
       for (int dim=0; dim<3; dim++)
         for (int k=0; k<nFields; k++)
-          divF_spts[step](spt,k) += dU_spts(dim,spt,k)*S(dim,3);
+          divF_spts(step,spt,k) += dU_spts(dim,spt,k)*S(dim,3);
     }
   }
 }
 
-void ele::calcDeltaFn(void)
-{
-  for (int fpt=0; fpt<nFpts; fpt++) {
-    for (int k=0; k<nFields; k++) {
-      dFn_fpts(fpt,k) = Fn_fpts(fpt,k) - disFn_fpts(fpt,k);
-    }
-  }
-}
+//void ele::calcDeltaFn(void)
+//{
+//  for (int fpt=0; fpt<nFpts; fpt++) {
+//    for (int k=0; k<nFields; k++) {
+//      dFn_fpts(fpt,k) = Fn_fpts(fpt,k) - disFn_fpts(fpt,k);
+//    }
+//  }
+//}
 
 
 void ele::calcDeltaUc(void)
@@ -1429,7 +1440,7 @@ void ele::calcEntropyErr_spts(void)
     auto v = getEntropyVars(spt);
     S_spts(spt) = 0;
     for (int k=0; k<nFields; k++) {
-      S_spts(spt) += v[k]*divF_spts[0](spt,k);
+      S_spts(spt) += v[k]*divF_spts(0,spt,k);
     }
     S_spts(spt) /= detJac_spts[spt];
   }
@@ -1514,46 +1525,46 @@ void ele::calcWaveSpFpts(void)
 
 void ele::timeStepA(int step, double rkVal)
 {
-  if (params->dtType != 2) dt = params->dt;
+//  if (params->dtType != 2) dt = params->dt;
 
-  for (int spt=0; spt<nSpts; spt++) {
-    for (int i=0; i<nFields; i++) {
-      U_spts(spt,i) = U0(spt,i) - rkVal * dt * divF_spts[step](spt,i)/detJac_spts[spt];
-    }
-  }
+//  for (int spt=0; spt<nSpts; spt++) {
+//    for (int i=0; i<nFields; i++) {
+//      U_spts(spt,i) = U0(spt,i) - rkVal * dt * divF_spts[step](spt,i)/detJac_spts[spt];
+//    }
+//  }
 }
 
 void ele::timeStepB(int step, double rkVal)
 {
-  if (params->dtType != 2) dt = params->dt;
+//  if (params->dtType != 2) dt = params->dt;
 
-  for (int spt=0; spt<nSpts; spt++) {
-    for (int i=0; i<nFields; i++) {
-      U_spts(spt,i) -= rkVal * dt * divF_spts[step](spt,i)/detJac_spts[spt];
-    }
-  }
+//  for (int spt=0; spt<nSpts; spt++) {
+//    for (int i=0; i<nFields; i++) {
+//      U_spts(spt,i) -= rkVal * dt * divF_spts[step](spt,i)/detJac_spts[spt];
+//    }
+//  }
 }
 
 void ele::timeStepA_source(int step, double rkVal)
 {
-  if (params->dtType != 2) dt = params->dt;
+//  if (params->dtType != 2) dt = params->dt;
 
-  for (int spt=0; spt<nSpts; spt++) {
-    for (int i=0; i<nFields; i++) {
-      U_spts(spt,i) = U0(spt,i) - rkVal * dt * (divF_spts[step](spt,i) + src_spts(spt,i)) / detJac_spts[spt];
-    }
-  }
+//  for (int spt=0; spt<nSpts; spt++) {
+//    for (int i=0; i<nFields; i++) {
+//      U_spts(spt,i) = U0(spt,i) - rkVal * dt * (divF_spts[step](spt,i) + src_spts(spt,i)) / detJac_spts[spt];
+//    }
+//  }
 }
 
 void ele::timeStepB_source(int step, double rkVal)
 {
-  if (params->dtType != 2) dt = params->dt;
+//  if (params->dtType != 2) dt = params->dt;
 
-  for (int spt=0; spt<nSpts; spt++) {
-    for (int i=0; i<nFields; i++) {
-      U_spts(spt,i) -= rkVal * dt * (divF_spts[step](spt,i) + src_spts(spt,i)) / detJac_spts[spt];
-    }
-  }
+//  for (int spt=0; spt<nSpts; spt++) {
+//    for (int i=0; i<nFields; i++) {
+//      U_spts(spt,i) -= rkVal * dt * (divF_spts[step](spt,i) + src_spts(spt,i)) / detJac_spts[spt];
+//    }
+//  }
 }
 
 double ele::calcDt(void)
@@ -1627,7 +1638,7 @@ vector<double> ele::getPrimitivesMpt(uint mpt)
   vector<double> V(nFields);
 
   if (params->equation == ADVECTION_DIFFUSION) {
-    V[0] = U_mpts[mpt][0];
+    V[0] = U_mpts(mpt,0);
   }
   else if (params->equation == NAVIER_STOKES) {
     V[0] = U_mpts(mpt,0);
@@ -2409,8 +2420,6 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
   matrix<double> opp_interp;
   int nSpts_final;
   if (order != params->order) {
-/////    U_spts.setup(nSpts,nFields);
-
     /* Setup inter-order interpolation operator */
 
     if (nDims == 2)
@@ -2462,6 +2471,8 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
     FatalError("Only quads and hexes implemented.");
 
   // Move on to the first <DataArray>
+
+  matrix<double>  tempU(nSpts,nDims);
 
   if (params->equation == NAVIER_STOKES) {
     matrix<double> tempV(nSpts,nDims);
@@ -2678,14 +2689,14 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
 
     // Convert primitive variables to conservative variables
     for (int spt=0; spt<nSpts; spt++) {
-      U_spts(spt,1) = U_spts(spt,0)*tempV(spt,0);
-      U_spts(spt,2) = U_spts(spt,0)*tempV(spt,1);
+      tempU(spt,1) = tempU(spt,0)*tempV(spt,0);
+      tempU(spt,2) = tempU(spt,0)*tempV(spt,1);
       double vSq = tempV(spt,0)*tempV(spt,0)+tempV(spt,1)*tempV(spt,1);
       if (nDims == 3) {
-        U_spts(spt,3) = U_spts(spt,0)*tempV(spt,2);
+        tempU(spt,3) = tempU(spt,0)*tempV(spt,2);
         vSq += tempV(spt,2)*tempV(spt,2);
       }
-      U_spts(spt,nDims+1) = tempP[spt]/(params->gamma-1) + 0.5*U_spts(spt,0)*vSq;
+      tempU(spt,nDims+1) = tempP[spt]/(params->gamma-1) + 0.5*tempU(spt,0)*vSq;
     }
   }
   else if (params->equation == ADVECTION_DIFFUSION) {
@@ -2727,7 +2738,7 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
           for (int i=0; i<(order+1); i++) {
             ss >> tmp;
             for (int j=0; j<(order+1); j++) {
-              ss >> U_spts(j+i*(order+1),0);
+              ss >> tempU(j+i*(order+1),0);
             }
             ss >> tmp;
           }
@@ -2746,7 +2757,7 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
             for (int j=0; j<(order+1); j++) {
               ss >> tmp;
               for (int i=0; i<(order+1); i++) {
-                ss >> U_spts(i+(order+1)*(j+(order+1)*k),0);
+                ss >> tempU(i+(order+1)*(j+(order+1)*k),0);
               }
               ss >> tmp;
             }
@@ -2767,14 +2778,20 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
 
   if (order != params->order) {
     /* Use interpolation operator to interpolate from restart order to final order */
-    matrix<double>  tmpU(nSpts_final,nFields);
-/////    opp_interp.timesMatrix(U_spts, tmpU);
+    matrix<double>  tempU2(nSpts_final,nFields);
+    opp_interp.timesMatrix(tempU, tempU2);
 
     nSpts = nSpts_final;
     order = params->order;
-///// /*    U_spts.setup(nSpts,nFields);
-/////    U_spts = tmpU;*/
+    tempU.setup(nSpts,nFields);
+    tempU = tempU2;
   }
+
+  /* Copy U into global storage */
+
+  for (uint spt = 0; spt < nSpts; spt++)
+    for (uint k = 0; k < nFields; k++)
+      U_spts(spt, k) = tempU(spt, k);
 }
 
 vector<double> ele::getNormResidual(int normType)
@@ -2787,14 +2804,14 @@ vector<double> ele::getNormResidual(int normType)
   for (int spt=0; spt<nSpts; spt++) {
     for (int i=0; i<nFields; i++) {
       if (normType == 1) {
-        res[i] += abs(divF_spts[0](spt,i)) * weights[spt];
+        res[i] += abs(divF_spts(0,spt,i)) * weights[spt];
       }
       else if (normType == 2) {
-        res[i] += divF_spts[0](spt,i)*divF_spts[0](spt,i) / detJac_spts[spt] * weights[spt];
+        res[i] += divF_spts(0,spt,i)*divF_spts(0,spt,i) / detJac_spts[spt] * weights[spt];
       }
       else if (normType == 3) {
         // Infinity norm
-        res[i] = max(abs(divF_spts[0](spt,i))/detJac_spts[spt],res[i]);
+        res[i] = max(abs(divF_spts(0,spt,i))/detJac_spts[spt],res[i]);
       }
     }
   }

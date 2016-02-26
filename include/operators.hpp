@@ -120,7 +120,6 @@ public:
   matrix<double> opp_prolong;   //! PMG Prolongation operator
   matrix<double> opp_restrict;  //! PMG Restriction operator
 
-//private:
   geo *Geo;
   input *params;
   uint nDims, nFields, eType, order, nSpts, nFpts;
@@ -130,10 +129,14 @@ public:
   matrix<double> opp_spts_to_mpts;
   vector<matrix<double>> opp_grad_spts;
   matrix<double> opp_div_spts;
+  vector<matrix<double>> opp_extrapolateFn;
   matrix<double> opp_correction;
   vector<matrix<double>> opp_correctU;
   vector<matrix<double>> opp_correctF;
 
+private:
+  //! Flux at solution points to normal flux at fpts [Reference space]
+  void setupExtrapolateFn(void);
 
   void setupCorrectF(vector<point> &loc_spts);
 

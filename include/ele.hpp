@@ -110,7 +110,7 @@ public:
 
   void transformGradF_spts(int step);
 
-  void calcDeltaFn(void);
+//  void calcDeltaFn(void);
 
   void calcDeltaUc(void);
 
@@ -223,15 +223,9 @@ public:
   int nRKSteps;
 
   /* --- Solution Variables --- */
-  // Solution, flux
-//  matrix<double> U_spts;           //! Solution at solution points
-//  matrix<double> U_fpts;           //! Solution at flux points
-  matrix<double> U_mpts;           //! Solution at mesh (corner) points
-  matrix<double> U0;               //! Solution at solution points, beginning of each time step
-//  vector<matrix<double> > F_spts;  //! Flux at solution points
-//  vector<matrix<double> > F_fpts;  //! Flux at flux points
-  matrix<double> disFn_fpts;       //! Discontinuous normal flux at flux points
-  matrix<double> Fn_fpts;          //! Interface flux at flux points
+
+//  matrix<double> disFn_fpts;       //! Discontinuous normal flux at flux points
+//  matrix<double> Fn_fpts;          //! Interface flux at flux points
   matrix<double> dFn_fpts;         //! Interface minus discontinuous flux at flux points
   matrix<double> Uc_fpts;          //! Common solution at flux points
   matrix<double> dUc_fpts;         //! Common minus discontinuous solution at flux points
@@ -240,10 +234,6 @@ public:
   vector<double> Uavg;             //! Average solution over element
 
   // Gradients
-//  vector<matrix<double> > dU_spts;  //! Gradient of solution at solution points
-//  vector<matrix<double> > dU_fpts;  //! Gradient of solution at flux points
-//  Array<matrix<double>,2> dF_spts;  //! Gradient of flux at solution points
-  vector<matrix<double>> divF_spts; //! Divergence of flux at solution points
   vector<matrix<double>> tdF_spts;  //! Transformed gradient of flux (dF_dxi and dG_deta) at solution points
 
   // Transform Variables
@@ -301,7 +291,10 @@ public:
   double& dF_spts(int dim_grad, int dim_flux, int spt, int field);
   double& U_fpts(int fpt, int field);
   double& F_fpts(int dim, int fpt, int field);
+  double& Fn_fpts(int fpt, int field);
+  double& U_mpts(int mpt, int field);
   double& dU_fpts(int dim, int fpt, int field);
+  double& divF_spts(int step, int spt, int field);
 
 private:
 

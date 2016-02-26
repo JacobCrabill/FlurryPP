@@ -93,9 +93,9 @@ public:
   uint nSpts, nFpts, nMpts;
   uint nDims, nFields;
 
-  Array<double,3> U0, U_spts, U_fpts, U_mpts; //! Global solution arrays for solver
-  Array<double,4> F_spts, F_fpts, dU_spts, dU_fpts;   //! dim, spt, ele, field?
-  Array<double,3> disFn_fpts, Fn_fpts;  //! fpt, face, field
+  Array<double,3> U0, U_spts, U_fpts, U_mpts, U_qpts; //! Global solution arrays for solver
+  Array<double,4> F_spts, F_fpts, dU_spts, dU_fpts;   //! dim, spt/fpt, ele, field?
+  Array<double,3> disFn_fpts, Fn_fpts;  //! fpt, ele, field
   Array2D<Array<double,3>> dF_spts; //! dim_grad, dim_flux, spt, ele, field
 
   vector<Array<double,3>> divF_spts;
@@ -131,6 +131,9 @@ public:
 
   //! Finish setting up the MPI faces
   void finishMpiSetup(void);
+
+  //! Allocate memory for solution storage
+  void setupArrays();
 
   /* === Functions Related to Basic FR Process === */
 
@@ -251,22 +254,6 @@ public:
 
   //! Calculate an entropy-adjoint-based error indicator
   void calcEntropyErr_spts();
-
-  // **All of the following functions are just food for thought at the moment**
-
-  void get_r_adapt_cells();
-
-  void get_p_adapt_cells();
-
-  void get_h_adapt_cells();
-
-  void setup_r_adaption();
-
-  void setup_h_adaptation();
-
-  void setup_p_adaptation();
-
-  void add_ele(int eType, int order);
 
   /* === Functions Related to Overset Grids === */
 
