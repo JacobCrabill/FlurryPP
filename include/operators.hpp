@@ -134,6 +134,7 @@ private:
   vector<matrix<double>> opp_correctU;
   vector<matrix<double>> opp_correctF;
 
+  matrix<double> tempFn;
 
   void setupCorrectF(vector<point> &loc_spts);
 

@@ -60,6 +60,8 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
   nSpts = loc_spts.size();
   nFpts = loc_fpts.size();
 
+  tempFn.setup(nFpts,nDims);
+
   // Set up each operator
   setupExtrapolateSptsFpts(loc_fpts);
 
@@ -922,12 +924,12 @@ void oper::applySptsMpts(matrix<double> &U_spts, matrix<double> &U_mpts)
 
 void oper::applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &tnorm_fpts, matrix<double> &Fn_fpts)
 {
-  uint nFpts = tnorm_fpts.getDim0();
-  matrix<double> tempFn(nFpts,nDims);
-  tempFn.initializeToZero();
-  Fn_fpts.initializeToZero();
-
-  for (uint dim=0; dim<nDims; dim++) {
+  opp_spts_to_fpts.timesMatrix(F_spts[0],tempFn);
+  for (uint fpt=0; fpt<nFpts; fpt++)
+    for (uint i=0; i<nFields; i++)
+      Fn_fpts(fpt,i) = tempFn(fpt,i)*tnorm_fpts(fpt,0);
+  
+  for (uint dim=1; dim<nDims; dim++) {
     opp_spts_to_fpts.timesMatrix(F_spts[dim],tempFn);
     for (uint fpt=0; fpt<nFpts; fpt++)
       for (uint i=0; i<nFields; i++)

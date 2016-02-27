@@ -169,87 +169,76 @@ matrix<double>& matrix<double>::operator/=(double a)
 template<typename T, uint N>
 T* Array<T,N>::operator[](int inRow)
 {
-  if (inRow < (int)this->dims[0] && inRow >= 0) {
-    return &data[inRow*this->dims[1]];
-  }
-  else {
+#ifdef _DEBUG
+  if (inRow >= (int)this->dims[0] || inRow < 0)
+  {
     cout << "inRow = " << inRow << ", nRows = " << this->dims[0] << endl;
     FatalErrorST("Operator[]: Attempted out-of-bounds access in matrix.");
   }
+#endif
+  return &data[inRow*this->dims[1]];
 }
 
 template<typename T, uint N>
 T& Array<T,N>::operator()(int i, int j, int k, int l)
 {
-  if (i<(int)this->dims[0] && i>=0 && j<(int)this->dims[1] && j>=0 &&
-      k<(int)this->dims[2] && k>=0 && l<(int)this->dims[3] && l>= 0)
+#ifdef _DEBUG
+  if (i>=(int)this->dims[0] || i<0 || j>=(int)this->dims[1] || j<0 ||
+      k>=(int)this->dims[2] || k<0 || l>=(int)this->dims[3] || l<0)
   {
-    return data[l+dims[3]*(k+dims[2]*(j+dims[1]*i))];
-  }
-  else {
     cout << "i=" << i << ", dim0=" << dims[0] << ", j=" << j << ", dim1=" << dims[1] << ", ";
     cout << "k=" << k << ", dim2=" << dims[2] << ", l=" << l << ", dim3=" << dims[3] << endl;
     FatalErrorST("Attempted out-of-bounds access in Array.");
   }
+#endif
+  return data[l+dims[3]*(k+dims[2]*(j+dims[1]*i))];
 }
 
 template<typename T, uint N>
 T Array<T,N>::operator()(int i, int j, int k, int l) const
 {
-  if (i<(int)this->dims[0] && i>=0 && j<(int)this->dims[1] && j>=0 &&
-      k<(int)this->dims[2] && k>=0 && l<(int)this->dims[3] && l>= 0)
+#ifdef _DEBUG
+  if (i>=(int)this->dims[0] || i<0 || j>=(int)this->dims[1] || j<0 ||
+      k>=(int)this->dims[2] || k<0 || l>=(int)this->dims[3] || l<0)
   {
-    return data[l+dims[3]*(k+dims[2]*(j+dims[1]*i))];
-  }
-  else {
     cout << "i=" << i << ", dim0=" << dims[0] << ", j=" << j << ", dim1=" << dims[1] << ", ";
     cout << "k=" << k << ", dim2=" << dims[2] << ", l=" << l << ", dim3=" << dims[3] << endl;
     FatalErrorST("Attempted out-of-bounds access in Array.");
   }
+#endif
+  return data[l+dims[3]*(k+dims[2]*(j+dims[1]*i))];
 }
 
 template<typename T>
 T& Array2D<T>::operator()(int i, int j)
 {
-  if (i<(int)this->dims[0] && i>=0 && j<(int)this->dims[1] && j>=0) {
-    return this->data[j+this->dims[1]*i];
-  }
-  else {
-    #ifndef _NO_MPI
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-    cout << "RANK = " << rank << ": " << flush;
-    #endif
+#ifdef _DEBUG
+  if (i>=(int)this->dims[0] || i<0 || j>=(int)this->dims[1] || j<0)
+  {
     cout << "i=" << i << ", dim0=" << this->dims[0] << ", j=" << j << ", dim1=" << this->dims[1] << endl;
     FatalErrorST("Attempted out-of-bounds access in matrix.");
   }
+#endif
+  return this->data[j+this->dims[1]*i];
 }
 
 template<typename T>
 T Array2D<T>::operator()(int i, int j) const
 {
-  if (i<(int)this->dims[0] && i>=0 && j<(int)this->dims[1] && j>=0) {
-    return this->data[j+this->dims[1]*i];
-  }
-  else {
-    #ifndef _NO_MPI
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-    cout << "RANK = " << rank << ": " << flush;
-    #endif
+#ifdef _DEBUG
+  if (i>=(int)this->dims[0] || i<0 || j>=(int)this->dims[1] || j<0)
+  {
     cout << "i=" << i << ", dim0=" << this->dims[0] << ", j=" << j << ", dim1=" << this->dims[1] << endl;
     FatalErrorST("Attempted out-of-bounds access in matrix.");
   }
+#endif
+  return this->data[j+this->dims[1]*i];
 }
 
 template<typename T>
 void matrix<T>::initializeToZero(void)
 {
-  for (uint i=0; i<this->dims[0]; i++)
-    for (uint j=0; j<this->dims[1]; j++)
-      for (uint k=0; k<this->dims[2]; k++)
-        for (uint l=0; l<this->dims[3]; l++)
-          this->data[l+this->dims[3]*(k+this->dims[2]*(j+this->dims[1]*i))] = 0;
+  for (auto &val:this->data) val = 0;
 }
 
 template<typename T, uint N>
