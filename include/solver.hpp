@@ -102,6 +102,7 @@ public:
   vector<Array<double,3>> divF_spts;
 
   Array<double,3> tempVars_fpts, tempVars_spts;  //! Temporary/intermediate solution storage array
+  matrix<double> tempF;
 
   /* Multigrid Variables */
   Array<double,3> sol_spts, corr_spts, src_spts;

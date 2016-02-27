@@ -610,6 +610,35 @@ void solver::extrapolateSFpts(void)
 
 void solver::calcInviscidFlux_spts(void)
 {
+  /*tempF.setup(nFields,nDims);
+
+  double gam1 = params->gamma - 1.;
+
+  if (nDims == 2)
+  {
+    for (uint spt = 0; spt < nSpts; spt++) {
+      for (uint e = 0; e < nEles; e++) {
+        double rho = U_spts(spt,e,0);
+        double u = U_spts(spt,e,1) / rho;
+        double v = U_spts(spt,e,2) / rho;
+        double p = gam1*(U_spts(spt,e,3) - 0.5*rho*(u*u + v*v));
+        tempF(0,0) =  U_spts(spt,e,1);       tempF(0,1) =  U_spts(spt,e,2);
+        tempF(1,0) =  U_spts(spt,e,1)*u+p;   tempF(1,1) =  U_spts(spt,e,1)*v;
+        tempF(2,0) =  U_spts(spt,e,2)*u;     tempF(2,1) =  U_spts(spt,e,2)*v+p;
+        tempF(3,0) = (U_spts(spt,e,3)+p)*u;  tempF(3,1) = (U_spts(spt,e,3)+p)*v;
+
+        / * --- Transform back to reference domain --- * /
+        for (uint dim1 = 0; dim1 < nDims; dim1++) {
+          for (uint k = 0; k < nFields; k++) {
+            F_spts(dim1,spt,e,k) = 0.;
+            for (uint dim2 = 0; dim2 < nDims; dim2++) {
+              F_spts(dim1, spt,e, k) += JGinv_spts(spt,e,dim1,dim2)*tempF(k,dim2);
+            }
+          }
+        }
+      }
+    }
+  }*/
 #pragma omp parallel for
   for (uint i=0; i<eles.size(); i++) {
     eles[i]->calcInviscidFlux_spts();
