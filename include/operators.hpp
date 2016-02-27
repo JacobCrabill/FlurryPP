@@ -143,6 +143,8 @@ private:
   //! Flux at solution points to normal flux at fpts [Reference space]
   void setupExtrapolateFn(void);
 
+  matrix<double> tempFn;
+
   void setupCorrectF(vector<point> &loc_spts);
 
   //! Evalulate the VCJH correction function at a solution point from a flux point */
