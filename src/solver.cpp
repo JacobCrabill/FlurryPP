@@ -521,8 +521,13 @@ void solver::extrapolateU(void)
   auto &A = opers[order].opp_spts_to_fpts(0,0);
   auto &B = U_spts(0,0,0);
   auto &C = U_fpts(0,0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                    1.0, &A, k, &B, n, 0.0, &C, n);
+#else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
               1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
 }
 
 void solver::calcAvgSolution()
@@ -570,8 +575,13 @@ void solver::extrapolateUMpts(void)
   auto &A = opers[order].opp_spts_to_mpts(0,0);
   auto &B = U_spts(0,0,0);
   auto &C = U_mpts(0,0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
               1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
 }
 
 void solver::extrapolateGridVelMpts(void)
@@ -689,8 +699,13 @@ void solver::calcGradF_spts(void)
       auto &A = opers[order].opp_grad_spts[dim2](0,0);
       auto &B = F_spts(dim1,0,0,0);
       auto &C = dF_spts(dim2,dim1)(0,0,0);
+#ifdef _OMP
+      omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                  1.0, &A, k, &B, n, 0.0, &C, n);
+#else
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
                   1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
     }
   }
 }
@@ -768,14 +783,24 @@ void solver::calcDivF_spts(int step)
 
   auto &A = opers[order].opp_grad_spts[0](0,0);
   auto &B = F_spts(0,0,0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
               1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
 
   for (uint dim = 1; dim < nDims; dim++) {
     auto &A = opers[order].opp_grad_spts[dim](0,0);
     auto &B = F_spts(dim,0,0,0);
+#ifdef _OMP
+    omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 1.0, &C, n);
+#else
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
                 1.0, &A, k, &B, n, 1.0, &C, n);
+#endif
   }
 }
 
@@ -793,8 +818,13 @@ void solver::extrapolateNormalFlux(void)
 
     auto &B = F_spts(0, 0, 0, 0);
     auto &C = disFn_fpts(0, 0, 0);
+#ifdef _OMP
+    omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 0.0, &C, n);
+#else
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
                 1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
 
 #pragma omp parallel for collapse(3)
     for (uint fpt = 0; fpt < nFpts; fpt++)
@@ -805,8 +835,13 @@ void solver::extrapolateNormalFlux(void)
     for (uint dim = 1; dim < nDims; dim++) {
       auto &B = F_spts(dim, 0, 0, 0);
       auto &C = tempVars_fpts(0, 0, 0);
+#ifdef _OMP
+      omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                  1.0, &A, k, &B, n, 0.0, &C, n);
+#else
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
                   1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
 
 #pragma omp parallel for collapse(3)
       for (uint fpt = 0; fpt < nFpts; fpt++)
@@ -827,14 +862,24 @@ void solver::extrapolateNormalFlux(void)
 
     auto &A = opers[order].opp_extrapolateFn[0](0,0);
     auto &B = F_spts(0, 0, 0, 0);
+#ifdef _OMP
+    omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 0.0, &C, n);
+#else
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
                 1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
 
     for (uint dim = 1; dim < nDims; dim++) {
       auto &A = opers[order].opp_extrapolateFn[dim](0,0);
       auto &B = F_spts(dim, 0, 0, 0);
+#ifdef _OMP
+      omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                  1.0, &A, k, &B, n, 1.0, &C, n);
+#else
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
                   1.0, &A, k, &B, n, 1.0, &C, n);
+#endif
     }
   }
 }
@@ -854,9 +899,13 @@ void solver::correctDivFlux(int step)
   auto &A = opers[order].opp_correction(0,0);
   auto &B = disFn_fpts(0,0,0);
   auto &C = divF_spts[step](0,0,0);
-
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 1.0, &C, n);
+#else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
               1.0, &A, k, &B, n, 1.0, &C, n);
+#endif
 }
 
 void solver::calcGradU_spts(void)
@@ -869,8 +918,13 @@ void solver::calcGradU_spts(void)
     auto &A = opers[order].opp_grad_spts[dim1](0,0);
     auto &B = U_spts(0,0,0);
     auto &C = dU_spts(dim1,0,0,0);
+#ifdef _OMP
+    omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 0.0, &C, n);
+#else
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
                 1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
   }
 }
 
@@ -886,14 +940,24 @@ void solver::correctGradU(void)
 
   auto &A = opers[order].opp_correctU[0](0,0);
   auto &C = dU_spts(0, 0, 0, 0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
               1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
 
   for (uint dim = 0; dim < nDims; dim++) {
     auto &A = opers[order].opp_correctU[dim](0,0);
     auto &C = dU_spts(dim, 0, 0, 0);
+#ifdef _OMP
+    omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 1.0, &C, n);
+#else
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
                 1.0, &A, k, &B, n, 1.0, &C, n);
+#endif
   }
 
   /* Transform back to physical space */
@@ -941,8 +1005,13 @@ void solver::extrapolateGradU()
   for (uint dim=0; dim<nDims; dim++) {
     auto &B = dU_spts(dim,0,0,0);
     auto &C = dU_fpts(dim,0,0,0);
+#ifdef _OMP
+    omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 0.0, &C, n);
+#else
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
                 1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
   }
 }
 
@@ -1034,13 +1103,23 @@ void solver::setPosSptsFpts(void)
 
   auto &As = shape_spts(0,0);
   auto &Cs = pos_spts(0,0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ms, n, k,
+              1.0, &As, k, &B, n, 0.0, &Cs, n);
+#else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ms, n, k,
               1.0, &As, k, &B, n, 0.0, &Cs, n);
+#endif
 
   auto &Af = shape_fpts(0,0);
   auto &Cf = pos_fpts(0,0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mf, n, k,
+              1.0, &Af, k, &B, n, 0.0, &Cf, n);
+#else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mf, n, k,
               1.0, &Af, k, &B, n, 0.0, &Cf, n);
+#endif
 
   /* Initialize storage of moving node positions */
   if (params->motion)
@@ -1066,13 +1145,23 @@ void solver::updatePosSptsFpts(void)
 
   auto &As = shape_spts(0,0);
   auto &Cs = pos_spts(0,0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ms, n, k,
+              1.0, &As, k, &B, n, 0.0, &Cs, n);
+#else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ms, n, k,
               1.0, &As, k, &B, n, 0.0, &Cs, n);
+#endif
 
   auto &Af = shape_fpts(0,0);
   auto &Cf = pos_fpts(0,0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mf, n, k,
+              1.0, &Af, k, &B, n, 0.0, &Cf, n);
+#else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mf, n, k,
               1.0, &Af, k, &B, n, 0.0, &Cf, n);
+#endif
 }
 
 void solver::updateGridVSptsFpts(void)
@@ -1092,13 +1181,23 @@ void solver::updateGridVSptsFpts(void)
 
   auto &As = shape_spts(0,0);
   auto &Cs = gridV_spts(0,0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ms, n, k,
+              1.0, &As, k, &B, n, 0.0, &Cs, n);
+#else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ms, n, k,
               1.0, &As, k, &B, n, 0.0, &Cs, n);
+#endif
 
   auto &Af = shape_fpts(0,0);
   auto &Cf = gridV_fpts(0,0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mf, n, k,
+              1.0, &Af, k, &B, n, 0.0, &Cf, n);
+#else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mf, n, k,
               1.0, &Af, k, &B, n, 0.0, &Cf, n);
+#endif
 }
 
 void solver::calcTransforms(void)

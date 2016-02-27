@@ -285,7 +285,8 @@ void writeParaview(solver *Solver, input *params)
     }
   }
 
-  Solver->updatePosSptsFpts();
+  if (params->motion != 0)
+    Solver->updatePosSptsFpts();
 
   for (auto& e:Solver->eles) {
     if (params->meshType == OVERSET_MESH && Solver->Geo->iblankCell[e->ID]!=NORMAL) continue;

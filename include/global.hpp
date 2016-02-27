@@ -485,5 +485,5 @@ public:
 #ifdef _OMP
 void omp_blocked_dgemm(CBLAS_ORDER mode, CBLAS_TRANSPOSE transA,
     CBLAS_TRANSPOSE transB, int M, int N, int K, double alpha, double* A, int lda,
-    double* B, int ldb, double beta, double* C, int ldc)
+    double* B, int ldb, double beta, double* C, int ldc);
 #endif
