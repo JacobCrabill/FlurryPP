@@ -90,18 +90,35 @@ public:
 
   /* === Solution Variables === */
   uint nEles, nFaces;
-  uint nSpts, nFpts, nMpts;
+  uint nSpts, nFpts, nMpts, nPpts, nNodes;
   uint nDims, nFields;
 
+  /* Solution Variables */
   Array<double,3> U0, U_spts, U_fpts, U_mpts, U_qpts; //! Global solution arrays for solver
   Array<double,4> F_spts, F_fpts, dU_spts, dU_fpts;   //! dim, spt/fpt, ele, field?
-  Array<double,3> disFn_fpts, Fn_fpts;  //! fpt, ele, field
+  Array<double,3> disFn_fpts, Fn_fpts, dUc_fpts;  //! fpt, ele, field
   Array2D<Array<double,3>> dF_spts; //! dim_grad, dim_flux, spt, ele, field
 
   vector<Array<double,3>> divF_spts;
 
+  Array<double,3> tempVars_fpts, tempVars_spts;  //! Temporary/intermediate solution storage array
+
   /* Multigrid Variables */
   Array<double,3> sol_spts, corr_spts, src_spts;
+
+  /* Geometry Variables */
+
+  Array2D<double> detJac_spts, detJac_fpts, detJac_qpts, dA_fpts, tNorm_fpts;
+  Array2D<double> shape_spts, shape_fpts;
+  Array<double,3> dshape_spts, dshape_fpts;
+  Array<double,3> gridV_spts, gridV_fpts, gridV_mpts, gridV_ppts;
+  Array<double,3> norm_fpts;
+  Array<double,4> Jac_spts, Jac_fpts, JGinv_spts, JGinv_fpts;
+
+  vector<point> loc_spts, loc_fpts;
+
+  Array<double,3> nodes, nodesRK; //! nNodes, nEles, nDims
+  Array<double,3> pos_spts, pos_fpts, pos_ppts;  //! nSpts/NFpts, nEles, nDims
 
   /* ==== Misc. Commonly-Used Variables ==== */
 
@@ -133,7 +150,10 @@ public:
   void finishMpiSetup(void);
 
   //! Allocate memory for solution storage
-  void setupArrays();
+  void setupArrays(void);
+
+  //! Allocate memory for geometry-related variables & setup transforms
+  void setupGeometry(void);
 
   /* === Functions Related to Basic FR Process === */
 
@@ -317,6 +337,12 @@ public:
   void checkEntropyPlot();
 
   shared_ptr<overComm> OComm;
+
+  void updatePosSptsFpts();
+  void setPosSptsFpts();
+  void updateGridVSptsFpts();
+  void updateTransforms();
+  void calcTransforms();
 
 private:
   //! Pointer to the parameters object for the current solution

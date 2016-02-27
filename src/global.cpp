@@ -35,6 +35,8 @@
 #include "mpi.h"
 #endif
 
+#include "cblas.h"
+
 /* --- Misc. Common Constants --- */
 double pi = 4.0*atan(1);
 
@@ -210,3 +212,45 @@ void simTimer::showTime(int precision)
     }
   }
 }
+
+#ifdef _OMP
+void omp_blocked_dgemm(CBLAS_ORDER mode, CBLAS_TRANSPOSE transA,
+    CBLAS_TRANSPOSE transB, int M, int N, int K, double alpha, double* A, int lda,
+    double* B, int ldb, double beta, double* C, int ldc)
+{
+  if (mode == CblasRowMajor)
+  {
+#pragma omp parallel
+    {
+      int nThreads = omp_get_num_threads();
+      int thread_idx = omp_get_thread_num();
+
+      int block_size = N / nThreads;
+      int start_idx = block_size * thread_idx;
+
+      if (thread_idx == nThreads-1)
+        block_size += N % (block_size);
+
+      cblas_dgemm(mode, transA, transB, M, block_size, K, alpha, A, lda,
+                  B + start_idx, ldb, beta, C + start_idx, ldc);
+    }
+  }
+  else
+  {
+#pragma omp parallel
+    {
+      int nThreads = omp_get_num_threads();
+      int thread_idx = omp_get_thread_num();
+
+      int block_size = N / nThreads;
+      int start_idx = block_size * thread_idx;
+
+      if (thread_idx == nThreads-1)
+        block_size += N % (block_size);
+
+      cblas_dgemm(mode, transA, transB, M, block_size, K, alpha, A, lda,
+          B + ldb * start_idx, ldb, beta, C + ldc * start_idx, ldc);
+    }
+  }
+}
+#endif

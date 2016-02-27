@@ -57,7 +57,7 @@ public:
 
   vector<point> loc_spts; //! Location of solution points in parent domain
   vector<point> loc_fpts; //! Location of flux points in parent domain
-  vector<point> nodes; //! Location of mesh nodes in physical space
+//  vector<point> nodes; //! Location of mesh nodes in physical space
   vector<int> nodeID; //! Global ID's of element's nodes
   vector<int> faceID; //! Global ID's of element's faces
   vector<bool> bndFace; //! Tag for faces on a boundary
@@ -224,11 +224,7 @@ public:
 
   /* --- Solution Variables --- */
 
-//  matrix<double> disFn_fpts;       //! Discontinuous normal flux at flux points
-//  matrix<double> Fn_fpts;          //! Interface flux at flux points
-  matrix<double> dFn_fpts;         //! Interface minus discontinuous flux at flux points
-  matrix<double> Uc_fpts;          //! Common solution at flux points
-  matrix<double> dUc_fpts;         //! Common minus discontinuous solution at flux points
+//  matrix<double> dFn_fpts;         //! Interface minus discontinuous flux at flux points
   vector<double> waveSp_fpts;      //! Maximum wave speed at each flux point
 
   vector<double> Uavg;             //! Average solution over element
@@ -236,31 +232,23 @@ public:
   // Gradients
   vector<matrix<double>> tdF_spts;  //! Transformed gradient of flux (dF_dxi and dG_deta) at solution points
 
-  // Transform Variables
-  vector<double> detJac_spts;  //! Determinant of transformation Jacobian at each solution point
-  vector<double> detJac_fpts;  //! Determinant of transformation Jacobian at each solution point
-  vector<matrix<double> > Jac_spts;  //! Transformation Jacobian [matrix] at each solution point
-  vector<matrix<double> > Jac_fpts;  //! Transformation Jacobian [matrix] at each flux point
-  vector<matrix<double> > JGinv_spts;  //! Inverse of transformation Jacobian [matrix] at each solution point
-  vector<matrix<double> > JGinv_fpts;  //! Inverse of transformation Jacobian [matrix] at each flux point
-
   matrix<double> shape_spts;
   matrix<double> shape_fpts;
   vector<matrix<double>> dShape_spts;  //! Derivative of shape basis at solution points
   vector<matrix<double>> dShape_fpts;  //! Derivative of shape basis at flux points
-  matrix<double> gridVel_spts;         //! Mesh velocity at solution points
-  matrix<double> gridVel_fpts;         //! Mesh velocity at flux points
-  matrix<double> gridVel_nodes;        //! Mesh velocity at mesh (corner) points
-  matrix<double> gridVel_mpts;         //! Mesh velocity at ALL mesh points (corners + edges in 3D)
-  vector<point> nodesRK;               //! Location of mesh nodes in physical space
+//  matrix<double> gridVel_spts;         //! Mesh velocity at solution points
+//  matrix<double> gridVel_fpts;         //! Mesh velocity at flux points
+//  matrix<double> gridVel_nodes;        //! Mesh velocity at mesh (corner) points
+//  matrix<double> gridVel_mpts;         //! Mesh velocity at ALL mesh points (corners + edges in 3D)
+//  vector<point> nodesRK;               //! Location of mesh nodes in physical space
 
   // Geometry Variables
-  vector<point> pos_spts;     //! Position of solution points in physical space
-  vector<point> pos_fpts;     //! Position of flux points in physical space
-  vector<point> pos_ppts;     //! Position of plotting points [spt+fpts+nodes]
-  matrix<double> norm_fpts;   //! Unit normal in physical space
-  matrix<double> tNorm_fpts;  //! Unit normal in reference space
-  vector<double> dA_fpts;     //! Local equivalent face-area at flux point
+//  vector<point> pos_spts;     //! Position of solution points in physical space
+//  vector<point> pos_fpts;     //! Position of flux points in physical space
+//  vector<point> pos_ppts;     //! Position of plotting points [spt+fpts+nodes]
+  //matrix<double> norm_fpts;   //! Unit normal in physical space
+  //matrix<double> tNorm_fpts;  //! Unit normal in reference space
+  //vector<double> dA_fpts;     //! Local equivalent face-area at flux point
 
   // Shock Capturing variables
   double sensor;
@@ -294,7 +282,32 @@ public:
   double& Fn_fpts(int fpt, int field);
   double& U_mpts(int mpt, int field);
   double& dU_fpts(int dim, int fpt, int field);
+  double& dUc_fpts(int fpt, int field);
   double& divF_spts(int step, int spt, int field);
+
+  double& detJac_spts(int spt);
+  double& detJac_fpts(int fpt);
+  double& dA_fpts(int fpt);
+  double& Jac_spts(int spt, int dim1, int dim2);
+  double& Jac_fpts(int fpt, int dim1, int dim2);
+  double& JGinv_spts(int spt, int dim1, int dim2);
+  double& JGinv_fpts(int fpt, int dim1, int dim2);
+
+  double& norm_fpts(int fpt, int dim);
+  double& tNorm_fpts(int fpt, int dim);
+
+  double& nodes(int npt, int dim);
+  double& nodesRK(int npt, int dim);
+
+  double& pos_spts(int spt, int dim);
+  double& pos_fpts(int fpt, int dim);
+  double& pos_ppts(int ppt, int dim);
+
+  double& gridVel_spts(int spt, int dim);
+  double& gridVel_fpts(int fpt, int dim);
+//  double& gridVel_mpts(int spt, int dim);
+  double& gridVel_ppts(int ppt, int dim);
+  double& gridVel_nodes(int mpt, int dim);
 
 private:
 

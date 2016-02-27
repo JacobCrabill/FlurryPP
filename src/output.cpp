@@ -92,8 +92,8 @@ void writeCSV(solver *Solver, input *params)
   // Solution data
   for (auto& e:Solver->eles) {
     if (params->motion != 0) {
-      e->updatePosSpts();
-      e->updatePosFpts();
+//      e->updatePosSpts();
+//      e->updatePosFpts();
       e->setPpts();
     }
     for (uint spt=0; spt<e->getNSpts(); spt++) {
@@ -285,12 +285,12 @@ void writeParaview(solver *Solver, input *params)
     }
   }
 
+  Solver->updatePosSptsFpts();
+
   for (auto& e:Solver->eles) {
     if (params->meshType == OVERSET_MESH && Solver->Geo->iblankCell[e->ID]!=NORMAL) continue;
 
     if (params->motion != 0) {
-      e->updatePosSpts();
-      e->updatePosFpts();
       e->setPpts();
     }
 
@@ -428,7 +428,7 @@ void writeParaview(solver *Solver, input *params)
     // Loop over plot points in element
     for(int k=0; k<nPpts; k++) {
       for(int l=0;l<params->nDims;l++) {
-        dataFile << ppts[k][l] << " ";
+        dataFile << e->pos_ppts(k,l) << " ";
       }
 
       // If 2D, write a 0 as the z-component

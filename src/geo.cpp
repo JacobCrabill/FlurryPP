@@ -95,6 +95,8 @@ void geo::setup(input* params, bool HMG)
       FatalError("Mesh type not recognized.");
   }
 
+  nNodesPerCell = getMax(c2nv);
+
   if (HMG)
   {
 #ifndef _NO_MPI
@@ -819,10 +821,10 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
 
     // Shape [mesh] nodes
     e->nodeID.resize(c2nv[ic]);
-    e->nodes.resize(c2nv[ic]);
+    /////e->nodes.resize(c2nv[ic]);
     for (int iv=0; iv<c2nv[ic]; iv++) {
       e->nodeID[iv] = c2v(ic,iv);
-      e->nodes[iv] = point(xv[c2v(ic,iv)],nDims);
+      /////e->nodes[iv] = point(xv[c2v(ic,iv)],nDims);
     }
 
     // Global face IDs for internal & boundary faces
@@ -1416,8 +1418,6 @@ void geo::readGmsh(string fileName)
       getline(meshFile,str);
     }
   } // End of loop over entities
-
-  nNodesPerCell = getMax(c2nv);
 
   int maxNBndPts = 0;
   for (int i=0; i<nBounds; i++) {

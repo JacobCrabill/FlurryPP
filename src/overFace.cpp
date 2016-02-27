@@ -107,7 +107,7 @@ vector<point> overFace::getNormFpts()
 {
   vector<Vec3> normFpts(nFptsL);
   for (uint i=0; i<nFptsL; i++) {
-    normFpts[i] = point(eL->norm_fpts[fptStartL+i],nDims);
+    normFpts[i] = point(&eL->norm_fpts(fptStartL+i,0),nDims);
   }
   return normFpts;
 }

@@ -44,6 +44,10 @@
 
 #include <omp.h>
 
+#ifdef _OMP
+#include "cblas.h"
+#endif
+
 #include "error.hpp"
 
 template<typename T> class matrix;
@@ -477,3 +481,9 @@ public:
   void showTime(int precision=3);
   double getElapsedTime(void);
 };
+
+#ifdef _OMP
+void omp_blocked_dgemm(CBLAS_ORDER mode, CBLAS_TRANSPOSE transA,
+    CBLAS_TRANSPOSE transB, int M, int N, int K, double alpha, double* A, int lda,
+    double* B, int ldb, double beta, double* C, int ldc)
+#endif

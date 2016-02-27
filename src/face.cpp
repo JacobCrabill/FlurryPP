@@ -73,14 +73,14 @@ void face::setupFace(void)
   Fn.setup(nFptsL,nFields);
   normL.setup(nFptsL,nDims);
   dAL.resize(nFptsL);
-  detJacL.resize(nFptsL);
+  //detJacL.resize(nFptsL);
   waveSp.resize(nFptsL);
 
   Fn.initializeToZero();
 
   if (params->viscous) {
     UC.setup(nFptsL,nFields);
-    UcL.resize(nFptsL);
+    dUcL.resize(nFptsL);
     // just a placeholder.  Need to properly size/reorder dimensions later.
     gradUL.resize(nFptsL);
     gradUR.resize(nFptsL);
@@ -108,7 +108,7 @@ void face::getPointers(void)
     waveSp[fpt] = &(eL->waveSp_fpts[i]);
 
     if (params->viscous) {
-      UcL[fpt] = (eL->Uc_fpts[i]);
+      dUcL[fpt] = &(eL->dUc_fpts(i,0));
     }
 
     fpt++;
@@ -129,8 +129,7 @@ void face::getLeftState()
       for (int dim=0; dim<nDims; dim++) {
         normL(fpt,dim) = (eL->norm_fpts(i,dim));
       }
-      dAL[fpt] = (eL->dA_fpts[i]);
-      detJacL[fpt] = (eL->detJac_fpts[i]);
+      dAL[fpt] = (eL->dA_fpts(i));
     }
 
     if (params->motion) {
@@ -195,7 +194,7 @@ void face::calcInviscidFlux(void)
     // Still assuming nFptsL = nFptsR
     for (int i=0; i<nFptsL; i++) {
       for (int j=0; j<nFields; j++) {
-        UcL[i][j] = UC(i,j);
+        dUcL[i][j] = UC(i,j) - UL(i,j);
       }
     }
   }

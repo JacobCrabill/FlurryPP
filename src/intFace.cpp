@@ -52,7 +52,6 @@ void intFace::setupRightState(void)
   FnR.resize(nFptsR);
   normR.setup(nFptsR,nDims);
   dAR.resize(nFptsR);
-  detJacR.resize(nFptsL);
 
   /* --- Setup the L/R flux-point matching --- */
   fptR.resize(nFptsL);
@@ -96,7 +95,7 @@ void intFace::setupRightState(void)
   }
 
   if (params->viscous) {
-    UcR.resize(nFptsR);
+    dUcR.resize(nFptsR);
   }
 }
 
@@ -107,7 +106,7 @@ void intFace::getPointersRight(void)
     FnR[i] = &(eR->Fn_fpts(fptR[i],0));
 
     if (params->viscous)
-      UcR[i] = (eR->Uc_fpts[fptR[i]]);
+      dUcR[i] = &(eR->dUc_fpts(fptR[i],0));
   }
 }
 
@@ -124,8 +123,7 @@ void intFace::getRightState(void)
       for (int dim=0; dim<nDims; dim++) {
         normR(fpt,dim) = (eR->norm_fpts(fptR[fpt],dim));
       }
-      dAR[fpt] = (eR->dA_fpts[fptR[fpt]]);
-      detJacR[fpt] = (eR->detJac_fpts[fptR[fpt]]);
+      dAR[fpt] = (eR->dA_fpts(fptR[fpt]));
     }
   }
 }
@@ -153,7 +151,7 @@ void intFace::setRightStateSolution(void)
 {
   for (int i=0; i<nFptsR; i++)
     for (int j=0; j<nFields; j++)
-      UcR[i][j] = UC(i,j);
+      dUcR[i][j] = UC(i,j) - UR(i,j);
 }
 
 vector<double> intFace::computeWallForce()

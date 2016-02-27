@@ -384,11 +384,11 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
     if (params->motion) {
       for (int j=0; j<nv; j++)
         for (int k=0; k<nDims; k++)
-          ubCellNodes(i,j,k) = eles[ie]->nodesRK[j][k];
+          ubCellNodes(i,j,k) = eles[ie]->nodesRK(j,k);
     } else {
       for (int j=0; j<nv; j++)
         for (int k=0; k<nDims; k++)
-          ubCellNodes(i,j,k) = eles[ie]->nodes[j][k];
+          ubCellNodes(i,j,k) = eles[ie]->nodes(j,k);
     }
 
     i++;
@@ -463,11 +463,19 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
 
         Array2D<point> donorPts;
         if (params->motion) {
-          for (auto &ic:donorsIDs)
-            donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
+          for (auto &ic:donorsIDs) {
+            vector<point> tmpPts;
+            for (uint npt = 0; npt < eles[eleMap[ic]]->nNodes; npt++)
+              tmpPts.push_back(point(&eles[eleMap[ic]]->nodesRK(npt,0),nDims));
+            donorPts.insertRow(tmpPts);
+          }
         } else {
-          for (auto &ic:donorsIDs)
-            donorPts.insertRow(eles[eleMap[ic]]->nodes);
+          for (auto &ic:donorsIDs) {
+            vector<point> tmpPts;
+            for (uint npt = 0; npt < eles[eleMap[ic]]->nNodes; npt++)
+              tmpPts.push_back(point(&eles[eleMap[ic]]->nodes(npt,0),nDims));
+            donorPts.insertRow(tmpPts);
+          }
         }
 
         superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,donors.size());
@@ -586,8 +594,8 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
       if (!isInEle) {
         cout << setprecision(16) << "qpt: " << pos << endl;
         cout << "Ele nodes:" << endl;
-        for (int n=0; n<4; n++)
-          _(eles[ie]->nodes[n]);
+//        for (int n=0; n<4; n++)
+//          _(eles[ie]->nodes[n]);
         FatalError("Quadrature Point Reference Location not found in ele!");
       }
 
@@ -803,11 +811,11 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
     if (params->motion) {
       for (int j=0; j<nv; j++)
         for (int k=0; k<nDims; k++)
-          ubCellNodes(i,j,k) = eles[ie]->nodesRK[j][k];
+          ubCellNodes(i,j,k) = eles[ie]->nodesRK(j,k);
     } else {
       for (int j=0; j<nv; j++)
         for (int k=0; k<nDims; k++)
-          ubCellNodes(i,j,k) = eles[ie]->nodes[j][k];
+          ubCellNodes(i,j,k) = eles[ie]->nodes(j,k);
     }
     i++;
   }
@@ -886,12 +894,21 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
         foundCellDonors[p].insertRowUnsized(donorsIDs);
 
         Array2D<point> donorPts;
-        if (params->motion)
-          for (auto &ic:donorsIDs)
-            donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
-        else
-          for (auto &ic:donorsIDs)
-            donorPts.insertRow(eles[eleMap[ic]]->nodes);
+        if (params->motion) {
+          for (auto &ic:donorsIDs) {
+            vector<point> tmpPts;
+            for (uint npt = 0; npt < eles[eleMap[ic]]->nNodes; npt++)
+              tmpPts.push_back(point(&eles[eleMap[ic]]->nodesRK(npt,0),nDims));
+            donorPts.insertRow(tmpPts);
+          }
+        } else {
+          for (auto &ic:donorsIDs) {
+            vector<point> tmpPts;
+            for (uint npt = 0; npt < eles[eleMap[ic]]->nNodes; npt++)
+              tmpPts.push_back(point(&eles[eleMap[ic]]->nodes(npt,0),nDims));
+            donorPts.insertRow(tmpPts);
+          }
+        }
 
         superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,supers.size());
         supers.push_back(mesh);
@@ -959,7 +976,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   for (uint ic=0; ic<eles.size(); ic++) {
     if (iblankCell[eles[ic]->ID]!=NORMAL) continue;
 /////    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts, U_qpts, quadPoints);
-    opers[eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
+/////    opers[eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
     for (uint i=0; i<qpts.size(); i++) {
       auto tmpErr = calcError(U_qpts[i], eles[ic]->calcPos(qpts[i]), params);
       for (int j=0; j<nFields; j++)
@@ -1032,7 +1049,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>
 /////          tempF_spts = eles[ic]->F_spts;
         }
 
-        matrix<double> tempF_ref = opers[eles[ic]->order].interpolateCorrectedFlux(tempF_spts, eles[ic]->dFn_fpts, refPos);
+        matrix<double> tempF_ref; ///// = opers[eles[ic]->order].interpolateCorrectedFlux(tempF_spts, eles[ic]->dFn_fpts, refPos);
 
         vector<double> tempU(nFields);
 /////        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);

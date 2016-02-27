@@ -51,6 +51,8 @@ public:
   //! Setup operator for extrapolation from solution points to mesh (corner) points
   void setupExtrapolateSptsMpts(vector<point> &loc_spts);
 
+  void setupInterpolateSptsQpts(int quadOrder);
+
   //! Setup operator for calculation of gradient at the solution points
   void setupGradSpts(vector<point> &loc_spts);
 
@@ -125,8 +127,11 @@ public:
   uint nDims, nFields, eType, order, nSpts, nFpts;
   string sptsType;
 
+  vector<point> loc_qpts;
+
   matrix<double> opp_spts_to_fpts;
   matrix<double> opp_spts_to_mpts;
+  matrix<double> opp_spts_to_qpts;
   vector<matrix<double>> opp_grad_spts;
   matrix<double> opp_div_spts;
   vector<matrix<double>> opp_extrapolateFn;

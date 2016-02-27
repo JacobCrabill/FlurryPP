@@ -75,6 +75,8 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
     setupCorrectGradU();
   }
 
+  setupInterpolateSptsQpts(params->quadOrder);
+
   // Operators needed for Shock capturing
   if (params->scFlag) {
     setupVandermonde(loc_spts);
@@ -262,6 +264,19 @@ matrix<double> oper::setupInterpolateSptsIpts(matrix<double> &loc_ipts)
   }
 
   return opp_interp;
+}
+
+void oper::setupInterpolateSptsQpts(int quadOrder)
+{
+  if (params->nDims == 2)
+   loc_qpts = getLocSpts(QUAD,quadOrder,string("Legendre"));
+  else
+   loc_qpts = getLocSpts(HEX,quadOrder,string("Legendre"));
+
+  matrix<double> quadPoints;
+  for (auto &pt: loc_qpts) quadPoints.insertRow({pt.x,pt.y,pt.z});
+
+  opp_spts_to_qpts = setupInterpolateSptsIpts(quadPoints);
 }
 
 void oper::getBasisValues(point &ipt, vector<double> &weights)
