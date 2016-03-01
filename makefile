@@ -5,6 +5,8 @@
 #          make openmp
 #############################################################################
 
+include build.config
+
 ####### Compiler, tools and options
 
 CXX           = g++
@@ -14,40 +16,53 @@ MPICXX        = mpicxx
 MPILD         = mpicxx
 LIBS          = $(SUBLIBS)
 
-# Location of libmetis.a, metis.h
-METIS_LIB_DIR = /usr/local/lib/
-METIS_INC_DIR = /usr/local/include/
-
-# Location of mpi.h 
-MPI_INC_DIR   = /usr/lib/openmpi/include
-
-# Location of cblas.h, libcblas.a, libatlas.a
-BLAS_INC_DIR = /usr/include
-BLAS_LIB_DIR = /usr/lib
-#BLAS_INC_DIR = /usr/lib/atlas-base/include
-#BLAS_LIB_DIR = /usr/lib/atlas-base/lib
-
-# Location of libtioga.a
 TIOGA_INC   = ./lib/tioga/src
-TIOGA_LIB   = #./lib/tioga/src/libtioga.a
 
 CXX_BASE    = -pipe -Wunused-parameter -Wuninitialized -std=c++11 -I./include -I$(TIOGA_INC) $(DEFINES)
-CXX_STD     = -g -O2
-CXX_DEBUG   = -g -pg -O0 -rdynamic -fno-omit-frame-pointer #-fsanitize=address 
-CXX_RELEASE = -Ofast -fno-finite-math-only
 
 CXX_BLAS = -I$(BLAS_DIR) -L$(BLAS_DIR)
-LD_BLAS = -L$(BLAS_LIB_DIR) -latlas -lcblas
+ifeq ($(strip $(BLAS_TYPE)),ATLAS)
+  LD_BLAS = -L$(BLAS_LIB_DIR) -latlas -lcblas
+else
+  LD_BLAS = -L$(BLAS_LIB_DIR) -lcblas
+endif
 
 CXX_BASE += $(CXX_BLAS)
 LIBS += $(LD_BLAS)
 
-CXXFLAGS_RELEASE = $(CXX_BASE) $(CXX_RELEASE) -Wno-unknown-pragmas -D_NO_MPI $(DEFINES)
-CXXFLAGS_DEBUG   = $(CXX_BASE) $(CXX_DEBUG) -Wno-unknown-pragmas -D_NO_MPI $(DEFINES)
-CXXFLAGS_OPENMP  = $(CXX_BASE) $(CXX_RELEASE) -fopenmp -D_NO_MPI $(DEFINES) -D_OMP
-CXXFLAGS_MPI     = $(CXX_BASE) $(DEFINES) -Wno-literal-suffix
-CXXFLAGS_MPI    += -I$(METIS_INC_DIR) -I$(MPI_INC_DIR)
-CXXFLAGS_MPI    += -L$(METIS_LIB_DIR)
+CXXFLAGS = $(CXX_BASE)
+ifeq ($(strip $(DEBUG_LEVEL)),0)
+  CXXFLAGS += -Ofast -fno-finite-math-only
+  FFLAGS = -Ofast
+else ifeq ($(strip $(DEBUG_LEVEL)),1)
+  CXXFLAGS += -g -O2
+  FFLAGS = -Ofast
+else ifeq ($(strip $(DEBUG_LEVEL)),2)
+  CXXFLAGS += -g -pg -O0 -rdynamic -fno-omit-frame-pointer #-fsanitize=address 
+  FFLAGS = -g -O0 -rdynamic -fno-omit-frame-pointer #-fsanitize=address
+endif
+
+ifeq ($(strip $(ENABLE_DEBUG)),1)
+  CXXFLAGS += -D_DEBUG
+endif
+
+ifeq ($(strip $(OPENMP)),YES)
+  CXXFLAGS += -fopenmp -D_OMP
+else
+  CXXFLAGS += -Wno-unknown-pragmas
+endif
+
+ifeq ($(strip $(MPI)),YES)
+  CXXFLAGS += -Wno-literal-suffix -I$(METIS_INC_DIR) -I$(MPI_INC_DIR) -L$(METIS_LIB_DIR)
+  ifeq ($(MPI_DEBUG),YES)
+    CXXFLAGS += -D_MPI_DEBUG
+  endif
+  LIBS += -lmetis
+  CXX = $(MPICXX)
+  LINK = $(MPILD)
+else
+  CXXFLAGS += -D_NO_MPI
+endif
 
 ####### Output directory - these do nothing currently
 
@@ -80,9 +95,7 @@ OBJECTS = 	obj/global.o \
 		obj/superMesh.o \
 		obj/overComm.o
 
-ifeq ($(mpi),n)
-# Don't compile TIOGA objects
-else
+ifeq ($(strip $(MPI)),YES)
 OBJECTS+= obj/ADT.o \
 		obj/MeshBlock.o \
 		obj/parallelComm.o \
@@ -114,44 +127,44 @@ $(TARGET):  $(OBJECTS)
 clean:
 	cd obj && rm -f *.o && cd .. && rm -f bin/Flurry
 
-.PHONY: debug
-debug: DBG=-pg
-debug: CXXFLAGS=$(CXXFLAGS_DEBUG)
-debug: LIBS+= #-lasan
-debug: $(TARGET)
+#.PHONY: debug
+#debug: DBG=-pg
+#debug: CXXFLAGS=$(CXXFLAGS_DEBUG)
+#debug: LIBS+= #-lasan
+#debug: $(TARGET)
 
-.PHONY: release
-release: CXXFLAGS=$(CXXFLAGS_RELEASE)
-release: $(TARGET)
+#.PHONY: release
+#release: CXXFLAGS=$(CXXFLAGS_RELEASE)
+#release: $(TARGET)
 
-.PHONY: openmp
-openmp: CXXFLAGS=$(CXXFLAGS_OPENMP)
-openmp: LIBS+= -fopenmp -lgomp
-openmp: $(TARGET)
+#.PHONY: openmp
+#openmp: CXXFLAGS=$(CXXFLAGS_OPENMP)
+#openmp: LIBS+= -fopenmp -lgomp
+#openmp: $(TARGET)
 
-.PHONY: mpi
-mpi: CXX=$(MPICXX)
-mpi: LINK=$(MPILD)
-mpi: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_RELEASE)
-mpi: FFLAGS=-Ofast
-mpi: LIBS+= -lmetis $(TIOGA_LIB)
-mpi: $(TARGET)
+#.PHONY: mpi
+#mpi: CXX=$(MPICXX)
+#mpi: LINK=$(MPILD)
+#mpi: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_RELEASE)
+#mpi: FFLAGS=-Ofast
+#mpi: LIBS+= -lmetis $(TIOGA_LIB)
+#mpi: $(TARGET)
 
-.PHONY: mpi2
-mpi2: CXX=$(MPICXX)
-mpi2: LINK=$(MPILD)
-mpi2: CXXFLAGS=$(CXXFLAGS_MPI) -g -O2 
-mpi2: FFLAGS=-Ofast
-mpi2: LIBS+= -lmetis $(TIOGA_LIB)
-mpi2: $(TARGET)
+#.PHONY: mpi2
+#mpi2: CXX=$(MPICXX)
+#mpi2: LINK=$(MPILD)
+#mpi2: CXXFLAGS=$(CXXFLAGS_MPI) -g -O2 
+#mpi2: FFLAGS=-Ofast
+#mpi2: LIBS+= -lmetis $(TIOGA_LIB)
+#mpi2: $(TARGET)
 
-.PHONY: mpidebug
-mpidebug: CXX=$(MPICXX)
-mpidebug: LINK=$(MPILD)
-mpidebug: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_DEBUG) -D_MPI_DEBUG
-mpidebug: FFLAGS=-g -O0 -rdynamic -fno-omit-frame-pointer #-fsanitize=address 
-mpidebug: LIBS+= -lmetis $(TIOGA_LIB) #-lasan
-mpidebug: $(TARGET)
+#.PHONY: mpidebug
+#mpidebug: CXX=$(MPICXX)
+#mpidebug: LINK=$(MPILD)
+#mpidebug: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_DEBUG) -D_MPI_DEBUG
+#mpidebug: FFLAGS=-g -O0 -rdynamic -fno-omit-frame-pointer #-fsanitize=address 
+#mpidebug: LIBS+= -lmetis $(TIOGA_LIB) #-lasan
+#mpidebug: $(TARGET)
 
 ####### Compile
 
