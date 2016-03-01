@@ -99,7 +99,7 @@ public:
   /* --- Member Variables --- */
   //uint dim0, dim1;  //! Dimensions of the Array
 
-  array<uint,4> dims;  //! Dimensions of the Array
+  uint dims[4];  //! Dimensions of the Array
 
   vector<T> data;
 };
