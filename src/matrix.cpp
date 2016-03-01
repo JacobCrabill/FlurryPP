@@ -38,14 +38,20 @@ template<typename T, uint N>
 Array<T,N>::Array()
 {
   data.resize(0);
-  dims = {{0,0,0,0}};
+  dims[0] = 0;
+  dims[1] = 0;
+  dims[2] = 0;
+  dims[3] = 0;
 }
 
 template<typename T, uint N>
 Array<T,N>::Array(uint inNDim0, uint inNDim1, uint inDim2, uint inDim3)
 {
   data.resize(inNDim0*inNDim1*inDim2*inDim3);
-  dims = {{inNDim0,inNDim1,inDim2,inDim3}};
+  dims[0] = inNDim0;
+  dims[1] = inNDim1;
+  dims[2] = inDim2;
+  dims[3] = inDim3;
 }
 
 template<typename T>
@@ -89,29 +95,35 @@ template<typename T>
 matrix<T>::matrix(const Array2D<T> &inMatrix)
 {
   this->data = inMatrix.data;
-  this->dims = inMatrix.dims;
+  for (uint i = 0; i < 4; i++)
+    this->dims[i] = inMatrix.dims[i];
 }
 
 template<typename T,uint N>
 Array<T,N>::Array(const Array<T,N> &inMatrix)
 {
   data = inMatrix.data;
-  dims = inMatrix.dims;
+  for (uint i = 0; i < 4; i++)
+    dims[i] = inMatrix.dims[i];
 }
 
 template<typename T, uint N>
 Array<T,N> Array<T,N>::operator=(const Array<T,N> &inMatrix)
 {
   data = inMatrix.data;
-  dims = inMatrix.dims;
+  for (uint i = 0; i < 4; i++)
+    dims[i] = inMatrix.dims[i];
   return *this;
 }
 
 template<typename T, uint N>
 void Array<T,N>::setup(uint inDim0, uint inDim1, uint inDim2, uint inDim3)
 {
-  dims = {{inDim0,inDim1,inDim2,inDim3}};
   data.resize(inDim0*inDim1*inDim2*inDim3);
+  dims[0] = inDim0;
+  dims[1] = inDim1;
+  dims[2] = inDim2;
+  dims[3] = inDim3;
 }
 
 
@@ -345,8 +357,11 @@ void Array2D<T>::insertRow(T *vec, int rowNum, int length)
     this->data.insert(this->data.begin()+rowNum*this->dims[1],vec,vec+length);
   }
 
-  if (this->dims[0]==0)
-    this->dims = {{0,(uint)length,1,1}};
+  if (this->dims[0]==0) {
+    this->dims[1] = (uint)length;
+    this->dims[2] = 1;
+    this->dims[3] = 1;
+  }
 
   this->dims[0]++;
 }
@@ -363,8 +378,11 @@ void Array2D<T>::insertRowUnsized(const vector<T> &vec)
   // If row too short, finish filling with 0's
   if (vec.size() < this->dims[1]) this->data.insert(this->data.end(),this->dims[1]-vec.size(),(T)0);
 
-  if (this->dims[0]==0)
-    this->dims = {{0,(uint)vec.size(),1,1}};
+  if (this->dims[0]==0) {
+    this->dims[1] = vec.size();
+    this->dims[2] = 1;
+    this->dims[3] = 1;
+  }
 
   this->dims[0]++;
 }
@@ -380,8 +398,11 @@ void Array2D<T>::insertRowUnsized(T* vec, uint length)
   // If row too short, finish filling with 0's
   if (length < this->dims[1]) this->data.insert(this->data.end(),this->dims[1]-length,(T)0);
 
-  if (this->dims[0]==0)
-    this->dims = {{0,length,1,1}};
+  if (this->dims[0]==0) {
+    this->dims[1] = (uint)length;
+    this->dims[2] = 1;
+    this->dims[3] = 1;
+  }
 
   this->dims[0]++;
 }
