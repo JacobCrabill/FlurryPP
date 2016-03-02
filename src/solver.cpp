@@ -600,10 +600,20 @@ void solver::extrapolateUMpts(void)
 
 void solver::extrapolateGridVelMpts(void)
 {
-//#pragma omp parallel for
-//  for (uint i=0; i<eles.size(); i++) {
-//    opers[order].applySptsMpts(eles[i]->gridVel_spts,eles[i]->gridVel_mpts);
-//  }
+  int m = nPpts;
+  int n = nEles * nDims;
+  int k = nNodes;
+
+  auto &A = shape_ppts(0,0);
+  auto &B = gridV_mpts(0,0,0);
+  auto &C = gridV_ppts(0,0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#else
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
 }
 
 void solver::extrapolateSMpts(void)
@@ -1099,11 +1109,7 @@ void solver::moveMesh(int step)
 
     updateGridVSptsFpts();
 
-    if (params->motion != 4) {
-#pragma omp parallel for
-      for (uint i=0; i<eles.size(); i++)
-        eles[i]->calcTransforms(true);
-    }
+    updateTransforms();
 
     Geo->updateADT();
 
@@ -1184,7 +1190,7 @@ void solver::updatePosSptsFpts(void)
 {
 #pragma omp parallel for collapse(3)
   for (uint npt = 0; npt < nNodes; npt++)
-    for (uint e = 0; e < nEles; e++)
+    for (uint e = 0; e < Geo->nEles; e++)
       for (uint dim = 0; dim < nDims; dim++)
         if (Geo->eleMap[e] >= 0)
           nodesRK(npt, Geo->eleMap[e], dim) = Geo->xv[Geo->c2v(e,npt)][dim];

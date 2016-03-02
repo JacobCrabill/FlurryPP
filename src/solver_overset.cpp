@@ -198,6 +198,8 @@ void solver::insertElement(uint ele_ind)
     gridV_mpts.add_dim_1(ele_ind, 0.);
     gridV_ppts.add_dim_1(ele_ind, 0.);
   }
+
+  nEles++;
 }
 
 void solver::removeElement(uint ele_ind)
@@ -263,6 +265,8 @@ void solver::removeElement(uint ele_ind)
     gridV_mpts.remove_dim_1(ele_ind);
     gridV_ppts.remove_dim_1(ele_ind);
   }
+
+  nEles--;
 }
 
 /* ---- Callback Functions for TIOGA Overset Grid Library ---- */

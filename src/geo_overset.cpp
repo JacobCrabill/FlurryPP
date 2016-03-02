@@ -909,7 +909,8 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles, 
       eles[k]->sID = k;
   }
 
-  Solver->updatePosSptsFpts();
+  if (ubEles.size() > 0)
+    Solver->updatePosSptsFpts();
 }
 
 void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,
