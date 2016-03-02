@@ -262,12 +262,16 @@ void solver::removeElement(uint ele_ind)
   dA_fpts.remove_dim_1(ele_ind);
   norm_fpts.remove_dim_1(ele_ind);
 
+  nodes.remove_dim_1(ele_ind);
+
   if (params->motion)
   {
     gridV_spts.remove_dim_1(ele_ind);
     gridV_fpts.remove_dim_1(ele_ind);
     gridV_mpts.remove_dim_1(ele_ind);
     gridV_ppts.remove_dim_1(ele_ind);
+
+    nodesRK.remove_dim_1(ele_ind);
   }
 
   nEles--;

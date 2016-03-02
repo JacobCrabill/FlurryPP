@@ -840,9 +840,6 @@ void geo::removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEle
 
     Solver->removeElement(ind);
 
-    //! DEBUGGING dev_blas
-    cout << "Remove ele " << ic << " from ind = " << ind << endl;
-
     // Update the map
     for (int k=ic+1; k<nEles; k++)
       if (eleMap[k]>=0)
@@ -882,12 +879,6 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles, 
     else
       e->nMpts = 8;
 
-//    // Shape [mesh] nodes
-//    e->nodeID.resize(c2nv[ic]);
-//    for (int iv=0; iv<c2nv[ic]; iv++) {
-//      e->nodeID[iv] = c2v(ic,iv);
-//    }
-
     // Global face IDs for internal & boundary faces
     e->faceID.resize(c2nf[ic]);
     e->bndFace.resize(c2nf[ic]);
@@ -901,8 +892,6 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles, 
     e->setup(params,Solver,this);
 
     eles.insert(eles.begin()+ind,1,e);
-    //! DEBUGGING dev_blas
-    cout << "Inserting ele " << ic << " at ind = " << ind << endl;
 
     // Update the map
     eleMap[ic] = ind;

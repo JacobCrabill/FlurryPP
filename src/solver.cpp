@@ -1291,10 +1291,16 @@ void solver::calcTransforms(void)
 
 void solver::updateTransforms(void)
 {
-  if (params->motion != 4) {
+  if (params->motion != 4)
+  {
 #pragma omp parallel for
     for (uint i=0; i<eles.size(); i++)
       eles[i]->calcTransforms(true);
+  }
+  else
+  {
+    for (auto &ic:Geo->unblankCells)
+      eles[Geo->eleMap[ic]]->calcTransforms(true);
   }
 }
 

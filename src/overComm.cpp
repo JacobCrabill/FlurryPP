@@ -473,16 +473,26 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
         Array2D<point> donorPts;
         if (params->motion) {
           for (auto &ic:donorsIDs) {
+            int sIC = eleMap[ic];
             vector<point> tmpPts;
-            for (uint npt = 0; npt < eles[eleMap[ic]]->nNodes; npt++)
-              tmpPts.push_back(point(&eles[eleMap[ic]]->nodesRK(npt,0),nDims));
+            for (uint npt = 0; npt < eles[sIC]->nNodes; npt++) {
+              point node;
+              for (uint dim = 0; dim < nDims; dim++)
+                node[dim] = eles[sIC]->nodesRK(npt,dim);
+              tmpPts.push_back(node);
+            }
             donorPts.insertRow(tmpPts);
           }
         } else {
           for (auto &ic:donorsIDs) {
+            int sIC = eleMap[ic];
             vector<point> tmpPts;
-            for (uint npt = 0; npt < eles[eleMap[ic]]->nNodes; npt++)
-              tmpPts.push_back(point(&eles[eleMap[ic]]->nodes(npt,0),nDims));
+            for (uint npt = 0; npt < eles[sIC]->nNodes; npt++) {
+              point node;
+              for (uint dim = 0; dim < nDims; dim++)
+                node[dim] = eles[sIC]->nodes(npt,dim);
+              tmpPts.push_back(node);
+            }
             donorPts.insertRow(tmpPts);
           }
         }
