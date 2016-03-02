@@ -25,11 +25,12 @@
  *
  */
 
-#include "../include/operators.hpp"
+#include "operators.hpp"
 
 #include <cmath>
 
-#include "../include/polynomials.hpp"
+#include "cblas.h"
+#include "polynomials.hpp"
 
 //! Binary helper operation [for use with STL algorithms]
 static bool abs_compare(int a, int b)
@@ -1023,37 +1024,87 @@ void oper::applySptsMpts(matrix<double> &U_spts, matrix<double> &U_mpts)
   opp_spts_to_mpts.timesMatrix(U_spts,U_mpts);
 }
 
-void oper::applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &tnorm_fpts, matrix<double> &Fn_fpts)
+void oper::applyExtrapolateFn(Array<double,3> &F_spts, matrix<double> &Fn_fpts)
 {
-  opp_spts_to_fpts.timesMatrix(F_spts[0],tempFn);
-  for (uint fpt=0; fpt<nFpts; fpt++)
-    for (uint i=0; i<nFields; i++)
-      Fn_fpts(fpt,i) = tempFn(fpt,i)*tnorm_fpts(fpt,0);
-  
-  for (uint dim=1; dim<nDims; dim++) {
-    opp_spts_to_fpts.timesMatrix(F_spts[dim],tempFn);
-    for (uint fpt=0; fpt<nFpts; fpt++)
-      for (uint i=0; i<nFields; i++)
-        Fn_fpts(fpt,i) += tempFn(fpt,i)*tnorm_fpts(fpt,dim);
+  int m = nFpts;
+  int n = nFields;
+  int k = nSpts;
+
+  auto &C = Fn_fpts(0, 0);
+
+  auto &A = opp_extrapolateFn[0](0,0);
+  auto &B = F_spts(0, 0, 0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#else
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
+
+  for (uint dim = 1; dim < nDims; dim++) {
+    auto &A = opp_extrapolateFn[dim](0,0);
+    auto &B = F_spts(dim, 0, 0);
+#ifdef _OMP
+    omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 1.0, &C, n);
+#else
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 1.0, &C, n);
+#endif
   }
 }
 
-void oper::applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts, vector<double>& dA_fpts)
+void oper::applyExtrapolateFn(Array<double,3> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts, vector<double>& dA_fpts)
 {
   uint nFpts = norm_fpts.getDim0();
   matrix<double> tempFn(nFpts,nDims);
   tempFn.initializeToZero();
   Fn_fpts.initializeToZero();
 
-  for (uint dim=0; dim<nDims; dim++) {
-    opp_spts_to_fpts.timesMatrix(F_spts[dim],tempFn);
-    for (uint fpt=0; fpt<nFpts; fpt++)
-      for (uint i=0; i<nFields; i++)
-        Fn_fpts(fpt,i) += tempFn(fpt,i)*norm_fpts(fpt,dim)*dA_fpts[fpt];
+
+  /* Extrapolate physical normal flux */
+
+  int m = nFpts;
+  int n = nFields;
+  int k = nSpts;
+
+  auto &A = opp_spts_to_fpts(0,0);
+
+  auto &B = F_spts(0, 0, 0);
+  auto &C = Fn_fpts(0, 0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#else
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
+
+#pragma omp parallel for collapse(3)
+  for (uint fpt = 0; fpt < nFpts; fpt++)
+    for (uint k = 0; k < nFields; k++)
+      Fn_fpts(fpt,k) *= norm_fpts(fpt,0) * dA_fpts[fpt];
+
+  for (uint dim = 1; dim < nDims; dim++) {
+    auto &B = F_spts(dim, 0, 0);
+    auto &C = tempFn(0, 0);
+#ifdef _OMP
+    omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 0.0, &C, n);
+#else
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
+
+#pragma omp parallel for collapse(3)
+    for (uint fpt = 0; fpt < nFpts; fpt++)
+        for (uint k = 0; k < nFields; k++)
+          Fn_fpts(fpt,k) += tempFn(fpt,k) * norm_fpts(fpt,dim) * dA_fpts[fpt];
   }
 }
 
-matrix<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &F_spts, matrix<double> &dFn_fpts, point refLoc)
+matrix<double> oper::interpolateCorrectedFlux(Array<double,3> &F_spts, matrix<double> &dFn_fpts, point refLoc)
 {
   vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
 
@@ -1067,7 +1118,7 @@ matrix<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &F_spts, ma
 
       for (uint dim=0; dim<nDims; dim++)
         for (uint k=0; k<nFields; k++)
-          Fi(dim,k) += F_spts[dim](spt,k) * Lagrange(locSpts1D,refLoc.x,ispt) * Lagrange(locSpts1D,refLoc.y,jspt);
+          Fi(dim,k) += F_spts(dim,spt,k) * Lagrange(locSpts1D,refLoc.x,ispt) * Lagrange(locSpts1D,refLoc.y,jspt);
     }
 
     // Contribution from flux points [Correction function]
@@ -1107,7 +1158,7 @@ matrix<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &F_spts, ma
 
       for (uint dim=0; dim<nDims; dim++)
         for (uint k=0; k<nFields; k++)
-          Fi(dim,k) += F_spts[dim](spt,k) * Lagrange(locSpts1D,refLoc.x,ispt) * Lagrange(locSpts1D,refLoc.y,jspt) * Lagrange(locSpts1D,refLoc.z,kspt);
+          Fi(dim,k) += F_spts(dim,spt,k) * Lagrange(locSpts1D,refLoc.x,ispt) * Lagrange(locSpts1D,refLoc.y,jspt) * Lagrange(locSpts1D,refLoc.z,kspt);
     }
 
     // Contributions from flux points [Correction function]

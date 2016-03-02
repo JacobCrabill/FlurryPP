@@ -109,7 +109,7 @@ public:
   void updateBlankingTioga(void);
 
   //! Remove cells and faces which were tagged for blanking
-  void processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
+  void processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces, solver* Solver);
 
   //! Setup cells and faces which were tagged for un-blanking
   void processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces, solver* Solver);
@@ -122,7 +122,7 @@ public:
                    unordered_set<int> &ubIFaces, unordered_set<int> &ubMFaces, unordered_set<int> &ubOFaces);
 
   //! Remove elements from the eles vector
-  void removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEles);
+  void removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEles, solver* Solver);
 
   //! Remove faces from the face vectors
   void removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,

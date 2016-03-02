@@ -163,6 +163,7 @@ void solver::setupGeometry(void)
 
   shape_spts.setup(nSpts,nNodes);
   shape_fpts.setup(nFpts,nNodes);
+  shape_ppts.setup(nPpts,nNodes);
 
   dshape_spts.setup(nSpts,nNodes,nDims);
   dshape_fpts.setup(nFpts,nNodes,nDims);
@@ -195,6 +196,12 @@ void solver::setupGeometry(void)
   {
     loc_spts = getLocSpts(QUAD,order,params->sptsTypeQuad);
     loc_fpts = getLocFpts(QUAD,order,params->sptsTypeQuad);
+    loc_ppts = getLocPpts(QUAD,order,params->sptsTypeQuad);
+
+    for (uint ppt = 0; ppt < nPpts; ppt++)
+    {
+      shape_quad(loc_ppts[ppt], &shape_ppts(ppt,0),nNodes);
+    }
 
     for (uint spt = 0; spt < nSpts; spt++)
     {
@@ -229,11 +236,18 @@ void solver::setupGeometry(void)
           break;
       }
     }
+
   }
   else
   {
     loc_spts = getLocSpts(HEX,order,params->sptsTypeQuad);
     loc_fpts = getLocFpts(HEX,order,params->sptsTypeQuad);
+    loc_ppts = getLocPpts(HEX,order,params->sptsTypeQuad);
+
+    for (uint ppt = 0; ppt < nSpts; ppt++)
+    {
+      shape_hex(loc_ppts[ppt], &shape_ppts(ppt,0), nNodes);
+    }
 
     for (uint spt = 0; spt < nSpts; spt++)
     {
@@ -610,10 +624,6 @@ void solver::extrapolateSFpts(void)
 
 void solver::calcInviscidFlux_spts(void)
 {
-  /*tempF.setup(nFields,nDims);
-
-  double gam1 = params->gamma - 1.;
-
   if (nDims == 2)
   {
     for (uint spt = 0; spt < nSpts; spt++) {
@@ -621,28 +631,29 @@ void solver::calcInviscidFlux_spts(void)
         double rho = U_spts(spt,e,0);
         double u = U_spts(spt,e,1) / rho;
         double v = U_spts(spt,e,2) / rho;
-        double p = gam1*(U_spts(spt,e,3) - 0.5*rho*(u*u + v*v));
-        tempF(0,0) =  U_spts(spt,e,1);       tempF(0,1) =  U_spts(spt,e,2);
-        tempF(1,0) =  U_spts(spt,e,1)*u+p;   tempF(1,1) =  U_spts(spt,e,1)*v;
-        tempF(2,0) =  U_spts(spt,e,2)*u;     tempF(2,1) =  U_spts(spt,e,2)*v+p;
-        tempF(3,0) = (U_spts(spt,e,3)+p)*u;  tempF(3,1) = (U_spts(spt,e,3)+p)*v;
+        double E = U_spts(spt,e,3);
+        double p = (params->gamma-1)*(E - 0.5*rho*(u*u + v*v));
+        tempF[0][0] =  rho*u;      tempF[0][1] =  rho*v;
+        tempF[1][0] =  rho*u*u+p;  tempF[1][1] =  rho*u*v;
+        tempF[2][0] =  rho*v*u;    tempF[2][1] =  rho*v*v+p;
+        tempF[3][0] = (E+p)*u;     tempF[3][1] = (E+p)*v;
 
-        / * --- Transform back to reference domain --- * /
+        /* --- Transform back to reference domain --- */
         for (uint dim1 = 0; dim1 < nDims; dim1++) {
           for (uint k = 0; k < nFields; k++) {
             F_spts(dim1,spt,e,k) = 0.;
             for (uint dim2 = 0; dim2 < nDims; dim2++) {
-              F_spts(dim1, spt,e, k) += JGinv_spts(spt,e,dim1,dim2)*tempF(k,dim2);
+              F_spts(dim1, spt,e, k) += JGinv_spts(spt,e,dim1,dim2)*tempF[k][dim2];
             }
           }
         }
       }
     }
-  }*/
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    eles[i]->calcInviscidFlux_spts();
   }
+//#pragma omp parallel for
+//  for (uint i=0; i<eles.size(); i++) {
+//    eles[i]->calcInviscidFlux_spts();
+//  }
 }
 
 void solver::doCommunication()
@@ -1061,7 +1072,7 @@ void solver::moveMesh(int step)
       Geo->setIterIblanks();
       if (params->RKa[nRKSteps-1]!=1.)
         Geo->updateADT();
-      Geo->processBlanks(eles,faces,mpiFaces,overFaces);
+      Geo->processBlanks(eles,faces,mpiFaces,overFaces,this);
       Geo->processUnblanks(eles,faces,mpiFaces,overFaces,this);
       OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->quadOrder);
       OComm->performGalerkinProjection(eles,opers,Geo->eleMap,order);
@@ -1119,12 +1130,14 @@ void solver::setPosSptsFpts(void)
   nodes.setup(nNodes, nEles, nDims);
 
   for (uint npt = 0; npt < nNodes; npt++)
-    for (uint e = 0; e < nEles; e++)
+    for (uint e = 0; e < Geo->nEles; e++)
       for (uint dim = 0; dim < nDims; dim++)
-        nodes(npt, e, dim) = Geo->xv[Geo->c2v(e,npt)][dim];
+        if (Geo->eleMap[e] >= 0)
+          nodes(npt, Geo->eleMap[e], dim) = Geo->xv[Geo->c2v(e,npt)][dim];
 
   int ms = nSpts;
   int mf = nFpts;
+  int mp = nPpts;
   int k = nNodes;
   int n = nEles * nDims;
 
@@ -1150,6 +1163,16 @@ void solver::setPosSptsFpts(void)
               1.0, &Af, k, &B, n, 0.0, &Cf, n);
 #endif
 
+  auto &Ap = shape_ppts(0,0);
+  auto &Cp = pos_ppts(0,0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mp, n, k,
+              1.0, &Ap, k, &B, n, 0.0, &Cp, n);
+#else
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mp, n, k,
+              1.0, &Ap, k, &B, n, 0.0, &Cp, n);
+#endif
+
   /* Initialize storage of moving node positions */
   if (params->motion)
   {
@@ -1163,10 +1186,12 @@ void solver::updatePosSptsFpts(void)
   for (uint npt = 0; npt < nNodes; npt++)
     for (uint e = 0; e < nEles; e++)
       for (uint dim = 0; dim < nDims; dim++)
-        nodesRK(npt, e, dim) = Geo->xv[Geo->c2v(e,npt)][dim];
+        if (Geo->eleMap[e] >= 0)
+          nodesRK(npt, Geo->eleMap[e], dim) = Geo->xv[Geo->c2v(e,npt)][dim];
 
   int ms = nSpts;
   int mf = nFpts;
+  int mp = nPpts;
   int k = nNodes;
   int n = nEles * nDims;
 
@@ -1191,15 +1216,26 @@ void solver::updatePosSptsFpts(void)
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mf, n, k,
               1.0, &Af, k, &B, n, 0.0, &Cf, n);
 #endif
+
+  auto &Ap = shape_ppts(0,0);
+  auto &Cp = pos_ppts(0,0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mp, n, k,
+              1.0, &Ap, k, &B, n, 0.0, &Cp, n);
+#else
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mp, n, k,
+              1.0, &Ap, k, &B, n, 0.0, &Cp, n);
+#endif
 }
 
 void solver::updateGridVSptsFpts(void)
 {
 #pragma omp parallel for collapse(3)
   for (uint npt = 0; npt < nNodes; npt++)
-    for (uint e = 0; e < nEles; e++)
+    for (uint e = 0; e < Geo->nEles; e++)
       for (uint dim = 0; dim < nDims; dim++)
-        gridV_mpts(npt, e, dim) = Geo->gridVel(Geo->c2v(e,npt),dim);
+        if (Geo->eleMap[e] >= 0)
+          gridV_mpts(npt, Geo->eleMap[e], dim) = Geo->gridVel(Geo->c2v(e,npt),dim);
 
   int ms = nSpts;
   int mf = nFpts;
@@ -1408,7 +1444,7 @@ void solver::readRestartFile(void) {
         Geo->blankCells.insert(ic);
     }
 
-    Geo->processBlanks(eles,faces,mpiFaces,overFaces);
+    Geo->processBlanks(eles,faces,mpiFaces,overFaces,this);
   }
 
   // Read restart data & setup all data arrays

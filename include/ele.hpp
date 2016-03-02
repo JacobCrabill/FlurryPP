@@ -48,6 +48,7 @@ friend class solver;
 
 public:
   int ID, IDg; //! IDg is global ID in MPI cases
+  int sID;     //! ID within Solver's arrays
   int eType;
   int order;
   int nNodes; //! Number of nodes used to define element shape
@@ -280,6 +281,7 @@ public:
   double& U_fpts(int fpt, int field);
   double& F_fpts(int dim, int fpt, int field);
   double& Fn_fpts(int fpt, int field);
+  double& disFn_fpts(int fpt, int field);
   double& U_mpts(int mpt, int field);
   double& dU_fpts(int dim, int fpt, int field);
   double& dUc_fpts(int fpt, int field);

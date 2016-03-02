@@ -501,6 +501,40 @@ vector<point> getLocFpts(int eType, int order, string sptsType)
   return outPts;
 }
 
+vector<point> getLocPpts(int eType, int order, string sptsType)
+{
+  vector<point> outPts;
+  vector<double> pts1D;
+
+  int nPts1D = order + 3;
+  pts1D = getPts1D(sptsType,order);
+  pts1D.insert(pts1D.begin(),1,-1.);
+  pts1D.push_back(1);
+
+  if (eType == QUAD) {
+    outPts.resize(nPts1D*nPts1D);
+    for (int ppt=0; ppt<outPts.size(); ppt++) {
+      int i = ppt%(order+3);
+      int j = ppt/(order+3);
+      outPts[ppt].x = pts1D[i];
+      outPts[ppt].y = pts1D[j];
+    }
+  }
+  else if (eType == HEX) {
+    outPts.resize(nPts1D*nPts1D*nPts1D);
+    for (int ppt = 0; ppt < outPts.size(); ppt++) {
+      int k = ppt/(nPts1D*nPts1D);
+      int j = (ppt-nPts1D*nPts1D*k)/nPts1D;
+      int i = ppt - nPts1D*j - nPts1D*nPts1D*k;
+      outPts[ppt].x = pts1D[i];
+      outPts[ppt].y = pts1D[j];
+      outPts[ppt].z = pts1D[k];
+    }
+  }
+
+  return outPts;
+}
+
 vector<double> getPts1D(string ptsType, int order)
 {
   vector<double> outPts(order+1);

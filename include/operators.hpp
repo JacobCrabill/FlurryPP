@@ -93,11 +93,11 @@ public:
 
   /*! For the standard FR method: extrapolate the transformed flux to the flux points
    *  and dot with the transformed outward unit normal */
-  void applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &tnorm_fpts, matrix<double> &Fn_fpts);
+  void applyExtrapolateFn(Array<double,3> &F_spts, matrix<double> &Fn_fpts);
 
   /*! For the modified space-time transformation method: Extrapolate the physical flux
    *  to the flux points and dott with the physical outward unit normal */
-  void applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts, vector<double> &dA_fpts);
+  void applyExtrapolateFn(Array<double,3> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts, vector<double> &dA_fpts);
 
 
   void applyCorrectDivF(matrix<double> &dFn_fpts, matrix<double> &divF_spts);
@@ -117,7 +117,7 @@ public:
   //! Calculate average density over an element (needed for negative-density correction)
   void calcAvgU(matrix<double>& U_spts, vector<double>& detJ_spts, vector<double>& Uavg);
 
-  matrix<double> interpolateCorrectedFlux(vector<matrix<double> >& F_spts, matrix<double>& dFn_fpts, point refLoc);
+  matrix<double> interpolateCorrectedFlux(Array<double, 3>& F_spts, matrix<double>& dFn_fpts, point refLoc);
 
   matrix<double> opp_prolong;   //! PMG Prolongation operator
   matrix<double> opp_restrict;  //! PMG Restriction operator

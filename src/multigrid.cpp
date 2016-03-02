@@ -374,37 +374,43 @@ void multiGrid::restrict_hmg(solver &grid_f, solver &grid_c, uint H)
 {
   int nSplit = 1 << params->nDims;
 
-//#pragma omp parallel for
-//  for (uint e = 0; e < grid_c.eles.size(); e++)
-//  {
-//    auto &e_c = *grid_c.eles[e];
-//    e_c.U_spts.initializeToZero();
-//    e_c.divF_spts[0].initializeToZero();
+  // what to do...? Take avg (Josh's simple method), or do Galerkin projection?
+  // For the moment: take avg value [Only remotely reasonable for P = 0]
 
-//    for (uint j = 0; j < nSplit; j++)
-//    {
-//      // what to do...? Take avg (Josh's simple method), or do Galerkin projection?
-//      // For the moment: take avg value [Only remotely reasonable for P = 0]
-//      auto &e_f = *grid_f.eles[e*nSplit+j];
-//      e_c.U_spts += e_f.U_spts;
-//      e_c.divF_spts[0] += e_f.divF_spts[0];
-//    }
-//    e_c.U_spts /= nSplit;
-//    e_c.divF_spts[0] /= nSplit;
-//  }
+#pragma omp parallel for
+  for (uint spt = 0; spt < grid_c.nSpts; spt++) {
+    for (uint ec = 0; ec < grid_c.eles.size(); ec++) {
+      for (uint k = 0; k < grid_c.nFields; k++) {
+        grid_c.U_spts(spt,ec,k) = 0;
+        grid_c.divF_spts[0](spt,ec,k) = 0;
+      }
+
+      for (uint j = 0; j < nSplit; j++) {
+        uint ef = ec*nSplit+j;
+        for (uint k = 0; k < grid_c.nFields; k++) {
+          grid_c.U_spts(spt,ec,k) += grid_f.U_spts(spt,ef,k) / nSplit;
+          grid_c.divF_spts[0](spt,ec,k) += grid_f.divF_spts[0](spt,ef,k); // / nSplit <-- Jameson doesn't average divF, he sums
+        }
+      }
+
+    }
+  }
 }
 
 void multiGrid::prolong_hmg(solver &grid_c, solver &grid_f, uint H)
 {
   int nSplit = 1 << params->nDims;
 
-#pragma omp parallel for
-  for (uint e = 0; e < grid_f.eles.size(); e++)
-  {
-    auto &e_f = *grid_f.eles[e];
-    auto &e_c = *grid_c.eles[e/nSplit];
-    // what to do...? Copy value (Josh's simple method), or do Galerkin projection?
-    // For the moment: simple method [Only remotely reasonable for P = 0]
-/////    e_f.U_spts += e_c.corr_spts;
+  // what to do...? Copy value (Josh's simple method), or do Galerkin projection?
+  // For the moment: simple method [Only remotely reasonable for P = 0]
+
+#pragma omp parallel for collapse(2)
+  for (uint spt = 0; spt < grid_c.nSpts; spt++) {
+    for (uint ef = 0; ef < grid_f.eles.size(); ef++) {
+      uint ec = ef / nSplit;
+      for (uint k = 0; k < params->nFields; k++) {
+        grid_f.U_spts(spt,ef,k) += grid_c.corr_spts(spt,ec,k);
+      }
+    }
   }
 }

@@ -102,7 +102,7 @@ public:
   vector<Array<double,3>> divF_spts;
 
   Array<double,3> tempVars_fpts, tempVars_spts;  //! Temporary/intermediate solution storage array
-  matrix<double> tempF;
+  double tempF[5][3];
 
   /* Multigrid Variables */
   Array<double,3> sol_spts, corr_spts, src_spts;
@@ -110,13 +110,13 @@ public:
   /* Geometry Variables */
 
   Array2D<double> detJac_spts, detJac_fpts, detJac_qpts, dA_fpts, tNorm_fpts;
-  Array2D<double> shape_spts, shape_fpts;
+  matrix<double> shape_spts, shape_fpts, shape_ppts;
   Array<double,3> dshape_spts, dshape_fpts;
   Array<double,3> gridV_spts, gridV_fpts, gridV_mpts, gridV_ppts;
   Array<double,3> norm_fpts;
   Array<double,4> Jac_spts, Jac_fpts, JGinv_spts, JGinv_fpts;
 
-  vector<point> loc_spts, loc_fpts;
+  vector<point> loc_spts, loc_fpts, loc_ppts;
 
   Array<double,3> nodes, nodesRK; //! nNodes, nEles, nDims
   Array<double,3> pos_spts, pos_fpts, pos_ppts;  //! nSpts/NFpts, nEles, nDims
@@ -306,6 +306,9 @@ public:
 
   //! Integrate the solution error over the overset domain
   vector<double> integrateErrorOverset();
+
+  void insertElement(uint ele_ind);
+  void removeElement(uint ele_ind);
 
   /* ---- Callback functions specifically for TIOGA ---- */
 

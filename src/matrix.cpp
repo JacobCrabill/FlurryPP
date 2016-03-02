@@ -126,6 +126,133 @@ void Array<T,N>::setup(uint inDim0, uint inDim1, uint inDim2, uint inDim3)
   dims[3] = inDim3;
 }
 
+template <typename T, uint N>
+void Array<T,N>::add_dim_0(uint ind, const T &val)
+{
+  /* Insert new 'book' of memory */
+  uint bookSize = dims[3]*dims[2]*dims[1];
+  auto it = data.begin() + bookSize*ind;
+  data.insert(it, bookSize, val);
+  dims[0]++;
+}
+
+template <typename T, uint N>
+void Array<T,N>::add_dim_1(uint ind, const T &val)
+{
+  /* Insert new 'page' of memory */
+  uint stride = dims[3]*dims[2]*dims[1];
+  uint pageSize = dims[2]*dims[3];
+  uint offset = ind*pageSize;
+  for (int i = dims[0]-1; i >= 0; i--) {
+    auto it = data.begin() + i*stride + offset;
+    data.insert(it, pageSize, val);
+  }
+
+  dims[1]++;
+}
+
+template <typename T, uint N>
+void Array<T,N>::add_dim_2(uint ind, const T &val)
+{
+  /* Insert new 'column' of memory */
+  uint stride0 = dims[3]*dims[2]*dims[1];
+  uint stride1 = dims[3]*dims[2];
+  uint colSize = dims[3];
+  uint offset = ind*colSize;
+  for (int i = dims[0]-1; i >= 0; i--) {
+    for (int j = dims[1]-1; j >= 0; j--) {
+      auto it = data.begin() + i*stride0 + j*stride1 + offset;
+      data.insert(it, colSize, val);
+    }
+  }
+
+  dims[2]++;
+}
+
+template <typename T, uint N>
+void Array<T,N>::add_dim_3(uint ind, const T &val)
+{
+  /* Insert new 'row' of memory */
+  uint stride0 = dims[3]*dims[2]*dims[1];
+  uint stride1 = dims[3]*dims[2];
+  uint stride2 = dims[3];
+  uint rowSize = 1;
+  uint offset = ind*rowSize;
+  for (int i = dims[0]-1; i >= 0; i--) {
+    for (int j = dims[1]-1; j >= 0; j--) {
+      for (int k = dims[2]-1; k >= 0; k--) {
+        auto it = data.begin() + i*stride0 + j*stride1 + k*stride2 + offset;
+        data.insert(it, rowSize, val);
+      }
+    }
+  }
+
+  dims[3]++;
+}
+
+template <typename T, uint N>
+void Array<T,N>::remove_dim_0(uint ind)
+{
+  /* Insert new 'book' of memory */
+  uint bookSize = dims[3]*dims[2]*dims[1];
+  auto it = data.begin() + bookSize*ind;
+  data.erase(it, it+bookSize);
+  dims[0]--;
+}
+
+template <typename T, uint N>
+void Array<T,N>::remove_dim_1(uint ind)
+{
+  /* Insert new 'page' of memory */
+  uint stride = dims[3]*dims[2]*dims[1];
+  uint pageSize = dims[2]*dims[3];
+  uint offset = ind*pageSize;
+  for (int i = dims[0]-1; i >= 0; i--) {
+    auto it = data.begin() + i*stride + offset;
+    data.erase(it, it+pageSize);
+  }
+
+  dims[1]--;
+}
+
+template <typename T, uint N>
+void Array<T,N>::remove_dim_2(uint ind)
+{
+  /* Insert new 'column' of memory */
+  uint stride0 = dims[3]*dims[2]*dims[1];
+  uint stride1 = dims[3]*dims[2];
+  uint colSize = dims[3];
+  uint offset = ind*colSize;
+  for (int i = dims[0]-1; i >= 0; i--) {
+    for (int j = dims[1]-1; j >= 0; j--) {
+      auto it = data.begin() + i*stride0 + j*stride1 + offset;
+      data.erase(it, it+colSize);
+    }
+  }
+
+  dims[2]--;
+}
+
+template <typename T, uint N>
+void Array<T,N>::remove_dim_3(uint ind)
+{
+  /* Insert new 'row' of memory */
+  uint stride0 = dims[3]*dims[2]*dims[1];
+  uint stride1 = dims[3]*dims[2];
+  uint stride2 = dims[3];
+  uint rowSize = 1;
+  uint offset = ind*rowSize;
+  for (int i = dims[0]-1; i >= 0; i--) {
+    for (int j = dims[1]-1; j >= 0; j--) {
+      for (int k = dims[2]-1; k >= 0; k--) {
+        auto it = data.begin() + i*stride0 + j*stride1 + k*stride2 + offset;
+        data.erase(it, it+rowSize);
+      }
+    }
+  }
+
+  dims[3]--;
+}
 
 template<typename T>
 void matrix<T>::addMatrix(matrix<T> &A, double a)

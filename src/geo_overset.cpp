@@ -631,7 +631,7 @@ void geo::matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &d
 #endif
 }
 
-void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
+void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces, solver *Solver)
 {
 #ifndef _NO_MPI
   /* --- Set blank/unblank faces for all elements to be blanked --- */
@@ -714,7 +714,7 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
 
   unordered_set<int> ubIFaces, ubMFaces;
 
-  removeEles(eles,blankCells);
+  removeEles(eles,blankCells,Solver);
   removeFaces(faces,mFaces,oFaces,blankIFaces,blankMFaces,blankOFaces);
   insertFaces(eles,faces,mFaces,oFaces,ubIFaces,ubMFaces,ubOFaces);
 
@@ -827,7 +827,7 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
   for (auto &oface:oFaces) oface->getPointers();
 }
 
-void geo::removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEles)
+void geo::removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEles, solver *Solver)
 {
   /* --- Remove Newly-Blanked Elements --- */
 
@@ -838,10 +838,15 @@ void geo::removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEle
     eles.erase(eles.begin()+ind,eles.begin()+ind+1);
     eleMap[ic] = -1;
 
+    Solver->removeElement(ind);
+
     // Update the map
     for (int k=ic+1; k<nEles; k++)
       if (eleMap[k]>=0)
         eleMap[k]--;
+
+    for (int k = ind; k < eles.size(); k++)
+      eles[k]->sID = k;
   }
 }
 
@@ -862,6 +867,7 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles, 
 
     shared_ptr<ele> e = make_shared<ele>();
     e->ID = ic;
+    e->sID = ind;
     if (nProcGrid>1)
       e->IDg = ic2icg[ic];
     else
@@ -875,10 +881,8 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles, 
 
     // Shape [mesh] nodes
     e->nodeID.resize(c2nv[ic]);
-//    e->nodes.resize(c2nv[ic]);
     for (int iv=0; iv<c2nv[ic]; iv++) {
       e->nodeID[iv] = c2v(ic,iv);
-//      e->nodes[iv] = point(xv[c2v(ic,iv)],nDims);
     }
 
     // Global face IDs for internal & boundary faces
@@ -889,6 +893,8 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles, 
       e->faceID[k] = c2f(ic,k);
     }
 
+    Solver->insertElement(ind);
+
     e->setup(params,Solver,this);
 
     eles.insert(eles.begin()+ind,1,e);
@@ -898,7 +904,12 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles, 
     for (int k=ic+1; k<nEles; k++)
       if (eleMap[k]>=0)
         eleMap[k]++;
+
+    for (int k = ind+1; k<eles.size(); k++)
+      eles[k]->sID = k;
   }
+
+  Solver->updatePosSptsFpts();
 }
 
 void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,

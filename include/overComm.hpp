@@ -62,6 +62,7 @@ class overComm
 public:
   overComm();
 
+  int nDims;
   int nGrids;
   int nprocPerGrid;
   int gridID;

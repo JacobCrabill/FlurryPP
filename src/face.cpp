@@ -372,8 +372,8 @@ void face::roeFlux(void)
   if (nDims == 3) FatalError("Roe not implemented in 3D");
 
   for (int fpt=0; fpt<nFptsL; fpt++) {
-    array<double,3> vL, vR, um;
-    array<double,5> du;
+    double vL[3], vR[3], um[3];
+    double du[5];
 
     // velocities
     for (int i=0;i<nDims;i++)  {
@@ -390,7 +390,6 @@ void face::roeFlux(void)
       pL = (gamma-1.0)*(UL(fpt,4) - (0.5*UL(fpt,0)*(vL[0]*vL[0]+vL[1]*vL[1]+vL[2]*vL[2])));
       pR = (gamma-1.0)*(UR(fpt,4) - (0.5*UR(fpt,0)*(vR[0]*vR[0]+vR[1]*vR[1]+vR[2]*vR[2])));
     }
-
 
     double hL = (UL(fpt,nDims+1)+pL)/UL(fpt,0);
     double hR = (UR(fpt,nDims+1)+pR)/UR(fpt,0);

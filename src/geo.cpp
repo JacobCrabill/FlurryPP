@@ -808,6 +808,7 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
 
     shared_ptr<ele> e = make_shared<ele>();
     e->ID = ic;
+    e->sID = nc;
     if (nProcGrid>1)
       e->IDg = ic2icg[ic];
     else
@@ -821,10 +822,8 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
 
     // Shape [mesh] nodes
     e->nodeID.resize(c2nv[ic]);
-    /////e->nodes.resize(c2nv[ic]);
     for (int iv=0; iv<c2nv[ic]; iv++) {
       e->nodeID[iv] = c2v(ic,iv);
-      /////e->nodes[iv] = point(xv[c2v(ic,iv)],nDims);
     }
 
     // Global face IDs for internal & boundary faces

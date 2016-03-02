@@ -49,6 +49,7 @@ ele::ele(int in_eType, int in_order, int in_ID, vector<point> &in_nodes, geo *in
   eType = in_eType;
   order = in_order;
   ID = in_ID;
+  sID = ID;
   Geo = in_Geo;
 }
 
@@ -141,99 +142,104 @@ void ele::setupAllGeometry(void) {
 
 double& ele::U_spts(int spt, int field)
 {
-  return Solver->U_spts(spt, ID, field);
+  return Solver->U_spts(spt, sID, field);
 }
 
 double& ele::F_spts(int dim, int spt, int field)
 {
-  return Solver->F_spts(dim, spt, ID, field);
+  return Solver->F_spts(dim, spt, sID, field);
 }
 
 double& ele::dU_spts(int dim, int spt, int field)
 {
-  return Solver->dU_spts(dim, spt, ID, field);
+  return Solver->dU_spts(dim, spt, sID, field);
 }
 
 double& ele::dF_spts(int dim_grad, int dim_flux, int spt, int field)
 {
-  return Solver->dF_spts(dim_grad, dim_flux)(spt, ID, field);
+  return Solver->dF_spts(dim_grad, dim_flux)(spt, sID, field);
 }
 
 double& ele::U_fpts(int fpt, int field)
 {
-  return Solver->U_fpts(fpt, ID, field);
+  return Solver->U_fpts(fpt, sID, field);
 }
 
 double& ele::F_fpts(int dim, int fpt, int field)
 {
-  return Solver->F_fpts(dim, fpt, ID, field);
+  return Solver->F_fpts(dim, fpt, sID, field);
 }
 
 double& ele::Fn_fpts(int fpt, int field)
 {
-  return Solver->Fn_fpts(fpt, ID, field);
+  return Solver->Fn_fpts(fpt, sID, field);
+}
+
+double& ele::disFn_fpts(int fpt, int field)
+{
+  return Solver->disFn_fpts(fpt, sID, field);
 }
 
 double& ele::dU_fpts(int dim, int fpt, int field)
 {
-  return Solver->dU_fpts(dim, fpt, ID, field);
+  return Solver->dU_fpts(dim, fpt, sID, field);
 }
 
 double& ele::dUc_fpts(int fpt, int field)
 {
-  return Solver->dUc_fpts(fpt, ID, field);
+  return Solver->dUc_fpts(fpt, sID, field);
 }
 
 double& ele::divF_spts(int step, int spt, int field)
 {
-  return Solver->divF_spts[step](spt, ID, field);
+  return Solver->divF_spts[step](spt, sID, field);
 }
 
 double& ele::U_mpts(int mpt, int field)
 {
-  return Solver->U_mpts(mpt, ID, field);
+  return Solver->U_mpts(mpt, sID, field);
 }
 
 /* ---- Geometry-Variable Access ---- */
 
 double& ele::detJac_spts(int spt)
 {
-  return Solver->detJac_spts(spt, ID);
+  return Solver->detJac_spts(spt, sID);
 }
 
 double& ele::detJac_fpts(int fpt)
 {
-  return Solver->detJac_fpts(fpt, ID);
+  return Solver->detJac_fpts(fpt, sID);
 }
 
 double& ele::dA_fpts(int fpt)
 {
-  return Solver->dA_fpts(fpt, ID);
+  return Solver->dA_fpts(fpt, sID);
 }
 
 double& ele::Jac_spts(int spt, int dim1, int dim2)
 {
-  return Solver->Jac_spts(spt, ID, dim1, dim2);
+  return Solver->Jac_spts(spt, sID, dim1, dim2);
 }
 
 double& ele::Jac_fpts(int fpt, int dim1, int dim2)
 {
-  return Solver->Jac_fpts(fpt, ID, dim1, dim2);
+  return Solver->Jac_fpts(fpt, sID, dim1, dim2);
 }
 
 double& ele::JGinv_spts(int spt, int dim1, int dim2)
 {
-  return Solver->JGinv_spts(spt, ID, dim1, dim2);
+  return Solver->JGinv_spts(spt, sID, dim1, dim2);
 }
 
 double& ele::JGinv_fpts(int fpt, int dim1, int dim2)
 {
-  return Solver->JGinv_fpts(fpt, ID, dim1, dim2);
+  return Solver->JGinv_fpts(fpt, sID, dim1, dim2);
 }
 
 double& ele::norm_fpts(int fpt, int dim)
 {
-  return Solver->norm_fpts(fpt, ID, dim);
+  return Solver->norm_fpts(fpt, sID, dim);
 }
 
 double& ele::tNorm_fpts(int fpt, int dim)
@@ -243,42 +249,42 @@ double& ele::tNorm_fpts(int fpt, int dim)
 
 double& ele::nodes(int npt, int dim)
 {
-  return Solver->nodes(npt, ID, dim);
+  return Solver->nodes(npt, sID, dim);
 }
 
 double& ele::nodesRK(int npt, int dim)
 {
-  return Solver->nodesRK(npt, ID, dim);
+  return Solver->nodesRK(npt, sID, dim);
 }
 
 double& ele::pos_spts(int spt, int dim)
 {
-  return Solver->pos_spts(spt, ID, dim);
+  return Solver->pos_spts(spt, sID, dim);
 }
 
 double& ele::pos_fpts(int fpt, int dim)
 {
-  return Solver->pos_fpts(fpt, ID, dim);
+  return Solver->pos_fpts(fpt, sID, dim);
 }
 
 double& ele::pos_ppts(int ppt, int dim)
 {
-  return Solver->pos_ppts(ppt, ID, dim);
+  return Solver->pos_ppts(ppt, sID, dim);
 }
 
 double& ele::gridVel_spts(int spt, int dim)
 {
-  return Solver->gridV_spts(spt, ID, dim);
+  return Solver->gridV_spts(spt, sID, dim);
 }
 
 double& ele::gridVel_fpts(int fpt, int dim)
 {
-  return Solver->gridV_fpts(fpt, ID, dim);
+  return Solver->gridV_fpts(fpt, sID, dim);
 }
 
 double& ele::gridVel_nodes(int mpt, int dim)
 {
-  return Solver->gridV_mpts(mpt, ID, dim);
+  return Solver->gridV_mpts(mpt, sID, dim);
 }
 
 
@@ -1041,9 +1047,15 @@ void ele::setInitialCondition()
 
 matrix<double> ele::calcError(void)
 {
-/////  if (!params->testCase) return U_spts;
 
   matrix<double> err(nSpts,nFields);
+
+  if (!params->testCase) {
+    for (uint spt = 0; spt < nSpts; spt++)
+      for (uint k = 0; k < nFields; k++)
+        err(spt,k) = U_spts(spt,k);
+    return err;
+  }
 
   if (params->equation == NAVIER_STOKES) {
     double gamma = params->gamma;
@@ -1385,7 +1397,6 @@ void ele::transformGradF_spts(int step)
       }
     }
   } else {
-    /////divF_spts[step].initializeToZero();
     for (int spt=0; spt<nSpts; spt++) {
       // Build the full 4D (space+time) Jacobian matrix & its adjoint
       matrix<double> Jacobian(4,4);
@@ -1570,17 +1581,6 @@ double ele::calcDt(void)
 
   dt = (params->CFL) * getCFLLimit(order) * (2.0 / (waveSp+1.e-10));
   return dt;
-}
-
-
-void ele::copyUspts_U0(void)
-{
-/////  U0 = U_spts;
-}
-
-void ele::copyU0_Uspts(void)
-{
-/////  U_spts = U0;
 }
 
 vector<double> ele::getPrimitives(uint spt)
@@ -2203,190 +2203,190 @@ vector<point> ele::getPpts(void)
 
 void ele::setPpts(void)
 {
-  if (eType == QUAD) {
-    int nPts1D = order+3;
-    //pos_ppts.resize(nPts1D*nPts1D);
+//  if (eType == QUAD) {
+//    int nPts1D = order+3;
+//    //pos_ppts.resize(nPts1D*nPts1D);
 
-    // Get mesh (corner) points
-    if (params->motion != 0) {
-      for (uint dim = 0; dim < nDims; dim++) {
-        pos_ppts(0*nPts1D+0,dim)               = nodesRK(0,dim);
-        pos_ppts(0*nPts1D+order+2,dim)         = nodesRK(1,dim);
-        pos_ppts((order+2)*nPts1D+0,dim)       = nodesRK(2,dim);
-        pos_ppts((order+2)*nPts1D+order+2,dim) = nodesRK(3,dim);
-      }
-    }
-    else {
-      for (uint dim = 0; dim < nDims; dim++) {
-        pos_ppts(0*nPts1D+0,dim)               = nodes(0,dim);
-        pos_ppts(0*nPts1D+order+2,dim)         = nodes(1,dim);
-        pos_ppts((order+2)*nPts1D+0,dim)       = nodes(2,dim);
-        pos_ppts((order+2)*nPts1D+order+2,dim) = nodes(3,dim);
-      }
-    }
+//    // Get mesh (corner) points
+//    if (params->motion != 0) {
+//      for (uint dim = 0; dim < nDims; dim++) {
+//        pos_ppts(0*nPts1D+0,dim)               = nodesRK(0,dim);
+//        pos_ppts(0*nPts1D+order+2,dim)         = nodesRK(1,dim);
+//        pos_ppts((order+2)*nPts1D+0,dim)       = nodesRK(2,dim);
+//        pos_ppts((order+2)*nPts1D+order+2,dim) = nodesRK(3,dim);
+//      }
+//    }
+//    else {
+//      for (uint dim = 0; dim < nDims; dim++) {
+//        pos_ppts(0*nPts1D+0,dim)               = nodes(0,dim);
+//        pos_ppts(0*nPts1D+order+2,dim)         = nodes(1,dim);
+//        pos_ppts((order+2)*nPts1D+0,dim)       = nodes(2,dim);
+//        pos_ppts((order+2)*nPts1D+order+2,dim) = nodes(3,dim);
+//      }
+//    }
 
-    // Get flux points
-    for (int i=0; i<order+1; i++) {
-      for (uint dim = 0; dim < nDims; dim++) {
-        pos_ppts(0*nPts1D+i+1,dim)         = pos_fpts(i,dim);                // Bottom
-        pos_ppts((i+1)*nPts1D+0,dim)       = pos_fpts(nFpts-i-1,dim);        // Left
-        pos_ppts((i+1)*nPts1D+order+2,dim) = pos_fpts(order+1+i,dim);        // Right
-        pos_ppts((order+2)*nPts1D+i+1,dim) = pos_fpts(3*(order+1)-i-1,dim);  // Top
-      }
-    }
+//    // Get flux points
+//    for (int i=0; i<order+1; i++) {
+//      for (uint dim = 0; dim < nDims; dim++) {
+//        pos_ppts(0*nPts1D+i+1,dim)         = pos_fpts(i,dim);                // Bottom
+//        pos_ppts((i+1)*nPts1D+0,dim)       = pos_fpts(nFpts-i-1,dim);        // Left
+//        pos_ppts((i+1)*nPts1D+order+2,dim) = pos_fpts(order+1+i,dim);        // Right
+//        pos_ppts((order+2)*nPts1D+i+1,dim) = pos_fpts(3*(order+1)-i-1,dim);  // Top
+//      }
+//    }
 
-    // Get solution at solution points
-    for (int i=0; i<order+1; i++) {
-      for (int j=0; j<order+1; j++) {
-        for (int dim = 0; dim < nDims; dim++) {
-          pos_ppts((i+1)*nPts1D+j+1,dim) = pos_spts(j+i*(order+1),dim);
-        }
-      }
-    }
-  }
-  else if (eType == HEX) {
-    int nPts1D = order+3;
-    //pos_ppts.resize(nPts1D*nPts1D*nPts1D);
+//    // Get solution at solution points
+//    for (int i=0; i<order+1; i++) {
+//      for (int j=0; j<order+1; j++) {
+//        for (int dim = 0; dim < nDims; dim++) {
+//          pos_ppts((i+1)*nPts1D+j+1,dim) = pos_spts(j+i*(order+1),dim);
+//        }
+//      }
+//    }
+//  }
+//  else if (eType == HEX) {
+//    int nPts1D = order+3;
+//    //pos_ppts.resize(nPts1D*nPts1D*nPts1D);
 
-    int P12 = (order+1)*(order+1);
-    int P22 = nPts1D*nPts1D;
+//    int P12 = (order+1)*(order+1);
+//    int P22 = nPts1D*nPts1D;
 
-    for (uint dim = 0; dim < nDims; dim++) {
-      // Get mesh (corner) points
-      if (params->motion != 0) {
-        pos_ppts(0*nPts1D+0,dim)               = nodesRK(0,dim);
-        pos_ppts(0*nPts1D+order+2,dim)         = nodesRK(1,dim);
-        pos_ppts((order+2)*nPts1D+0,dim)       = nodesRK(3,dim);
-        pos_ppts((order+2)*nPts1D+order+2,dim) = nodesRK(2,dim);
+//    for (uint dim = 0; dim < nDims; dim++) {
+//      // Get mesh (corner) points
+//      if (params->motion != 0) {
+//        pos_ppts(0*nPts1D+0,dim)               = nodesRK(0,dim);
+//        pos_ppts(0*nPts1D+order+2,dim)         = nodesRK(1,dim);
+//        pos_ppts((order+2)*nPts1D+0,dim)       = nodesRK(3,dim);
+//        pos_ppts((order+2)*nPts1D+order+2,dim) = nodesRK(2,dim);
 
-        pos_ppts((order+2)*P22 + 0*nPts1D+0,dim)               = nodesRK(4,dim);
-        pos_ppts((order+2)*P22 + 0*nPts1D+order+2,dim)         = nodesRK(5,dim);
-        pos_ppts((order+2)*P22 + (order+2)*nPts1D+0,dim)       = nodesRK(7,dim);
-        pos_ppts((order+2)*P22 + (order+2)*nPts1D+order+2,dim) = nodesRK(6,dim);
-      }
-      else {
-        pos_ppts(0*nPts1D+0,dim)               = nodes(0,dim);
-        pos_ppts(0*nPts1D+order+2,dim)         = nodes(1,dim);
-        pos_ppts((order+2)*nPts1D+0,dim)       = nodes(3,dim);
-        pos_ppts((order+2)*nPts1D+order+2,dim) = nodes(2,dim);
+//        pos_ppts((order+2)*P22 + 0*nPts1D+0,dim)               = nodesRK(4,dim);
+//        pos_ppts((order+2)*P22 + 0*nPts1D+order+2,dim)         = nodesRK(5,dim);
+//        pos_ppts((order+2)*P22 + (order+2)*nPts1D+0,dim)       = nodesRK(7,dim);
+//        pos_ppts((order+2)*P22 + (order+2)*nPts1D+order+2,dim) = nodesRK(6,dim);
+//      }
+//      else {
+//        pos_ppts(0*nPts1D+0,dim)               = nodes(0,dim);
+//        pos_ppts(0*nPts1D+order+2,dim)         = nodes(1,dim);
+//        pos_ppts((order+2)*nPts1D+0,dim)       = nodes(3,dim);
+//        pos_ppts((order+2)*nPts1D+order+2,dim) = nodes(2,dim);
 
-        pos_ppts((order+2)*P22 + 0*nPts1D+0,dim)               = nodes(4,dim);
-        pos_ppts((order+2)*P22 + 0*nPts1D+order+2,dim)         = nodes(5,dim);
-        pos_ppts((order+2)*P22 + (order+2)*nPts1D+0,dim)       = nodes(7,dim);
-        pos_ppts((order+2)*P22 + (order+2)*nPts1D+order+2,dim) = nodes(6,dim);
-      }
-    }
+//        pos_ppts((order+2)*P22 + 0*nPts1D+0,dim)               = nodes(4,dim);
+//        pos_ppts((order+2)*P22 + 0*nPts1D+order+2,dim)         = nodes(5,dim);
+//        pos_ppts((order+2)*P22 + (order+2)*nPts1D+0,dim)       = nodes(7,dim);
+//        pos_ppts((order+2)*P22 + (order+2)*nPts1D+order+2,dim) = nodes(6,dim);
+//      }
+//    }
 
-    // Get edge points
-    auto locPts1D = getPts1D(params->sptsTypeQuad,order);
-    for (int i=0; i<order+1; i++) {
-      double x1 = locPts1D[i];
-      point pt, loc;
-      /* --- Bottom Edges --- */
-      loc.x = x1;  loc.y = -1;  loc.z = -1;  // edge 0-1
-      pt = calcPos(loc);
-      for (uint dim = 0; dim < nDims; dim++)
-        pos_ppts(i+1,dim) = pt[dim];
+//    // Get edge points
+//    auto locPts1D = getPts1D(params->sptsTypeQuad,order);
+//    for (int i=0; i<order+1; i++) {
+//      double x1 = locPts1D[i];
+//      point pt, loc;
+//      /* --- Bottom Edges --- */
+//      loc.x = x1;  loc.y = -1;  loc.z = -1;  // edge 0-1
+//      pt = calcPos(loc);
+//      for (uint dim = 0; dim < nDims; dim++)
+//        pos_ppts(i+1,dim) = pt[dim];
 
-      loc.x = -1;  loc.y = x1;  loc.z = -1;  // edge 0-3
-      pt = calcPos(loc);
-      for (uint dim = 0; dim < nDims; dim++)
-        pos_ppts(nPts1D*(i+1),dim) = pt[dim];
+//      loc.x = -1;  loc.y = x1;  loc.z = -1;  // edge 0-3
+//      pt = calcPos(loc);
+//      for (uint dim = 0; dim < nDims; dim++)
+//        pos_ppts(nPts1D*(i+1),dim) = pt[dim];
 
-      loc.x =  1;  loc.y = x1;  loc.z = -1;  // edge 1-2
-      pt = calcPos(loc);
-      for (uint dim = 0; dim < nDims; dim++)
-        pos_ppts(nPts1D*(i+2)-1,dim) = pt[dim];
+//      loc.x =  1;  loc.y = x1;  loc.z = -1;  // edge 1-2
+//      pt = calcPos(loc);
+//      for (uint dim = 0; dim < nDims; dim++)
+//        pos_ppts(nPts1D*(i+2)-1,dim) = pt[dim];
 
-      loc.x = x1;  loc.y =  1;  loc.z = -1;  // edge 3-2
-      pt = calcPos(loc);
-      for (uint dim = 0; dim < nDims; dim++)
-        pos_ppts(nPts1D*(order+2)+i+1,dim) = pt[dim];
+//      loc.x = x1;  loc.y =  1;  loc.z = -1;  // edge 3-2
+//      pt = calcPos(loc);
+//      for (uint dim = 0; dim < nDims; dim++)
+//        pos_ppts(nPts1D*(order+2)+i+1,dim) = pt[dim];
 
-      /* --- Top Edges --- */
-      int base = P22*(order+2);
-      loc.x = x1;  loc.y = -1;  loc.z =  1;  // edge 4-5
-      pt = calcPos(loc);
-      for (uint dim = 0; dim < nDims; dim++)
-        pos_ppts(base + i+1,dim) = pt[dim];
+//      /* --- Top Edges --- */
+//      int base = P22*(order+2);
+//      loc.x = x1;  loc.y = -1;  loc.z =  1;  // edge 4-5
+//      pt = calcPos(loc);
+//      for (uint dim = 0; dim < nDims; dim++)
+//        pos_ppts(base + i+1,dim) = pt[dim];
 
-      loc.x = -1;  loc.y = x1;  loc.z =  1;  // edge 4-7
-      pt = calcPos(loc);
-      for (uint dim = 0; dim < nDims; dim++)
-        pos_ppts(base + nPts1D*(i+1),dim) = pt[dim];
+//      loc.x = -1;  loc.y = x1;  loc.z =  1;  // edge 4-7
+//      pt = calcPos(loc);
+//      for (uint dim = 0; dim < nDims; dim++)
+//        pos_ppts(base + nPts1D*(i+1),dim) = pt[dim];
 
-      loc.x =  1;  loc.y = x1;  loc.z =  1;  // edge 5-6
-      pt = calcPos(loc);
-      for (uint dim = 0; dim < nDims; dim++)
-        pos_ppts(base + nPts1D*(i+2)-1,dim) = pt[dim];
+//      loc.x =  1;  loc.y = x1;  loc.z =  1;  // edge 5-6
+//      pt = calcPos(loc);
+//      for (uint dim = 0; dim < nDims; dim++)
+//        pos_ppts(base + nPts1D*(i+2)-1,dim) = pt[dim];
 
-      loc.x = x1;  loc.y =  1;  loc.z =  1;  // edge 7-6
-      pt = calcPos(loc);
-      for (uint dim = 0; dim < nDims; dim++)
-        pos_ppts(base + nPts1D*(order+2)+i+1,dim) = pt[dim];
+//      loc.x = x1;  loc.y =  1;  loc.z =  1;  // edge 7-6
+//      pt = calcPos(loc);
+//      for (uint dim = 0; dim < nDims; dim++)
+//        pos_ppts(base + nPts1D*(order+2)+i+1,dim) = pt[dim];
 
-      /* --- Mid [Vertical] Egdes --- */
-      base = (i+1)*P22;
-      loc.x = -1;  loc.y = -1;  loc.z = x1;  // edge 0-4
-      pt = calcPos(loc);
-      for (uint dim = 0; dim < nDims; dim++)
-        pos_ppts(base,dim) = pt[dim];
+//      /* --- Mid [Vertical] Egdes --- */
+//      base = (i+1)*P22;
+//      loc.x = -1;  loc.y = -1;  loc.z = x1;  // edge 0-4
+//      pt = calcPos(loc);
+//      for (uint dim = 0; dim < nDims; dim++)
+//        pos_ppts(base,dim) = pt[dim];
 
-      loc.x =  1;  loc.y = -1;  loc.z = x1;  // edge 1-5
-      pt = calcPos(loc);
-      for (uint dim = 0; dim < nDims; dim++)
-        pos_ppts(base+(order+2),dim) = pt[dim];
+//      loc.x =  1;  loc.y = -1;  loc.z = x1;  // edge 1-5
+//      pt = calcPos(loc);
+//      for (uint dim = 0; dim < nDims; dim++)
+//        pos_ppts(base+(order+2),dim) = pt[dim];
 
-      int base2 = nPts1D*(order+2);
-      loc.x = -1;  loc.y =  1;  loc.z = x1;  // edge 3-7
-      pt = calcPos(loc);
-      for (uint dim = 0; dim < nDims; dim++)
-        pos_ppts(base+base2,dim) = pt[dim];
+//      int base2 = nPts1D*(order+2);
+//      loc.x = -1;  loc.y =  1;  loc.z = x1;  // edge 3-7
+//      pt = calcPos(loc);
+//      for (uint dim = 0; dim < nDims; dim++)
+//        pos_ppts(base+base2,dim) = pt[dim];
 
-      loc.x =  1;  loc.y =  1;  loc.z = x1;  // edge 2-6
-      pt = calcPos(loc);
-      for (uint dim = 0; dim < nDims; dim++)
-        pos_ppts(base+base2+order+2,dim) = pt[dim];
-    }
+//      loc.x =  1;  loc.y =  1;  loc.z = x1;  // edge 2-6
+//      pt = calcPos(loc);
+//      for (uint dim = 0; dim < nDims; dim++)
+//        pos_ppts(base+base2+order+2,dim) = pt[dim];
+//    }
 
-    // Get flux points
-    for (int i=0; i<order+1; i++) {
-      for (int j=0; j<order+1; j++) {
-        int ind1 = i + j*(order+1);
-        int ind2 = order - i + (order+1)*j;
-        for (int dim = 0; dim < nDims; dim++) {
-          // Bottom Face
-          pos_ppts(nPts1D*(j+1)+i+1,dim) = pos_fpts(ind1,dim);
+//    // Get flux points
+//    for (int i=0; i<order+1; i++) {
+//      for (int j=0; j<order+1; j++) {
+//        int ind1 = i + j*(order+1);
+//        int ind2 = order - i + (order+1)*j;
+//        for (int dim = 0; dim < nDims; dim++) {
+//          // Bottom Face
+//          pos_ppts(nPts1D*(j+1)+i+1,dim) = pos_fpts(ind1,dim);
 
-          // Top Face
-          pos_ppts(P22*(order+2)+(j+1)*nPts1D+i+1,dim) = pos_fpts(P12+ind2,dim);
+//          // Top Face
+//          pos_ppts(P22*(order+2)+(j+1)*nPts1D+i+1,dim) = pos_fpts(P12+ind2,dim);
 
-          // Left Face
-          pos_ppts(P22*(j+1)+nPts1D*(i+1),dim) = pos_fpts(2*P12+ind1,dim);
+//          // Left Face
+//          pos_ppts(P22*(j+1)+nPts1D*(i+1),dim) = pos_fpts(2*P12+ind1,dim);
 
-          // Right Face
-          pos_ppts(P22*(j+1)+nPts1D*(i+1)+order+2,dim) = pos_fpts(3*P12+ind2,dim);
+//          // Right Face
+//          pos_ppts(P22*(j+1)+nPts1D*(i+1)+order+2,dim) = pos_fpts(3*P12+ind2,dim);
 
-          // Front Face
-          pos_ppts(P22*(j+1)+i+1,dim) = pos_fpts(4*P12+ind2,dim);
+//          // Front Face
+//          pos_ppts(P22*(j+1)+i+1,dim) = pos_fpts(4*P12+ind2,dim);
 
-          // Back Face
-          pos_ppts(P22*(j+2)+i+1-nPts1D,dim) = pos_fpts(5*P12+ind1,dim);
-        }
-      }
-    }
+//          // Back Face
+//          pos_ppts(P22*(j+2)+i+1-nPts1D,dim) = pos_fpts(5*P12+ind1,dim);
+//        }
+//      }
+//    }
 
-    // Get solution at solution points
-    for (int k=0; k<order+1; k++) {
-      for (int j=0; j<order+1; j++) {
-        for (int i=0; i<order+1; i++) {
-          for (int dim = 0; dim < nDims; dim++) {
-            pos_ppts(i+1+nPts1D*(j+1)+(k+1)*P22,dim) = pos_spts(i+(order+1)*(j+(order+1)*k),dim);
-          }
-        }
-      }
-    }
-  }
+//    // Get solution at solution points
+//    for (int k=0; k<order+1; k++) {
+//      for (int j=0; j<order+1; j++) {
+//        for (int i=0; i<order+1; i++) {
+//          for (int dim = 0; dim < nDims; dim++) {
+//            pos_ppts(i+1+nPts1D*(j+1)+(k+1)*P22,dim) = pos_spts(i+(order+1)*(j+(order+1)*k),dim);
+//          }
+//        }
+//      }
+//    }
+//  }
 }
 
 void ele::restart(ifstream &file, input* _params, geo* _Geo)
