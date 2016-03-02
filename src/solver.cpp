@@ -183,6 +183,7 @@ void solver::setupGeometry(void)
   dA_fpts.setup(nFpts, nEles);
   norm_fpts.setup(nFpts, nEles, nDims);
 
+  nodes.setup(nNodes, nEles, nDims);
 
   if (params->motion)
   {
@@ -190,6 +191,8 @@ void solver::setupGeometry(void)
     gridV_fpts.setup(nFpts, nEles, nDims);
     gridV_mpts.setup(nNodes, nEles, nDims);
     gridV_ppts.setup(nPpts, nEles, nDims);
+
+    nodesRK.setup(nNodes, nEles, nDims);
   }
 
   if (nDims == 2)
@@ -648,12 +651,22 @@ void solver::calcInviscidFlux_spts(void)
         tempF[2][0] =  rho*v*u;    tempF[2][1] =  rho*v*v+p;
         tempF[3][0] = (E+p)*u;     tempF[3][1] = (E+p)*v;
 
-        /* --- Transform back to reference domain --- */
-        for (uint dim1 = 0; dim1 < nDims; dim1++) {
-          for (uint k = 0; k < nFields; k++) {
-            F_spts(dim1,spt,e,k) = 0.;
-            for (uint dim2 = 0; dim2 < nDims; dim2++) {
-              F_spts(dim1, spt,e, k) += JGinv_spts(spt,e,dim1,dim2)*tempF[k][dim2];
+        if (params->motion)
+        {
+          /* --- Transformed later - just copy over --- */
+          for (uint dim = 0; dim < nDims; dim++)
+            for (uint k = 0; k < nFields; k++)
+              F_spts(dim,spt,e,k) = tempF[k][dim];
+        }
+        else
+        {
+          /* --- Transform back to reference domain --- */
+          for (uint dim1 = 0; dim1 < nDims; dim1++) {
+            for (uint k = 0; k < nFields; k++) {
+              F_spts(dim1,spt,e,k) = 0.;
+              for (uint dim2 = 0; dim2 < nDims; dim2++) {
+                F_spts(dim1, spt,e, k) += JGinv_spts(spt,e,dim1,dim2)*tempF[k][dim2];
+              }
             }
           }
         }
@@ -1116,7 +1129,7 @@ void solver::moveMesh(int step)
     if (params->oversetMethod != 2) {
       if (params->nDims==2)
         getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
-      OComm->setupOverFacePoints(overFaces);
+      OComm->setupOverFacePoints(overFaces,params->order+1);
       OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
     }
   } else {
@@ -1133,8 +1146,6 @@ void solver::moveMesh(int step)
 
 void solver::setPosSptsFpts(void)
 {
-  nodes.setup(nNodes, nEles, nDims);
-
   for (uint npt = 0; npt < nNodes; npt++)
     for (uint e = 0; e < Geo->nEles; e++)
       for (uint dim = 0; dim < nDims; dim++)

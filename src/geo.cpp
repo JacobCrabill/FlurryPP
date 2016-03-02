@@ -820,11 +820,11 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
     else
       e->nMpts = 8;
 
-    // Shape [mesh] nodes
-    e->nodeID.resize(c2nv[ic]);
-    for (int iv=0; iv<c2nv[ic]; iv++) {
-      e->nodeID[iv] = c2v(ic,iv);
-    }
+//    // Shape [mesh] nodes
+//    e->nodeID.resize(c2nv[ic]);
+//    for (int iv=0; iv<c2nv[ic]; iv++) {
+//      e->nodeID[iv] = c2v(ic,iv);
+//    }
 
     // Global face IDs for internal & boundary faces
     e->faceID.resize(c2nf[ic]);

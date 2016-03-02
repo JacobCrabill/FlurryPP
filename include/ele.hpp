@@ -58,8 +58,7 @@ public:
 
   vector<point> loc_spts; //! Location of solution points in parent domain
   vector<point> loc_fpts; //! Location of flux points in parent domain
-//  vector<point> nodes; //! Location of mesh nodes in physical space
-  vector<int> nodeID; //! Global ID's of element's nodes
+  //vector<int> nodeID; //! Global ID's of element's nodes
   vector<int> faceID; //! Global ID's of element's faces
   vector<bool> bndFace; //! Tag for faces on a boundary
 
@@ -91,8 +90,6 @@ public:
 
   void updatePosFpts(void);
 
-  void setPpts(void);
-
   void setShape_spts(void);
 
   void setShape_fpts(void);
@@ -101,8 +98,6 @@ public:
 
   void setDShape_fpts(void);
 
-  void setTransformedNormals_fpts(void);
-
   void setInitialCondition(void);
 
   void calcInviscidFlux_spts(void);
@@ -110,8 +105,6 @@ public:
   void calcViscousFlux_spts(void);
 
   void transformGradF_spts(int step);
-
-//  void calcDeltaFn(void);
 
   void calcDeltaUc(void);
 
@@ -225,7 +218,6 @@ public:
 
   /* --- Solution Variables --- */
 
-//  matrix<double> dFn_fpts;         //! Interface minus discontinuous flux at flux points
   vector<double> waveSp_fpts;      //! Maximum wave speed at each flux point
 
   vector<double> Uavg;             //! Average solution over element
@@ -237,19 +229,6 @@ public:
   matrix<double> shape_fpts;
   vector<matrix<double>> dShape_spts;  //! Derivative of shape basis at solution points
   vector<matrix<double>> dShape_fpts;  //! Derivative of shape basis at flux points
-//  matrix<double> gridVel_spts;         //! Mesh velocity at solution points
-//  matrix<double> gridVel_fpts;         //! Mesh velocity at flux points
-//  matrix<double> gridVel_nodes;        //! Mesh velocity at mesh (corner) points
-//  matrix<double> gridVel_mpts;         //! Mesh velocity at ALL mesh points (corners + edges in 3D)
-//  vector<point> nodesRK;               //! Location of mesh nodes in physical space
-
-  // Geometry Variables
-//  vector<point> pos_spts;     //! Position of solution points in physical space
-//  vector<point> pos_fpts;     //! Position of flux points in physical space
-//  vector<point> pos_ppts;     //! Position of plotting points [spt+fpts+nodes]
-  //matrix<double> norm_fpts;   //! Unit normal in physical space
-  //matrix<double> tNorm_fpts;  //! Unit normal in reference space
-  //vector<double> dA_fpts;     //! Local equivalent face-area at flux point
 
   // Shock Capturing variables
   double sensor;
@@ -307,7 +286,6 @@ public:
 
   double& gridVel_spts(int spt, int dim);
   double& gridVel_fpts(int fpt, int dim);
-//  double& gridVel_mpts(int spt, int dim);
   double& gridVel_ppts(int ppt, int dim);
   double& gridVel_nodes(int mpt, int dim);
 

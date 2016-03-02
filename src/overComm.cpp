@@ -211,21 +211,30 @@ unordered_set<int> overComm::findCellDonors2D(vector<shared_ptr<ele>> &eles, con
   return hitCells;
 }
 
-void overComm::setupOverFacePoints(vector<shared_ptr<overFace>> &overFaces)
+void overComm::setupOverFacePoints(vector<shared_ptr<overFace>> &overFaces, int nFptsPerFace)
 {
   // Get all of the fringe points on this grid
-  overPts.setup(0,0);
-  overNorm.setup(0,0);
+  overPts.setup(overFaces.size()* nFptsPerFace, 3);
+  overNorm.setup(overFaces.size()* nFptsPerFace, 3);
+  uint ipt = 0, jpt = 0;
   for (auto &oface: overFaces) {
     oface->OComm = this;
-    oface->fptOffset = overPts.getDim0();
+    oface->fptOffset = ipt;
     auto pts = oface->getPosFpts();
-    for (auto &pt:pts)
-      overPts.insertRow({pt.x, pt.y, pt.z});
+    for (uint i = 0; i < pts.size(); i++) {
+      overPts(ipt,0) = pts[i].x;
+      overPts(ipt,1) = pts[i].y;
+      overPts(ipt,2) = pts[i].z;
+      ipt++;
+    }
     if (params->oversetMethod==1) {
       auto norms = oface->getNormFpts();
-      for (auto &vec:norms)
-        overNorm.insertRow({vec.x,vec.y,vec.z});
+      for (uint i = 0; i < norms.size(); i++) {
+        overNorm(jpt,0) = norms[i].x;
+        overNorm(jpt,1) = norms[i].y;
+        overNorm(jpt,2) = norms[i].z;
+        jpt++;
+      }
     }
   }
 }
@@ -553,8 +562,12 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
 
       for (int id=0; id<foundCellNDonors[p][i]; id++) {
         int ic = eleMap[foundCellDonors[p](i,id)];
-        for (int spt=0; spt<nSpts; spt++)
-          donorU[p].insertRow(&eles[ic]->U_spts(spt,0),INSERT_AT_END,nFields);
+        vector<double> tmpU(nFields);
+        for (int spt=0; spt<nSpts; spt++) {
+          for (int k = 0; k < nFields; k++)
+            tmpU[k] = eles[ic]->U_spts(spt,k);
+          donorU[p].insertRow(tmpU);
+        }
       }
     }
   }
@@ -587,14 +600,14 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
 
       point refLoc;
       point pos = point(qpts_recv[p][i],nDims);
-      bool isInEle = eles[ie]->getRefLocNelderMead(pos,refLoc);
+      bool isInEle = eles[ie]->getRefLocNewton(pos,refLoc);
 
       if (!isInEle) {
-        cout << setprecision(16) << "qpt: " << pos << endl;
-        cout << "Ele nodes:" << endl;
-//        for (int n=0; n<4; n++)
-//          _(eles[ie]->nodes[n]);
-        FatalError("Quadrature Point Reference Location not found in ele!");
+        isInEle = eles[ie]->getRefLocNelderMead(pos,refLoc);
+        if (!isInEle) {
+          cout << setprecision(16) << "qpt: " << pos << endl;
+          FatalError("Quadrature Point Reference Location not found in ele!");
+        }
       }
 
       qpts_recv[p](i,0) = refLoc.x;
@@ -726,8 +739,12 @@ void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<in
     for (int i=0; i<foundCells[p].size(); i++) {
       for (int id=0; id<foundCellNDonors[p][i]; id++) {
         int ic = eleMap[foundCellDonors[p](i,id)];
-        for (int spt=0; spt<nSpts; spt++)
-          donorU[p].insertRow(&eles[ic]->U_spts(spt,0),INSERT_AT_END,nFields);
+        vector<double> tmpU(nFields);
+        for (int spt=0; spt<nSpts; spt++) {
+          for (int k = 0; k < nFields; k++)
+            tmpU[k] = eles[ic]->U_spts(spt,k);
+          donorU[p].insertRow(tmpU);
+        }
       }
     }
   }

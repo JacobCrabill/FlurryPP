@@ -206,7 +206,7 @@ public:
   void setupNPieces(vector<int> &nPiecesIn, vector<int> &nPiecesOut);
 
   //! Setup the list of overset-boundary flux points to interpolate data to
-  void setupOverFacePoints(vector<shared_ptr<overFace> >& overFaces);
+  void setupOverFacePoints(vector<shared_ptr<overFace> >& overFaces, int nFptsPerFace);
 
   //! Setup the list of fringe/receptor solution points to interpolate data to
   void setupFringeCellPoints(vector<shared_ptr<ele> >& eles, const unordered_set<int>& fringeCells, const vector<int>& eleMap);

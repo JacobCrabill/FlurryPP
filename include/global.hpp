@@ -65,7 +65,7 @@ typedef unsigned int uint;
 
 /* --- Misc. Common Constants / Globally-Useful Variables --- */
 
-extern double pi;
+static double pi = 4.0*atan(1);
 
 extern map<string,int> bcStr2Num;
 

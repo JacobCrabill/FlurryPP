@@ -94,7 +94,7 @@ void writeCSV(solver *Solver, input *params)
     if (params->motion != 0) {
 //      e->updatePosSpts();
 //      e->updatePosFpts();
-      e->setPpts();
+//      e->setPpts();
     }
     for (uint spt=0; spt<e->getNSpts(); spt++) {
       V = e->getPrimitives(spt);
@@ -290,10 +290,6 @@ void writeParaview(solver *Solver, input *params)
 
   for (auto& e:Solver->eles) {
     if (params->meshType == OVERSET_MESH && Solver->Geo->iblankCell[e->ID]!=NORMAL) continue;
-
-    if (params->motion != 0) {
-      e->setPpts();
-    }
 
     // The combination of spts + fpts will be the plot points
     matrix<double> vPpts, gridVelPpts, errPpts;

@@ -85,7 +85,7 @@ void solver::setupOverset(void)
   if (params->oversetMethod == 2 && !params->projection) {
     OComm->setupFringeCellPoints(eles,Geo->fringeCells,Geo->eleMap);
   } else if (params->oversetMethod != 2) {
-    OComm->setupOverFacePoints(overFaces);
+    OComm->setupOverFacePoints(overFaces,params->order+1);
   }
 
   OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
@@ -191,12 +191,16 @@ void solver::insertElement(uint ele_ind)
   dA_fpts.add_dim_1(ele_ind, 0.);
   norm_fpts.add_dim_1(ele_ind, 0.);
 
+  nodes.add_dim_1(ele_ind, 0.);
+
   if (params->motion)
   {
     gridV_spts.add_dim_1(ele_ind, 0.);
     gridV_fpts.add_dim_1(ele_ind, 0.);
     gridV_mpts.add_dim_1(ele_ind, 0.);
     gridV_ppts.add_dim_1(ele_ind, 0.);
+
+    nodesRK.add_dim_1(ele_ind, 0.);
   }
 
   nEles++;
