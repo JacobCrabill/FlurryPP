@@ -82,22 +82,6 @@ public:
 
   point calcPos(const point &loc);
 
-  void calcPosSpts(void);
-
-  void calcPosFpts(void);
-
-  void updatePosSpts(void);
-
-  void updatePosFpts(void);
-
-  void setShape_spts(void);
-
-  void setShape_fpts(void);
-
-  void setDShape_spts(void);
-
-  void setDShape_fpts(void);
-
   void setInitialCondition(void);
 
   void calcInviscidFlux_spts(void);
@@ -191,7 +175,6 @@ public:
   vector<double> getEntropyVars(int spt);
   void getEntropyErrPlot(matrix<double> &S);
   void setupArrays();
-  void setupAllGeometry();
   void restart(ifstream &file, input *_params, geo *_Geo);
 
   void getUSpts(double* Uvec);
@@ -224,11 +207,6 @@ public:
 
   // Gradients
   vector<matrix<double>> tdF_spts;  //! Transformed gradient of flux (dF_dxi and dG_deta) at solution points
-
-  matrix<double> shape_spts;
-  matrix<double> shape_fpts;
-  vector<matrix<double>> dShape_spts;  //! Derivative of shape basis at solution points
-  vector<matrix<double>> dShape_fpts;  //! Derivative of shape basis at flux points
 
   // Shock Capturing variables
   double sensor;
@@ -265,6 +243,12 @@ public:
   double& dU_fpts(int dim, int fpt, int field);
   double& dUc_fpts(int fpt, int field);
   double& divF_spts(int step, int spt, int field);
+
+  double& shape_spts(int spt, int node);
+  double& shape_fpts(int fpt, int node);
+  double& shape_ppts(int ppt, int node);
+  double& dshape_spts(int spt, int node, int dim);
+  double& dshape_fpts(int fpt, int node, int dim);
 
   double& detJac_spts(int spt);
   double& detJac_fpts(int fpt);

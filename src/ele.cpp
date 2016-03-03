@@ -89,7 +89,7 @@ void ele::setup(input *inParams, solver *inSolver, geo *inGeo, int in_order)
 
   /* --- Final Step: calculate physical->reference transforms
    * and store shape basis values for future use --- */
-  setupAllGeometry();
+  calcTransforms();
 
 }
 
@@ -110,15 +110,6 @@ void ele::setupArrays(void)
 
   tempF.setup(nDims,nFields);
   tempU.assign(nFields,0);
-}
-
-void ele::setupAllGeometry(void) {
-  setShape_spts();
-  setShape_fpts();
-  setDShape_spts();
-  setDShape_fpts();
-  //setTransformedNormals_fpts();
-  calcTransforms();
 }
 
 /* ---- Solution data access ---- */
@@ -184,6 +175,31 @@ double& ele::U_mpts(int mpt, int field)
 }
 
 /* ---- Geometry-Variable Access ---- */
+
+double& ele::shape_spts(int spt, int node)
+{
+  return Solver->shape_spts(spt, node);
+}
+
+double& ele::shape_fpts(int fpt, int node)
+{
+  return Solver->shape_fpts(fpt, node);
+}
+
+double& ele::shape_ppts(int ppt, int node)
+{
+  return Solver->shape_ppts(ppt, node);
+}
+
+double& ele::dshape_spts(int spt, int node, int dim)
+{
+  return Solver->dshape_spts(spt, node, dim);
+}
+
+double& ele::dshape_fpts(int fpt, int node, int dim)
+{
+  return Solver->dshape_fpts(fpt, node, dim);
+}
 
 double& ele::detJac_spts(int spt)
 {
@@ -270,89 +286,6 @@ double& ele::gridVel_nodes(int mpt, int dim)
   return Solver->gridV_mpts(mpt, sID, dim);
 }
 
-
-void ele::setShape_spts(void)
-{
-  shape_spts.setup(nSpts,nNodes);
-
-  for (int spt=0; spt<nSpts; spt++) {
-    switch(eType) {
-      case TRI:
-        shape_tri(loc_spts[spt],shape_spts[spt]);
-        break;
-      case QUAD:
-        shape_quad(loc_spts[spt],shape_spts[spt],nNodes);
-        break;
-      case HEX:
-        shape_hex(loc_spts[spt],shape_spts[spt],nNodes);
-        break;
-    }
-  }
-}
-
-void ele::setShape_fpts(void)
-{
-  shape_fpts.setup(nFpts,nNodes);
-
-  for (int fpt=0; fpt<nFpts; fpt++) {
-    switch(eType) {
-      case TRI:
-        shape_tri(loc_fpts[fpt],shape_fpts[fpt]);
-        break;
-      case QUAD:
-        shape_quad(loc_fpts[fpt],shape_fpts[fpt],nNodes);
-        break;
-      case HEX:
-        shape_hex(loc_fpts[fpt],shape_fpts[fpt],nNodes);
-        break;
-    }
-  }
-}
-
-void ele::setDShape_spts(void)
-{
-  dShape_spts.resize(nSpts);
-  for (auto& dS:dShape_spts) dS.setup(nNodes,nDims);
-
-  for (int spt=0; spt<nSpts; spt++) {
-    switch(eType) {
-      case TRI:
-        dshape_tri(loc_spts[spt], dShape_spts[spt]);
-        break;
-      case QUAD:
-        dshape_quad(loc_spts[spt], dShape_spts[spt],nNodes);
-        break;
-      case HEX:
-        dshape_hex(loc_spts[spt], dShape_spts[spt],nNodes);
-        break;
-      default:
-        FatalError("Element type not yet implemented.")
-    }
-  }
-}
-
-void ele::setDShape_fpts(void)
-{
-  dShape_fpts.resize(nFpts);
-  for (auto& dS:dShape_fpts) dS.setup(nNodes,nDims);
-
-  for (int fpt=0; fpt<nFpts; fpt++) {
-    switch(eType) {
-      case TRI:
-        dshape_tri(loc_fpts[fpt], dShape_fpts[fpt]);
-        break;
-      case QUAD:
-        dshape_quad(loc_fpts[fpt], dShape_fpts[fpt],nNodes);
-        break;
-      case HEX:
-        dshape_hex(loc_fpts[fpt], dShape_fpts[fpt],nNodes);
-        break;
-      default:
-        FatalError("Element type not yet implemented.")
-    }
-  }
-}
-
 void ele::calcTransforms(bool moving)
 {
   /* --- Calculate Transformation at Solution Points --- */
@@ -367,14 +300,14 @@ void ele::calcTransforms(bool moving)
       for (int i=0; i<nNodes; i++)
         for (int dim1=0; dim1<nDims; dim1++)
           for (int dim2=0; dim2<nDims; dim2++)
-            Jac_spts(spt,dim1,dim2) += dShape_spts[spt](i,dim2)*nodes(i,dim1);
+            Jac_spts(spt,dim1,dim2) += dshape_spts(spt,i,dim2)*nodes(i,dim1);
     }
     else
     {
       for (int i=0; i<nNodes; i++)
         for (int dim1=0; dim1<nDims; dim1++)
           for (int dim2=0; dim2<nDims; dim2++)
-            Jac_spts(spt,dim1,dim2) += dShape_spts[spt](i,dim2)*nodesRK(i,dim1);
+            Jac_spts(spt,dim1,dim2) += dshape_spts(spt,i,dim2)*nodesRK(i,dim1);
     }
 
     if (nDims == 2) {
@@ -410,14 +343,14 @@ void ele::calcTransforms(bool moving)
       for (int i=0; i<nNodes; i++)
         for (int dim1=0; dim1<nDims; dim1++)
           for (int dim2=0; dim2<nDims; dim2++)
-            Jac_fpts(fpt,dim1,dim2) += dShape_fpts[fpt](i,dim2)*nodes(i,dim1);
+            Jac_fpts(fpt,dim1,dim2) += dshape_fpts(fpt,i,dim2)*nodes(i,dim1);
     }
     else
     {
       for (int i=0; i<nNodes; i++)
         for (int dim1=0; dim1<nDims; dim1++)
           for (int dim2=0; dim2<nDims; dim2++)
-            Jac_fpts(fpt,dim1,dim2) += dShape_fpts[fpt](i,dim2)*nodesRK(i,dim1);
+            Jac_fpts(fpt,dim1,dim2) += dshape_fpts(fpt,i,dim2)*nodesRK(i,dim1);
     }
 
     if (nDims == 2) {

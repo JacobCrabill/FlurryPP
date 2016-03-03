@@ -52,7 +52,7 @@ solver::~solver()
 
 }
 
-void solver::setup(input *params, int order, geo *_Geo)
+void solver::setup(input *params, int _order, geo *_Geo)
 {
   this->params = params;
 
@@ -69,7 +69,7 @@ void solver::setup(input *params, int order, geo *_Geo)
 #endif
 
   params->time = 0.;
-  this->order = order;
+  order = _order;
 
   nDims = params->nDims;
   nFields = params->nFields;
@@ -153,7 +153,7 @@ void solver::setupArrays(void)
 
 void solver::setupGeometry(void)
 {
-  nNodes = Geo->nNodesPerCell;
+  nNodes = getMax(Geo->c2nv);
 
   if (nDims == 2) {
     nPpts = (order+3)*(order+3);
@@ -208,15 +208,15 @@ void solver::setupGeometry(void)
 
     for (uint spt = 0; spt < nSpts; spt++)
     {
-      shape_quad(loc_spts[spt], &shape_spts(spt,0),nNodes);
-      dshape_quad(loc_spts[spt], &dshape_spts(spt,0,0),nNodes);
+      shape_quad(loc_spts[spt], &shape_spts(spt,0), nNodes);
+      dshape_quad(loc_spts[spt], &dshape_spts(spt,0,0), nNodes);
     }
 
     // Setting unit normal vector in the parent domain
     for (uint fpt = 0; fpt < nFpts; fpt++)
     {
-      shape_quad(loc_fpts[fpt], &shape_fpts(fpt,0),nNodes);
-      dshape_quad(loc_fpts[fpt], &dshape_fpts(fpt,0,0),nNodes);
+      shape_quad(loc_fpts[fpt], &shape_fpts(fpt,0), nNodes);
+      dshape_quad(loc_fpts[fpt], &dshape_fpts(fpt,0,0), nNodes);
 
       uint iFace = floor(fpt / (order+1));
       // Face ordering for quads: Bottom, Right, Top, Left
@@ -305,7 +305,7 @@ void solver::setupGeometry(void)
 
 void solver::update(bool PMG_Source)
 {
-  params->iter++;
+  //params->iter++;
 
   /* Intermediate residuals for Runge-Kutta time integration */
 

@@ -152,13 +152,7 @@ void shape_quad(const point &in_rs, double* out_shape, int nNodes)
 {
   double xi  = in_rs.x;
   double eta = in_rs.y;
-  if (nNodes == 4) {
-      out_shape[0] = 0.25*(1-xi)*(1-eta);
-      out_shape[1] = 0.25*(1+xi)*(1-eta);
-      out_shape[2] = 0.25*(1+xi)*(1+eta);
-      out_shape[3] = 0.25*(1-xi)*(1+eta);
-  }
-  else if (nNodes == 8) {
+  if (nNodes == 8) {
       out_shape[0] = -0.25*(1-xi)*(1-eta)*(1+eta+xi);
       out_shape[1] = -0.25*(1+xi)*(1-eta)*(1+eta-xi);
       out_shape[2] = -0.25*(1+xi)*(1+eta)*(1-eta-xi);
@@ -276,18 +270,7 @@ void dshape_quad(const point &in_rs, double* out_dshape, int nNodes)
   double xi  = in_rs.x;
   double eta = in_rs.y;
 
-  if (nNodes == 4) {
-    out_dshape[0*2+0] = -0.25*(1-eta);
-    out_dshape[1*2+0] =  0.25*(1-eta);
-    out_dshape[2*2+0] =  0.25*(1+eta);
-    out_dshape[3*2+0] = -0.25*(1+eta);
-
-    out_dshape[0*2+1] = -0.25*(1-xi);
-    out_dshape[1*2+1] = -0.25*(1+xi);
-    out_dshape[2*2+1] =  0.25*(1+xi);
-    out_dshape[3*2+1] =  0.25*(1-xi);
-  }
-  else if (nNodes == 8) {
+  if (nNodes == 8) {
     out_dshape[0*2+0] = -0.25*(-1+eta)*(2*xi+eta);
     out_dshape[1*2+0] =  0.25*(-1+eta)*(eta - 2*xi);
     out_dshape[2*2+0] =  0.25*( 1+eta)*(2*xi+eta);
@@ -327,10 +310,10 @@ void dshape_quad(const point &in_rs, double* out_dshape, int nNodes)
     for (int i = 0; i < nLevels; i++) {
       // Corners
       int i2 = (nSide-1) - i;
-      out_dshape[nPts+0] = dLagrange(xlist, xi, i)  * Lagrange(xlist, eta, i);
-      out_dshape[nPts+1] = dLagrange(xlist, xi, i2) * Lagrange(xlist, eta, i);
-      out_dshape[nPts+2] = dLagrange(xlist, xi, i2) * Lagrange(xlist, eta, i2);
-      out_dshape[nPts+3] = dLagrange(xlist, xi, i)  * Lagrange(xlist, eta, i2);
+      out_dshape[2*(nPts+0)+0] = dLagrange(xlist, xi, i)  * Lagrange(xlist, eta, i);
+      out_dshape[2*(nPts+1)+0] = dLagrange(xlist, xi, i2) * Lagrange(xlist, eta, i);
+      out_dshape[2*(nPts+2)+0] = dLagrange(xlist, xi, i2) * Lagrange(xlist, eta, i2);
+      out_dshape[2*(nPts+3)+0] = dLagrange(xlist, xi, i)  * Lagrange(xlist, eta, i2);
 
       out_dshape[2*(nPts+0)+1] = Lagrange(xlist, xi, i)  * dLagrange(xlist, eta, i);
       out_dshape[2*(nPts+1)+1] = Lagrange(xlist, xi, i2) * dLagrange(xlist, eta, i);

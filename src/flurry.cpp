@@ -121,7 +121,8 @@ int main(int argc, char *argv[]) {
   double maxTime = params.maxTime;
   int initIter = params.initIter;
   int iterMax = params.iterMax;
-  int iter = initIter;
+  int &iter = params.iter;
+  iter = initIter;
 
   /* --- Calculation Loop --- */
   while (params.iter < iterMax and params.time < maxTime) {

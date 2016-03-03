@@ -820,12 +820,6 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
     else
       e->nMpts = 8;
 
-//    // Shape [mesh] nodes
-//    e->nodeID.resize(c2nv[ic]);
-//    for (int iv=0; iv<c2nv[ic]; iv++) {
-//      e->nodeID[iv] = c2v(ic,iv);
-//    }
-
     // Global face IDs for internal & boundary faces
     e->faceID.resize(c2nf[ic]);
     e->bndFace.resize(c2nf[ic]);
@@ -1391,6 +1385,14 @@ void geo::readGmsh(string fileName)
 
         case 28: // Quintic Edge
           nPtsFace = 6;
+          break;
+
+        case 62: // Order 6
+          nPtsFace = 7;
+          break;
+
+        case 63: // Order 7
+          nPtsFace = 8;
           break;
 
         case 64: // Order 8

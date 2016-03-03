@@ -6,7 +6,7 @@ order         2    (Polynomial order to use)
 timeType      4    (0: Forward Euler, 4: RK44)
 dtType        2    (0: Fixed, 1: Global CFL-based, 2: Local CFL-based)
 CFL           .3
-iterMax       10000
+iterMax       1000
 maxTime       500
 restart       0
 restartIter   50000
