@@ -700,7 +700,7 @@ void solver::calcInviscidFlux_spts(void)
         tempF[1][0] =  rho*u*u+p;  tempF[1][1] =  rho*u*v;    tempF[1][2] =  rho*u*w;
         tempF[2][0] =  rho*v*u;    tempF[2][1] =  rho*v*v+p;  tempF[2][2] =  rho*v*w;
         tempF[3][0] =  rho*w*u;    tempF[3][1] =  rho*w*v;    tempF[3][2] =  rho*w*w+p;
-        tempF[4][0] = (E+p)*u;     tempF[4][1] = (E+p)*v;     tempF[4][1] = (E+p)*w;
+        tempF[4][0] = (E+p)*u;     tempF[4][1] = (E+p)*v;     tempF[4][2] = (E+p)*w;
 
         if (params->motion)
         {
