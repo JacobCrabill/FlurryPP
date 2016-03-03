@@ -174,6 +174,11 @@ double& ele::U_mpts(int mpt, int field)
   return Solver->U_mpts(mpt, sID, field);
 }
 
+double& ele::U_ppts(int ppt, int field)
+{
+  return Solver->U_ppts(ppt, sID, field);
+}
+
 /* ---- Geometry-Variable Access ---- */
 
 double& ele::shape_spts(int spt, int node)
@@ -1477,146 +1482,19 @@ vector<double> ele::getPrimitivesMpt(uint mpt)
 
 void ele::getPrimitivesPlot(matrix<double> &V)
 {
-  if (eType == QUAD) {
-    V.setup(nSpts+nFpts+nMpts,nFields);
+  V.setup(Solver->nPpts, nFields);
 
-    // Get solution at corner points
-    for (int k=0; k<nFields; k++) {
-      V(0,k)                     = U_mpts(0,k);
-      V(order+2,k)               = U_mpts(1,k);
-      V((order+3)*(order+3)-1,k) = U_mpts(2,k);
-      V((order+3)*(order+2),k)   = U_mpts(3,k);
-    }
-
-    // Get solution at flux points
-    for (int i=0; i<order+1; i++) {
-      for (int k=0; k<nFields; k++) {
-        V(i+1,k)                     = U_fpts(i,k);               // Bottom
-        V((i+1)*(order+3),k)         = U_fpts(nFpts-i-1,k);       // Left
-        V((i+2)*(order+3)-1,k)       = U_fpts(order+1+i,k);       // Right
-        V((order+3)*(order+2)+i+1,k) = U_fpts(3*(order+1)-i-1,k); // Top
-      }
-    }
-
-    // Get solution at solution points
-    for (int i=0; i<order+1; i++) {
-      for (int j=0; j<order+1; j++) {
-        int id = (i+1)*(order+3)+j+1;
-        for (int k=0; k<nFields; k++) {
-          V(id,k) = U_spts(j+i*(order+1),k);
-        }
-      }
-    }
-  }
-  else if (eType == HEX) {
-    int nPts1D = order+3;
-    int P22 = nPts1D*nPts1D;
-    int nv = 8, ne = 12;
-
-    V.setup(nPts1D*nPts1D*nPts1D,nFields);
-
-    for (int f=0; f<nFields; f++) {
-      // Get solution at corner points
-      V(0,f)                = U_mpts(0,f);
-      V(order+2,f)          = U_mpts(1,f);
-      V(P22-1,f)            = U_mpts(2,f);
-      V(nPts1D*(order+2),f) = U_mpts(3,f);
-
-      int base = (order+2)*P22;
-      V(base,f)                    = U_mpts(4,f);
-      V(base + order+2,f)          = U_mpts(5,f);
-      V(base + P22-1,f)            = U_mpts(6,f);
-      V(base + nPts1D*(order+2),f) = U_mpts(7,f);
-
-      // Get solution at edge points
-      for (int i=0; i<order+1; i++) {
-        /* --- Bottom Edges --- */
-        // edge 0-1
-        V(i+1,f) = U_mpts(nv+i*ne+0,f);
-
-        // edge 0-3
-        V(nPts1D*(i+1),f) = U_mpts(nv+(order-i)*ne+3,f);
-
-        // edge 1-2
-        V(nPts1D*(i+2)-1,f) = U_mpts(nv+i*ne+1,f);
-
-        // edge 3-2
-        V(nPts1D*(order+2)+i+1,f) = U_mpts(nv+(order-i)*ne+2,f);
-
-        /* --- Top Edges --- */
-        base = P22*(order+2);
-        // edge 4-5
-        V(base + i+1,f) = U_mpts(nv+i*ne+4,f);
-
-        // edge 4-7
-        V(base + nPts1D*(i+1),f) = U_mpts(nv+(order-i)*ne+7,f);
-
-        // edge 5-6
-        V(base + nPts1D*(i+2)-1,f) = U_mpts(nv+i*ne+5,f);
-
-        // edge 7-6
-        V(base + nPts1D*(order+2)+i+1,f) = U_mpts(nv+(order-i)*ne+6,f);
-
-        /* --- Mid [Vertical] Egdes --- */
-        base = (i+1)*P22;
-        // edge 0-4
-        V(base,f) = U_mpts(nv+i*ne+8,f);
-
-        // edge 1-5
-        V(base+(order+2),f) = U_mpts(nv+i*ne+9,f);
-
-        int base2 = nPts1D*(order+2);
-        // edge 3-7
-        V(base+base2,f) = U_mpts(nv+i*ne+11,f);
-
-        // edge 2-6
-        V(base+base2+order+2,f) = U_mpts(nv+i*ne+10,f);
-      }
-
-      // Get solution at flux points
-      int P12 = (order+1)*(order+1);
-      for (int i=0; i<order+1; i++) {
-        for (int j=0; j<order+1; j++) {
-          int ind1 = i + j*(order+1);
-          int ind2 = order - i + (order+1)*j;
-          // Bottom Face
-          V(nPts1D*(j+1)+i+1,f) = U_fpts(ind1,f);
-
-          // Top Face
-          V(P22*(order+2)+(j+1)*nPts1D+i+1,f) = U_fpts(P12+ind2,f);
-
-          // Left Face
-          V(P22*(j+1)+nPts1D*(i+1),f) = U_fpts(2*P12+ind1,f);
-
-          // Right Face
-          V(P22*(j+1)+nPts1D*(i+1)+order+2,f) = U_fpts(3*P12+ind2,f);
-
-          // Front Face
-          V(P22*(j+1)+i+1,f) = U_fpts(4*P12+ind2,f);
-
-          // Back Face
-          V(P22*(j+2)+i+1-nPts1D,f) = U_fpts(5*P12+ind1,f);
-        }
-      }
-
-      // Get solution at solution points
-      for (int k=0; k<order+1; k++) {
-        for (int j=0; j<order+1; j++) {
-          for (int i=0; i<order+1; i++) {
-            V(i+1+nPts1D*(j+1)+(k+1)*P22,f) = U_spts(i+(order+1)*(j+(order+1)*k),f);
-          }
-        }
-      }
-    }
-  }
+  for (uint ppt = 0; ppt < Solver->nPpts; ppt++)
+    for (uint k = 0; k < nFields; k++)
+      V(ppt,k) = U_ppts(ppt, k);
 
   if (params->equation == NAVIER_STOKES) {
     // Overwriting V, so be careful of order!
-    for (uint i=0; i<V.getDim0(); i++) {
-      double u = V(i,1)/V(i,0);
-      double v = V(i,2)/V(i,0);
+    for (uint i = 0; i < V.getDim0(); i++) {
+      double u = V(i,1) / V(i,0);
+      double v = V(i,2) / V(i,0);
       double w = 0.;
-      if (nDims == 3) w = V(i,3)/V(i,0);
+      if (nDims == 3) w = V(i,3) / V(i,0);
       double vSq = u*u + v*v + w*w;
       V(i,nDims+1) = (params->gamma-1)*(V(i,nDims+1) - 0.5*V(i,0)*vSq);
       V(i,1) = u;

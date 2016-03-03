@@ -73,7 +73,6 @@ void solver::setup(input *params, int _order, geo *_Geo)
 
   nDims = params->nDims;
   nFields = params->nFields;
-  nMpts = (nDims==2) ? 4 : 8;
   nRKSteps = params->nRKSteps;
 
   /* Setup the FR elements & faces which will be computed on */
@@ -91,6 +90,8 @@ void solver::setup(input *params, int _order, geo *_Geo)
 
   nSpts = opers[order].nSpts;
   nFpts = opers[order].nFpts;
+  nPpts = opers[order].nPpts;
+  nMpts = nPpts - nSpts - nFpts;
 
   setupArrays();
 
@@ -110,6 +111,8 @@ void solver::setupArrays(void)
 {
   U_spts.setup(nSpts, nEles, nFields);
   U_fpts.setup(nFpts, nEles, nFields);
+  U_mpts.setup(nMpts, nEles, nFields);
+  U_ppts.setup(nPpts, nEles, nFields);
 
   F_spts.setup(nDims, nSpts, nEles, nFields);
   F_fpts.setup(nDims, nFpts, nEles, nFields);
@@ -130,7 +133,6 @@ void solver::setupArrays(void)
     mat.setup(nSpts, nEles, nFields);
 
   U0.setup(nSpts, nEles, nFields);
-  U_mpts.setup(nMpts, nEles, nFields);
 
   disFn_fpts.setup(nFpts, nEles, nFields);
   Fn_fpts.setup(nFpts, nEles, nFields);
@@ -154,12 +156,6 @@ void solver::setupArrays(void)
 void solver::setupGeometry(void)
 {
   nNodes = getMax(Geo->c2nv);
-
-  if (nDims == 2) {
-    nPpts = (order+3)*(order+3);
-  } else {
-    nPpts = (order+3)*(order+3)*(order+3);
-  }
 
   shape_spts.setup(nSpts,nNodes);
   shape_fpts.setup(nFpts,nNodes);
@@ -247,7 +243,7 @@ void solver::setupGeometry(void)
     loc_fpts = getLocFpts(HEX,order,params->sptsTypeQuad);
     loc_ppts = getLocPpts(HEX,order,params->sptsTypeQuad);
 
-    for (uint ppt = 0; ppt < nSpts; ppt++)
+    for (uint ppt = 0; ppt < nPpts; ppt++)
     {
       shape_hex(loc_ppts[ppt], &shape_ppts(ppt,0), nNodes);
     }
@@ -305,8 +301,6 @@ void solver::setupGeometry(void)
 
 void solver::update(bool PMG_Source)
 {
-  //params->iter++;
-
   /* Intermediate residuals for Runge-Kutta time integration */
 
   if (params->dtType != 0) calcDt();
@@ -601,6 +595,25 @@ void solver::extrapolateUMpts(void)
 #endif
 }
 
+
+void solver::extrapolateUPpts(void)
+{
+  int m = nPpts;
+  int n = nEles * nFields;
+  int k = nSpts;
+
+  auto &A = opers[order].opp_spts_to_ppts(0,0);
+  auto &B = U_spts(0,0,0);
+  auto &C = U_ppts(0,0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#else
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
+}
+
 void solver::extrapolateGridVelMpts(void)
 {
   int m = nPpts;
@@ -665,7 +678,45 @@ void solver::calcInviscidFlux_spts(void)
             for (uint k = 0; k < nFields; k++) {
               F_spts(dim1,spt,e,k) = 0.;
               for (uint dim2 = 0; dim2 < nDims; dim2++) {
-                F_spts(dim1, spt,e, k) += JGinv_spts(spt,e,dim1,dim2)*tempF[k][dim2];
+                F_spts(dim1,spt,e,k) += JGinv_spts(spt,e,dim1,dim2)*tempF[k][dim2];
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  else
+  {
+    for (uint spt = 0; spt < nSpts; spt++) {
+      for (uint e = 0; e < nEles; e++) {
+        double rho = U_spts(spt,e,0);
+        double u = U_spts(spt,e,1) / rho;
+        double v = U_spts(spt,e,2) / rho;
+        double w = U_spts(spt,e,3) / rho;
+        double E = U_spts(spt,e,4);
+        double p = (params->gamma-1)*(E - 0.5*rho*(u*u + v*v + w*w));
+        tempF[0][0] =  rho*u;      tempF[0][1] =  rho*v;      tempF[0][2] =  rho*w;
+        tempF[1][0] =  rho*u*u+p;  tempF[1][1] =  rho*u*v;    tempF[1][2] =  rho*u*w;
+        tempF[2][0] =  rho*v*u;    tempF[2][1] =  rho*v*v+p;  tempF[2][2] =  rho*v*w;
+        tempF[3][0] =  rho*w*u;    tempF[3][1] =  rho*w*v;    tempF[3][2] =  rho*w*w+p;
+        tempF[4][0] = (E+p)*u;     tempF[4][1] = (E+p)*v;     tempF[4][1] = (E+p)*w;
+
+        if (params->motion)
+        {
+          /* --- Transformed later - just copy over --- */
+          for (uint dim = 0; dim < nDims; dim++)
+            for (uint k = 0; k < nFields; k++)
+              F_spts(dim,spt,e,k) = tempF[k][dim];
+        }
+        else
+        {
+          /* --- Transform back to reference domain --- */
+          for (uint dim1 = 0; dim1 < nDims; dim1++) {
+            for (uint k = 0; k < nFields; k++) {
+              F_spts(dim1,spt,e,k) = 0.;
+              for (uint dim2 = 0; dim2 < nDims; dim2++) {
+                F_spts(dim1,spt,e,k) += JGinv_spts(spt,e,dim1,dim2)*tempF[k][dim2];
               }
             }
           }

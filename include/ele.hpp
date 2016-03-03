@@ -240,6 +240,7 @@ public:
   double& Fn_fpts(int fpt, int field);
   double& disFn_fpts(int fpt, int field);
   double& U_mpts(int mpt, int field);
+  double& U_ppts(int ppt, int field);
   double& dU_fpts(int dim, int fpt, int field);
   double& dUc_fpts(int fpt, int field);
   double& divF_spts(int step, int spt, int field);

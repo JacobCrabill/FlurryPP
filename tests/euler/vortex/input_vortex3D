@@ -30,6 +30,7 @@ diffD        .1   (Diffusion Coefficient)
 icType       2
 testCase     0
 iterMax      5000
+maxTime      22.3607
 
 # =============================================================
 # Plotting/Output Options

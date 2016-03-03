@@ -94,7 +94,7 @@ public:
   uint nDims, nFields;
 
   /* Solution Variables */
-  Array<double,3> U0, U_spts, U_fpts, U_mpts, U_qpts; //! Global solution arrays for solver
+  Array<double,3> U0, U_spts, U_fpts, U_mpts, U_ppts, U_qpts; //! Global solution arrays for solver
   Array<double,4> F_spts, F_fpts, dU_spts, dU_fpts;   //! dim, spt/fpt, ele, field?
   Array<double,3> disFn_fpts, Fn_fpts, dUc_fpts;  //! fpt, ele, field
   Array2D<Array<double,3>> dF_spts; //! dim_grad, dim_flux, spt, ele, field
@@ -186,6 +186,9 @@ public:
 
   //! Extrapolate the solution to the mesh (corner) points (and edge points in 3D)
   void extrapolateUMpts(void);
+
+  //! Extrapolate the solution to all plotting points (spts, fpts, corners, edges)
+  void extrapolateUPpts(void);
 
   //! Extrapolate the grid velocity to the mesh (corner) points (and edge points in 3D)
   void extrapolateGridVelMpts(void);

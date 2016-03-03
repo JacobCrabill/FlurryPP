@@ -46,19 +46,22 @@ public:
   void setupOperators(uint eType, uint order, geo* inGeo, input* inParams);
 
   //! Setup operator for extrapolation from solution points to flux points
-  void setupExtrapolateSptsFpts(vector<point> &loc_fpts);
+  void setupExtrapolateSptsFpts(void);
+
+  //! Setup operator for extrapolation from solution points to all plotting points
+  void setupExtrapolateSptsPpts(void);
 
   //! Setup operator for extrapolation from solution points to mesh (corner) points
-  void setupExtrapolateSptsMpts(vector<point> &loc_spts);
+  void setupExtrapolateSptsMpts(void);
 
   void setupInterpolateSptsQpts(int quadOrder);
 
   //! Setup operator for calculation of gradient at the solution points
-  void setupGradSpts(vector<point> &loc_spts);
+  void setupGradSpts(void);
 
   /*! Setup operator to calculate divergence of correction function at solution points
    *  based upon the normal flux correction at the flux points */
-  void setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts);
+  void setupCorrection(void);
 
   //! Setup an interpolation operation between solution points and given points using solution basis
   matrix<double> setupInterpolateSptsIpts(matrix<double>& loc_ipts);
@@ -124,13 +127,14 @@ public:
 
   geo *Geo;
   input *params;
-  uint nDims, nFields, eType, order, nSpts, nFpts;
+  uint nDims, nFields, eType, order, nSpts, nFpts, nPpts;
   string sptsType;
 
-  vector<point> loc_qpts;
+  vector<point> loc_spts, loc_fpts, loc_ppts, loc_qpts;
 
   matrix<double> opp_spts_to_fpts;
   matrix<double> opp_spts_to_mpts;
+  matrix<double> opp_spts_to_ppts;
   matrix<double> opp_spts_to_qpts;
   vector<matrix<double>> opp_grad_spts;
   matrix<double> opp_div_spts;
@@ -145,7 +149,7 @@ private:
 
   matrix<double> tempFn;
 
-  void setupCorrectF(vector<point> &loc_spts);
+  void setupCorrectF(void);
 
   //! Evalulate the VCJH correction function at a solution point from a flux point */
   double VCJH_quad(uint fpt, point &loc, vector<double> &spts1D, uint vcjh, uint order);
@@ -162,7 +166,7 @@ private:
   matrix<double> inv_vandermonde2D;
   matrix<double> sensingMatrix;
   matrix<double> filterMatrix;
-  void setupVandermonde(vector<point> &loc_spts);
+  void setupVandermonde(void);
   void setupSensingMatrix(void);
   void setupFilterMatrix(void);
 

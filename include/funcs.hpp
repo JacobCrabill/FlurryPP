@@ -98,8 +98,6 @@ void getBoundingBox(double *pts, int nPts, int nDims, double *bbox);
 
 vector<double> calcError(const double * const U, const point &pos, input *params);
 
-void calcSolutionFromFlux(matrix<double> &F, vector<double> &U, input *params);
-
 void calcFluxJacobian2D(const vector<double> &U, matrix<double> &dFdU, matrix<double> &dGdU, input *params);
 
 //! Given basic grid connectivity for quad mesh, refine by splitting

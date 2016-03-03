@@ -7,7 +7,7 @@ timeType      4    (0: Forward Euler, 4: RK44)
 dtType        1    (0: Fixed, 1: CFL-based)
 CFL           .7
 dt            .005
-iterMax       100       
+iterMax       1000
 maxTime       10
 restart       0
 restartIter   20
@@ -37,8 +37,8 @@ icType       0
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        10      (Frequency to write plot files)
-monitorResFreq  10        (Frequency to print residual to terminal)
+plotFreq        200      (Frequency to write plot files)
+monitorResFreq  20        (Frequency to print residual to terminal)
 resType         2         (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    Cylinder3D    (Filename prefix for output files)
 entropySensor   0         (Calculate & plot entropy-error sensor)

@@ -267,7 +267,7 @@ void writeParaview(solver *Solver, input *params)
   //if (params->iter==params->initIter)
     Solver->extrapolateU();
 
-  Solver->extrapolateUMpts();
+  Solver->extrapolateUPpts();
 
   if (params->motion && params->nDims==3)
     Solver->extrapolateGridVelMpts();

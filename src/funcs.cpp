@@ -879,68 +879,6 @@ vector<double> calcError(const double* const U, const point &pos, input *params)
   return err;
 }
 
-void calcSolutionFromFlux(matrix<double> &F, vector<double> &U, input *params)
-{
-  // Use Newton iterations to converge to U(F) such that F(U) = F
-  int nFields = params->nFields;
-  int nDims = params->nDims;
-
-  matrix<double> A,B;
-  matrix<double> tempF(nDims,nFields);
-  vector<double> dF(nFields), dG(nFields), dH;
-  if (nDims==3) dH.resize(nFields);
-
-  inviscidFlux(U.data(),tempF,params);
-
-  for (int i=0; i<nFields; i++) {
-    dF[i] = F(0,i) - tempF(0,i);
-    dG[i] = F(1,i) - tempF(1,i);
-    if (nDims==3) dH[i] = F(2,i) - tempF(2,i);
-  }
-
-  // Magnitude of difference between current and desired flux vector
-  double norm = 0.;
-  for (auto &val:dF) norm += val*val;
-  for (auto &val:dG) norm += val*val;
-  for (auto &val:dH) norm += val*val;
-
-  // Hackish, yeah...
-  vector<double> maxDU = U;
-  for (auto &val:maxDU) val = std::max(.25*std::abs(val),.1);
-
-  int iter = 0;
-  double tol = 1e-10;
-  if (nDims == 2) {
-    while (norm > tol) {
-      calcFluxJacobian2D(U,A,B,params);
-
-      auto du1 = A.solve(dF);
-      auto du2 = B.solve(dG);
-
-      for (int i=0; i<nFields; i++) {
-        U[i] += (du1[i]+du2[i])/2.;
-      }
-
-      inviscidFlux(U.data(),tempF,params);
-
-      for (int i=0; i<nFields; i++) {
-        dF[i] = F(0,i) - tempF(0,i);
-        dG[i] = F(1,i) - tempF(1,i);
-      }
-
-      norm = 0.;
-      for (auto &val:dF) norm += val*val;
-      for (auto &val:dG) norm += val*val;
-
-      iter++;
-      if (iter>10) break;
-    }
-  }
-  else {
-
-  }
-}
-
 void calcFluxJacobian2D(const vector<double> &U, matrix<double> &dFdU, matrix<double> &dGdU, input *params)
 {
   int nFields = U.size();
