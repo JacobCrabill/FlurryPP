@@ -37,6 +37,7 @@ class boundFace;
 
 #include "cblas.h"
 
+#include "flux.hpp"
 #include "input.hpp"
 #include "geo.hpp"
 #include "intFace.hpp"
@@ -650,84 +651,31 @@ void solver::extrapolateSFpts(void)
 
 void solver::calcInviscidFlux_spts(void)
 {
-  if (nDims == 2)
-  {
-    for (uint spt = 0; spt < nSpts; spt++) {
-      for (uint e = 0; e < nEles; e++) {
-        double rho = U_spts(spt,e,0);
-        double u = U_spts(spt,e,1) / rho;
-        double v = U_spts(spt,e,2) / rho;
-        double E = U_spts(spt,e,3);
-        double p = (params->gamma-1)*(E - 0.5*rho*(u*u + v*v));
-        tempF[0][0] =  rho*u;      tempF[0][1] =  rho*v;
-        tempF[1][0] =  rho*u*u+p;  tempF[1][1] =  rho*u*v;
-        tempF[2][0] =  rho*v*u;    tempF[2][1] =  rho*v*v+p;
-        tempF[3][0] = (E+p)*u;     tempF[3][1] = (E+p)*v;
+  for (uint spt = 0; spt < nSpts; spt++) {
+    for (uint e = 0; e < nEles; e++) {
+      inviscidFlux(&U_spts(spt,e,0), tempF, params);
 
-        if (params->motion)
-        {
-          /* --- Transformed later - just copy over --- */
-          for (uint dim = 0; dim < nDims; dim++)
-            for (uint k = 0; k < nFields; k++)
-              F_spts(dim,spt,e,k) = tempF[k][dim];
-        }
-        else
-        {
-          /* --- Transform back to reference domain --- */
-          for (uint dim1 = 0; dim1 < nDims; dim1++) {
-            for (uint k = 0; k < nFields; k++) {
-              F_spts(dim1,spt,e,k) = 0.;
-              for (uint dim2 = 0; dim2 < nDims; dim2++) {
-                F_spts(dim1,spt,e,k) += JGinv_spts(spt,e,dim1,dim2)*tempF[k][dim2];
-              }
+      if (params->motion)
+      {
+        /* --- Transformed later - just copy over --- */
+        for (uint dim = 0; dim < nDims; dim++)
+          for (uint k = 0; k < nFields; k++)
+            F_spts(dim,spt,e,k) = tempF[dim][k];
+      }
+      else
+      {
+        /* --- Transform back to reference domain --- */
+        for (uint dim1 = 0; dim1 < nDims; dim1++) {
+          for (uint k = 0; k < nFields; k++) {
+            F_spts(dim1,spt,e,k) = 0.;
+            for (uint dim2 = 0; dim2 < nDims; dim2++) {
+              F_spts(dim1,spt,e,k) += JGinv_spts(spt,e,dim1,dim2)*tempF[dim2][k];
             }
           }
         }
       }
     }
   }
-  else
-  {
-    for (uint spt = 0; spt < nSpts; spt++) {
-      for (uint e = 0; e < nEles; e++) {
-        double rho = U_spts(spt,e,0);
-        double u = U_spts(spt,e,1) / rho;
-        double v = U_spts(spt,e,2) / rho;
-        double w = U_spts(spt,e,3) / rho;
-        double E = U_spts(spt,e,4);
-        double p = (params->gamma-1)*(E - 0.5*rho*(u*u + v*v + w*w));
-        tempF[0][0] =  rho*u;      tempF[0][1] =  rho*v;      tempF[0][2] =  rho*w;
-        tempF[1][0] =  rho*u*u+p;  tempF[1][1] =  rho*u*v;    tempF[1][2] =  rho*u*w;
-        tempF[2][0] =  rho*v*u;    tempF[2][1] =  rho*v*v+p;  tempF[2][2] =  rho*v*w;
-        tempF[3][0] =  rho*w*u;    tempF[3][1] =  rho*w*v;    tempF[3][2] =  rho*w*w+p;
-        tempF[4][0] = (E+p)*u;     tempF[4][1] = (E+p)*v;     tempF[4][2] = (E+p)*w;
-
-        if (params->motion)
-        {
-          /* --- Transformed later - just copy over --- */
-          for (uint dim = 0; dim < nDims; dim++)
-            for (uint k = 0; k < nFields; k++)
-              F_spts(dim,spt,e,k) = tempF[k][dim];
-        }
-        else
-        {
-          /* --- Transform back to reference domain --- */
-          for (uint dim1 = 0; dim1 < nDims; dim1++) {
-            for (uint k = 0; k < nFields; k++) {
-              F_spts(dim1,spt,e,k) = 0.;
-              for (uint dim2 = 0; dim2 < nDims; dim2++) {
-                F_spts(dim1,spt,e,k) += JGinv_spts(spt,e,dim1,dim2)*tempF[k][dim2];
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-//#pragma omp parallel for
-//  for (uint i=0; i<eles.size(); i++) {
-//    eles[i]->calcInviscidFlux_spts();
-//  }
 }
 
 void solver::doCommunication()

@@ -30,8 +30,6 @@
 
 #include "flurry.hpp"
 
-#include <valgrind/callgrind.h>
-
 #ifndef _NO_MPI
 #include <mpi.h>
 #endif
@@ -57,7 +55,7 @@ int main(int argc, char *argv[]) {
 #endif
   params.rank = rank;
   params.nproc = nproc;
-CALLGRIND_STOP_INSTRUMENTATION;
+
   if (rank == 0) {
     cout << endl;
     cout << R"(  ========================================================  )" << endl;
@@ -127,7 +125,6 @@ CALLGRIND_STOP_INSTRUMENTATION;
   iter = initIter;
 
   /* --- Calculation Loop --- */
-  CALLGRIND_START_INSTRUMENTATION;
   while (params.iter < iterMax and params.time < maxTime) {
     iter++;
 
@@ -141,8 +138,6 @@ CALLGRIND_STOP_INSTRUMENTATION;
     if ((iter)%params.monitorErrFreq==0 or iter==initIter+1) writeError(&Solver,&params);
     if ((iter)%params.plotFreq==0 or iter==iterMax or params.time>=maxTime) writeData(&Solver,&params);
   }
-  CALLGRIND_STOP_INSTRUMENTATION;
-  CALLGRIND_DUMP_STATS;
 
   /* Calculate the integral / L1 / L2 error for the final time */
   writeAllError(&Solver,&params);

@@ -879,14 +879,6 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles, 
     else
       e->nMpts = 8;
 
-    // Global face IDs for internal & boundary faces
-    e->faceID.resize(c2nf[ic]);
-    e->bndFace.resize(c2nf[ic]);
-    for (int k=0; k<c2nf[ic]; k++) {
-      e->bndFace[k] = c2b(ic,k);
-      e->faceID[k] = c2f(ic,k);
-    }
-
     Solver->insertElement(ind);
 
     e->setup(params,Solver,this);

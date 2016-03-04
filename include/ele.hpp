@@ -54,14 +54,6 @@ public:
   int nNodes; //! Number of nodes used to define element shape
   int nMpts;  //! Number of nodes used for plotting (corners, not edge nodes for quadratic eles)
 
-  string sptsType;  //! Which set of point locations to use for solution and flux points
-
-  vector<point> loc_spts; //! Location of solution points in parent domain
-  vector<point> loc_fpts; //! Location of flux points in parent domain
-  //vector<int> nodeID; //! Global ID's of element's nodes
-  vector<int> faceID; //! Global ID's of element's faces
-  vector<bool> bndFace; //! Tag for faces on a boundary
-
   //! Default constructor
   ele();
 
@@ -83,8 +75,6 @@ public:
   point calcPos(const point &loc);
 
   void setInitialCondition(void);
-
-  void calcInviscidFlux_spts(void);
 
   void calcViscousFlux_spts(void);
 
@@ -211,16 +201,13 @@ public:
   // Shock Capturing variables
   double sensor;
 
-  // Multigrid Variables
-  matrix<double> corr_spts, src_spts, sol_spts;
-
   // Other
   matrix<double> S_spts;      //! Entropy-adjoint variable used as error indicator for Euler
   matrix<double> S_fpts;      //! Entropy-adjoint variable at flux points
   matrix<double> S_mpts;      //! Entropy-adjoint variable at mesh points
 
   /* --- Temporary Variables --- */
-  matrix<double> tempF;
+  double tempF[3][5];
   vector<double> tempU;
 
   /* --- Overset Stuff --- */

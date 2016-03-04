@@ -162,7 +162,7 @@ void overFace::rusanovFlux(void)
         double tempFnL[5] = {0,0,0,0,0};
         for (int k=0; k<nFields; k++)
           for (int dim=0; dim<nDims; dim++)
-            tempFnL[k] += tempFL(dim,k)*normL(fpt,dim);
+            tempFnL[k] += tempFL[dim][k]*normL(fpt,dim);
 
         for (int k=0; k<params->nFields; k++) {
           Fn(fpt,k) = tempFnL[k] - 0.5*eig*(UR(fpt,k)-UL(fpt,k));

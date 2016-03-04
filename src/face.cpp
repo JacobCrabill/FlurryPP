@@ -47,8 +47,8 @@ void face::initialize(shared_ptr<ele> &eL, shared_ptr<ele> &eR, int gID, int loc
   nFields = params->nFields;
 
   // Setup temporary vectors for later use
-  tempFL.setup(nDims,nFields);
-  tempFR.setup(nDims,nFields);
+  //tempFL.setup(nDims,nFields);
+  //tempFR.setup(nDims,nFields);
   tempUL.resize(nFields);
 
   // Needed for MPI faces to separate communication from flux calculation
@@ -223,7 +223,7 @@ void face::calcViscousFlux(void)
           viscousFlux(UR[fpt], gradUR[fpt], tempFR, params);
           for (int dim=0; dim<nDims; dim++) {
             for (int k=0; k<nFields; k++) {
-              Fc(dim,k) = tempFR(dim,k) + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
+              Fc(dim,k) = tempFR[dim][k] + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
             }
           }
         }
@@ -233,7 +233,7 @@ void face::calcViscousFlux(void)
           viscousFlux(UL[fpt], gradUL[fpt], tempFL, params);
           for (int dim=0; dim<nDims; dim++) {
             for (int k=0; k<nFields; k++) {
-              Fc(dim,k) = tempFL(dim,k) + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
+              Fc(dim,k) = tempFL[dim][k] + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
             }
           }
         }
@@ -261,15 +261,15 @@ void face::calcViscousFlux(void)
 
         if (nDims == 2) {
           for(int k=0; k<nFields; k++) {
-            Fc(0,k) = 0.5*(tempFL(0,k) + tempFR(0,k)) + penFact*normX*( normX*(tempFL(0,k) - tempFR(0,k)) + normY*(tempFL(1,k) - tempFR(1,k)) ) + params->tau*normX*(UL(fpt,k) - UR(fpt,k));
-            Fc(1,k) = 0.5*(tempFL(1,k) + tempFR(1,k)) + penFact*normY*( normX*(tempFL(0,k) - tempFR(0,k)) + normY*(tempFL(1,k) - tempFR(1,k)) ) + params->tau*normY*(UL(fpt,k) - UR(fpt,k));
+            Fc(0,k) = 0.5*(tempFL[0][k] + tempFR[0][k]) + penFact*normX*( normX*(tempFL[0][k] - tempFR[0][k]) + normY*(tempFL[1][k] - tempFR[1][k]) ) + params->tau*normX*(UL(fpt,k) - UR(fpt,k));
+            Fc(1,k) = 0.5*(tempFL[1][k] + tempFR[1][k]) + penFact*normY*( normX*(tempFL[0][k] - tempFR[0][k]) + normY*(tempFL[1][k] - tempFR[1][k]) ) + params->tau*normY*(UL(fpt,k) - UR(fpt,k));
           }
         }
         else if (nDims == 3) {
           for(int k=0; k<nFields; k++) {
-            Fc(0,k) = 0.5*(tempFL(0,k) + tempFR(0,k)) + penFact*normX*( normX*(tempFL(0,k) - tempFR(0,k)) + normY*(tempFL(1,k) - tempFR(1,k)) + normZ*(tempFL(2,k) - tempFR(2,k)) ) + params->tau*normX*(UL(fpt,k) - UR(fpt,k));
-            Fc(1,k) = 0.5*(tempFL(0,k) + tempFR(0,k)) + penFact*normY*( normX*(tempFL(0,k) - tempFR(0,k)) + normY*(tempFL(1,k) - tempFR(1,k)) + normZ*(tempFL(2,k) - tempFR(2,k)) ) + params->tau*normY*(UL(fpt,k) - UR(fpt,k));
-            Fc(2,k) = 0.5*(tempFL(0,k) + tempFR(0,k)) + penFact*normZ*( normX*(tempFL(0,k) - tempFR(0,k)) + normY*(tempFL(1,k) - tempFR(1,k)) + normZ*(tempFL(2,k) - tempFR(2,k)) ) + params->tau*normZ*(UL(fpt,k) - UR(fpt,k));
+            Fc(0,k) = 0.5*(tempFL[0][k] + tempFR[0][k]) + penFact*normX*( normX*(tempFL[0][k] - tempFR[0][k]) + normY*(tempFL[1][k] - tempFR[1][k]) + normZ*(tempFL[2][k] - tempFR[2][k]) ) + params->tau*normX*(UL(fpt,k) - UR(fpt,k));
+            Fc(1,k) = 0.5*(tempFL[0][k] + tempFR[0][k]) + penFact*normY*( normX*(tempFL[0][k] - tempFR[0][k]) + normY*(tempFL[1][k] - tempFR[1][k]) + normZ*(tempFL[2][k] - tempFR[2][k]) ) + params->tau*normY*(UL(fpt,k) - UR(fpt,k));
+            Fc(2,k) = 0.5*(tempFL[0][k] + tempFR[0][k]) + penFact*normZ*( normX*(tempFL[0][k] - tempFR[0][k]) + normY*(tempFL[1][k] - tempFR[1][k]) + normZ*(tempFL[2][k] - tempFR[2][k]) ) + params->tau*normZ*(UL(fpt,k) - UR(fpt,k));
           }
         }
       }
@@ -338,8 +338,8 @@ void face::rusanovFlux(void)
       if (params->motion)
         vgn += normL(fpt,dim)*Vg(fpt,dim);
       for (int i=0; i<params->nFields; i++) {
-        tempFnL[i] += normL(fpt,dim)*tempFL(dim,i);
-        tempFnR[i] += normL(fpt,dim)*tempFR(dim,i);
+        tempFnL[i] += normL(fpt,dim)*tempFL[dim][i];
+        tempFnR[i] += normL(fpt,dim)*tempFR[dim][i];
       }
     }
 
@@ -540,8 +540,8 @@ void face::centralFluxBound(void)
       if (params->motion)
         vgn += normL(fpt,dim)*Vg(fpt,dim);
       for (int i=0; i<params->nFields; i++) {
-        tempFnL[i] += normL(fpt,dim)*tempFL(dim,i);
-        tempFnR[i] += normL(fpt,dim)*tempFR(dim,i);
+        tempFnL[i] += normL(fpt,dim)*tempFL[dim][i];
+        tempFnR[i] += normL(fpt,dim)*tempFR[dim][i];
       }
     }
 

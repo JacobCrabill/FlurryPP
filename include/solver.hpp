@@ -80,9 +80,6 @@ public:
   //! Vector of all MPI faces handled by this solver
   vector<shared_ptr<overFace>> overFaces;
 
-  //! Local supermesh of donor elements for each cell needing to be unblanked
-  vector<superMesh> donors;
-
 #ifndef _NO_MPI
   //! Pointer to Tioga object for processing overset grids
   shared_ptr<tioga> tg;
@@ -102,7 +99,7 @@ public:
   vector<Array<double,3>> divF_spts;
 
   Array<double,3> tempVars_fpts, tempVars_spts;  //! Temporary/intermediate solution storage array
-  double tempF[5][3];
+  double tempF[3][5];                            //! Temporary flux-storage array
 
   /* Multigrid Variables */
   Array<double,3> sol_spts, corr_spts, src_spts;
@@ -169,10 +166,14 @@ public:
   //! Calculate the stable time step limit based upon given CFL
   void calcDt(void);
 
-  //! Advance solution in time - Generate intermediate RK stage
+  /*! Advance solution in time - Generate intermediate RK stage
+   * \param PMG_source: If true, add PMG source term
+   */
   void timeStepA(int step, bool PMG_Source = false);
 
-  //! Advance solution in time - Final RK stage [assemble intermediate stages]
+  /*! Advance solution in time - Final RK stage [assemble intermediate stages]
+   * \param PMG_source: If true, add PMG source term
+   */
   void timeStepB(int step, bool PMG_Source = false);
 
   //! For RK time-stepping - store solution at time 'n'
@@ -365,8 +366,6 @@ private:
   vector<int> r_adapt_cells, h_adapt_cells, p_adapt_cells;
 
   /* ---- Overset Grid Variables / Functions ---- */
-
-  //shared_ptr<overComm> OComm;
 
   vector<int> iblankVert, iblankEle;
 };

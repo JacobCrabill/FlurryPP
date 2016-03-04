@@ -73,16 +73,8 @@ void ele::setup(input *inParams, solver *inSolver, geo *inGeo, int in_order)
   nDims = params->nDims;
   nFields = params->nFields;
 
-  if (eType == QUAD || eType == HEX)
-    sptsType = params->sptsTypeQuad;
-  else
-    FatalError("Only quads and hexes implemented.");
-
-  loc_spts = getLocSpts(eType,order,sptsType);
-  loc_fpts = getLocFpts(eType,order,sptsType);
-
-  nSpts = loc_spts.size();
-  nFpts = loc_fpts.size();
+  nSpts = Solver->opers[order].nSpts;
+  nFpts = Solver->opers[order].nFpts;
 
   /* --- Setup all data arrays --- */
   setupArrays();
@@ -108,7 +100,7 @@ void ele::setupArrays(void)
     S_mpts.setup(nMpts,1);
   }
 
-  tempF.setup(nDims,nFields);
+  //tempF.setup(nDims,nFields);
   tempU.assign(nFields,0);
 }
 
@@ -1060,34 +1052,6 @@ void ele::getShape(point loc, vector<double> &shape)
   }
 }
 
-void ele::calcInviscidFlux_spts()
-{
-  for (int spt=0; spt<nSpts; spt++) {
-
-    inviscidFlux(&U_spts(spt,0), tempF, params);
-
-    if (params->motion) {
-      /* --- Don't transform yet; that will be handled later --- */
-      for (int dim=0; dim<nDims; dim++) {
-        for (int k=0; k<nFields; k++) {
-          F_spts(dim,spt,k) = tempF(dim,k);
-        }
-      }
-    }
-    else {
-      /* --- Transform back to reference domain --- */
-      for (int dim1=0; dim1<nDims; dim1++) {
-        for (int k=0; k<nFields; k++) {
-          F_spts(dim1,spt,k) = 0.;
-          for (int dim2=0; dim2<nDims; dim2++) {
-            F_spts(dim1,spt,k) += JGinv_spts(spt,dim1,dim2)*tempF(dim2,k);
-          }
-        }
-      }
-    }
-  }
-}
-
 void ele::calcViscousFlux_spts()
 {
   for (int spt=0; spt<nSpts; spt++) {
@@ -1109,7 +1073,7 @@ void ele::calcViscousFlux_spts()
       /* --- Don't transform yet; that will be handled later --- */
       for (int dim=0; dim<nDims; dim++) {
         for (int k=0; k<nFields; k++) {
-          F_spts(dim,spt,k) += tempF(dim,k);
+          F_spts(dim,spt,k) += tempF[dim][k];
         }
       }
     }
@@ -1118,7 +1082,7 @@ void ele::calcViscousFlux_spts()
       for (int k=0; k<nFields; k++) {
         for (int dim=0; dim<nDims; dim++) {
           for (int j=0; j<nDims; j++) {
-            F_spts(dim,spt,k) += JGinv_spts(spt,dim,j)*tempF(j,k);
+            F_spts(dim,spt,k) += JGinv_spts(spt,dim,j)*tempF[j][k];
           }
         }
       }
@@ -1251,16 +1215,6 @@ void ele::transformGradF_spts(int step)
   }
 }
 
-//void ele::calcDeltaFn(void)
-//{
-//  for (int fpt=0; fpt<nFpts; fpt++) {
-//    for (int k=0; k<nFields; k++) {
-//      dFn_fpts(fpt,k) = Fn_fpts(fpt,k) - disFn_fpts(fpt,k);
-//    }
-//  }
-//}
-
-
 void ele::calcDeltaUc(void)
 {
 //  for (int fpt=0; fpt<nFpts; fpt++) {
@@ -1357,50 +1311,6 @@ void ele::calcWaveSpFpts(void)
       waveSp_fpts[fpt] = (std::abs(vN - vgN) + std::sqrt(csq)) / dA_fpts(fpt);
     }
   }
-}
-
-void ele::timeStepA(int step, double rkVal)
-{
-//  if (params->dtType != 2) dt = params->dt;
-
-//  for (int spt=0; spt<nSpts; spt++) {
-//    for (int i=0; i<nFields; i++) {
-//      U_spts(spt,i) = U0(spt,i) - rkVal * dt * divF_spts[step](spt,i)/detJac_spts(spt);
-//    }
-//  }
-}
-
-void ele::timeStepB(int step, double rkVal)
-{
-//  if (params->dtType != 2) dt = params->dt;
-
-//  for (int spt=0; spt<nSpts; spt++) {
-//    for (int i=0; i<nFields; i++) {
-//      U_spts(spt,i) -= rkVal * dt * divF_spts[step](spt,i)/detJac_spts(spt);
-//    }
-//  }
-}
-
-void ele::timeStepA_source(int step, double rkVal)
-{
-//  if (params->dtType != 2) dt = params->dt;
-
-//  for (int spt=0; spt<nSpts; spt++) {
-//    for (int i=0; i<nFields; i++) {
-//      U_spts(spt,i) = U0(spt,i) - rkVal * dt * (divF_spts[step](spt,i) + src_spts(spt,i)) / detJac_spts(spt);
-//    }
-//  }
-}
-
-void ele::timeStepB_source(int step, double rkVal)
-{
-//  if (params->dtType != 2) dt = params->dt;
-
-//  for (int spt=0; spt<nSpts; spt++) {
-//    for (int i=0; i<nFields; i++) {
-//      U_spts(spt,i) -= rkVal * dt * (divF_spts[step](spt,i) + src_spts(spt,i)) / detJac_spts(spt);
-//    }
-//  }
 }
 
 double ele::calcDt(void)
@@ -1972,8 +1882,8 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
 
     opp_interp.setup(nSpts_final, nSpts);
 
-    auto loc_spts_r = getPts1D(sptsType,order);
-    auto loc_spts_f = getPts1D(sptsType,params->order);
+    auto loc_spts_r = getPts1D(params->sptsTypeQuad,order);
+    auto loc_spts_f = getPts1D(params->sptsTypeQuad,params->order);
 
     point loc;
     if (nDims == 2) {
@@ -2004,14 +1914,7 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
         }
       }
     }
-    //cout << "ele order = " << order << ", input order = " << params->order << endl;
-    //FatalError("Cannot restart a simulation using a different polynomial order.");
   }
-
-  if (eType == QUAD || eType == HEX)
-    sptsType = params->sptsTypeQuad;
-  else
-    FatalError("Only quads and hexes implemented.");
 
   // Move on to the first <DataArray>
 
