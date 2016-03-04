@@ -1028,17 +1028,6 @@ void solver::correctGradU(void)
 
   auto &B = dUc_fpts(0,0,0);
 
-  auto &A = opers[order].opp_correctU[0](0,0);
-  auto &C = dU_spts(0, 0, 0, 0);
-
-#ifdef _OMP
-  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
-              1.0, &A, k, &B, n, 0.0, &C, n);
-#else
-  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
-              1.0, &A, k, &B, n, 0.0, &C, n);
-#endif
-
   for (uint dim = 0; dim < nDims; dim++) {
     auto &A = opers[order].opp_correctU[dim](0,0);
     auto &C = dU_spts(dim, 0, 0, 0);
@@ -1083,6 +1072,7 @@ void solver::correctGradU(void)
       }
     }
   }
+
 }
 
 void solver::extrapolateGradU()
