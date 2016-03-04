@@ -85,7 +85,7 @@ void solver::setupOverset(void)
   if (params->oversetMethod == 2 && !params->projection) {
     OComm->setupFringeCellPoints(eles,Geo->fringeCells,Geo->eleMap);
   } else if (params->oversetMethod != 2) {
-    OComm->setupOverFacePoints(overFaces,params->order+1);
+    OComm->setupOverFacePoints(overFaces,order+1);
   }
 
   OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);

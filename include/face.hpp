@@ -156,7 +156,7 @@ protected:
   matrix<double> Vg;      //! Grid velocity at interface
   vector<matrix<double>> FL; //! Flux matrix at each flux point [nFpts, nDims, nFields]
   vector<double*> FnL;    //! Common normal flux for left ele (in ele's memory)  [nFpts, nFields]
-  vector<double*> dUcL;    //! Common solution for left ele (in ele's memory)  [nFpts, nFields]
+  Array<double*,2> dUcL;    //! Common solution for left ele (in ele's memory)  [nFpts, nFields]
   matrix<double> Fn;      //! Common numerical flux at interface  [nFpts, nFields]
   matrix<double> normL;   //! Unit outward normal at flux points
   vector<double> dAL;     //! Local face-area equivalent (aka edge Jacobian) at flux points

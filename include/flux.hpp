@@ -37,7 +37,7 @@
 void inviscidFlux(const double *U, double F[3][5], input *params);
 
 /*! Calculate the viscous portion of the Navier-Stokes flux vector at a point */
-void viscousFlux(double *U, matrix<double> gradU, double Fvis[3][5], input *params);
+void viscousFlux(double *U, matrix<double>& gradU, double Fvis[3][5], input *params);
 
 /*! Calculate the viscous shear-stress tensor at a point */
 matrix<double> viscousStressTensor(double* U, matrix<double> &gradU, input *params);

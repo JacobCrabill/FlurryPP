@@ -68,7 +68,7 @@ void ele::setup(input *inParams, solver *inSolver, geo *inGeo, int in_order)
   if (in_order >= 0)
     order = in_order;
   else
-    order = params->order;
+    order = Solver->order;
 
   nDims = params->nDims;
   nFields = params->nFields;

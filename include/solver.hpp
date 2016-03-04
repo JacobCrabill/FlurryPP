@@ -100,6 +100,7 @@ public:
 
   Array<double,3> tempVars_fpts, tempVars_spts;  //! Temporary/intermediate solution storage array
   double tempF[3][5];                            //! Temporary flux-storage array
+  matrix<double> tempDU;
 
   /* Multigrid Variables */
   Array<double,3> sol_spts, corr_spts, src_spts;

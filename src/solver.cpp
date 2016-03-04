@@ -122,6 +122,7 @@ void solver::setupArrays(void)
   {
     dU_spts.setup(nDims, nSpts, nEles, nFields);
     dU_fpts.setup(nDims, nFpts, nEles, nFields);
+    tempDU.setup(nDims,nFields);
   }
 
   if (params->viscous)
@@ -719,9 +720,36 @@ void solver::calcInviscidFlux_overset()
 
 void solver::calcViscousFlux_spts(void)
 {
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-    eles[i]->calcViscousFlux_spts();
+  for (uint spt = 0; spt < nSpts; spt++) {
+    for (uint e = 0; e < nEles; e++) {
+      for (uint dim = 0; dim < nDims; dim++)
+        for (uint k = 0; k < nFields; k++)
+          tempDU(dim,k) = dU_spts(dim,spt,e,k);
+
+      if (params->equation == NAVIER_STOKES)
+        viscousFlux(&U_spts(spt,e,0), tempDU, tempF, params);
+      else
+        viscousFluxAD(tempDU, tempF, params);
+
+      if (params->motion)
+      {
+        /* --- Transformed later - just copy over --- */
+        for (uint dim = 0; dim < nDims; dim++)
+          for (uint k = 0; k < nFields; k++)
+            F_spts(dim,spt,e,k) += tempF[dim][k];
+      }
+      else
+      {
+        /* --- Transform back to reference domain --- */
+        for (uint dim1 = 0; dim1 < nDims; dim1++) {
+          for (uint k = 0; k < nFields; k++) {
+            for (uint dim2 = 0; dim2 < nDims; dim2++) {
+              F_spts(dim1,spt,e,k) += JGinv_spts(spt,e,dim1,dim2)*tempF[dim2][k];
+            }
+          }
+        }
+      }
+    }
   }
 }
 
@@ -995,13 +1023,14 @@ void solver::correctGradU(void)
   /* Apply correction to solution gradient in reference space */
 
   int m = nSpts;
-  int n = nFpts;
-  int k = nEles * nFields;
+  int n = nEles * nFields;
+  int k = nFpts;
 
   auto &B = dUc_fpts(0,0,0);
 
   auto &A = opers[order].opp_correctU[0](0,0);
   auto &C = dU_spts(0, 0, 0, 0);
+
 #ifdef _OMP
   omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
               1.0, &A, k, &B, n, 0.0, &C, n);
@@ -1128,7 +1157,7 @@ void solver::moveMesh(int step)
     if (params->oversetMethod != 2) {
       if (params->nDims==2)
         getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
-      OComm->setupOverFacePoints(overFaces,params->order+1);
+      OComm->setupOverFacePoints(overFaces,order+1);
       OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
     }
   } else {

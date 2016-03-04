@@ -76,7 +76,7 @@ void inviscidFlux(const double* U, double F[3][5], input *params)
 }
 
 
-void viscousFlux(double* U, matrix<double> gradU, double Fvis[3][5], input *params)
+void viscousFlux(double* U, matrix<double> &gradU, double Fvis[3][5], input *params)
 {
   int nDims = params->nDims;
 

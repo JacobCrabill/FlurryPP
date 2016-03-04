@@ -95,7 +95,7 @@ void intFace::setupRightState(void)
   }
 
   if (params->viscous) {
-    dUcR.resize(nFptsR);
+    dUcR.setup(nFptsR,nFields);
   }
 }
 
@@ -106,7 +106,8 @@ void intFace::getPointersRight(void)
     FnR[i] = &(eR->Fn_fpts(fptR[i],0));
 
     if (params->viscous)
-      dUcR[i] = &(eR->dUc_fpts(fptR[i],0));
+      for (int k = 0; k < nFields; k++)
+        dUcR(i,k) = &(eR->dUc_fpts(fptR[i],k));
   }
 }
 
@@ -151,7 +152,7 @@ void intFace::setRightStateSolution(void)
 {
   for (int i=0; i<nFptsR; i++)
     for (int j=0; j<nFields; j++)
-      dUcR[i][j] = UC(i,j) - UR(i,j);
+      *dUcR(i,j) = UC(i,j) - UR(i,j);
 }
 
 vector<double> intFace::computeWallForce()

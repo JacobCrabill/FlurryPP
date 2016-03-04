@@ -70,7 +70,7 @@ private:
   /* --- Storage for all solution/geometry data at flux points [right state] --- */
   vector<matrix<double>> FR;   //! Flux array [nFpts, nDims, nFields]
   vector<double*> FnR;    //! Common normal flux for right ele [in ele's memory]
-  vector<double*> dUcR;    //! Common solution for left ele (in ele's memory)  [nFpts, nFields]
+  Array<double*,2> dUcR;    //! Common solution for left ele (in ele's memory)  [nFpts, nFields]
   matrix<double> normR;   //! Unit outward normal at flux points  [nFpts, nDims]
   vector<double> dAR;     //! Local face-area equivalent at flux points
 };

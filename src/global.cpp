@@ -35,10 +35,11 @@
 #include "mpi.h"
 #endif
 
+#ifdef _OMP
 #include "cblas.h"
+#endif
 
 /* --- Misc. Common Constants --- */
-//double pi = 4.0*atan(1);
 
 //! Maps a boundary-condition string to its integer enum
 // NOTE: 'symmetry' is just a psuedonym for 'slip_wall' which will not be

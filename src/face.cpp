@@ -80,7 +80,7 @@ void face::setupFace(void)
 
   if (params->viscous) {
     UC.setup(nFptsL,nFields);
-    dUcL.resize(nFptsL);
+    dUcL.setup(nFptsL,nFields);
     // just a placeholder.  Need to properly size/reorder dimensions later.
     gradUL.resize(nFptsL);
     gradUR.resize(nFptsL);
@@ -108,7 +108,8 @@ void face::getPointers(void)
     waveSp[fpt] = &(eL->waveSp_fpts[i]);
 
     if (params->viscous) {
-      dUcL[fpt] = &(eL->dUc_fpts(i,0));
+      for  (int k = 0; k < nFields; k++)
+        dUcL(fpt,k) = &(eL->dUc_fpts(i,k));
     }
 
     fpt++;
@@ -194,7 +195,7 @@ void face::calcInviscidFlux(void)
     // Still assuming nFptsL = nFptsR
     for (int i=0; i<nFptsL; i++) {
       for (int j=0; j<nFields; j++) {
-        dUcL[i][j] = UC(i,j) - UL(i,j);
+        *dUcL(i,j) = UC(i,j) - UL(i,j);
       }
     }
   }

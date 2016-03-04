@@ -801,11 +801,7 @@ void oper::setupCorrectGradU(void)
     op.initializeToZero();
   }
 
-  if (eType == TRI) {
-    // Not yet implemented
-  }
-  else if (eType == QUAD) {
-
+  if (eType == QUAD) {
     vector<double> tNorm(nDims);
 
     for(uint fpt=0; fpt<nFpts; fpt++) {
@@ -1075,7 +1071,7 @@ void oper::applyExtrapolateFn(Array<double,3> &F_spts, matrix<double> &norm_fpts
               1.0, &A, k, &B, n, 0.0, &C, n);
 #endif
 
-#pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(2)
   for (uint fpt = 0; fpt < nFpts; fpt++)
     for (uint k = 0; k < nFields; k++)
       Fn_fpts(fpt,k) *= norm_fpts(fpt,0) * dA_fpts[fpt];
@@ -1091,7 +1087,7 @@ void oper::applyExtrapolateFn(Array<double,3> &F_spts, matrix<double> &norm_fpts
                 1.0, &A, k, &B, n, 0.0, &C, n);
 #endif
 
-#pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(2)
     for (uint fpt = 0; fpt < nFpts; fpt++)
         for (uint k = 0; k < nFields; k++)
           Fn_fpts(fpt,k) += tempFn(fpt,k) * norm_fpts(fpt,dim) * dA_fpts[fpt];

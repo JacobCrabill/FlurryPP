@@ -44,10 +44,6 @@
 
 #include <omp.h>
 
-#ifdef _OMP
-#include "cblas.h"
-#endif
-
 #include "error.hpp"
 
 template<typename T> class matrix;

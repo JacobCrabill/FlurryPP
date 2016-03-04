@@ -1102,7 +1102,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>
               eles[ic]->disFn_fpts(fpt,k) = tempFn_fpts(fpt,k);
         }
 
-        Array<double,3> tempF_spts;
+        Array<double,3> tempF_spts(nDims,nSpts,nFields);
         if (params->motion)
         {
           // Flux vector must be in ref. space in order to apply correction functions

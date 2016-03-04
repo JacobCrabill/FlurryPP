@@ -48,6 +48,7 @@ endif
 
 ifeq ($(strip $(OPENMP)),YES)
   CXXFLAGS += -fopenmp -D_OMP
+  LFLAGS += -fopenmp
 else
   CXXFLAGS += -Wno-unknown-pragmas
 endif
@@ -126,45 +127,6 @@ $(TARGET):  $(OBJECTS)
 
 clean:
 	cd obj && rm -f *.o && cd .. && rm -f bin/Flurry
-
-#.PHONY: debug
-#debug: DBG=-pg
-#debug: CXXFLAGS=$(CXXFLAGS_DEBUG)
-#debug: LIBS+= #-lasan
-#debug: $(TARGET)
-
-#.PHONY: release
-#release: CXXFLAGS=$(CXXFLAGS_RELEASE)
-#release: $(TARGET)
-
-#.PHONY: openmp
-#openmp: CXXFLAGS=$(CXXFLAGS_OPENMP)
-#openmp: LIBS+= -fopenmp -lgomp
-#openmp: $(TARGET)
-
-#.PHONY: mpi
-#mpi: CXX=$(MPICXX)
-#mpi: LINK=$(MPILD)
-#mpi: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_RELEASE)
-#mpi: FFLAGS=-Ofast
-#mpi: LIBS+= -lmetis $(TIOGA_LIB)
-#mpi: $(TARGET)
-
-#.PHONY: mpi2
-#mpi2: CXX=$(MPICXX)
-#mpi2: LINK=$(MPILD)
-#mpi2: CXXFLAGS=$(CXXFLAGS_MPI) -g -O2 
-#mpi2: FFLAGS=-Ofast
-#mpi2: LIBS+= -lmetis $(TIOGA_LIB)
-#mpi2: $(TARGET)
-
-#.PHONY: mpidebug
-#mpidebug: CXX=$(MPICXX)
-#mpidebug: LINK=$(MPILD)
-#mpidebug: CXXFLAGS=$(CXXFLAGS_MPI) $(CXX_DEBUG) -D_MPI_DEBUG
-#mpidebug: FFLAGS=-g -O0 -rdynamic -fno-omit-frame-pointer #-fsanitize=address 
-#mpidebug: LIBS+= -lmetis $(TIOGA_LIB) #-lasan
-#mpidebug: $(TARGET)
 
 ####### Compile
 
