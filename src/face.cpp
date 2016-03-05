@@ -215,7 +215,7 @@ void face::calcViscousFlux(void)
   if (params->equation == NAVIER_STOKES) {
     for (int fpt=0; fpt<nFptsL; fpt++) {
       // Calculte common viscous flux at flux points [LDG numerical flux]
-      matrix<double> Fc(nDims,nFields);
+      double Fc[nDims][nFields];
 
       if (isBnd) {
         if (isBnd > 1) {
@@ -224,7 +224,7 @@ void face::calcViscousFlux(void)
           viscousFlux(UR[fpt], gradUR[fpt], tempFR, params);
           for (int dim=0; dim<nDims; dim++) {
             for (int k=0; k<nFields; k++) {
-              Fc(dim,k) = tempFR[dim][k] + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
+              Fc[dim][k] = tempFR[dim][k] + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
             }
           }
         }
@@ -234,7 +234,7 @@ void face::calcViscousFlux(void)
           viscousFlux(UL[fpt], gradUL[fpt], tempFL, params);
           for (int dim=0; dim<nDims; dim++) {
             for (int k=0; k<nFields; k++) {
-              Fc(dim,k) = tempFL[dim][k] + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
+              Fc[dim][k] = tempFL[dim][k] + params->tau*normL(fpt,dim)*(UL(fpt,k) - UR(fpt,k));
             }
           }
         }
@@ -262,15 +262,22 @@ void face::calcViscousFlux(void)
 
         if (nDims == 2) {
           for(int k=0; k<nFields; k++) {
-            Fc(0,k) = 0.5*(tempFL[0][k] + tempFR[0][k]) + penFact*normX*( normX*(tempFL[0][k] - tempFR[0][k]) + normY*(tempFL[1][k] - tempFR[1][k]) ) + params->tau*normX*(UL(fpt,k) - UR(fpt,k));
-            Fc(1,k) = 0.5*(tempFL[1][k] + tempFR[1][k]) + penFact*normY*( normX*(tempFL[0][k] - tempFR[0][k]) + normY*(tempFL[1][k] - tempFR[1][k]) ) + params->tau*normY*(UL(fpt,k) - UR(fpt,k));
+            double dF0 = tempFL[0][k] - tempFR[0][k];
+            double dF1 = tempFL[1][k] - tempFR[1][k];
+            double dU = UL(fpt,k) - UR(fpt,k);
+            Fc[0][k] = 0.5*(tempFL[0][k] + tempFR[0][k]) + penFact*normX*( normX*(dF0) + normY*(dF1) ) + params->tau*normX*(dU);
+            Fc[1][k] = 0.5*(tempFL[1][k] + tempFR[1][k]) + penFact*normY*( normX*(dF0) + normY*(dF1) ) + params->tau*normY*(dU);
           }
         }
         else if (nDims == 3) {
           for(int k=0; k<nFields; k++) {
-            Fc(0,k) = 0.5*(tempFL[0][k] + tempFR[0][k]) + penFact*normX*( normX*(tempFL[0][k] - tempFR[0][k]) + normY*(tempFL[1][k] - tempFR[1][k]) + normZ*(tempFL[2][k] - tempFR[2][k]) ) + params->tau*normX*(UL(fpt,k) - UR(fpt,k));
-            Fc(1,k) = 0.5*(tempFL[0][k] + tempFR[0][k]) + penFact*normY*( normX*(tempFL[0][k] - tempFR[0][k]) + normY*(tempFL[1][k] - tempFR[1][k]) + normZ*(tempFL[2][k] - tempFR[2][k]) ) + params->tau*normY*(UL(fpt,k) - UR(fpt,k));
-            Fc(2,k) = 0.5*(tempFL[0][k] + tempFR[0][k]) + penFact*normZ*( normX*(tempFL[0][k] - tempFR[0][k]) + normY*(tempFL[1][k] - tempFR[1][k]) + normZ*(tempFL[2][k] - tempFR[2][k]) ) + params->tau*normZ*(UL(fpt,k) - UR(fpt,k));
+            double dF0 = tempFL[0][k] - tempFR[0][k];
+            double dF1 = tempFL[1][k] - tempFR[1][k];
+            double dF2 = tempFL[1][k] - tempFR[2][k];
+            double dU = UL(fpt,k) - UR(fpt,k);
+            Fc[0][k] = 0.5*(tempFL[0][k] + tempFR[0][k]) + penFact*normX*( normX*(dF0) + normY*(dF1) + normZ*(dF2) ) + params->tau*normX*(dU);
+            Fc[1][k] = 0.5*(tempFL[1][k] + tempFR[1][k]) + penFact*normY*( normX*(dF0) + normY*(dF1) + normZ*(dF2) ) + params->tau*normY*(dU);
+            Fc[2][k] = 0.5*(tempFL[2][k] + tempFR[2][k]) + penFact*normZ*( normX*(dF0) + normY*(dF1) + normZ*(dF2) ) + params->tau*normZ*(dU);
           }
         }
       }
@@ -278,7 +285,7 @@ void face::calcViscousFlux(void)
       // calculate normal flux from discontinuous solution at flux points
       for (int dim=0; dim<nDims; dim++)
         for(int k=0; k<nFields; k++)
-          Fn(fpt,k) += Fc(dim,k)*normL(fpt,dim);
+          Fn(fpt,k) += Fc[dim][k]*normL(fpt,dim);
     }
   }
   else if (params->equation == ADVECTION_DIFFUSION) {

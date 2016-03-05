@@ -656,7 +656,7 @@ void solver::calcInviscidFlux_spts(void)
     for (uint e = 0; e < nEles; e++) {
       inviscidFlux(&U_spts(spt,e,0), tempF, params);
 
-      if (params->motion)
+      if (params->motion || params->viscous)
       {
         /* --- Transformed later - just copy over --- */
         for (uint dim = 0; dim < nDims; dim++)
@@ -720,6 +720,7 @@ void solver::calcInviscidFlux_overset()
 
 void solver::calcViscousFlux_spts(void)
 {
+#pragma omp parallel for collapse(2)
   for (uint spt = 0; spt < nSpts; spt++) {
     for (uint e = 0; e < nEles; e++) {
       for (uint dim = 0; dim < nDims; dim++)
@@ -731,21 +732,20 @@ void solver::calcViscousFlux_spts(void)
       else
         viscousFluxAD(tempDU, tempF, params);
 
-      if (params->motion)
-      {
-        /* --- Transformed later - just copy over --- */
-        for (uint dim = 0; dim < nDims; dim++)
-          for (uint k = 0; k < nFields; k++)
-            F_spts(dim,spt,e,k) += tempF[dim][k];
-      }
-      else
-      {
-        /* --- Transform back to reference domain --- */
-        for (uint dim1 = 0; dim1 < nDims; dim1++) {
-          for (uint k = 0; k < nFields; k++) {
-            for (uint dim2 = 0; dim2 < nDims; dim2++) {
-              F_spts(dim1,spt,e,k) += JGinv_spts(spt,e,dim1,dim2)*tempF[dim2][k];
-            }
+      /* Add physical inviscid flux at spts */
+      for (uint dim = 0; dim < nDims; dim++)
+        for (uint k = 0; k < nFields; k++)
+          tempF[dim][k] += F_spts(dim,spt,e,k);
+
+      /* --- Transform back to reference domain --- */
+      for (uint dim1 = 0; dim1 < nDims; dim1++)
+        for (uint k = 0; k < nFields; k++)
+          F_spts(dim1,spt,e,k) = 0.;
+
+      for (uint dim1 = 0; dim1 < nDims; dim1++) {
+        for (uint k = 0; k < nFields; k++) {
+          for (uint dim2 = 0; dim2 < nDims; dim2++) {
+            F_spts(dim1,spt,e,k) += JGinv_spts(spt,e,dim1,dim2)*tempF[dim2][k];
           }
         }
       }

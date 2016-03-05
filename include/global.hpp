@@ -42,7 +42,10 @@
 #include <stdio.h>
 #include <algorithm>
 
+#ifdef _OMP
 #include <omp.h>
+#include "cblas.h"
+#endif
 
 #include "error.hpp"
 
