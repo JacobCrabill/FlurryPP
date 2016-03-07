@@ -340,6 +340,8 @@ void solver::update(bool PMG_Source)
 
 void solver::calcResidual(int step)
 {
+  if (nEles == 0) return;
+
   if (params->meshType == OVERSET_MESH && params->oversetMethod == 2) {
     oversetFieldInterp();
   }
@@ -1164,6 +1166,8 @@ void solver::moveMesh(int step)
 
 void solver::setPosSptsFpts(void)
 {
+  if (nEles == 0) return;
+
   for (uint npt = 0; npt < nNodes; npt++)
     for (uint e = 0; e < Geo->nEles; e++)
       for (uint dim = 0; dim < nDims; dim++)
@@ -1217,6 +1221,8 @@ void solver::setPosSptsFpts(void)
 
 void solver::updatePosSptsFpts(void)
 {
+  if (nEles == 0) return;
+
 #pragma omp parallel for collapse(3)
   for (uint npt = 0; npt < nNodes; npt++)
     for (uint e = 0; e < Geo->nEles; e++)
@@ -1265,6 +1271,8 @@ void solver::updatePosSptsFpts(void)
 
 void solver::updateGridVSptsFpts(void)
 {
+  if (nEles == 0) return;
+
 #pragma omp parallel for collapse(3)
   for (uint npt = 0; npt < nNodes; npt++)
     for (uint e = 0; e < Geo->nEles; e++)

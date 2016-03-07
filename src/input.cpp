@@ -479,6 +479,8 @@ void input::readInputFile(char *filename)
       exps0 = 0.0*pBound/(pow(rhoBound,gamma));
     }
 
+    oneOverS = pow(rhoBound,gamma)/pBound;
+
     // Calculate U_infinity for force-coefficient normalization
     if (nDims==2) wBound = 0;
     Uinf = sqrt(uBound*uBound+vBound*vBound+wBound*wBound);

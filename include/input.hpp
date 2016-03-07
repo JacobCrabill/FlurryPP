@@ -183,6 +183,8 @@ public:
 
   double TWall;
 
+  double oneOverS;  //! Precompute for characteristic boundary condition
+
   // Viscous Boundary Conditions / Initial Conditions
   double nxBound, nyBound, nzBound;
   double MachBound;

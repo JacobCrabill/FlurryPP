@@ -2338,6 +2338,7 @@ void geo::partitionMesh(void)
 #ifndef _NO_MPI
 
   if (nproc <= 1) {
+    cout << "Geo: Number of elements globally: " << nEles << endl;
     gridComm = MPI_COMM_WORLD;
     return;
   }
@@ -2347,14 +2348,15 @@ void geo::partitionMesh(void)
     rank = gridRank;
     nproc = nProcGrid;
 
+    if (rank == 0) cout << "Geo: Number of elements in block " << gridID << " : " << nEles << endl;
+
     if (nproc <= 1) return; // No additional partitioning needed
 
-    if (rank == 0) cout << "Geo: Partitioning mesh block " << gridID << " across " << nProcGrid << " processes" << endl;
-    if (rank == 0) cout << "Geo:   Number of elements in block " << gridID << " : " << nEles << endl;
+    if (rank == 0) cout << "     Partitioning mesh block " << gridID << " across " << nProcGrid << " processes" << endl;
   }
   else {
-    if (rank == 0) cout << "Geo: Partitioning mesh across " << nproc << " processes" << endl;
-    if (rank == 0) cout << "Geo:   Number of elements globally: " << nEles << endl;
+    if (rank == 0) cout << "Geo: Number of elements globally: " << nEles << endl;
+    if (rank == 0) cout << "     Partitioning mesh across " << nproc << " processes" << endl;
 
     gridComm = MPI_COMM_WORLD;
   }

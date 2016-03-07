@@ -279,7 +279,7 @@ void boundFace::applyBCs(void)
         // Inflow
         if (vnL<0) {
           // HACK
-          one_over_s = pow(params->rhoBound,gamma)/params->pBound;
+          one_over_s = params->oneOverS;
 
           // freestream total enthalpy
           vSq = 0.;
