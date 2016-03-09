@@ -1965,7 +1965,7 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
           for (int i=0; i<(order+1); i++) {
             ss >> tmp;
             for (int j=0; j<(order+1); j++) {
-              ss >> U_spts(j+i*(order+1),0);
+              ss >> tempU(j+i*(order+1),0);
             }
             ss >> tmp;
           }
@@ -1984,7 +1984,7 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
             for (int j=0; j<(order+1); j++) {
               ss >> tmp;
               for (int i=0; i<(order+1); i++) {
-                ss >> U_spts(i+(order+1)*(j+(order+1)*k),0);
+                ss >> tempU(i+(order+1)*(j+(order+1)*k),0);
               }
               ss >> tmp;
             }
