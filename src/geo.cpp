@@ -1182,10 +1182,10 @@ void geo::readGmsh(string fileName)
 
         case 10:
           // quadratic (9-node Lagrange) quadrangle (read as 8-node serendipity)
-          c2nv.push_back(8);
+          c2nv.push_back(9);
           c2nf.push_back(4);
           ctype.push_back(QUAD);
-          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+          for (int i = 0; i < 9; i++) meshFile >> c2v_tmp[i];
           break;
 
         case 36:

@@ -119,8 +119,9 @@ void intFace::getRightState(void)
       UR(fpt,j) = (eR->U_fpts(fptR[fpt],j));
     }
 
-    // For dynamic grids, need to update geometry-related data
-    if ((params->iter == params->initIter+1) || (params->motion != 0)) {
+    /* For dynamic grids (besides rigid translation), need to update
+     * geometry-related data on every iteration, not just during setup */
+    if ((params->iter <= params->initIter+1) || (params->motion != 0 && params->motion != 4)) {
       for (int dim=0; dim<nDims; dim++) {
         normR(fpt,dim) = (eR->norm_fpts(fptR[fpt],dim));
       }
@@ -146,6 +147,8 @@ void intFace::setRightStateFlux(void)
   for (int i=0; i<nFptsR; i++)
     for (int j=0; j<nFields; j++)
       FnR[i][j] = -Fn(i,j)*dAR[i]; // opposite normal direction
+
+
 }
 
 void intFace::setRightStateSolution(void)

@@ -305,8 +305,6 @@ void solver::update(bool PMG_Source)
 {
   /* Intermediate residuals for Runge-Kutta time integration */
 
-  if (params->dtType != 0) calcDt();
-
   for (int step=0; step<nRKSteps-1; step++) {
     params->rkTime = params->time + params->RKa[step]*params->dt;
 
@@ -315,6 +313,8 @@ void solver::update(bool PMG_Source)
     if (step == 0) copyUspts_U0(); // Store starting values for RK method
 
     calcResidual(step);
+
+    if (step == 0 && params->dtType != 0) calcDt();
 
     timeStepA(step, PMG_Source);
   }
@@ -330,6 +330,8 @@ void solver::update(bool PMG_Source)
   // Reset solution to initial-stage values
   if (nRKSteps>1)
     copyU0_Uspts();
+  else if (params->dtType != 0)
+    calcDt();
 
   for (int step=0; step<nRKSteps; step++)
     timeStepB(step, PMG_Source);
@@ -421,6 +423,11 @@ void solver::calcResidual(int step)
 
 void solver::calcDt(void)
 {
+  if (params->iter == params->initIter+1) {
+    for (uint i = 0; i < nEles; i++)
+      eles[i]->calcWaveSpFpts();
+  }
+
   double dt = INFINITY;
 
 #pragma omp parallel for reduction(min:dt)
@@ -873,14 +880,14 @@ void solver::calcDivF_spts(int step)
 
   auto &C = divF_spts[step](0,0,0);
 
-  auto &A = opers[order].opp_grad_spts[0](0,0);
-  auto &B = F_spts(0,0,0,0);
+  auto &A0 = opers[order].opp_grad_spts[0](0,0);
+  auto &B0 = F_spts(0,0,0,0);
 #ifdef _OMP
   omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
               1.0, &A, k, &B, n, 0.0, &C, n);
 #else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
-              1.0, &A, k, &B, n, 0.0, &C, n);
+              1.0, &A0, k, &B0, n, 0.0, &C, n);
 #endif
 
   for (uint dim = 1; dim < nDims; dim++) {

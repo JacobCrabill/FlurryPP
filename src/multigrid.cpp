@@ -84,7 +84,7 @@ void multiGrid::setup(int order, input *params, solver &Solver)
     fine_grid = make_shared<geo>();
     setup_h_level(coarse_grid, *fine_grid, params->n_h_levels);
     Solver.setup(params, order, &(*fine_grid));
-    Solver.initializeSolution();
+    Solver.initializeSolution(false);
 
     /* Instantiate P-grid solvers using finest mesh */
     for (int P = 0; P < order; P++)
@@ -122,6 +122,7 @@ void multiGrid::setup(int order, input *params, solver &Solver)
         if (params->rank == 0) cout << endl << "P-Multigrid: Setting up P = " << P << endl;
 
         pInputs[P].dataFileName += "_P" + std::to_string(P) + "_";
+        pInputs[P].order = P;
         pGrids[P] = make_shared<solver>();
         pGrids[P]->setup(&pInputs[P], P);
         pGrids[P]->initializeSolution(true);
@@ -130,13 +131,8 @@ void multiGrid::setup(int order, input *params, solver &Solver)
 
     if (params->rank == 0) cout << endl << "P-Multigrid: Setting up P = " << params->order << endl;
     Solver.setup(params, params->order);
-    Solver.initializeSolution();
+    Solver.initializeSolution(false);
   }
-
-  /* Still some weird bug in initialization of PMG solvers; this is a
-   * workaround for the moment */
-  cycle(Solver);
-  Solver.initializeSolution();
 }
 
 void multiGrid::setup_h_level(geo &mesh_c, geo &mesh_f, int refine_level)

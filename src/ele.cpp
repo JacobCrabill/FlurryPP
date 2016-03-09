@@ -1315,12 +1315,12 @@ void ele::calcWaveSpFpts(void)
 
 double ele::calcDt(void)
 {
-  double waveSp = 0;
+  double waveSp = 1e-3;
   for (int fpt=0; fpt<nFpts; fpt++)
     if (dA_fpts(fpt) > 0) // ignore collapsed edges
       waveSp = max(waveSp,waveSp_fpts[fpt]);
 
-  dt = (params->CFL) * getCFLLimit(order) * (2.0 / (waveSp+1.e-10));
+  dt = (params->CFL) * getCFLLimit(order) * (2.0 / waveSp);
   return dt;
 }
 
@@ -1918,10 +1918,10 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
 
   // Move on to the first <DataArray>
 
-  matrix<double>  tempU(nSpts,nDims);
+  matrix<double>  tempU(nSpts,nFields);
 
   if (params->equation == NAVIER_STOKES) {
-    matrix<double> tempV(nSpts,nDims);
+    matrix<double> tempV(nSpts,nFields);
     vector<double> tempP(nSpts);
 
     bool foundRho = false;

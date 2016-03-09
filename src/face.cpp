@@ -125,8 +125,9 @@ void face::getLeftState()
       UL(fpt,j) = (eL->U_fpts(i,j));
     }
 
-    // For dynamic grids, need to update geometry-related data
-    if ((params->iter <= params->initIter+1) || (params->motion != 0)) {
+    /* For dynamic grids (besides rigid translation), need to update
+     * geometry-related data on every iteration, not just during setup */
+    if ((params->iter <= params->initIter+1) || (params->motion != 0 && params->motion != 4)) {
       for (int dim=0; dim<nDims; dim++) {
         normL(fpt,dim) = (eL->norm_fpts(i,dim));
       }
@@ -169,7 +170,8 @@ void face::calcInviscidFlux(void)
   }
   else if (params->equation == NAVIER_STOKES) {
     if (isBnd) {
-      centralFluxBound();
+      //centralFluxBound();
+      rusanovFlux();
     } else {
       if (params->riemannType==0) {
         rusanovFlux();
