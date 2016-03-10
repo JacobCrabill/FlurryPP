@@ -316,7 +316,7 @@ void solver::update(bool PMG_Source)
 
     if (step == 0 && params->dtType != 0) calcDt();
 
-    timeStepA(step, PMG_Source);
+    timeStepA(step, params->RKa[step+1], PMG_Source);
   }
 
   /* Final Runge-Kutta time advancement step */
@@ -327,14 +327,22 @@ void solver::update(bool PMG_Source)
 
   calcResidual(nRKSteps-1);
 
-  // Reset solution to initial-stage values
-  if (nRKSteps>1)
-    copyU0_Uspts();
-  else if (params->dtType != 0)
-    calcDt();
+  if (params->timeType < 5)
+  {
+    // 'Normal' RK time-stepping: Reset solution to initial-stage values
+    if (nRKSteps>1)
+      copyU0_Uspts();
+    else if (params->dtType != 0)
+      calcDt();
 
-  for (int step=0; step<nRKSteps; step++)
-    timeStepB(step, PMG_Source);
+    for (int step=0; step<nRKSteps; step++)
+      timeStepB(step, PMG_Source);
+  }
+  else
+  {
+    // Jameson-style RK update
+    timeStepA(nRKSteps-1, params->RKa[nRKSteps], PMG_Source);
+  }
 
   params->time += params->dt;
 }
@@ -443,7 +451,7 @@ void solver::calcDt(void)
   params->dt = dt;
 }
 
-void solver::timeStepA(int step, bool PMG_Source)
+void solver::timeStepA(int step, double RKval, bool PMG_Source)
 {
   //! TODO
 //  if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
@@ -458,9 +466,9 @@ void solver::timeStepA(int step, bool PMG_Source)
       for (uint e = 0; e < nEles; e++) {
         for (uint k = 0; k < nFields; k++) {
           if (params->dtType != 2)
-            U_spts(spt,e,k) = U0(spt,e,k) - params->RKa[step+1] * (divF_spts[step](spt,e,k) + src_spts(spt,e,k)) / detJac_spts(spt,e) * params->dt;
+            U_spts(spt,e,k) = U0(spt,e,k) - RKval * (divF_spts[step](spt,e,k) + src_spts(spt,e,k)) / detJac_spts(spt,e) * params->dt;
           else
-            U_spts(spt,e,k) = U0(spt,e,k) - params->RKa[step+1] * (divF_spts[step](spt,e,k) + src_spts(spt,e,k)) / detJac_spts(spt,e) * eles[e]->dt;
+            U_spts(spt,e,k) = U0(spt,e,k) - RKval * (divF_spts[step](spt,e,k) + src_spts(spt,e,k)) / detJac_spts(spt,e) * eles[e]->dt;
         }
       }
     }
@@ -473,9 +481,9 @@ void solver::timeStepA(int step, bool PMG_Source)
       for (uint e = 0; e < nEles; e++) {
         for (uint k = 0; k < nFields; k++) {
           if (params->dtType != 2)
-            U_spts(spt, e, k) = U0(spt,e,k) - params->RKa[step+1] * divF_spts[step](spt,e,k) / detJac_spts(spt,e) * params->dt;
+            U_spts(spt, e, k) = U0(spt,e,k) - RKval * divF_spts[step](spt,e,k) / detJac_spts(spt,e) * params->dt;
           else
-            U_spts(spt, e, k) = U0(spt,e,k) - params->RKa[step+1] * divF_spts[step](spt,e,k) / detJac_spts(spt,e) * eles[e]->dt;
+            U_spts(spt, e, k) = U0(spt,e,k) - RKval * divF_spts[step](spt,e,k) / detJac_spts(spt,e) * eles[e]->dt;
         }
       }
     }

@@ -1079,18 +1079,22 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>
          *   transform as required. */
         if (!correctedEles.count(ic)) {
           correctedEles.insert(ic);
+
           Array<double,3> tempF_spts(nDims,nSpts,nFields);
           matrix<double> norm_fpts(nFpts,nDims), tempFn_fpts(nFpts,nFields);
           vector<double> dA_fpts(nFpts);
+
           for (uint dim = 0; dim < nDims; dim++)
             for (uint spt = 0; spt < nSpts; spt++)
               for (uint k = 0; k < nFields; k++)
                 tempF_spts(dim,spt,k) = eles[ic]->F_spts(dim,spt,k);
+
           for (uint fpt = 0; fpt < nFpts; fpt++) {
             dA_fpts[fpt] = eles[ic]->dA_fpts(fpt);
             for (uint dim = 0; dim < nDims; dim++)
               norm_fpts(fpt,dim) = eles[ic]->norm_fpts(fpt,dim);
           }
+
           if (params->motion) {
             opers[eles[ic]->order].applyExtrapolateFn(tempF_spts,norm_fpts,tempFn_fpts,dA_fpts);
           } else {
@@ -1124,6 +1128,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>
         for (uint fpt = 0; fpt < nFpts; fpt++)
           for (uint k = 0; k < nFields; k++)
             deltaFn(fpt,k) = eles[ic]->Fn_fpts(fpt,k) - eles[ic]->disFn_fpts(fpt,k);
+
         matrix<double> tempF_ref = opers[eles[ic]->order].interpolateCorrectedFlux(tempF_spts, deltaFn, refPos);
 
         vector<double> tempU(nFields);
@@ -1245,7 +1250,7 @@ void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, o
         tempDU_spts = eles[ic]->transformGradU_physToRef();
       } else {
         for (uint dim = 0; dim < params->nDims; dim++)
-          for (uint spt = 0; spt < eles[ic]->nSpts; spt++)
+          for (uint spt = 0; spt < nSpts; spt++)
             for (uint k = 0; k < params->nFields; k++)
               tempDU_spts[dim](spt,k) = eles[ic]->dU_spts(dim,spt,k);
       }

@@ -467,6 +467,11 @@ void input::readInputFile(char *filename)
       RKa = {0., .5, .5, 1.};
       RKb = {1./6., 1./3., 1./3., 1./6.};
       break;
+    case 5:
+      nRKSteps = 4;
+      RKa = {0., 1./4., 1./3., 1./2., 1.0};
+      RKb = {0.};
+      break;
     default:
       FatalError("Time-Stepping type not supported.");
   }

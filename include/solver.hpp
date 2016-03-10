@@ -170,7 +170,7 @@ public:
   /*! Advance solution in time - Generate intermediate RK stage
    * \param PMG_source: If true, add PMG source term
    */
-  void timeStepA(int step, bool PMG_Source = false);
+  void timeStepA(int step, double RKval, bool PMG_Source = false);
 
   /*! Advance solution in time - Final RK stage [assemble intermediate stages]
    * \param PMG_source: If true, add PMG source term
