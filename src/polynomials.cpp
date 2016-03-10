@@ -38,11 +38,10 @@ using namespace std;
 
 double Lagrange(vector<double> &x_lag, double y, uint mode)
 {
-  uint i;
   double lag = 1.0;
 
-  for(i=0; i<x_lag.size(); i++) {
-    if(i!=mode) {
+  for (uint i = 0; i < x_lag.size(); i++) {
+    if (i != mode) {
       lag = lag*((y-x_lag[i])/(x_lag[mode]-x_lag[i]));
     }
   }
@@ -119,17 +118,14 @@ double ddLagrange(vector<double> &x_lag, double y, uint mode)
 
 double Legendre(double in_r, int in_mode)
 {
-  double leg = 0.;
-
-  if(in_mode==0) {
-    leg = 1.0;
-  } else if(in_mode==1) {
-    leg = in_r;
-  } else {
-    leg = ((2*in_mode-1)*in_r*Legendre(in_r,in_mode-1)-(in_mode-1)*Legendre(in_r,in_mode-2)) / in_mode;
-  }
-
-  return leg;
+  if (in_mode < 0)
+    return 0.;
+  else if (in_mode==0)
+    return 1.0;
+  else if (in_mode==1)
+    return in_r;
+  else
+    return ((2*in_mode-1)*in_r*Legendre(in_r,in_mode-1)-(in_mode-1)*Legendre(in_r,in_mode-2)) / in_mode;
 }
 
 double dLegendre(double in_r, int in_mode)
