@@ -71,10 +71,10 @@ public:
   void setup(input* params, bool HMG = false);
 
   //! Multigrid-specific setup function [from mesh-refinement method]
-  void setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, const vector<int> &_gridIdList = {0}, const vector<int>& _epart = {-1});
+  void setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, int nSplit, const vector<int> &_gridIdList = {0}, const vector<int>& _epart = {-1});
 
   //! Take the basic connectivity data and generate the rest
-  void processConnectivity();
+  void processConnectivity(int HMG_nSplit = 0);
 
   //! Create the elements and faces needed for the simulation
   void setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec, vector<shared_ptr<overFace> >& overFacesVec);
@@ -91,7 +91,7 @@ public:
   void createMesh();
 
   //! Update connectivity / node-blanking for overset grids
-  void setupOverset3D();
+  void setupOverset3D(void);
 
   /*!
    * \brief Call TIOGA to re-process overset connectivity

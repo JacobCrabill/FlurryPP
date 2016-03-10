@@ -479,8 +479,6 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
         }
         if (nfringe == c2nv[ic]) {
           iblankEle[ic] = FRINGE;
-//        } else if (nfringe > 0) {
-//          iblankEle1[ic] = FRINGE;
         }
       }
     }

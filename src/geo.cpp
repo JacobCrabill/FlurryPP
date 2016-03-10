@@ -116,7 +116,7 @@ void geo::setup(input* params, bool HMG)
   }
 }
 
-void geo::setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, const vector<int> &_gridIdList, const vector<int> &_epart)
+void geo::setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, int nSplit, const vector<int> &_gridIdList, const vector<int> &_epart)
 {
   this->params = params;
 
@@ -144,10 +144,10 @@ void geo::setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, c
     partitionFromEpart(_epart);
 #endif
 
-  processConnectivity();
+  processConnectivity(nSplit);
 }
 
-void geo::processConnectivity()
+void geo::processConnectivity(int HMG_nSplit)
 {
   if (params->rank==0) cout << "Geo: Processing element connectivity" << endl;
 
@@ -167,6 +167,26 @@ void geo::processConnectivity()
       setupOverset3D();
     else
       setupOverset2D();
+
+    if (HMG_nSplit) {
+      // 'Fix' iblankCell to match lower levels - bring back 'normal' cells
+      for (uint ec = 0; ec < nEles / HMG_nSplit; ec++) {
+        int num_blanked = 0;
+        for (uint j = 0; j < HMG_nSplit; j++)
+          if (iblankCell[ec*HMG_nSplit+j] != NORMAL)
+            num_blanked++;
+
+        if (num_blanked != HMG_nSplit)
+          for (uint j = 0; j < HMG_nSplit; j++)
+            iblankCell[ec*HMG_nSplit+j] = NORMAL;
+      }
+
+      fringeCells.clear();
+      for (int ic=0; ic<nEles; ic++) {
+        if (iblankCell[ic] == FRINGE)
+          fringeCells.insert(ic);
+      }
+    }
 
     setFaceIblanks();
 

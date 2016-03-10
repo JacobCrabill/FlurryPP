@@ -47,6 +47,8 @@ void multiGrid::setup(int order, input *params, solver &Solver)
   pInputs.assign(order, *params);
   pGrids.resize(order);
 
+  if (params->HMG && params->n_h_levels == 0) params->HMG = 0;
+
   /* H-P Multigrid using Refinement Method */
   if (params->HMG)
   {
@@ -98,10 +100,11 @@ void multiGrid::setup(int order, input *params, solver &Solver)
         if (params->rank == 0) cout << endl << "P-Multigrid: Setting up P = " << P << endl;
 
         pInputs[P].dataFileName += "_P" + std::to_string(P) + "_";
-        pGeos[P] = make_shared<geo>(*fine_grid);
         pGrids[P] = make_shared<solver>();
+        pGeos[P] = make_shared<geo>();
 
-        pGeos[P]->setup_hmg(&pInputs[P], fine_grid->gridID, fine_grid->gridRank, fine_grid->nProcGrid, fine_grid->gridIdList);
+        setup_h_level(coarse_grid, *pGeos[P], params->n_h_levels);
+
         pGrids[P]->setup(&pInputs[P], P, &(*pGeos[P]));
         pGrids[P]->initializeSolution(true);
       }
@@ -142,12 +145,12 @@ void multiGrid::setup_h_level(geo &mesh_c, geo &mesh_f, int refine_level)
   else
     mesh_f = mesh_c;
 
+  int nSplit = 1 << params->nDims;
+  nSplit = std::pow(nSplit, refine_level);
+
   vector<int> epart(0);
 #ifndef _NO_MPI
   if (mesh_c.nproc > 1) {
-    int nSplit = 1 << params->nDims;
-    nSplit = std::pow(nSplit, refine_level);
-
     epart.resize(mesh_f.nEles);
     for (uint e = 0; e < mesh_f.nEles; e++) {
       epart[e] = mesh_c.epart[e/nSplit];
@@ -155,7 +158,7 @@ void multiGrid::setup_h_level(geo &mesh_c, geo &mesh_f, int refine_level)
   }
 #endif
 
-  mesh_f.setup_hmg(params, mesh_c.gridID, mesh_c.gridRank, mesh_c.nProcGrid, mesh_c.gridIdList, epart);
+  mesh_f.setup_hmg(params, mesh_c.gridID, mesh_c.gridRank, mesh_c.nProcGrid, nSplit, mesh_c.gridIdList, epart);
 }
 
 void multiGrid::cycle(solver &Solver)
@@ -391,14 +394,20 @@ void multiGrid::restrict_hmg(solver &grid_f, solver &grid_c, uint H)
         grid_c.divF_spts[0](spt,ec,k) = 0;
       }
 
+      double vol = 0;
       for (uint j = 0; j < nSplit; j++) {
         uint ef = ec*nSplit+j;
+        vol += grid_f.detJac_spts(spt,ef);
         for (uint k = 0; k < grid_c.nFields; k++) {
-          grid_c.U_spts(spt,ec,k) += grid_f.U_spts(spt,ef,k) / nSplit;
-          grid_c.divF_spts[0](spt,ec,k) += grid_f.divF_spts[0](spt,ef,k) / nSplit; // / nSplit <-- Jameson doesn't average divF, he sums
+          grid_c.U_spts(spt,ec,k) += grid_f.U_spts(spt,ef,k) * grid_f.detJac_spts(spt,ef);
+          grid_c.divF_spts[0](spt,ec,k) += grid_f.divF_spts[0](spt,ef,k) * grid_f.detJac_spts(spt,ef); // / nSplit <-- Jameson doesn't average divF, he sums
         }
       }
 
+      for (uint k = 0; k < grid_c.nFields; k++) {
+        grid_c.U_spts(spt,ec,k) /= vol;
+        grid_c.divF_spts[0](spt,ec,k) /= vol;
+      }
     }
   }
 }
