@@ -458,18 +458,30 @@ void input::readInputFile(char *filename)
 
   switch (timeType) {
     case 0:
+      // Forward Euler
       nRKSteps = 1;
       RKa = {0};
       RKb = {1};
       break;
     case 4:
+      // RK44
       nRKSteps = 4;
       RKa = {0., .5, .5, 1.};
       RKb = {1./6., 1./3., 1./3., 1./6.};
       break;
     case 5:
+      // Equivalent to RK44, but in different format
       nRKSteps = 4;
       RKa = {0., 1./4., 1./3., 1./2., 1.0};
+      RKb = {0.};
+      break;
+    case 6:
+      // High-wavenumber-damping steady-state schemes
+      nRKSteps = 4;
+      if (order<=2)
+        RKa = {0., .153, .442, .931, 1.0}; // Josh's secret-sauce P=2 optimal coeffs
+      else
+        RKa = {0., .158, .477, 1., 1.}; // Josh's secret-sauce P=3 optimal coeffs
       RKb = {0.};
       break;
     default:

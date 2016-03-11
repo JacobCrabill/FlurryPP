@@ -432,6 +432,7 @@ void solver::calcResidual(int step)
 void solver::calcDt(void)
 {
   if (params->iter == params->initIter+1) {
+#pragma omp parallel for
     for (uint i = 0; i < nEles; i++)
       eles[i]->calcWaveSpFpts();
   }
@@ -669,6 +670,8 @@ void solver::extrapolateSFpts(void)
 
 void solver::calcInviscidFlux_spts(void)
 {
+  double tempF[3][5];
+#pragma omp parallel for collapse(2) private(tempF)
   for (uint spt = 0; spt < nSpts; spt++) {
     for (uint e = 0; e < nEles; e++) {
       inviscidFlux(&U_spts(spt,e,0), tempF, params);
@@ -737,6 +740,7 @@ void solver::calcInviscidFlux_overset()
 
 void solver::calcViscousFlux_spts(void)
 {
+  double tempF[3][5];
 #pragma omp parallel for collapse(2)
   for (uint spt = 0; spt < nSpts; spt++) {
     for (uint e = 0; e < nEles; e++) {
@@ -892,7 +896,7 @@ void solver::calcDivF_spts(int step)
   auto &B0 = F_spts(0,0,0,0);
 #ifdef _OMP
   omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
-              1.0, &A, k, &B, n, 0.0, &C, n);
+              1.0, &A0, k, &B0, n, 0.0, &C, n);
 #else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
               1.0, &A0, k, &B0, n, 0.0, &C, n);
@@ -1597,14 +1601,24 @@ vector<double> solver::integrateError(void)
   auto &B = U_spts(0,0,0);
   auto &C = U_qpts(0,0,0);
 
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
               1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
 
   n = nEles;
   auto &B1 = detJac_spts(0,0);
   auto &C1 = detJac_qpts(0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B1, n, 0.0, &C1, n);
+#else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
               1.0, &A, k, &B1, n, 0.0, &C1, n);
+#endif
 
   /* Integrate error over each element */
 
