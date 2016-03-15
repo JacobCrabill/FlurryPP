@@ -558,6 +558,8 @@ void input::nonDimensionalize(void)
 
   TWall = TWall / Tref;
 
+  oneOverS = pow(rhoBound,gamma)/pBound;
+
   rhoIC = rhoBound;
   vxIC = uBound;
   vyIC = vBound;

@@ -257,7 +257,7 @@ void boundFace::applyBCs(void)
       }
 
       // Characteristic [Copied from HiFiLES]
-      else if (bcType == CHAR) {
+      else if (bcType == CHAR_INOUT) {
         double one_over_s;
         double h_free_stream;
 
@@ -431,7 +431,7 @@ vector<double> boundFace::computeMassFlux(void)
 {
   vector<double> flux(nFields);
 
-  if (bcType == CHAR || bcType == SUP_IN || bcType == SUP_OUT || bcType == SUB_IN || bcType == SUB_OUT) {
+  if (bcType == CHAR_INOUT || bcType == SUP_IN || bcType == SUP_OUT || bcType == SUB_IN || bcType == SUB_OUT) {
     int order;
     if (params->nDims == 2)
       order = nFptsL-1;

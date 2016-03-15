@@ -3,11 +3,11 @@
 # =============================================================
 equation      1    (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
 order         2    (Polynomial order to use)
-timeType      4    (0: Forward Euler, 4: RK44)
-dtType        1    (0: Fixed, 1: CFL-based)
+timeType      6    (0: Forward Euler, 4: RK44)
+dtType        2    (0: Fixed, 1: CFL-based)
 CFL           .3
 dt            .0001
-iterMax       1000
+iterMax       5000
 maxTime       1000
 restart       0
 restartIter   3000
@@ -16,6 +16,9 @@ viscous       1   (0: Inviscid, 1: Viscous)
 motion        0   (0: Static, 1: Perturbation test case)
 riemannType   0   (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
 nDims         2
+
+PMG         1
+smoothSteps 2
 
 # =============================================================
 # Initial Condition
@@ -28,8 +31,8 @@ testCase     0
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        1000   (Frequency to write plot files)
-monitorResFreq  100    (Frequency to print residual to terminal)
+plotFreq        200   (Frequency to write plot files)
+monitorResFreq  50    (Frequency to print residual to terminal)
 resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    viscCyl    (Filename prefix for output files)
 entropySensor   0      (Calculate & plot entropy-error sensor)
@@ -65,10 +68,10 @@ meshFileName   cylinder_visc.msh
 # Gmsh Boundary Conditions
 # List each Gmsh boundary:  'mesh_bound <Gmsh_Physical_Name> <Flurry_BC>'
 #                     i.e.   mesh_bound  airfoil  slip_wall
-mesh_bound   bottom   sup_in
-mesh_bound   top      sup_in
-mesh_bound   left     sup_in
-mesh_bound   right    sup_out
+mesh_bound   bottom   char
+mesh_bound   top      char
+mesh_bound   left     char
+mesh_bound   right    char
 mesh_bound   circle   adiabatic_noslip
 mesh_bound   fluid    fluid
 
