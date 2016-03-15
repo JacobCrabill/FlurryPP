@@ -99,6 +99,7 @@
 			<Option target="Debug" />
 		</Unit>
 		<Unit filename="include/mpiFace.hpp" />
+		<Unit filename="include/multigrid.hpp" />
 		<Unit filename="include/operators.hpp" />
 		<Unit filename="include/output.hpp" />
 		<Unit filename="include/overComm.hpp" />
@@ -199,6 +200,7 @@
 		<Unit filename="src/intFace.cpp" />
 		<Unit filename="src/matrix.cpp" />
 		<Unit filename="src/mpiFace.cpp" />
+		<Unit filename="src/multigrid.cpp" />
 		<Unit filename="src/operators.cpp" />
 		<Unit filename="src/output.cpp" />
 		<Unit filename="src/overComm.cpp" />
