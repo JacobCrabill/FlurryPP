@@ -33,7 +33,12 @@
 #include <sstream>
 #include <omp.h>
 
+#ifdef _MKL_BLAS
+#include "mkl_types.h"
+#include "mkl_cblas.h"
+#else
 #include "cblas.h"
+#endif
 
 #include "input.hpp"
 #include "output.hpp"
@@ -70,7 +75,7 @@ void multiGrid::setup(int order, input *params, solver &Solver)
     {
       if (params->rank == 0) cout << endl << "H-Multigrid: Setting up H = " << H << endl;
 
-      hInputs[H].dataFileName += "_H" + std::to_string(H) + "_";
+      hInputs[H].dataFileName += "_H" + std::to_string((long long)H) + "_";
       hGrids[H] = make_shared<solver>();
       hGeos[H] = make_shared<geo>();
 
@@ -93,13 +98,13 @@ void multiGrid::setup(int order, input *params, solver &Solver)
     {
       if (P < params->lowOrder)
       {
-        pGrids[P] = NULL;
+        //pGrids[P] = NULL;
       }
       else
       {
         if (params->rank == 0) cout << endl << "P-Multigrid: Setting up P = " << P << endl;
 
-        pInputs[P].dataFileName += "_P" + std::to_string(P) + "_";
+        pInputs[P].dataFileName += "_P" + std::to_string((long long)P) + "_";
         pGrids[P] = make_shared<solver>();
         pGeos[P] = make_shared<geo>();
 
@@ -118,13 +123,13 @@ void multiGrid::setup(int order, input *params, solver &Solver)
     {
       if (P < params->lowOrder)
       {
-        pGrids[P] = NULL;
+        //pGrids[P] = NULL;
       }
       else
       {
         if (params->rank == 0) cout << endl << "P-Multigrid: Setting up P = " << P << endl;
 
-        pInputs[P].dataFileName += "_P" + std::to_string(P) + "_";
+        pInputs[P].dataFileName += "_P" + std::to_string((long long)P) + "_";
         pInputs[P].order = P;
         pGrids[P] = make_shared<solver>();
         pGrids[P]->setup(&pInputs[P], P);

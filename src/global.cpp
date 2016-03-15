@@ -35,10 +35,6 @@
 #include "mpi.h"
 #endif
 
-#ifdef _OMP
-#include "cblas.h"
-#endif
-
 /* --- Misc. Common Constants --- */
 
 //! Maps a boundary-condition string to its integer enum
@@ -48,7 +44,7 @@ map<string,int> bcStr2Num = {
   {"none", NONE},
   {"fluid", NONE},
   {"periodic", PERIODIC},
-  {"char", CHAR},
+  {"char", CHAR_INOUT},
   {"sup_in", SUP_IN},
   {"sup_out", SUP_OUT},
   {"sub_in", SUB_IN},
