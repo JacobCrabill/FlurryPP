@@ -1367,6 +1367,43 @@ vector<double> solver::computeMassFlux(void)
 {
   vector<double> flux(params->nFields);
 
+//  auto weights = getQptWeights1D(order);
+
+//  for (uint i = 0; i < faces.size(); i++) {
+//    auto iface = faces[i];
+//    if (iface->isBnd && abs(abs(iface->normL(0,0))-1.0) < 1e-10) {
+//      point pt1 = iface->eL->getPosFpt(iface->fptStartL);
+//      if (pt1.x > -1) continue;
+//      for (uint j = i+1; j < faces.size(); j++) {
+//        auto jface = faces[j];
+//        if (jface->isBnd && abs(abs(jface->normL(0,0))-1.0) < 1e-10) {
+//          point pt2 = jface->eL->getPosFpt(jface->fptStartL+order);
+//          if (pt2.x < 1) continue;
+
+//          int offset = order;
+//          int stride = -1;
+//          if (std::abs(pt1.y - pt2.y) > 1e-4) {
+//            pt2 = jface->eL->getPosFpt(jface->fptStartL);
+//            if (std::abs(pt1.y - pt2.y) > 1e-4) {
+//              continue;
+//            } else {
+//              offset = 0;
+//              stride = 1;
+//            }
+//          }
+
+//          for (uint fpt = 0; fpt < order+1; fpt++) {
+//            for (uint k = 0; k < params->nFields; k++) {
+//              double tmpf = (iface->Fn(fpt,k)*iface->dAL[fpt]*iface->normL(fpt,0) - jface->Fn(offset+stride*fpt,k)*jface->dAL[offset+stride*fpt]*jface->normL(offset+stride*fpt,0));
+//              flux[k] += tmpf*tmpf*weights[fpt];
+//            }
+//          }
+
+//        }
+//      }
+//    }
+//  }
+
   for (uint i=0; i<faces.size(); i++) {
     auto fTmp = faces[i]->computeMassFlux();
 

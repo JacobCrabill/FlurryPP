@@ -450,8 +450,16 @@ vector<double> boundFace::computeMassFlux(void)
         weight = weights[ifpt]*weights[jfpt];
       }
 
-      for (int k=0; k<nFields; k++)
-        flux[k] += Fn(fpt,k)*weight;
+      if (params->errorNorm == 0) {
+        for (int k=0; k<nFields; k++)
+          flux[k] += Fn(fpt,k)*dAL[fpt]*weight;
+      } else if (params->errorNorm == 1) {
+        for (int k=0; k<nFields; k++)
+          flux[k] += std::abs(Fn(fpt,k))*dAL[fpt]*weight*normL(fpt,0);
+      } else if (params->errorNorm == 2) {
+        for (int k=0; k<nFields; k++)
+          flux[k] += (Fn(fpt,k)*dAL[fpt])*(Fn(fpt,k)*dAL[fpt])*weight*normL(fpt,0);
+      }
     }
   }
 

@@ -143,7 +143,7 @@ public:
   vector<int> rightParams;
   struct faceInfo myInfo;
 
-protected:
+//protected:
   shared_ptr<ele> eL;
   shared_ptr<ele> eR;
 
@@ -168,4 +168,6 @@ protected:
 
   int isMPI;  //! Flag for MPI faces to separate communication from flux calculation
   int isBnd;  //! Flag for boundary faces for use in LDG routines
+
+  int bcType;
 };
