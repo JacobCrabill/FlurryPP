@@ -35,7 +35,11 @@
 class intFace;
 class boundFace;
 
+#ifdef _MKL_BLAS
+#include "mkl_cblas.h"
+#else
 #include "cblas.h"
+#endif
 
 #include "flux.hpp"
 #include "input.hpp"

@@ -5,26 +5,36 @@
 #          make openmp
 #############################################################################
 
-include build.config
+#include configfiles/default.config
+include configfiles/centos_intel.config
 
 ####### Compiler, tools and options
 
-CXX           = g++
-F90           = mpif90
-LINK          = g++
-MPICXX        = mpicxx
-MPILD         = mpicxx
 LIBS          = $(SUBLIBS)
 
 TIOGA_INC   = ./lib/tioga/src
 
 CXX_BASE    = -pipe -Wunused-parameter -Wuninitialized -std=c++11 -I./include -I$(TIOGA_INC) $(DEFINES)
 
-CXX_BLAS = -I$(BLAS_DIR) -L$(BLAS_DIR)
+CXX_BLAS = -I$(BLAS_INC_DIR) -L$(BLAS_LIB_DIR)
 ifeq ($(strip $(BLAS_TYPE)),ATLAS)
+	# --- ATLAS BLAS ---
   LD_BLAS = -L$(BLAS_LIB_DIR) -latlas -lcblas
 else
+ifeq ($(strip $(BLAS_TYPE)),MKL)
+	# --- MKL BLAS ---
+  ifeq ($(strip $(MPI)),YES)
+	  # Serial BLAS [For use with MPI]
+	  LD_BLAS = -I$(BLAS_INC_DIR) -L$(BLAS_LIB_DIR) $(BLAS_LIB_DIR)/libmkl_intel_lp64.a -Wl,--start-group $(BLAS_LIB_DIR)/libmkl_sequential.a $(BLAS_LIB_DIR)/libmkl_core.a -Wl,--end-group -L$(BLAS_COMPLIB_DIR) -lpthread -ldl -lm
+  else
+	  # Multithreaded BLAS [DO NOT USE WITH MPI]
+	  LD_BLAS = -I$(BLAS_INC_DIR) -L$(BLAS_LIB_DIR) $(BLAS_LIB_DIR)/libmkl_intel_lp64.a -Wl,--start-group $(BLAS_LIB_DIR)/libmkl_intel_thread.a $(BLAS_LIB_DIR)/libmkl_core.a -Wl,--end-group -L$(BLAS_COMPLIB_DIR) -liomp5 -lpthread -ldl -lm
+  endif
+	CXX_BLAS += -D_MKL_BLAS
+else
+	# --- Other BLAS ---
   LD_BLAS = -L$(BLAS_LIB_DIR) -lcblas
+endif
 endif
 
 CXX_BASE += $(CXX_BLAS)
@@ -58,7 +68,7 @@ ifeq ($(strip $(MPI)),YES)
   ifeq ($(MPI_DEBUG),YES)
     CXXFLAGS += -D_MPI_DEBUG
   endif
-  LIBS += -lmetis
+  LIBS += -L$(METIS_LIB_DIR) -lmetis
   CXX = $(MPICXX)
   LINK = $(MPILD)
 else

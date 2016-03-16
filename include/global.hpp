@@ -44,7 +44,12 @@
 
 #ifdef _OMP
 #include <omp.h>
+#ifdef _MKL_BLAS
+#include "mkl_types.h"
+#include "mkl_cblas.h"
+#else
 #include "cblas.h"
+#endif
 #endif
 
 #include "error.hpp"
@@ -110,7 +115,7 @@ enum EQUATION {
 enum BC_TYPE {
   NONE = -1,
   PERIODIC = 0,
-  CHAR = 1,
+  CHAR_INOUT = 1,
   SUP_IN = 2,
   SUP_OUT = 3,
   SUB_IN = 4,

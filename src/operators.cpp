@@ -29,7 +29,12 @@
 
 #include <cmath>
 
+#ifdef _MKL_BLAS
+#include "mkl_types.h"
+#include "mkl_cblas.h"
+#else
 #include "cblas.h"
+#endif
 #include "polynomials.hpp"
 
 //! Binary helper operation [for use with STL algorithms]

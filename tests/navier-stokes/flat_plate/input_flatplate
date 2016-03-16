@@ -3,11 +3,12 @@
 # =============================================================
 equation     1    (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
 order        2    (Polynomial order to use)
-timeType     0    (0: Forward Euler, 4: RK44)
-dtType       0    (0: Fixed, 1: CFL-based)
-CFL          .5
+timeType     6    (0: Forward Euler, 4: RK44)
+dtType       2    (0: Fixed, 1: CFL-based)
+CFL          .2
 dt           1e-6
 iterMax      50000
+maxTime      5000
 restart      0
 restartIter  25000
 
@@ -16,6 +17,9 @@ motion       0   (0: Static, 1: Perturbation test case)
 riemannType  0   (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
 testCase     0
 nDims        2
+
+PMG          1
+smoothSteps  1
 
 # =============================================================
 # Initial Condition
@@ -28,7 +32,7 @@ icType       0
 # Plotting/Output Options
 # =============================================================
 plotFreq        5000      (Frequency to write plot files)
-monitorResFreq  1000       (Frequency to print residual to terminal)
+monitorResFreq  100       (Frequency to print residual to terminal)
 resType         2         (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    fp_a2     (Filename prefix for output files)
 entropySensor   0         (Calculate & plot entropy-error sensor)
@@ -48,7 +52,7 @@ meshFileName  flatplate_a2_gmsh.msh
 mesh_bound   wall       adiabatic_noslip
 mesh_bound   symmetry   symmetry
 mesh_bound   inlet      char
-mesh_bound   outlet     sup_out
+mesh_bound   outlet     char
 mesh_bound   farfield   char
 mesh_bound   fluid      fluid
 
@@ -57,14 +61,14 @@ mesh_bound   fluid      fluid
 # =============================================================
 # Inviscid Flows
 rhoBound 1
-uBound   .3
+uBound   .1
 vBound   0.
 wBound   0.
 pBound   .7142857143
 
 # Viscous Flows
 MachBound  .1
-Re       200
+Re       100
 Lref     1.0
 TBound   300
 nxBound  1
