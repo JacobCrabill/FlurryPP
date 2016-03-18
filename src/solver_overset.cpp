@@ -28,7 +28,7 @@
  */
 
 #include "solver.hpp"
-
+#include "output.hpp" /// DEBUGGING
 /* ---- My New Overset Grid Functions ---- */
 
 void solver::oversetFieldInterp(void)

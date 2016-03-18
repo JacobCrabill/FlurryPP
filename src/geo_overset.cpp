@@ -145,7 +145,9 @@ void geo::setupOverset3D(void)
       }
     }
     else {
-      nodeType[bndPts(ib,ib)] = BOUNDARY_NODE;
+      for (int iv=0; iv<nBndPts[ib]; iv++) {
+        nodeType[bndPts(ib,iv)] = BOUNDARY_NODE;
+      }
     }
   }
 
@@ -354,6 +356,29 @@ void geo::setIterIblanks(void)
     iblankVert1 = iblank;
   }
 
+  //! DEBUGGING in 3D - need better hole blanking...
+  for (int iv = 0; iv < nVerts; iv++)
+    if (nodeType[iv] == OVERSET_NODE && iblankVert1[iv] != HOLE)
+      iblankVert1[iv] = NORMAL;
+//  for (int iv = 0; iv < nVerts; iv++) {
+//    if (iblank[iv] != NORMAL) {
+//      bool nearAB = false;
+//      for (int j = 0; j < v2nv[iv]; j++) {
+//        if (nodeType[v2v(iv,j)] == OVERSET_NODE) {
+//          nearAB = true;
+//          break;
+//        }
+//      }
+//
+//      if (nearAB) continue;
+//
+//      for (int j = 0; j < v2nv[iv]; j++) {
+//        if (iblank[v2v(iv,j)] != HOLE)
+//          iblankVert1[v2v(iv,j)] = FRINGE;
+//      }
+//    }
+//  }
+
   /* ---- Get iblank data for beginning of iteration ---- */
 
   moveMesh(0.);
@@ -365,6 +390,31 @@ void geo::setIterIblanks(void)
     tg->profile();
     tg->performConnectivity();
   }
+
+//  //! DEBUGGING in 3D - need better hole blanking...
+for (int iv = 0; iv < nVerts; iv++) {
+    if (nodeType[iv] == OVERSET_NODE && iblank[iv] != HOLE)
+      iblank[iv] = NORMAL;
+}
+//  vector<int> iblank0 = iblank;
+//  for (int iv = 0; iv < nVerts; iv++) {
+//    if (iblank0[iv] != NORMAL) {
+//      bool nearAB = false;
+//      for (int j = 0; j < v2nv[iv]; j++) {
+//        if (nodeType[v2v(iv,j)] == OVERSET_NODE) {
+//          nearAB = true;
+//          break;
+//        }
+//      }
+//
+//      if (nearAB) continue;
+//
+//      for (int j = 0; j < v2nv[iv]; j++) {
+//        if (iblank0[v2v(iv,j)] != HOLE)
+//          iblank[v2v(iv,j)] = FRINGE;
+//      }
+//    }
+//  }
 
   // Take the union of the hole and normal regions, leaving the intersection of
   // the fringe regions
@@ -465,6 +515,26 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
         }
       }
     }
+    else if (params->oversetMethod == 0 && nDims == 3) {
+      for (int ic=0; ic<nEles; ic++) {
+        if (iblankEle[ic] != NORMAL) {
+          for (int j=0; j<c2nf[ic]; j++) {
+            int ic2 = c2c(ic,j);
+            if (ic2 > -1) {
+              if (iblankEle1[ic2] == NORMAL) {
+                iblankEle1[ic2] = FRINGE;
+              }
+            } else {
+              // MPI Boundary
+              int F = findFirst(mpiFaces,c2f(ic,j));
+              if (F > -1) {
+                mpiFringeFaces.push_back(mpiFaces[F]);
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   else if (params->oversetMethod == 2) {
@@ -505,10 +575,11 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
     }
   }
 
-  if (params->oversetMethod > 0) {
+  if (params->oversetMethod > 0 || nDims == 3) {
     // Enforce consistency across MPI boundaries for fringe->hole conversion
     vector<int> nFringe_proc(nProcGrid);
     int nFringe = mpiFringeFaces.size();
+
     MPI_Allgather(&nFringe,1,MPI_INT,nFringe_proc.data(),1,MPI_INT,gridComm);
 
     int maxNFringe = getMax(nFringe_proc);
@@ -532,6 +603,22 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
             int fr2 = mpiFringeFaces_proc(p,i);
             if (fr == fr2) {
               iblankEle1[f2c(ff,0)] = NORMAL;
+              break;
+            }
+          }
+        }
+      }
+    }
+    else if (params->oversetMethod == 0 && nDims == 3) {
+            for (int F=0; F<nMpiFaces; F++) {
+        int ff = mpiFaces[F];
+        int fr = faceID_R[F];
+        if (iblankEle1[f2c(ff,0)] == NORMAL) {
+          int p = procR[F];
+          for (int i=0; i<recvCnts[p]; i++) {
+            int fr2 = mpiFringeFaces_proc(p,i);
+            if (fr == fr2) {
+              iblankEle1[f2c(ff,0)] = FRINGE;
               break;
             }
           }
@@ -570,6 +657,71 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
     }
   }
 
+  //! ---- QUICK HACK FOR 3D SPHERE CASE ----
+  if (params->oversetMethod == 0 && nDims == 3) {
+    for (int ic = 0; ic < nEles; ic++) {
+      if (iblankEle[ic] == NORMAL && iblankEle1[ic] != NORMAL)
+        iblankEle[ic] = iblankEle1[ic];
+      else if (iblankEle[ic] == FRINGE && iblankEle1[ic] == HOLE)
+        iblankEle[ic] = HOLE;
+    }
+    iblankEle1 = iblankEle;
+
+    mpiFringeFaces.resize(0);
+    for (int ic=0; ic<nEles; ic++) {
+      if (iblankEle[ic] != NORMAL) {
+        for (int j=0; j<c2nf[ic]; j++) {
+          int ic2 = c2c(ic,j);
+          if (ic2 > -1) {
+            if (iblankEle1[ic2] == NORMAL) {
+              iblankEle1[ic2] = FRINGE;
+            }
+          } else {
+            // MPI Boundary
+            int F = findFirst(mpiFaces,c2f(ic,j));
+            if (F > -1) {
+              mpiFringeFaces.push_back(mpiFaces[F]);
+            }
+          }
+        }
+      }
+    }
+
+    // Enforce consistency across MPI boundaries for fringe->hole conversion
+    vector<int> nFringe_proc(nProcGrid);
+    int nFringe = mpiFringeFaces.size();
+    MPI_Allgather(&nFringe,1,MPI_INT,nFringe_proc.data(),1,MPI_INT,gridComm);
+
+    int maxNFringe = getMax(nFringe_proc);
+    matrix<int> mpiFringeFaces_proc(nProcGrid,maxNFringe);
+
+    vector<int> recvCnts(nProcGrid);
+    vector<int> recvDisp(nProcGrid);
+    for (int i=0; i<nProcGrid; i++) {
+      recvCnts[i] = nFringe_proc[i];
+      recvDisp[i] = i*maxNFringe;
+    }
+    MPI_Allgatherv(mpiFringeFaces.data(),mpiFringeFaces.size(),MPI_INT,mpiFringeFaces_proc.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
+
+    for (int F=0; F<nMpiFaces; F++) {
+      int ff = mpiFaces[F];
+      int fr = faceID_R[F];
+      //if (params->rank == 5) cout << "checking face: " << fr << endl; ///! DEBUGGING
+      if (iblankEle1[f2c(ff,0)] == NORMAL) {
+        int p = procR[F];
+        for (int i=0; i<recvCnts[p]; i++) {
+          int fr2 = mpiFringeFaces_proc(p,i);
+          //if (params->rank == 5 && p==0) cout << "against face: " << fr2 << endl;
+          if (fr == fr2) {
+            iblankEle1[f2c(ff,0)] = FRINGE;
+            break;
+          }
+        }
+      }
+    }
+  }
+  //! ---- END HACK ----
+
   // Final blanking update for both AB methods
   if (params->oversetMethod != 2) {
     for (int ic=0; ic<nEles; ic++) {
@@ -607,6 +759,7 @@ void geo::setFaceIblanks(void)
     if (iblankCell[ic]!=HOLE) continue;
 
     for (int j=0; j<c2nf[ic]; j++) {
+      int ff = c2f(ic,j);
       if (c2c(ic,j)>=0) {
         // Internal face
         if (iblankCell[c2c(ic,j)] == HOLE) {
@@ -616,10 +769,53 @@ void geo::setFaceIblanks(void)
         }
       } else {
         // Boundary or MPI face
-        iblankFace[c2f(ic,j)] = HOLE;
+        iblankFace[ff] = HOLE;
       }
     }
   }
+
+#ifndef _NO_MPI
+  // Get the number of mpiFaces on each processor (for later communication)
+  vector<int> nMpiFaces_proc(nProcGrid);
+  MPI_Allgather(&nMpiFaces,1,MPI_INT,nMpiFaces_proc.data(),1,MPI_INT,gridComm);
+  int maxNMpiFaces = getMax(nMpiFaces_proc);
+
+  vector<int> mpiIblank(nMpiFaces);
+  vector<int> mpiIblankR(nMpiFaces);
+  matrix<int> mpiIblank_proc(nProcGrid,maxNMpiFaces);
+  matrix<int> mpiFid_proc(nProcGrid,maxNMpiFaces);
+
+  vector<int> recvCnts(nProcGrid);
+  vector<int> recvDisp(nProcGrid);
+  for (int i=0; i<nProcGrid; i++) {
+    recvCnts[i] = nMpiFaces_proc[i];
+    recvDisp[i] = i*maxNMpiFaces;
+  }
+
+  for (int i = 0; i < nMpiFaces; i++)
+    mpiIblank[i] = iblankCell[f2c(mpiFaces[i],0)];
+
+  // Get iblank data for all mpi faces
+  MPI_Allgatherv(mpiFaces.data(), nMpiFaces, MPI_INT, mpiFid_proc.getData(), recvCnts.data(), recvDisp.data(), MPI_INT, gridComm);
+  MPI_Allgatherv(mpiIblank.data(), nMpiFaces, MPI_INT, mpiIblank_proc.getData(), recvCnts.data(), recvDisp.data(), MPI_INT, gridComm);
+
+  for (int F = 0; F < nMpiFaces; F++) {
+    int ff = mpiFaces[F];
+    int p = procR[F];
+    for (int i = 0; i < nMpiFaces_proc[p]; i++) {
+      if (mpiFid_proc(p,i) == faceID_R[F]) {
+        if (mpiIblank[F] != NORMAL || mpiIblank_proc(p,i) != NORMAL) {
+          // Not a normal face; figure out if hole or fringe
+          if (mpiIblank[F] == HOLE && mpiIblank_proc(p,i) == HOLE)
+            iblankFace[ff] = HOLE;
+          else
+            iblankFace[ff] = FRINGE;
+        }
+      }
+    }
+  }
+
+#endif
 }
 
 void geo::matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &donors)
@@ -831,6 +1027,7 @@ void geo::removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEle
 
   for (auto &ic:blankEles) {
     if (ic<0) continue;
+cout << "Removing element " << ic << " from rank " << params->rank << endl;
     int ind = eleMap[ic];
     if (ind<0) continue; //FatalError("Should not have marked a hole cell for blanking!");
     eles.erase(eles.begin()+ind,eles.begin()+ind+1);

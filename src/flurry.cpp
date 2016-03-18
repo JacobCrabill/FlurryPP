@@ -109,9 +109,12 @@ int main(int argc, char *argv[]) {
   {
     /* Setup the solver, grid, all elements and faces, and all FR operators for computation */
     Solver.setup(&params,params.order);
-
+MPI_Barrier(MPI_COMM_WORLD);
+cout << "before init" << endl;
     /* Apply the initial condition */
     Solver.initializeSolution();
+  MPI_Barrier(MPI_COMM_WORLD);
+  cout << "after init" << endl;
   }
 
   /* Write initial data file */

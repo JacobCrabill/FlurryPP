@@ -1,25 +1,27 @@
-size1 = .3;  // .19
-size2 = .7;  // .55
 R1 = 1.5;  // Size of inner cube
-R2 = 75;  // Length of outer prism
-R3 = 75;  // Width of outer prism
-NN = 6;  // Number of cells in each direction on inner cube
-NL = 16;  // Number of cells going outwards
+//R2 = 75;  // Length of outer prism
+//R3 = 75;  // Width of outer prism
+R2 = 25;  // Length of outer prism
+R3 = 25;  // Width of outer prism
+//NN = 6;  // Number of cells in each direction on inner cube
+//NL = 16;  // Number of cells going outwards
+NN = 3;  // Number of cells in each direction on inner cube
+NL = 5;  // Number of cells going outwards
 prog1 = 1.31;  // Geometric progression factor for outward layers
 
 /* ---- Inner Sphere Surface ---- */
 
-Point(1) = {0.0,0.0,0.0,size1};
+Point(1) = {0.0,0.0,0.0,1.};
 
-Point(2) = {-R1, -R1, -R1, size1};
-Point(3) = { R1, -R1, -R1, size1};
-Point(4) = { R1,  R1, -R1, size1};
-Point(5) = {-R1,  R1, -R1, size1};
+Point(2) = {-R1, -R1, -R1};
+Point(3) = { R1, -R1, -R1};
+Point(4) = { R1,  R1, -R1};
+Point(5) = {-R1,  R1, -R1};
 
-Point(6) = {-R1, -R1, R1, size1};
-Point(7) = { R1, -R1, R1, size1};
-Point(8) = { R1,  R1, R1, size1};
-Point(9) = {-R1,  R1, R1, size1};
+Point(6) = {-R1, -R1, R1};
+Point(7) = { R1, -R1, R1};
+Point(8) = { R1,  R1, R1};
+Point(9) = {-R1,  R1, R1};
 
 // 'Bottom' circles
 Line(1) = {2,3};
@@ -61,17 +63,17 @@ Recombine Surface {1:6};
 
 /* ---- Outer Sphere Surface ---- */
 
-Point(11) = {0.0,0.0,0.0,size1};
+Point(11) = {0.0,0.0,0.0,1.};
 
-Point(12) = {-R2, -R3, -R2, size1};
-Point(13) = { R2, -R3, -R2, size1};
-Point(14) = { R2,  R3, -R2, size1};
-Point(15) = {-R2,  R3, -R2, size1};
+Point(12) = {-R2, -R3, -R2};
+Point(13) = { R2, -R3, -R2};
+Point(14) = { R2,  R3, -R2};
+Point(15) = {-R2,  R3, -R2};
 
-Point(16) = {-R2, -R3, R2, size1};
-Point(17) = { R2, -R3, R2, size1};
-Point(18) = { R2,  R3, R2, size1};
-Point(19) = {-R2,  R3, R2, size1};
+Point(16) = {-R2, -R3, R2};
+Point(17) = { R2, -R3, R2};
+Point(18) = { R2,  R3, R2};
+Point(19) = {-R2,  R3, R2};
 
 // 'Bottom' circles
 Line(21) = {12,13};

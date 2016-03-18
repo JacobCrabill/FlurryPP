@@ -526,8 +526,13 @@ bool ele::getRefLocNewton(point pos, point &loc)
   double norm = 1;
   loc = {0, 0, 0};
   while (norm > tol && iter<iterMax) {
-    shape_quad(loc,shape,nNodes);
-    dshape_quad(loc,dshape,nNodes);
+    if (nDims == 2) {
+      shape_quad(loc,shape,nNodes);
+      dshape_quad(loc,dshape,nNodes);
+    } else {
+      shape_hex(loc,shape,nNodes);
+      dshape_hex(loc,dshape,nNodes);
+    }
 
     point dx = pos;
     grad.initializeToZero();
@@ -564,16 +569,16 @@ bool ele::getRefLocNewton(point pos, point &loc)
     for (int i=0; i<nDims; i++) {
       norm += dx[i]*dx[i];
       loc[i] += delta[i];
-      loc[i] = max(min(loc[i],1.),-1.);
+      loc[i] = max(min(loc[i],1.01),-1.01);
     }
 
     iter++;
-    if (iter == iterMax) {
-      return false;
-    }
   }
 
-  return true;
+  if (max( abs(loc[0]), max( abs(loc[1]), abs(loc[2]) ) ) <= 1 + 1e-10)
+    return true;
+  else
+    return false;
 }
 
 double ele::getDxNelderMead(point refLoc, point physPos)

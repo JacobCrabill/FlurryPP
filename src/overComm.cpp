@@ -342,10 +342,32 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, const vector<in
         if (ic>=0 && eleMap[ic]>=0) {
           int ie = eleMap[ic];
           point refLoc;
-          bool isInEle = eles[ie]->getRefLocNelderMead(pt,refLoc);
+          bool isInEle = eles[ie]->getRefLocNewton(pt,refLoc);
 
+//          if (!isInEle) isInEle = eles[ie]->getRefLocNelderMead(pt,refLoc);
           if (!isInEle) {
-            _(refLoc);
+            _(ie);
+            _print(params->rank,p);
+            cout << setprecision(16);
+            _print(pt, refLoc);
+            cout.setf(ios::fixed,ios::floatfield);
+            isInEle = eles[ie]->getRefLocNelderMead(pt,refLoc);
+            _print(pt, refLoc);
+            //cout << setprecision(16) << 1-std::abs(refLoc.z) << endl;
+            for (int i = 0; i < eles[ie]->nNodes; i++)
+              cout << point(&eles[ie]->nodesRK(i,0)) << endl;
+
+
+            for (int j = 0; j < eles[ie]->Geo->c2nf[ic]; j++) {
+              int ie2 = eleMap[eles[ie]->Geo->c2c(ic,j)];
+              if (ie2 >= 0) {
+                isInEle = eles[ie2]->getRefLocNewton(pt,refLoc);
+                _print(ie,ie2);
+                cout.setf(ios::fixed,ios::floatfield);
+                cout << setprecision(16);
+                _print(pt,refLoc);
+              }
+            }
             FatalError("Unable to match fringe point!");
           }
 
@@ -553,18 +575,16 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
         int ic = eleMap[donorID[p].back()];
         point refLoc;
         bool isInEle;
-        if (nDims==2) {
-          isInEle = eles[ic]->getRefLocNewton(point(qpts_tmp[j],nDims),refLoc);
-          if (!isInEle) {
-            // Second try with slower (but more robust) algorithm
-            isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
-          }
-        } else {
-          isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
-        }
 
-        if (!isInEle)
+        isInEle = eles[ic]->getRefLocNewton(point(qpts_tmp[j],nDims),refLoc);
+
+        // Second try with slower (but more robust?) algorithm
+        if (!isInEle) isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
+
+        if (!isInEle) {
+          _(refLoc);
           FatalError("Quadrature Point Reference Location not found in ele!");
+        }
 
         qptsD_ref[p].insertRow({refLoc.x,refLoc.x,refLoc.z});
 
@@ -970,8 +990,10 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
       for (int j=0; j<parents_tmp.size(); j++) {
         int ic = eleMap[foundCellDonors[p](i,parents_tmp[j])];
         point refLoc;
-        bool isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
+        bool isInEle = eles[ic]->getRefLocNewton(point(qpts_tmp[j],nDims),refLoc);
 
+        // Try again with alternate (slower but better?) algorithm
+        if (!isInEle) isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
         if (!isInEle) {
           cout << "qpt: " << qpts_tmp(j,0) << ", " << qpts_tmp(j,1) << endl;
           auto box = eles[ic]->getBoundingBox();
@@ -980,15 +1002,20 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
           FatalError("Quadrature Point Reference Location not found in ele!");
         }
 
-        vector<double> tmpU(nFields);
-        int nSpts = eles[ic]->nSpts;
-        matrix<double> tmpUspts(eles[ic]->nSpts,nFields);
-        for (uint spt = 0; spt < nSpts; spt++)
-          for (uint k = 0; k < nFields; k++)
-            tmpUspts(spt,k) = eles[ic]->U_spts(spt,k);
+        matrix<double> tmpErrSpts = eles[ic]->calcError();
 
-        opers[eles[ic]->order].interpolateToPoint(tmpUspts, tmpU.data(), refLoc);
-        vector<double> tmpErr = calcError(tmpU.data(),point(qpts_tmp[j],nDims),params);
+        vector<double> tmpErr(nFields);
+        opers[eles[ic]->order].interpolateToPoint(tmpErrSpts, tmpErr.data(), refLoc);
+
+//        int nSpts = eles[ic]->nSpts;
+//        for (uint spt = 0; spt < nSpts; spt++)
+//          for (uint k = 0; k < nFields; k++)
+//            tmpUspts(spt,k) = eles[ic]->U_spts(spt,k);
+//
+//        vector<double> tmpU(nFields);
+//        opers[eles[ic]->order].interpolateToPoint(tmpUspts, tmpU.data(), refLoc);
+//        vector<double> tmpErr = calcError(tmpU.data(),point(qpts_tmp[j],nDims),params);
+
         superErr[offset+i].insertRow(tmpErr);
       }
     }

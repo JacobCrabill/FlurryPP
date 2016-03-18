@@ -160,6 +160,9 @@ void geo::processConnectivity(int HMG_nSplit)
 
   processPeriodicBoundaries();
 
+  /* --- Setup MPI Processor Boundary Faces --- */
+  matchMPIFaces(); /// DEBUGGING
+
 #ifndef _NO_MPI
   /* --- Use TIOGA to find all hole nodes, then setup overset-face connectivity --- */
   if (meshType == OVERSET_MESH) {
@@ -196,7 +199,7 @@ void geo::processConnectivity(int HMG_nSplit)
   }
 
   /* --- Setup MPI Processor Boundary Faces --- */
-  matchMPIFaces();
+//  matchMPIFaces(); /// DEBUGGING
 #endif
 
   /* --- Additional setup for moving grids --- */
@@ -554,10 +557,12 @@ void geo::processConn3D(void)
         f2c(ff,1) = ic;
         // Update c2c for both cells
         int ic2 = f2c(ff,0);
-        vector<int> cellFaces(c2f[ic2],c2f[ic2]+c2nf[ic2]);
-        int fid2 = findFirst(cellFaces,ff);
-        c2c(ic,j)     = ic2;
-        c2c(ic2,fid2) = ic;
+        if (ic2 != ic) {
+          vector<int> cellFaces(c2f[ic2],c2f[ic2]+c2nf[ic2]);
+          int fid2 = findFirst(cellFaces,ff);
+          c2c(ic,j)     = ic2;
+          c2c(ic2,fid2) = ic;
+        }
       }
     }
   }
@@ -715,18 +720,19 @@ void geo::matchMPIFaces(void)
 
   // For overset meshes, can have an overset face *also* be an MPI face known only to one of the processes
   // So, exchange face Iblank info
-  vector<int> mpiIblank;
-  vector<int> mpiIblankR;
-  matrix<int> mpiIblank_proc;
-  if (meshType == OVERSET_MESH) {
-    mpiIblank.resize(nMpiFaces);
-    mpiIblankR.resize(nMpiFaces);
-    mpiIblank_proc.setup(nProcGrid,maxNMpiFaces);
-    for (int i=0; i<nMpiFaces; i++)
-      mpiIblank[i] = iblankCell[f2c(mpiFaces[i],0)];
-      //mpiIblank[i] = iblankFace[mpiFaces[i]];
-    MPI_Allgatherv(mpiIblank.data(), nMpiFaces, MPI_INT, mpiIblank_proc.getData(), recvCnts.data(), recvDisp.data(), MPI_INT, gridComm);
-  }
+  /// DEBUGGING
+//  vector<int> mpiIblank;
+//  vector<int> mpiIblankR;
+//  matrix<int> mpiIblank_proc;
+//  if (meshType == OVERSET_MESH) {
+//    mpiIblank.resize(nMpiFaces);
+//    mpiIblankR.resize(nMpiFaces);
+//    mpiIblank_proc.setup(nProcGrid,maxNMpiFaces);
+//    for (int i=0; i<nMpiFaces; i++)
+//      mpiIblank[i] = iblankCell[f2c(mpiFaces[i],0)];
+//      //mpiIblank[i] = iblankFace[mpiFaces[i]];
+//    MPI_Allgatherv(mpiIblank.data(), nMpiFaces, MPI_INT, mpiIblank_proc.getData(), recvCnts.data(), recvDisp.data(), MPI_INT, gridComm);
+//  }
 
   // Now that we have each processor's boundary nodes, start matching faces
   // Again, note that this is written for to be entirely general instead of 2D-specific
@@ -775,8 +781,9 @@ void geo::matchMPIFaces(void)
             gIC_R[F] = mpiCells_proc(p,i);
             mpiLocF_R[F] = mpiLocF_proc(p,i);
           }
-          if (meshType == OVERSET_MESH)
-            mpiIblankR[F] = mpiIblank_proc(p,i);
+          /// DEBUGGING
+//          if (meshType == OVERSET_MESH)
+//            mpiIblankR[F] = mpiIblank_proc(p,i);
           break;
         }
       }
@@ -789,17 +796,18 @@ void geo::matchMPIFaces(void)
   // For overset grids: Now that we have iblank info for both sides, we can remove
   // any faces which should actually be overset faces
   nMpiFaces = mpiFaces.size();
-  if (meshType == OVERSET_MESH) {
-    for (int F=0; F<nMpiFaces; F++) {
-      if (mpiIblank[F] != NORMAL || mpiIblankR[F] != NORMAL) {
-        // Not a normal face; figure out if hole or fringe
-        if (mpiIblank[F] == HOLE && mpiIblankR[F] == HOLE)
-          iblankFace[mpiFaces[F]] = HOLE;
-        else
-          iblankFace[mpiFaces[F]] = FRINGE;
-      }
-    }
-  }
+  /// DEBUGGING
+//  if (meshType == OVERSET_MESH) {
+//    for (int F=0; F<nMpiFaces; F++) {
+//      if (mpiIblank[F] != NORMAL || mpiIblankR[F] != NORMAL) {
+//        // Not a normal face; figure out if hole or fringe
+//        if (mpiIblank[F] == HOLE && mpiIblankR[F] == HOLE)
+//          iblankFace[mpiFaces[F]] = HOLE;
+//        else
+//          iblankFace[mpiFaces[F]] = FRINGE;
+//      }
+//    }
+//  }
 
   if (params->meshType == OVERSET_MESH) {
     for (auto &ff:mpiFaces)
@@ -835,6 +843,7 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
   int nc = 0;
   for (int ic=0; ic<nEles; ic++) {
     // Skip any hole cells
+    if (meshType == OVERSET_MESH && iblankCell[ic] == HOLE) cout << "Skipping ele " << ic << " on rank " << params->rank << endl; /// DEBUGGING
     if (meshType == OVERSET_MESH && iblankCell[ic] == HOLE) continue;
 
     shared_ptr<ele> e = make_shared<ele>();

@@ -17,19 +17,19 @@ oversetMethod  0  (0: AB-U, 1: AB-F, 2: LGP)
 maxTime      500   (Non-dimensional time limit)
 iterMax      200000  (Total iteration limit)
 restart      0    (Start from restart file?)
-restartIter  40000    (Iteration of restart file)
+restartIter  200    (Iteration of restart file)
 testCase     0    (Calculate error w.r.t. test case?)
 
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        200   (Frequency to write plot files)
+plotFreq        50   (Frequency to write plot files)
 monitorResFreq  50    (Frequency to print residual to terminal)
 monitorErrFreq  -1     (Frequency to print test-case error to terminal)
 resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    OverOscSphere    (Filename prefix for output files)
 entropySensor   0      (Calculate & plot entropy-error sensor)
-writeIBLANK     0      (Write cell iblank values in ParaView files)
+writeIBLANK     1      (Write cell iblank values in ParaView files)
 
 # Moving-Grid Parameters
 moveAr  .1
