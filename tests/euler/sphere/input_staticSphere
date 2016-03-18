@@ -1,0 +1,70 @@
+# =============================================================
+# Basic Options
+# =============================================================
+equation   1   (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
+viscous    0   (0: Inviscid, 1: Viscous)
+motion     0   (0: Static, 1: Perturbation test case)
+nDims      3
+
+# Discretization Options
+order      2    (Polynomial order to use)
+timeType   6    (0: Forward Euler, 4: RK44)
+dtType     1    (0: Fixed, 1: CFL-based)
+CFL       .4    (For CFL-based time stepping)
+dt        5e-9
+oversetMethod  0  (0: AB-U, 1: AB-F, 2: LGP)
+
+# Simulation Start/Run/Stop Conditions
+maxTime      500   (Non-dimensional time limit)
+iterMax      200000  (Total iteration limit)
+restart      0    (Start from restart file?)
+restartIter  6000    (Iteration of restart file)
+testCase     0    (Calculate error w.r.t. test case?)
+
+PMG         1
+lowOrder    0
+smoothSteps 1
+
+# =============================================================
+# Plotting/Output Options
+# =============================================================
+plotFreq        100   (Frequency to write plot files)
+monitorResFreq  20    (Frequency to print residual to terminal)
+monitorErrFreq  -1     (Frequency to print test-case error to terminal)
+resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
+dataFileName    Sphere    (Filename prefix for output files)
+entropySensor   0      (Calculate & plot entropy-error sensor)
+writeIBLANK     0      (Write cell iblank values in ParaView files)
+
+# =============================================================
+# Initial Condition
+# =============================================================
+#   Advection: 0-Gaussian,     1-u=x+y+z test case,  2-u=cos(x)*cos(y)*cos(z) test case
+#   N-S:       0-Uniform flow, 1-Uniform+Vortex (Kui), 2-Uniform+Vortex (Liang)
+icType       0
+
+# =============================================================
+# Mesh Options
+# =============================================================
+meshType      0    (0: Read mesh, 1: Create mesh, 2: Overset Mesh)
+meshFileName  sphere_big.msh
+
+# =============================================================
+# Boundary Conditions
+# =============================================================
+# Gmsh Boundary Conditions
+# List each Gmsh boundary:  'mesh_bound <Gmsh_Physical_Name> <Flurry_BC>'
+mesh_bound   char     char
+mesh_bound   sphere   slip_wall
+mesh_bound   fluid    fluid
+
+# =============================================================
+# Freestream Boundary Conditions [for all freestream/inlet-type boundaries]
+# =============================================================
+# Inviscid Flows
+rhoBound 1
+uBound   .3
+vBound   0
+wBound   0.
+pBound   .7142857143
+
