@@ -638,7 +638,7 @@ void solver::extrapolateUPpts(void)
 #endif
 }
 
-void solver::extrapolateGridVelMpts(void)
+void solver::extrapolateGridVelPpts(void)
 {
   int m = nPpts;
   int n = nEles * nDims;
@@ -1161,18 +1161,21 @@ void solver::moveMesh(int step)
     if ( !(step==0 && params->RKa[step]==0) )
       Geo->moveMesh(params->RKa[step]);
 
+    if (gridID == 0) { /*! ONLY FOR CERTAIN MOTION TYPES! !*/
     updatePosSptsFpts();
 
     updateGridVSptsFpts();
 
     updateTransforms();
-
+    }
     Geo->updateADT();
 
     if (params->oversetMethod != 2) {
       if (params->nDims==2)
         getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
-      OComm->setupOverFacePoints(overFaces,order+1);
+      int nPtsFace = order+1;
+      if (nDims == 3) nPtsFace *= order+1;
+      OComm->setupOverFacePoints(overFaces,nPtsFace);
       OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
     }
   } else {
@@ -1333,18 +1336,131 @@ void solver::updateGridVSptsFpts(void)
 
 void solver::calcTransforms(void)
 {
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++)
-    eles[i]->calcTransforms(false);
+  /* --- Calculate Transformation at Solution Points --- */
+#pragma omp parallel for collapse(2)
+  for (uint spt = 0; spt < nSpts; spt++)
+  {
+    for (uint e = 0; e < nEles; e++)
+    {
+      for (uint dim1 = 0; dim1 < nDims; dim1++)
+        for (uint dim2 = 0; dim2 < nDims; dim2++)
+          Jac_spts(spt,e,dim1,dim2) = 0.;
+
+      if (params->motion != 0)
+      {
+        for (uint i = 0; i < nNodes; i++)
+          for (uint dim1 = 0; dim1 < nDims; dim1++)
+            for (uint dim2 = 0; dim2 < nDims; dim2++)
+              Jac_spts(spt,e,dim1,dim2) += dshape_spts(spt,i,dim2)*nodesRK(i,e,dim1);
+      }
+      else
+      {
+        for (uint i = 0; i < nNodes; i++)
+          for (uint dim1 = 0; dim1 < nDims; dim1++)
+            for (uint dim2 = 0; dim2 < nDims; dim2++)
+              Jac_spts(spt,e,dim1,dim2) += dshape_spts(spt,i,dim2)*nodes(i,e,dim1);
+      }
+
+      if (nDims == 2) {
+        // Determinant of transformation matrix
+        detJac_spts(spt,e) = Jac_spts(spt,e,0,0)*Jac_spts(spt,e,1,1)-Jac_spts(spt,e,1,0)*Jac_spts(spt,e,0,1);
+        // Inverse of transformation matrix (times its determinant)
+        JGinv_spts(spt,e,0,0) = Jac_spts(spt,e,1,1);  JGinv_spts(spt,e,0,1) =-Jac_spts(spt,e,0,1);
+        JGinv_spts(spt,e,1,0) =-Jac_spts(spt,e,1,0);  JGinv_spts(spt,e,1,1) = Jac_spts(spt,e,0,0);
+      }
+      else if (nDims == 3) {
+        double xr = Jac_spts(spt,e,0,0);   double xs = Jac_spts(spt,e,0,1);   double xt = Jac_spts(spt,e,0,2);
+        double yr = Jac_spts(spt,e,1,0);   double ys = Jac_spts(spt,e,1,1);   double yt = Jac_spts(spt,e,1,2);
+        double zr = Jac_spts(spt,e,2,0);   double zs = Jac_spts(spt,e,2,1);   double zt = Jac_spts(spt,e,2,2);
+        detJac_spts(spt,e) = xr*(ys*zt - yt*zs) - xs*(yr*zt - yt*zr) + xt*(yr*zs - ys*zr);
+
+        JGinv_spts(spt,e,0,0) = ys*zt - yt*zs;  JGinv_spts(spt,e,0,1) = xt*zs - xs*zt;  JGinv_spts(spt,e,0,2) = xs*yt - xt*ys;
+        JGinv_spts(spt,e,1,0) = yt*zr - yr*zt;  JGinv_spts(spt,e,1,1) = xr*zt - xt*zr;  JGinv_spts(spt,e,1,2) = xt*yr - xr*yt;
+        JGinv_spts(spt,e,2,0) = yr*zs - ys*zr;  JGinv_spts(spt,e,2,1) = xs*zr - xr*zs;  JGinv_spts(spt,e,2,2) = xr*ys - xs*yr;
+      }
+      if (detJac_spts(spt)<0) FatalError("Negative Jacobian at solution points.");
+    }
+  }
+
+  /* --- Calculate Transformation at Flux Points --- */
+#pragma omp parallel for collapse(2)
+  for (uint fpt = 0; fpt < nFpts; fpt++)
+  {
+    for (uint e = 0; e < nEles; e++)
+    {
+      for (uint dim1 = 0; dim1 < nDims; dim1++)
+        for (uint dim2 = 0; dim2 < nDims; dim2++)
+          Jac_fpts(fpt,e,dim1,dim2) = 0.;
+
+      // Calculate transformation Jacobian matrix - [dx/dr, dx/ds; dy/dr, dy/ds]
+      if (params->motion != 0)
+      {
+        for (uint i = 0; i < nNodes; i++)
+          for (uint dim1 = 0; dim1 < nDims; dim1++)
+            for (uint dim2 = 0; dim2 < nDims; dim2++)
+              Jac_fpts(fpt,e,dim1,dim2) += dshape_fpts(fpt,i,dim2)*nodesRK(i,e,dim1);
+      }
+      else
+      {
+        for (uint i = 0; i < nNodes; i++)
+          for (uint dim1 = 0; dim1 < nDims; dim1++)
+            for (uint dim2 = 0; dim2 < nDims; dim2++)
+              Jac_fpts(fpt,e,dim1,dim2) += dshape_fpts(fpt,i,dim2)*nodes(i,e,dim1);
+      }
+
+      if (nDims == 2) {
+        detJac_fpts(fpt,e) = Jac_fpts(fpt,e,0,0)*Jac_fpts(fpt,e,1,1)-Jac_fpts(fpt,e,1,0)*Jac_fpts(fpt,e,0,1);
+        // Inverse of transformation matrix (times its determinant)
+        JGinv_fpts(fpt,e,0,0) = Jac_fpts(fpt,e,1,1);  JGinv_fpts(fpt,e,0,1) =-Jac_fpts(fpt,e,0,1);
+        JGinv_fpts(fpt,e,1,0) =-Jac_fpts(fpt,e,1,0);  JGinv_fpts(fpt,e,1,1) = Jac_fpts(fpt,e,0,0);
+      }
+      else if (nDims == 3) {
+        double xr = Jac_fpts(fpt,e,0,0);   double xs = Jac_fpts(fpt,e,0,1);   double xt = Jac_fpts(fpt,e,0,2);
+        double yr = Jac_fpts(fpt,e,1,0);   double ys = Jac_fpts(fpt,e,1,1);   double yt = Jac_fpts(fpt,e,1,2);
+        double zr = Jac_fpts(fpt,e,2,0);   double zs = Jac_fpts(fpt,e,2,1);   double zt = Jac_fpts(fpt,e,2,2);
+        detJac_fpts(fpt) = xr*(ys*zt - yt*zs) - xs*(yr*zt - yt*zr) + xt*(yr*zs - ys*zr);
+        // Inverse of transformation matrix (times its determinant)
+        JGinv_fpts(fpt,e,0,0) = ys*zt - yt*zs;  JGinv_fpts(fpt,e,0,1) = xt*zs - xs*zt;  JGinv_fpts(fpt,e,0,2) = xs*yt - xt*ys;
+        JGinv_fpts(fpt,e,1,0) = yt*zr - yr*zt;  JGinv_fpts(fpt,e,1,1) = xr*zt - xt*zr;  JGinv_fpts(fpt,e,1,2) = xt*yr - xr*yt;
+        JGinv_fpts(fpt,e,2,0) = yr*zs - ys*zr;  JGinv_fpts(fpt,e,2,1) = xs*zr - xr*zs;  JGinv_fpts(fpt,e,2,2) = xr*ys - xs*yr;
+      }
+
+      /* --- Calculate outward unit normal vector at flux point --- */
+      // Transform face normal from reference to physical space [JGinv .dot. tNorm]
+      for (uint dim1 = 0; dim1 < nDims; dim1++) {
+        norm_fpts(fpt,e,dim1) = 0.;
+        for (uint dim2 = 0; dim2 < nDims; dim2++) {
+          norm_fpts(fpt,e,dim1) += JGinv_fpts(fpt,e,dim2,dim1) * tNorm_fpts(fpt,dim2);
+        }
+      }
+
+      // Store magnitude of face normal (equivalent to face area in finite-volume land)
+      dA_fpts(fpt,e) = 0;
+      for (uint dim = 0; dim < nDims; dim++)
+        dA_fpts(fpt,e) += norm_fpts(fpt,e,dim)*norm_fpts(fpt,e,dim);
+      dA_fpts(fpt,e) = sqrt(dA_fpts(fpt,e));
+
+      // Normalize
+      // If we have a collapsed edge, the dA will be 0, so just set the normal to 0
+      // (A normal vector at a point doesn't make sense anyways)
+      if (std::fabs(dA_fpts(fpt,e)) < 1e-10) {
+        dA_fpts(fpt,e) = 0.;
+        for (uint dim = 0; dim < nDims; dim++)
+          norm_fpts(fpt,e,dim) = 0;
+      }
+      else {
+        for (uint dim = 0; dim < nDims; dim++)
+          norm_fpts(fpt,e,dim) /= dA_fpts(fpt,e);
+      }
+    }
+  }
 }
 
 void solver::updateTransforms(void)
 {
   if (params->motion != 4)
   {
-#pragma omp parallel for
-    for (uint i=0; i<eles.size(); i++)
-      eles[i]->calcTransforms(true);
+    calcTransforms();
   }
   else
   {

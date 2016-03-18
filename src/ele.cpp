@@ -278,6 +278,11 @@ double& ele::gridVel_fpts(int fpt, int dim)
   return Solver->gridV_fpts(fpt, sID, dim);
 }
 
+double& ele::gridVel_ppts(int ppt, int dim)
+{
+  return Solver->gridV_ppts(ppt, sID, dim);
+}
+
 double& ele::gridVel_nodes(int mpt, int dim)
 {
   return Solver->gridV_mpts(mpt, sID, dim);
@@ -1416,138 +1421,11 @@ void ele::getPrimitivesPlot(matrix<double> &V)
 
 void ele::getGridVelPlot(matrix<double> &GV)
 {
-  if (eType == QUAD) {
-    GV.setup(nSpts+nFpts+nMpts,nDims);
+  GV.setup(Solver->nPpts, nDims);
 
-    // Get solution at corner points
-    for (int dim=0; dim<nDims; dim++) {
-      GV(0,dim)                     = gridVel_nodes(0,dim);
-      GV(order+2,dim)               = gridVel_nodes(1,dim);
-      GV((order+3)*(order+3)-1,dim) = gridVel_nodes(2,dim);
-      GV((order+3)*(order+2),dim)   = gridVel_nodes(3,dim);
-    }
-
-    // Get solution at flux points
-    for (int i=0; i<order+1; i++) {
-      for (int dim=0; dim<nDims; dim++) {
-        GV(i+1,dim)                     = gridVel_fpts(i,dim);               // Bottom
-        GV((i+1)*(order+3),dim)         = gridVel_fpts(nFpts-i-1,dim);       // Left
-        GV((i+2)*(order+3)-1,dim)       = gridVel_fpts(order+1+i,dim);       // Right
-        GV((order+3)*(order+2)+i+1,dim) = gridVel_fpts(3*(order+1)-i-1,dim); // Top
-      }
-    }
-
-    // Get solution at solution points
-    for (int i=0; i<order+1; i++) {
-      for (int j=0; j<order+1; j++) {
-        int id = (i+1)*(order+3)+j+1;
-        for (int dim=0; dim<nDims; dim++) {
-          GV(id,dim) = gridVel_spts(j+i*(order+1),dim);
-        }
-      }
-    }
-  }
-  else if (eType == HEX) {
-    int nPts1D = order+3;
-    int P22 = nPts1D*nPts1D;
-    int nv = 8, ne = 12;
-
-    GV.setup(nPts1D*nPts1D*nPts1D,nFields);
-
-    for (int dim=0; dim<nDims; dim++) {
-      // Get solution at corner points
-      GV(0,dim)                = gridVel_nodes(0,dim);
-      GV(order+2,dim)          = gridVel_nodes(1,dim);
-      GV(P22-1,dim)            = gridVel_nodes(2,dim);
-      GV(nPts1D*(order+2),dim) = gridVel_nodes(3,dim);
-
-      int base = (order+2)*P22;
-      GV(base,dim)                    = gridVel_nodes(4,dim);
-      GV(base + order+2,dim)          = gridVel_nodes(5,dim);
-      GV(base + P22-1,dim)            = gridVel_nodes(6,dim);
-      GV(base + nPts1D*(order+2),dim) = gridVel_nodes(7,dim);
-
-      // Get solution at edge points
-      for (int i=0; i<order+1; i++) {
-        /* --- Bottom Edges --- */
-        // edge 0-1
-        GV(i+1,dim) = gridVel_nodes(nv+i*ne+0,dim);
-
-        // edge 0-3
-        GV(nPts1D*(i+1),dim) = gridVel_nodes(nv+(order-i)*ne+3,dim);
-
-        // edge 1-2
-        GV(nPts1D*(i+2)-1,dim) = gridVel_nodes(nv+i*ne+1,dim);
-
-        // edge 3-2
-        GV(nPts1D*(order+2)+i+1,dim) = gridVel_nodes(nv+(order-i)*ne+2,dim);
-
-        /* --- Top Edges --- */
-        base = P22*(order+2);
-        // edge 4-5
-        GV(base + i+1,dim) = gridVel_nodes(nv+i*ne+4,dim);
-
-        // edge 4-7
-        GV(base + nPts1D*(i+1),dim) = gridVel_nodes(nv+(order-i)*ne+7,dim);
-
-        // edge 5-6
-        GV(base + nPts1D*(i+2)-1,dim) = gridVel_nodes(nv+i*ne+5,dim);
-
-        // edge 7-6
-        GV(base + nPts1D*(order+2)+i+1,dim) = gridVel_nodes(nv+(order-i)*ne+6,dim);
-
-        /* --- Mid [Vertical] Egdes --- */
-        base = (i+1)*P22;
-        // edge 0-4
-        GV(base,dim) = gridVel_nodes(nv+i*ne+8,dim);
-
-        // edge 1-5
-        GV(base+(order+2),dim) = gridVel_nodes(nv+i*ne+9,dim);
-
-        int base2 = nPts1D*(order+2);
-        // edge 3-7
-        GV(base+base2,dim) = gridVel_nodes(nv+i*ne+11,dim);
-
-        // edge 2-6
-        GV(base+base2+order+2,dim) = gridVel_nodes(nv+i*ne+10,dim);
-      }
-
-      // Get solution at flux points
-      int P12 = (order+1)*(order+1);
-      for (int i=0; i<order+1; i++) {
-        for (int j=0; j<order+1; j++) {
-          int ind1 = i + j*(order+1);
-          int ind2 = order - i + (order+1)*j;
-          // Bottom Face
-          GV(nPts1D*(j+1)+i+1,dim) = gridVel_fpts(ind1,dim);
-
-          // Top Face
-          GV(P22*(order+2)+(j+1)*nPts1D+i+1,dim) = gridVel_fpts(P12+ind2,dim);
-
-          // Left Face
-          GV(P22*(j+1)+nPts1D*(i+1),dim) = gridVel_fpts(2*P12+ind1,dim);
-
-          // Right Face
-          GV(P22*(j+1)+nPts1D*(i+1)+order+2,dim) = gridVel_fpts(3*P12+ind2,dim);
-
-          // Front Face
-          GV(P22*(j+1)+i+1,dim) = gridVel_fpts(4*P12+ind2,dim);
-
-          // Back Face
-          GV(P22*(j+2)+i+1-nPts1D,dim) = gridVel_fpts(5*P12+ind1,dim);
-        }
-      }
-
-      // Get solution at solution points
-      for (int k=0; k<order+1; k++) {
-        for (int j=0; j<order+1; j++) {
-          for (int i=0; i<order+1; i++) {
-            GV(i+1+nPts1D*(j+1)+(k+1)*P22,dim) = gridVel_spts(i+(order+1)*(j+(order+1)*k),dim);
-          }
-        }
-      }
-    }
-  }
+  for (uint ppt = 0; ppt < Solver->nPpts; ppt++)
+    for (uint dim = 0; dim < nDims; dim++)
+      GV(ppt,dim) = gridVel_ppts(ppt, dim);
 }
 
 void ele::getEntropyErrPlot(matrix<double> &S)

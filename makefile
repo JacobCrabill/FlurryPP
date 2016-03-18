@@ -5,8 +5,8 @@
 #          make openmp
 #############################################################################
 
-#include configfiles/default.config
-include configfiles/centos_intel.config
+include configfiles/default.config
+#include configfiles/centos_intel.config
 
 ####### Compiler, tools and options
 

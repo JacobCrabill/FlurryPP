@@ -192,8 +192,8 @@ public:
   //! Extrapolate the solution to all plotting points (spts, fpts, corners, edges)
   void extrapolateUPpts(void);
 
-  //! Extrapolate the grid velocity to the mesh (corner) points (and edge points in 3D)
-  void extrapolateGridVelMpts(void);
+  //! Extrapolate the grid velocity to all plotting points (spts, fpts, corners, edges)
+  void extrapolateGridVelPpts(void);
 
   //! Extrapolate entropy error-estimate variable to the mesh (corner) points (and edge points in 3D)
   void extrapolateSMpts(void);

@@ -344,7 +344,10 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, const vector<in
           point refLoc;
           bool isInEle = eles[ie]->getRefLocNelderMead(pt,refLoc);
 
-          if (!isInEle) FatalError("Unable to match fringe point!");
+          if (!isInEle) {
+            _(refLoc);
+            FatalError("Unable to match fringe point!");
+          }
 
           foundPts[p].push_back(i);
           foundEles[p].push_back(ic); // Local ele id for this grid

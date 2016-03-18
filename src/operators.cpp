@@ -238,17 +238,6 @@ matrix<double> oper::setupInterpolateSptsIpts(matrix<double> &loc_ipts)
   matrix<double> opp_interp(nIpts,nSpts);
 
   switch(eType) {
-    case TRI: {
-      for (uint ipt=0; ipt<nIpts; ipt++) {
-        // Location of the current interpolation point
-        point pt = point(loc_ipts[ipt]);
-
-        // Use the orthogonal 2D Dubiner basis for triangular elements
-        for (uint spt=0; spt<nSpts; spt++)
-          opp_interp(ipt,spt) = eval_dubiner_basis_2d(pt,spt,order);
-      }
-      break;
-    }
     case QUAD: {
       vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint ipt=0; ipt<nIpts; ipt++) {
@@ -1442,6 +1431,10 @@ void oper::setupPMG(int my_order)
   unsigned int nSpts_res_1D = order;
   unsigned int nSpts_pro = nSpts_pro_1D * nSpts_pro_1D;
   unsigned int nSpts_res = nSpts_res_1D * nSpts_res_1D;
+  if (nDims == 3) {
+    nSpts_pro *= nSpts_pro_1D;
+    nSpts_res *= nSpts_res_1D;
+  }
 
   auto loc_spts = getPts1D(sptsType,my_order);
 
@@ -1452,14 +1445,31 @@ void oper::setupPMG(int my_order)
 
   auto loc_spts_pro_1D = getPts1D(sptsType,order+1);
 
-  for (uint spt = 0; spt < nSpts; spt++) {
-    uint ispt = spt % (nSpts/(order+1));
-    uint jspt = floor(spt/(order+1));
-    for (uint pspt = 0; pspt < nSpts_pro; pspt++) {
-      loc[0] = loc_spts_pro_1D[pspt%nSpts_pro_1D];
-      loc[1] = loc_spts_pro_1D[floor(pspt/nSpts_pro_1D)];
+  if (nDims == 2) {
+    for (uint spt = 0; spt < nSpts; spt++) {
+      uint ispt = spt % (order+1);
+      uint jspt = floor(spt/(order+1));
+      for (uint pspt = 0; pspt < nSpts_pro; pspt++) {
+        loc[0] = loc_spts_pro_1D[pspt%nSpts_pro_1D];
+        loc[1] = loc_spts_pro_1D[floor(pspt/nSpts_pro_1D)];
 
-      opp_prolong(pspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt);
+        opp_prolong(pspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt);
+      }
+    }
+  } else {
+    for (uint spt = 0; spt < nSpts; spt++) {
+      uint kspt = spt/((order+1)*(order+1));
+      uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+      uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+      for (uint pspt = 0; pspt < nSpts_pro; pspt++) {
+        uint kppt = pspt/((nSpts_pro_1D)*(nSpts_pro_1D));
+        uint jppt = (pspt-(nSpts_pro_1D)*(nSpts_pro_1D)*kppt)/(nSpts_pro_1D);
+        uint ippt = pspt - (nSpts_pro_1D)*jppt - (nSpts_pro_1D)*(nSpts_pro_1D)*kppt;
+        loc[0] = loc_spts_pro_1D[ippt];
+        loc[1] = loc_spts_pro_1D[jppt];
+        loc[2] = loc_spts_pro_1D[kppt];
+        opp_prolong(pspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt) * Lagrange(loc_spts,loc[2],kspt);
+      }
     }
   }
 
@@ -1469,13 +1479,30 @@ void oper::setupPMG(int my_order)
 
     auto loc_spts_res_1D = getPts1D(sptsType,order-1);
 
-    for (uint spt = 0; spt < nSpts; spt++) {
-      uint ispt = spt % (nSpts/(order+1));
-      uint jspt = floor(spt/(order+1));
-      for (uint rspt = 0; rspt < nSpts_res; rspt++) {
-        loc[0] = loc_spts_res_1D[rspt%nSpts_res_1D];
-        loc[1] = loc_spts_res_1D[floor(rspt/nSpts_res_1D)];
-        opp_restrict(rspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt);
+    if (nDims == 2) {
+      for (uint spt = 0; spt < nSpts; spt++) {
+        uint ispt = spt % (order+1);
+        uint jspt = floor(spt/(order+1));
+        for (uint rspt = 0; rspt < nSpts_res; rspt++) {
+          loc[0] = loc_spts_res_1D[rspt%nSpts_res_1D];
+          loc[1] = loc_spts_res_1D[floor(rspt/nSpts_res_1D)];
+          opp_restrict(rspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt);
+        }
+      }
+    } else {
+      for (uint spt = 0; spt < nSpts; spt++) {
+        uint kspt = spt/((order+1)*(order+1));
+        uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+        uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+        for (uint rspt = 0; rspt < nSpts_res; rspt++) {
+          uint krpt = rspt/((nSpts_res_1D)*(nSpts_res_1D));
+          uint jrpt = (rspt-(nSpts_res_1D)*(nSpts_res_1D)*krpt)/(nSpts_res_1D);
+          uint irpt = rspt - (nSpts_res_1D)*jrpt - (nSpts_res_1D)*(nSpts_res_1D)*krpt;
+          loc[0] = loc_spts_res_1D[irpt];
+          loc[1] = loc_spts_res_1D[jrpt];
+          loc[2] = loc_spts_res_1D[krpt];
+          opp_restrict(rspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt) * Lagrange(loc_spts,loc[2],kspt);
+        }
       }
     }
   }

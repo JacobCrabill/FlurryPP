@@ -153,6 +153,7 @@ public:
 
   /* --- Moving-Grid Parameters --- */
   double moveAx, moveAy, moveFx, moveFy;
+  double moveAr, moveFr;
 
   /* --- Output Parameters --- */
 

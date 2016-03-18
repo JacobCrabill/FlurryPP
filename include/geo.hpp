@@ -141,6 +141,7 @@ public:
   // Basic Moving-Grid Variables
   vector<point> xv_new;   //! Physical position of vertices for next time step [moving grids]
   vector<point> xv0;      //! Initial position of vertices [moving grids]
+  matrix<double> rv0;     //! Initial posiiton of vertices in polar coords [moving grids, vibrating sphere test case]
   matrix<double> gridVel; //! Grid velocity of vertices
 
   point minPt;   //! Centroid of all vertices on grid partition

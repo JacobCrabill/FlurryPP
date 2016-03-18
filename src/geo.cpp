@@ -204,6 +204,17 @@ void geo::processConnectivity(int HMG_nSplit)
     xv0.resize(nVerts);
     for (int i=0; i<nVerts; i++) xv0[i] = point(xv[i],nDims);
     gridVel.setup(nVerts,nDims);
+
+    if (params->motion == 5) {
+      // Vibrating cylinder/sphere test case !! nDims==3 ONLY CURRNETLY !!
+      rv0.setup(nVerts,nDims);
+      for (int i = 0; i < nVerts; i++) {
+        double x = xv(i,0);  double y = xv(i,1);  double z = xv(i,2);
+        rv0(i,0) = sqrt(x*x+y*y+z*z);
+        rv0(i,1) = std::atan2(y,x);
+        rv0(i,2) = std::acos(z/rv0(i,0));
+      }
+    }
   }
 }
 
@@ -2745,6 +2756,7 @@ void geo::moveMesh(double rkVal)
         double Ay = params->moveAy; // Amplitude  (m)
         double fx = params->moveFx; // Frequency  (Hz)
         double fy = params->moveFy; // Frequency  (Hz)
+        #pragma omp parallel for
         for (int iv=0; iv<nVerts; iv++) {
           xv(iv,0) = xv0[iv].x + Ax*sin(2.*pi*fx*rkTime);
           //xv(iv,1) = xv0[iv].y + Ay*sin(2.*pi*fy*rkTime);
@@ -2754,6 +2766,28 @@ void geo::moveMesh(double rkVal)
           gridVel(iv,1) = 2.*pi*fy*Ay*sin(2.*pi*fy*rkTime);
         }
       }
+      break;
+    }
+    case 5: {
+      /// Radial Expansion / Contraction
+      if (gridID == 0) {
+        double Ar = params->moveAr;
+        double Fr = params->moveFr;
+        #pragma omp parallel for
+        for (int iv = 0; iv < nVerts; iv++) {
+          double r = rv0(iv,0) + Ar*(1. - cos(2.*pi*Fr*rkTime));
+          double rdot = 2.*pi*Ar*Fr*sin(2.*pi*Fr*rkTime);
+          double theta = rv0(iv,1);
+          double psi = rv0(iv,2);
+          xv(iv,0) = r*sin(psi)*cos(theta);
+          xv(iv,1) = r*sin(psi)*sin(theta);
+          xv(iv,2) = r*cos(psi);
+          gridVel(iv,0) = rdot*sin(psi)*cos(theta);
+          gridVel(iv,1) = rdot*sin(psi)*sin(theta);
+          gridVel(iv,2) = rdot*cos(psi);
+        }
+      }
+      break;
     }
   }
 }

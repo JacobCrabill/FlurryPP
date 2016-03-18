@@ -325,6 +325,9 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("moveAy",moveAy);
     opts.getScalarValue("moveFx",moveFx);
     opts.getScalarValue("moveFy",moveFy);
+  } else if (motion == 5) {
+    opts.getScalarValue("moveAr",moveAr);
+    opts.getScalarValue("moveFr",moveFr);
   }
 
   if (viscous) {
