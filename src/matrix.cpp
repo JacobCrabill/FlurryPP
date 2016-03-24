@@ -461,8 +461,10 @@ template<typename T>
 void Array2D<T>::insertRow(const vector<T> &vec, int rowNum)
 {
 #ifdef _DEBUG
-  if (this->dims[1]!= 0 && vec.size()!=this->dims[1])
+  if (this->dims[1]!= 0 && vec.size()!=this->dims[1]) {
+    _print(this->dims[1], vec.size());
     FatalErrorST("Attempting to assign row of wrong size to matrix.");
+  }
 #endif
   if (rowNum==INSERT_AT_END || rowNum==(int)this->dims[0]) {
     // Default action - add to end

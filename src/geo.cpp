@@ -843,7 +843,7 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
   int nc = 0;
   for (int ic=0; ic<nEles; ic++) {
     // Skip any hole cells
-    if (meshType == OVERSET_MESH && iblankCell[ic] == HOLE) cout << "Skipping ele " << ic << " on rank " << params->rank << endl; /// DEBUGGING
+    //if (meshType == OVERSET_MESH && iblankCell[ic] == HOLE) cout << "Skipping ele " << ic << " on rank " << params->rank << endl; /// DEBUGGING
     if (meshType == OVERSET_MESH && iblankCell[ic] == HOLE) continue;
 
     shared_ptr<ele> e = make_shared<ele>();

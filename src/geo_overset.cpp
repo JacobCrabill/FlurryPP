@@ -706,12 +706,10 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
     for (int F=0; F<nMpiFaces; F++) {
       int ff = mpiFaces[F];
       int fr = faceID_R[F];
-      //if (params->rank == 5) cout << "checking face: " << fr << endl; ///! DEBUGGING
       if (iblankEle1[f2c(ff,0)] == NORMAL) {
         int p = procR[F];
         for (int i=0; i<recvCnts[p]; i++) {
           int fr2 = mpiFringeFaces_proc(p,i);
-          //if (params->rank == 5 && p==0) cout << "against face: " << fr2 << endl;
           if (fr == fr2) {
             iblankEle1[f2c(ff,0)] = FRINGE;
             break;
@@ -731,6 +729,9 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
         iblankEle[ic] = HOLE;
     }
   }
+
+  ///! EVEN BIGGER HACK
+  if (gridID == 0) iblankEle.assign(nEles,NORMAL);
 
 #endif
 }
@@ -753,6 +754,7 @@ void geo::updateBlankingTioga(void)
 
 void geo::setFaceIblanks(void)
 {
+  overFaces.clear();
   iblankFace.assign(nFaces,NORMAL);
 
   for (int ic=0; ic<nEles; ic++) {
@@ -763,9 +765,10 @@ void geo::setFaceIblanks(void)
       if (c2c(ic,j)>=0) {
         // Internal face
         if (iblankCell[c2c(ic,j)] == HOLE) {
-          iblankFace[c2f(ic,j)] = HOLE;
+          iblankFace[ff] = HOLE;
         } else {
-          iblankFace[c2f(ic,j)] = FRINGE;
+          iblankFace[ff] = FRINGE;
+          overFaces.insert(ff);
         }
       } else {
         // Boundary or MPI face
@@ -781,7 +784,6 @@ void geo::setFaceIblanks(void)
   int maxNMpiFaces = getMax(nMpiFaces_proc);
 
   vector<int> mpiIblank(nMpiFaces);
-  vector<int> mpiIblankR(nMpiFaces);
   matrix<int> mpiIblank_proc(nProcGrid,maxNMpiFaces);
   matrix<int> mpiFid_proc(nProcGrid,maxNMpiFaces);
 
@@ -808,8 +810,10 @@ void geo::setFaceIblanks(void)
           // Not a normal face; figure out if hole or fringe
           if (mpiIblank[F] == HOLE && mpiIblank_proc(p,i) == HOLE)
             iblankFace[ff] = HOLE;
-          else
+          else {
             iblankFace[ff] = FRINGE;
+            overFaces.insert(ff);
+          }
         }
       }
     }
@@ -1027,7 +1031,7 @@ void geo::removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEle
 
   for (auto &ic:blankEles) {
     if (ic<0) continue;
-cout << "Removing element " << ic << " from rank " << params->rank << endl;
+cout << "Removing element " << ic << " from rank " << params->rank << endl; /// DEBUGGING
     int ind = eleMap[ic];
     if (ind<0) continue; //FatalError("Should not have marked a hole cell for blanking!");
     eles.erase(eles.begin()+ind,eles.begin()+ind+1);

@@ -181,4 +181,4 @@ Physical Volume ("FLUID") = {1:6};
 Physical Surface ("CHAR") = {11:16};
 Physical Surface ("SPHERE") = {1:6};
 
-Mesh.ElementOrder = 4;
+Mesh.ElementOrder = 2;

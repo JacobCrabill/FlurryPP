@@ -552,7 +552,7 @@ void solver::extrapolateU(void)
   int m = nFpts;
   int n = nEles * nFields;
   int k = nSpts;
-_print(params->rank,eles.size()); /// DEBUGGING
+
   auto &A = opers[order].opp_spts_to_fpts(0,0);
   auto &B = U_spts(0,0,0);
   auto &C = U_fpts(0,0,0);
@@ -1727,13 +1727,7 @@ void solver::initializeSolution(bool PMG)
   /* If using CFL-based time-stepping, calc wave speed in each
    * ele for initial dt calculation */
   if (params->dtType != 0) {
-    cout << params->rank << "before extrapU" << endl << flush;
-    MPI_Barrier(MPI_COMM_WORLD);
-    MPI_Barrier(MPI_COMM_WORLD);
     extrapolateU();
-    MPI_Barrier(MPI_COMM_WORLD);
-    MPI_Barrier(MPI_COMM_WORLD);
-    cout << params->rank << "after extrapU" << endl << flush;
 #pragma omp parallel for
     for (uint i=0; i<eles.size(); i++) {
       eles[i]->calcWaveSpFpts();

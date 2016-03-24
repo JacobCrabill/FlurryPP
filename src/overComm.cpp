@@ -606,7 +606,7 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
   }
 
   // Exchange superMesh quadrature points among the grids
-  nQptsSend.resize(nproc);
+  nQptsSend.assign(nproc,0);
   for (int p=0; p<nproc; p++) {
     if (gridIdList[p] == gridID) continue;
     nQptsSend[p] = qpts[p].getDim0();
@@ -701,7 +701,7 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
   }
 
   // Send/recv the final target-cell data
-  nCellsSend.resize(nproc);
+  nCellsSend.assign(nproc,0);
   for (int p=0; p<nproc; p++) {
     nCellsSend[p] = foundCells[p].size();
   }
@@ -1226,7 +1226,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>
   }
 
   /* ---- Send/Receive the the interpolated data across grids using interComm ---- */
-  nPtsSend.resize(nproc);
+  nPtsSend.assign(nproc,0);
   for (int p=0; p<nproc; p++) {
     if (gridIdList[p] == gridID) continue;
     nPtsSend[p] = foundPts[p].size();
@@ -1303,7 +1303,7 @@ void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, o
   }
 
   /* ---- Send/Receive the the interpolated data across grids using interComm ---- */
-  nPtsSend.resize(nproc);
+  nPtsSend.assign(nproc,0);
   for (int p=0; p<nproc; p++) {
     if (gridIdList[p] == gridID) continue;
     nPtsSend[p] = foundPts[p].size();
@@ -1316,7 +1316,7 @@ void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, o
     FatalError("Unmatched points remaining!");
   }
 
-  recvPts.resize(nproc);
+  recvPts.assign(nproc,{0});
   for (int p=0; p<nproc; p++) {
     if (p==rank) continue;
     recvPts[p].resize(nPtsRecv[p]);

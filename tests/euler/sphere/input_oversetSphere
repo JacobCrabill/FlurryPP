@@ -15,9 +15,9 @@ oversetMethod  0  (0: AB-U, 1: AB-F, 2: LGP)
 
 # Simulation Start/Run/Stop Conditions
 maxTime      500   (Non-dimensional time limit)
-iterMax      200000  (Total iteration limit)
+iterMax      500  (Total iteration limit)
 restart      0    (Start from restart file?)
-restartIter  200    (Iteration of restart file)
+restartIter  150    (Iteration of restart file)
 testCase     0    (Calculate error w.r.t. test case?)
 
 # =============================================================
