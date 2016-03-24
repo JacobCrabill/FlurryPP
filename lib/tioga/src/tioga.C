@@ -212,14 +212,11 @@ void tioga::getDonorInfo(int *receptors,int *indices,double *frac,int *dcount)
 
 tioga::~tioga()
 {
-  int i;
   if (mb) delete[] mb;
   if (holeMap)
-    {
-      for(i=0;i<nmesh;i++)
-	if (holeMap[i].existWall) free(holeMap[i].sam);
-      delete [] holeMap;
-    }
+  {
+    delete [] holeMap;
+  }
   if (pc) delete[] pc;
   if (sendCount) free(sendCount);
   if (recvCount) free(recvCount);
@@ -661,200 +658,184 @@ void tioga::exchangeDonors(void)
 
 void tioga::exchangeSearchData(void)
 {
-  int i,j,k,l,m;
-  int icount,dcount;
   int nsend,nrecv;
   PACKET *sndPack,*rcvPack;
   int *sndMap;
   int *rcvMap;
-  //
+
   // get the processor map for sending
   // and receiving
-  //
   pc->getMap(&nsend,&nrecv,&sndMap,&rcvMap);
-  //
+
   // create packets to send and receive
   // and initialize them to zero
-  //
-  sndPack=(PACKET *)malloc(sizeof(PACKET)*nsend);
-  rcvPack=(PACKET *)malloc(sizeof(PACKET)*nrecv);
+  sndPack = (PACKET *)malloc(sizeof(PACKET)*nsend);
+  rcvPack = (PACKET *)malloc(sizeof(PACKET)*nrecv);
 
-  for(i=0;i<nsend;i++)
-    {
-      sndPack[i].nints=sndPack[i].nreals=0;
-      sndPack[i].intData=NULL;
-      sndPack[i].realData=NULL;
-    }
+  for (int i = 0; i < nsend; i++)
+  {
+    sndPack[i].nints = sndPack[i].nreals = 0;
+    sndPack[i].intData = NULL;
+    sndPack[i].realData = NULL;
+  }
 
-  for(i=0;i<nrecv;i++)
-    {
-      rcvPack[i].nints=rcvPack[i].nreals=0;
-      rcvPack[i].intData=NULL;
-      rcvPack[i].realData=NULL;
-    }
-  //
+  for (int i = 0; i < nrecv; i++)
+  {
+    rcvPack[i].nints = rcvPack[i].nreals = 0;
+    rcvPack[i].intData = NULL;
+    rcvPack[i].realData = NULL;
+  }
+
   // now get data for each packet
-  //
-  for(k=0;k<nsend;k++)
+  for (int k = 0; k < nsend; k++)
     mb->getQueryPoints(&obblist[k],
            &sndPack[k].nints,&sndPack[k].intData,
            &sndPack[k].nreals,&sndPack[k].realData);
-  //
+
   // exchange the data
-  //
   pc->sendRecvPackets(sndPack,rcvPack);
-  //
+
   // now assort the data into the search
   // list arrays
-  //
-  mb->nsearch=0;
-  for(k=0;k<nrecv;k++)
-    mb->nsearch+=rcvPack[k].nints;
-  //
+  mb->nsearch = 0;
+  for (int k = 0; k < nrecv; k++)
+    mb->nsearch += rcvPack[k].nints;
+
   // if these were already allocated
   // get rid of them
-  //
   if (mb->xsearch) free(mb->xsearch);
   if (mb->isearch) free(mb->isearch);
   if (mb->donorId) free(mb->donorId);
-  //
+
   // allocate query point storage
-  //
-  mb->xsearch=(double *)malloc(sizeof(double)*3*mb->nsearch);
-  mb->isearch=(int *)malloc(2*sizeof(int)*mb->nsearch);
-  mb->donorId=(int *)malloc(sizeof(int)*mb->nsearch);
-  //
+  mb->xsearch = (double *)malloc(sizeof(double)*3*mb->nsearch);
+  mb->isearch = (int *)malloc(2*sizeof(int)*mb->nsearch);
+  mb->donorId = (int *)malloc(sizeof(int)*mb->nsearch);
+
   // now fill the query point arrays
-  //
-  icount=0;
-  dcount=0;
-  for(k=0;k<nrecv;k++)
+  int icount = 0;
+  int dcount = 0;
+  for (int k = 0; k < nrecv; k++)
   {
-    l=0;
-    for(j=0;j<rcvPack[k].nints;j++)
+    int l = 0;
+    for (int j = 0; j < rcvPack[k].nints; j++)
     {
-      mb->isearch[icount++]=k;
-      mb->isearch[icount++]=rcvPack[k].intData[j];
-      mb->xsearch[dcount++]=rcvPack[k].realData[l++];
-      mb->xsearch[dcount++]=rcvPack[k].realData[l++];
-      mb->xsearch[dcount++]=rcvPack[k].realData[l++];
+      mb->isearch[icount++] = k;
+      mb->isearch[icount++] = rcvPack[k].intData[j];
+      mb->xsearch[dcount++] = rcvPack[k].realData[l++];
+      mb->xsearch[dcount++] = rcvPack[k].realData[l++];
+      mb->xsearch[dcount++] = rcvPack[k].realData[l++];
     }
   }
-  for(i=0;i<nsend;i++)
+
+  for (int i = 0; i < nsend;i++)
   {
     if (sndPack[i].nints > 0) free(sndPack[i].intData);
     if (sndPack[i].nreals >0) free(sndPack[i].realData);
   }
-  for(i=0;i<nrecv;i++)
+
+  for (int i = 0; i < nrecv; i++)
   {
     if (rcvPack[i].nints > 0) free(rcvPack[i].intData);
     if (rcvPack[i].nreals >0) free(rcvPack[i].realData);
   }
+
   free(sndPack);
   free(rcvPack);
   //printf("%d %d\n",myid,mb->nsearch);
 }
 
-//
+
 // routine for extra query points
 // have to unify both routines here
 // FIX later ...
-//
 void tioga::exchangePointSearchData(void)
 {
-  int i,j,k,l,m;
-  int icount,dcount;
   int nsend,nrecv;
   PACKET *sndPack,*rcvPack;
   int *sndMap;
   int *rcvMap;
-  //
+
   // get the processor map for sending
   // and receiving
-  //
   pc->getMap(&nsend,&nrecv,&sndMap,&rcvMap);
-  //
+
   // create packets to send and receive
   // and initialize them to zero
-  //
-  sndPack=(PACKET *)malloc(sizeof(PACKET)*nsend);
-  rcvPack=(PACKET *)malloc(sizeof(PACKET)*nrecv);
-  //
-  for(i=0;i<nsend;i++)
-    {
-      sndPack[i].nints=sndPack[i].nreals=0;
-      sndPack[i].intData=NULL;
-      sndPack[i].realData=NULL;
-    }
-  //
-  for(i=0;i<nrecv;i++)
-    {
-      rcvPack[i].nints=rcvPack[i].nreals=0;
-      rcvPack[i].intData=NULL;
-      rcvPack[i].realData=NULL;
-    }
-  //
+  sndPack = (PACKET *)malloc(sizeof(PACKET)*nsend);
+  rcvPack = (PACKET *)malloc(sizeof(PACKET)*nrecv);
+
+  for(int i = 0; i < nsend; i++)
+  {
+    sndPack[i].nints  =sndPack[i].nreals = 0;
+    sndPack[i].intData = NULL;
+    sndPack[i].realData = NULL;
+  }
+
+  for (int i = 0; i < nrecv; i++)
+  {
+    rcvPack[i].nints = rcvPack[i].nreals = 0;
+    rcvPack[i].intData = NULL;
+    rcvPack[i].realData = NULL;
+  }
+
   // now get data for each packet
-  //
-  for(k=0;k<nsend;k++)
+  for (int k = 0; k < nsend; k++)
     mb->getExtraQueryPoints(&obblist[k],
           &sndPack[k].nints,&sndPack[k].intData,
           &sndPack[k].nreals,&sndPack[k].realData);
   MPI_Barrier(MPI_COMM_WORLD);
-  //if (myid==0) printf("AAAAA\n");
-  //
+
   // exchange the data
-  //
   pc->sendRecvPackets(sndPack,rcvPack);
-  //
+
   // now assort the data into the search
   // list arrays
-  //
-  mb->nsearch=0;
-  for(k=0;k<nrecv;k++)
-    mb->nsearch+=rcvPack[k].nints;
-  //
+  mb->nsearch = 0;
+  for (int k = 0; k < nrecv; k++)
+    mb->nsearch += rcvPack[k].nints;
+
   // if these were already allocated
   // get rid of them
-  //
   if (mb->xsearch) free(mb->xsearch);
   if (mb->isearch) free(mb->isearch);
   if (mb->donorId) free(mb->donorId);
   if (mb->rst) free(mb->rst);
-  //
+
   // allocate query point storage
-  //
-  mb->xsearch=(double *)malloc(sizeof(double)*3*mb->nsearch);
-  mb->isearch=(int *)malloc(2*sizeof(int)*mb->nsearch);
-  mb->donorId=(int *)malloc(sizeof(int)*mb->nsearch);
-  mb->rst=(double *) malloc(sizeof(double)*3*mb->nsearch);
-  //
+  mb->xsearch = (double *)malloc(sizeof(double)*3*mb->nsearch);
+  mb->isearch = (int *)malloc(2*sizeof(int)*mb->nsearch);
+  mb->donorId = (int *)malloc(sizeof(int)*mb->nsearch);
+  mb->rst = (double *) malloc(sizeof(double)*3*mb->nsearch);
+
   // now fill the query point arrays
-  //
-  icount=0;
-  dcount=0;
-  for(k=0;k<nrecv;k++)
+  int icount = 0;
+  int dcount = 0;
+  for (int k = 0; k < nrecv; k++)
   {
-    l=0;
-    for(j=0;j<rcvPack[k].nints;j++)
+    int l = 0;
+    for (int j = 0; j < rcvPack[k].nints; j++)
     {
-      mb->isearch[icount++]=k;
-      mb->isearch[icount++]=rcvPack[k].intData[j];
-      mb->xsearch[dcount++]=rcvPack[k].realData[l++];
-      mb->xsearch[dcount++]=rcvPack[k].realData[l++];
-      mb->xsearch[dcount++]=rcvPack[k].realData[l++];
+      mb->isearch[icount++] = k;
+      mb->isearch[icount++] = rcvPack[k].intData[j];
+      mb->xsearch[dcount++] = rcvPack[k].realData[l++];
+      mb->xsearch[dcount++] = rcvPack[k].realData[l++];
+      mb->xsearch[dcount++] = rcvPack[k].realData[l++];
     }
   }
-  for(i=0;i<nsend;i++)
+
+  for (int i = 0; i < nsend; i++)
   {
     if (sndPack[i].nints > 0) free(sndPack[i].intData);
     if (sndPack[i].nreals >0) free(sndPack[i].realData);
   }
-  for(i=0;i<nrecv;i++)
+
+  for (int i = 0; i < nrecv; i++)
   {
     if (rcvPack[i].nints > 0) free(rcvPack[i].intData);
     if (rcvPack[i].nreals >0) free(rcvPack[i].realData);
   }
+
   free(sndPack);
   free(rcvPack);
   //printf("%d %d\n",myid,mb->nsearch);
@@ -870,74 +851,59 @@ void tioga::exchangePointSearchData(void)
  */
 void tioga::getHoleMap(void)
 {
-  int i,j,k,m;
-  int ii,jj,kk;
   double wbox[6];
   int existWall;
   int meshtag,maxtag;
-  int *existHoleLocal;
-  int *existHole;
-  double *bboxLocal;
-  double *bboxGlobal;
   double ds[3],dsmax,dsbox;
   int bufferSize;
-  FILE *fp;
-  char fname[80];
-  char intstring[7];
- //
+
  // get the local bounding box
- //
  mb->getWallBounds(&meshtag,&existWall,wbox);
  MPI_Allreduce(&meshtag,&maxtag,1,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
- //
+
  if (holeMap)
  {
-   for(i=0;i<nmesh;i++)
-     if (holeMap[i].existWall) free(holeMap[i].sam);
    delete [] holeMap;
  }
  holeMap=new HOLEMAP[maxtag];
- //
- existHoleLocal=(int *)malloc(sizeof(int)*maxtag);
- existHole=(int *)malloc(sizeof(int)*maxtag);
- //
- for(i=0;i<maxtag;i++) existHole[i]=existHoleLocal[i]=0;
- //
- existHoleLocal[meshtag-1]=existWall;
- //
- MPI_Allreduce(existHoleLocal,existHole,maxtag,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
- //
- for(i=0;i<maxtag;i++) holeMap[i].existWall=existHole[i];
- //
- bboxLocal=(double *) malloc(sizeof(double)*6*maxtag);
- bboxGlobal=(double *) malloc(sizeof(double)*6*maxtag);
- //
- for(i=0;i<3*maxtag;i++) bboxLocal[i]=BIGVALUE;
- for(i=0;i<3*maxtag;i++) bboxLocal[i+3*maxtag]=-BIGVALUE;
- for(i=0;i<3*maxtag;i++) bboxGlobal[i]=BIGVALUE;
- for(i=0;i<3*maxtag;i++) bboxGlobal[i+3*maxtag]=-BIGVALUE;
 
- //
- for(i=0;i<3;i++)
-   {
-     bboxLocal[3*(meshtag-1)+i]=wbox[i];
-     bboxLocal[3*(meshtag-1)+i+3*maxtag]=wbox[i+3];
-   }
- //
+ vector<int> existHoleLocal(maxtag);
+ vector<int> existHole(maxtag);
+
+ for (int i = 0; i < maxtag; i++) existHole[i] = existHoleLocal[i] = 0;
+
+ existHoleLocal[meshtag-1] = existWall;
+
+ MPI_Allreduce(existHoleLocal.data(), existHole.data(), maxtag, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+
+ for (int i = 0; i < maxtag; i++) holeMap[i].existWall = existHole[i];
+
+ vector<double> bboxLocal(6*maxtag);
+ vector<double> bboxGlobal(6*maxtag);
+
+ for (int i = 0;i < 3*maxtag; i++) bboxLocal[i]           =  BIGVALUE;
+ for (int i = 0;i < 3*maxtag; i++) bboxLocal[i+3*maxtag]  = -BIGVALUE;
+ for (int i = 0;i < 3*maxtag; i++) bboxGlobal[i]          =  BIGVALUE;
+ for (int i = 0;i < 3*maxtag; i++) bboxGlobal[i+3*maxtag] = -BIGVALUE;
+
+ for (int i = 0; i < 3; i++)
+ {
+   bboxLocal[3*(meshtag-1)+i] = wbox[i];
+   bboxLocal[3*(meshtag-1)+i+3*maxtag] = wbox[i+3];
+ }
+
  // get the global bounding box info across all the
  // partitions for all meshes
- //
- MPI_Allreduce(bboxLocal,bboxGlobal,3*maxtag,MPI_DOUBLE,MPI_MIN,MPI_COMM_WORLD);
- MPI_Allreduce(&(bboxLocal[3*maxtag]),&(bboxGlobal[3*maxtag]),3*maxtag,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
- //
+ MPI_Allreduce(bboxLocal.data(), bboxGlobal.data(), 3*maxtag, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+ MPI_Allreduce(&(bboxLocal[3*maxtag]), &(bboxGlobal[3*maxtag]), 3*maxtag, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
  // find the bounding box for each mesh
  // from the globally reduced data
- //
- for(i=0;i<maxtag;i++)
+ for (int i = 0; i < maxtag; i++)
  {
    if (holeMap[i].existWall)
    {
-     for(j=0;j<3;j++)
+     for (int j = 0; j < 3; j++)
      {
        holeMap[i].extents[j]=bboxGlobal[3*i+j];
        holeMap[i].extents[j+3]=bboxGlobal[3*i+j+3*maxtag];
@@ -947,55 +913,43 @@ void tioga::getHoleMap(void)
      dsmax=max(dsmax,ds[2]);
      dsbox=dsmax/64;
 
-     for(j=0;j<3;j++)
+     for (int j = 0; j < 3; j++)
      {
-       holeMap[i].extents[j]-=(2*dsbox);
-       holeMap[i].extents[j+3]+=(2*dsbox);
-       holeMap[i].nx[j]=floor((double)max((holeMap[i].extents[j+3]-holeMap[i].extents[j])/dsbox,1.));
+       holeMap[i].extents[j] -= (2*dsbox);
+       holeMap[i].extents[j+3] += (2*dsbox);
+       holeMap[i].nx[j] = floor((double)max((holeMap[i].extents[j+3]-holeMap[i].extents[j])/dsbox,1.));
      }
-     bufferSize=holeMap[i].nx[0]*holeMap[i].nx[1]*holeMap[i].nx[2];
-     holeMap[i].sam=(int *)malloc(sizeof(int)*bufferSize);
-     holeMap[i].samLocal=(int *)malloc(sizeof(int)*bufferSize);
-     for(j=0;j<bufferSize;j++) holeMap[i].sam[j]=holeMap[i].samLocal[j]=0;
+     bufferSize = holeMap[i].nx[0]*holeMap[i].nx[1]*holeMap[i].nx[2];
+     holeMap[i].sam.resize(bufferSize);
+     holeMap[i].samLocal.resize(bufferSize);
+     for (int j = 0; j < bufferSize; j++) holeMap[i].sam[j] = holeMap[i].samLocal[j] = 0;
    }
  }
- //
+
  // mark the wall boundary cells in the holeMap
- //
  if (holeMap[meshtag-1].existWall) {
-   mb->markWallBoundary(holeMap[meshtag-1].samLocal,holeMap[meshtag-1].nx,holeMap[meshtag-1].extents);
+   mb->markWallBoundary(holeMap[meshtag-1].samLocal.data(),holeMap[meshtag-1].nx,holeMap[meshtag-1].extents);
  }
- //
+
  // allreduce the holeMap of each mesh
- //
- for(i=0;i<maxtag;i++)
+ for (int i = 0; i < maxtag; i++)
  {
    if (holeMap[i].existWall)
    {
-     bufferSize=holeMap[i].nx[0]*holeMap[i].nx[1]*holeMap[i].nx[2];
-     MPI_Allreduce(holeMap[i].samLocal,holeMap[i].sam,bufferSize,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
+     bufferSize = holeMap[i].nx[0] * holeMap[i].nx[1] * holeMap[i].nx[2];
+     MPI_Allreduce(holeMap[i].samLocal.data(),holeMap[i].sam.data(),bufferSize,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
    }
  }
- //
+
  // set the global number of meshes to maxtag
- //
  nmesh=maxtag;
- //
+
  // now fill the holeMap
- //
- for(i=0;i<maxtag;i++)
-   if (holeMap[i].existWall) fillHoleMap(holeMap[i].sam,holeMap[i].nx,isym);
- //
+ for (int i = 0; i < maxtag; i++)
+   if (holeMap[i].existWall) fillHoleMap(holeMap[i].sam.data(),holeMap[i].nx,isym);
+
  // output the hole map
- //
  //this->outputHoleMap();
- //
- // free local memory
- //
- free(existHoleLocal);
- free(existHole);
- free(bboxLocal);
- free(bboxGlobal);
 }
 
 /**

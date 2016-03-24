@@ -5,6 +5,7 @@
 #include<cstdio>
 #include<cstdlib>
 #include<cmath>
+#include <vector>
 #include "math.h"
 #include "mpi.h"
 
@@ -83,8 +84,8 @@ typedef struct HOLEMAP
 {
   int existWall;
   int nx[3];
-  int *samLocal;
-  int *sam;
+  std::vector<int> samLocal;
+  std::vector<int> sam;
   double extents[6];
 } HOLEMAP;
 

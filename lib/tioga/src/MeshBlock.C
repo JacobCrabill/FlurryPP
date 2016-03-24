@@ -1455,7 +1455,7 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
       for(j=0;j<nmesh;j++) {
         if (j!=(meshtag-BASE) && holemap[j].existWall)
         {
-          if (checkHoleMap(&x[3*i],holemap[j].nx,holemap[j].sam,holemap[j].extents))
+          if (checkHoleMap(&x[3*i],holemap[j].nx,holemap[j].sam.data(),holemap[j].extents))
           {
             iblank[i] = HOLE;
             break;
@@ -1478,7 +1478,7 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
         if (j!=(meshtag-BASE) && holemap[j].existWall)
         {
           if (!iflag[j]) {
-            if (checkHoleMap(&x[3*i],holemap[j].nx,holemap[j].sam,holemap[j].extents))
+            if (checkHoleMap(&x[3*i],holemap[j].nx,holemap[j].sam.data(),holemap[j].extents))
             {
               iblank[i] = HOLE;
               break;
