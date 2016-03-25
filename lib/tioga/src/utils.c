@@ -11,12 +11,12 @@ void cellvolume_(double* vol, double xv[8][3], int numverts[4][6], int faceInfo[
 }
 
 extern void kaiser_wrap_(double *,int *,int *,double *,double *,double *,int *);
-/***
- ** find oriented bounding box for a given set of points
-*/
+
+/*!
+ * find oriented bounding box for a given set of points
+ */
 void findOBB(double *x,double xc[3],double dxc[3],double vec[3][3],int nnodes)
 {
-  int i,j,k,m,i3;
   double *aa;
   double *eigenv;
   double trace,sume;
@@ -24,19 +24,18 @@ void findOBB(double *x,double xc[3],double dxc[3],double vec[3][3],int nnodes)
   double xd[3];
   double xmin[3],xmax[3];
   int nrows,ncols;
-  //
+
   xc[0]=xc[1]=xc[2]=0;
-  //
+
   // find centroid coordinates (not true centroid)
-  //
-  for(i=0;i<nnodes;i++)
-    {
-      i3=3*i;
-      xc[0]+=x[i3];
-      xc[1]+=x[i3+1];
-      xc[2]+=x[i3+2];
-    }
-  //
+  for (int i = 0; i < nnodes; i++)
+  {
+    int i3=3*i;
+    xc[0]+=x[i3];
+    xc[1]+=x[i3+1];
+    xc[2]+=x[i3+2];
+  }
+
   xc[0]/=nnodes;
   xc[1]/=nnodes;
   xc[2]/=nnodes;
@@ -59,10 +58,11 @@ void findOBB(double *x,double xc[3],double dxc[3],double vec[3][3],int nnodes)
     }
     else
     {
-      for(i=0;i<nnodes;i++) {
-        i3=3*i;
-        for(j=0;j<3;j++)
-          dxc[j]=max(1e-3,fabs(x[i3+j]-x[0]));
+      for (int i = 0; i < nnodes; i++)
+      {
+        int i3 = 3*i;
+        for (int j = 0; j < 3; j++)
+          dxc[j] = max(1e-3,fabs(x[i3+j]-x[0]));
       }
       return;
     }
@@ -71,87 +71,80 @@ void findOBB(double *x,double xc[3],double dxc[3],double vec[3][3],int nnodes)
   // find co-variance matrix
   // aa = [I11 I12 I13;I21 I22 I23;I31 I32 I33]
   //
-  aa=(double *) malloc(sizeof(double)*9);
-  eigenv=(double *)malloc(sizeof(double)*3);
-  //
-  for(i=0;i<9;i++) aa[i]=0;
-  //
-  for(i=0;i<nnodes;i++)
-    {
-      i3=3*i;
-      aa[0]+=((x[i3]-xc[0])*(x[i3]-xc[0]));
-      aa[4]+=((x[i3+1]-xc[1])*(x[i3+1]-xc[1]));
-      aa[8]+=((x[i3+2]-xc[2])*(x[i3+2]-xc[2]));
-      aa[3]+=((x[i3]-xc[0])*(x[i3+1]-xc[1]));
-      aa[6]+=((x[i3]-xc[0])*(x[i3+2]-xc[2]));
-      aa[7]+=((x[i3+1]-xc[1])*(x[i3+2]-xc[2]));
-    }
+  aa = (double *) malloc(sizeof(double)*9);
+  eigenv = (double *)malloc(sizeof(double)*3);
+
+  for (int i = 0; i < 9; i++) aa[i] = 0;
+
+  for (int i = 0; i < nnodes; i++)
+  {
+    int i3=3*i;
+    aa[0]+=((x[i3]-xc[0])*(x[i3]-xc[0]));
+    aa[4]+=((x[i3+1]-xc[1])*(x[i3+1]-xc[1]));
+    aa[8]+=((x[i3+2]-xc[2])*(x[i3+2]-xc[2]));
+    aa[3]+=((x[i3]-xc[0])*(x[i3+1]-xc[1]));
+    aa[6]+=((x[i3]-xc[0])*(x[i3+2]-xc[2]));
+    aa[7]+=((x[i3+1]-xc[1])*(x[i3+2]-xc[2]));
+  }
   aa[1]=aa[3];
   aa[2]=aa[6];
   aa[5]=aa[7];
-  //
+
   // use kaisers method to estimate
   // eigen values and vectors of the covariance matrix
-  //
-  nrows=3;
-  ncols=3;
+  nrows = 3;
+  ncols = 3;
   kaiser_wrap_(aa,&nrows,&ncols,eigenv,&trace,&sume,&ier);
-  //
+
   // copy the eigen vector basis on to vec
-  //
-  m=0;
-  for(i=0;i<3;i++)
-    for(j=0;j<3;j++)
-      {
-       vec[i][j]=aa[m++];
-      }
-  //
+  int m = 0;
+  for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++)
+      vec[i][j] = aa[m++];
+
   // find min and max bounds in the bounding box
   // vector basis
-  //
-  for(j=0;j<3;j++)
+  for (int j = 0; j < 3; j++)
+  {
+    xmax[j]=-BIGVALUE;
+    xmin[j]=BIGVALUE;
+  }
+
+  for (int i = 0; i < nnodes; i++)
+  {
+    int i3 = 3*i;
+    for (int j = 0; j < 3; j++) xd[j]=0;
+
+    for (int j = 0; j < 3; j++)
+      for (int k = 0; k < 3; k++)
+        xd[j] += (x[i3+k]-xc[k])*vec[j][k];
+
+    for (int j = 0; j < 3; j++)
     {
-      xmax[j]=-BIGVALUE;
-      xmin[j]=BIGVALUE;
+      xmax[j] = max(xmax[j],xd[j]);
+      xmin[j] = min(xmin[j],xd[j]);
     }
-  for(i=0;i<nnodes;i++)
-    {
-      i3=3*i;
-      for(j=0;j<3;j++) xd[j]=0;
-      //
-      for(j=0;j<3;j++)
-	for(k=0;k<3;k++)
-	  xd[j]+=(x[i3+k]-xc[k])*vec[j][k];
-      //
-      for(j=0;j<3;j++)
-	{
-	  xmax[j]=max(xmax[j],xd[j]);
-	  xmin[j]=min(xmin[j],xd[j]);
-	}
-    }
-  //
+  }
+
   // find the extents of the box
   // and coordinates of the center w.r.t. xc
   // increase extents by 1% for tolerance
-  //
-  for(j=0;j<3;j++)
-    {
-      dxc[j]=(xmax[j]-xmin[j])*0.5*1.01;
-      xd[j]=(xmax[j]+xmin[j])*0.5;
-    }
-  //
+  for (int j = 0; j < 3; j++)
+  {
+    dxc[j] = (xmax[j]-xmin[j])*0.5*1.01;
+    xd[j] = (xmax[j]+xmin[j])*0.5;
+  }
+
   // find the center of the box in
   // actual cartesian coordinates
-  //
-  for(j=0;j<3;j++)
-    {
-    for(k=0;k<3;k++)
-      xc[j]+=(xd[k]*vec[k][j]);
-    }
-  //
+  for (int j = 0; j < 3; j++)
+    for (int k = 0; k < 3; k++)
+      xc[j] += (xd[k]*vec[k][j]);
+
   free(aa);
   free(eigenv);
 }
+
 /**
  check if a point is inside the
  provided hole map
@@ -163,8 +156,8 @@ int checkHoleMap(double *x,int *nx,int *sam,double *extents)
   double dx[3];
   int ix[3];
 
-  for(i=0;i<3;i++) dx[i]=(extents[i+3]-extents[i])/nx[i];
-  for(i=0;i<3;i++)
+  for (i=0;i<3;i++) dx[i]=(extents[i+3]-extents[i])/nx[i];
+  for (i=0;i<3;i++)
     {
       ix[i]=(x[i]-extents[i])/dx[i];
       if (ix[i] < 0 || ix[i] > nx[i]-1) return 0;
@@ -192,23 +185,23 @@ void fillHoleMap(int *holeMap, int ix[3],int isym)
   //
   ns2=ix[0]*ix[1];
   //
-  for(kk=0;kk<ix[2];kk+=(ix[2]-1))
-    for(jj=0;jj<ix[1];jj++)
-      for(ii=0;ii<ix[0];ii++)
+  for (kk=0;kk<ix[2];kk+=(ix[2]-1))
+    for (jj=0;jj<ix[1];jj++)
+      for (ii=0;ii<ix[0];ii++)
         {
 	  mm=kk*ns2+jj*ix[0]+ii;
 	  holeMap[mm]=1;
 	}
-  for(kk=0;kk<ix[2];kk++)
-    for(jj=0;jj<ix[1];jj+=(ix[1]-1))
-      for(ii=0;ii<ix[0];ii++)
+  for (kk=0;kk<ix[2];kk++)
+    for (jj=0;jj<ix[1];jj+=(ix[1]-1))
+      for (ii=0;ii<ix[0];ii++)
         {
   	  mm=kk*ns2+jj*ix[0]+ii;
          holeMap[mm]=1;
   	}
-  for(kk=0;kk<ix[2];kk++)
-    for(jj=0;jj<ix[1];jj++)
-      for(ii=0;ii<ix[0];ii+=(ix[0]-1))
+  for (kk=0;kk<ix[2];kk++)
+    for (jj=0;jj<ix[1];jj++)
+      for (ii=0;ii<ix[0];ii+=(ix[0]-1))
         {
 	  mm=kk*ns2+jj*ix[0]+ii;
 	  holeMap[mm]=1;
@@ -217,9 +210,9 @@ void fillHoleMap(int *holeMap, int ix[3],int isym)
   while(npaint > 0)
     {
       npaint=0;
-      for(k=1;k<ix[2]-1;k++)
-        for(j=1;j<ix[1]-1;j++)
-          for(i=1;i<ix[0]-1;i++)
+      for (k=1;k<ix[2]-1;k++)
+        for (j=1;j<ix[1]-1;j++)
+          for (i=1;i<ix[0]-1;i++)
             {
               m=k*ns2+j*ix[0]+i;
               if (holeMap[m]==0)
@@ -277,7 +270,7 @@ void fillHoleMap(int *holeMap, int ix[3],int isym)
                 }
             }
     }
-  for(i=0;i<ix[2]*ix[1]*ix[0];i++)
+  for (i=0;i<ix[2]*ix[1]*ix[0];i++)
    {
     holeMap[i]=(holeMap[i] ==0 || holeMap[i]==2);
    }
@@ -298,23 +291,23 @@ int obbIntersectCheck(double vA[3][3],double xA[3],double dxA[3],
   // D=distance between centers
   // C=scalar product of axes
   //
-  for(i=0;i<3;i++) D[i]=xB[i]-xA[i];
-  for(i=0;i<3;i++)
-    for(j=0;j<3;j++)
+  for (i=0;i<3;i++) D[i]=xB[i]-xA[i];
+  for (i=0;i<3;i++)
+    for (j=0;j<3;j++)
       {
 	c[i][j]=0;
-	for(k=0;k<3;k++)
+  for (k=0;k<3;k++)
 	  c[i][j]=c[i][j]+vA[i][k]*vB[j][k];
       }
   //
   // separating axes based on the faces of box A
   //
-  for(i=0;i<3;i++)
+  for (i=0;i<3;i++)
     {
       r0=dxA[i];
       r1=0;
       r=0;
-      for(j=0;j<3;j++)
+      for (j=0;j<3;j++)
 	{
 	  r1+=dxB[j]*fabs(c[i][j]);
 	  r+=fabs(vA[i][j])*D[j];
@@ -324,12 +317,12 @@ int obbIntersectCheck(double vA[3][3],double xA[3],double dxA[3],
   //
   // separating axes based on the faces of box B
   //
-  for(i=0;i<3;i++)
+  for (i=0;i<3;i++)
     {
       r1=dxB[i];
       r0=0;
       r=0;
-      for(j=0;j<3;j++)
+      for (j=0;j<3;j++)
 	{
 	  r0+=dxA[j]*fabs(c[j][i]);
 	  r+=fabs(vB[i][j])*D[j];
@@ -339,11 +332,11 @@ int obbIntersectCheck(double vA[3][3],double xA[3],double dxA[3],
   //
   // cross products
   //
-  for(i=0;i<3;i++)
+  for (i=0;i<3;i++)
     {
       i1=(i+1)%3;
       i2=(i+2)%3;
-      for(j=0;j<3;j++)
+      for (j=0;j<3;j++)
 	{
 	  j1=(j+1)%3;
 	  j2=(j+2)%3;
@@ -353,7 +346,7 @@ int obbIntersectCheck(double vA[3][3],double xA[3],double dxA[3],
 
 	  d2=0;
 	  d1=0;
-	  for(k=0;k<3;k++)
+    for (k=0;k<3;k++)
 	    {
 	      d2+=vA[i2][k]*D[k];
 	      d1+=vA[i1][k]*D[k];
@@ -390,17 +383,17 @@ void writebbox(OBB *obb,int bid)
   fprintf(fp,"ZONE T=\"VOL_MIXED\",N=%d E=%d ET=BRICK, F=FEPOINT\n",8,
 	  1);
 
-  for(l=0;l<2;l++)
+  for (l=0;l<2;l++)
     {
       il=2*(l%2)-1;
-      for(k=0;k<2;k++)
+      for (k=0;k<2;k++)
 	{
 	  ik=2*(k%2)-1;
-	  for(j=0;j<2;j++)
+    for (j=0;j<2;j++)
 	    {
 	      ij=2*(j%2)-1;
 	      xx[0]=xx[1]=xx[2]=0;
-	      for(m=0;m<3;m++)
+        for (m=0;m<3;m++)
 		xx[m]=obb->xc[m]+ij*obb->vec[0][m]*obb->dxc[0]
 		  +ik*obb->vec[1][m]*obb->dxc[1]
 		  +il*obb->vec[2][m]*obb->dxc[2];
@@ -426,7 +419,7 @@ void writePoints(double *x,int nsearch,int bid)
   fp=fopen(fname,"w");
   fprintf(fp,"TITLE =\"Box file\"\n");
   fprintf(fp,"VARIABLES=\"X\",\"Y\",\"Z\"\n");
-  for(i=0;i<nsearch;i++)
+  for (i=0;i<nsearch;i++)
     fprintf(fp,"%f %f %f\n",x[3*i],x[3*i+1],x[3*i+2]);
   fclose(fp);
 }
@@ -506,17 +499,17 @@ void solvec(double **a,double *b,int *iflag,int n)
   double eps=1e-8;
 
 
-  for(i=0;i<n;i++)
+  for (i=0;i<n;i++)
   {
     if (fabs(a[i][i]) < eps)
     {
       flag=1;
-      for(k=i+1;k<n && flag;k++)
+      for (k=i+1;k<n && flag;k++)
       {
         if (a[k][i]!=0)
         {
           flag=0;
-          for(l=0;l<n;l++)
+          for (l=0;l<n;l++)
           {
             temp=a[k][l];
             a[k][l]=a[i][l];
@@ -529,12 +522,12 @@ void solvec(double **a,double *b,int *iflag,int n)
       }
       if (flag) {*iflag=0;return;}
     }
-    for(k=i+1;k<n;k++)
+    for (k=i+1;k<n;k++)
     {
       if (i!=k)
       {
         fact=-a[k][i]/a[i][i];
-        for(j=0;j<n;j++)
+        for (j=0;j<n;j++)
         {
           a[k][j]+=fact*a[i][j];
         }
@@ -543,10 +536,10 @@ void solvec(double **a,double *b,int *iflag,int n)
     }
   }
 
-  for(i=n-1;i>=0;i--)
+  for (i=n-1;i>=0;i--)
   {
     sum=0;
-    for(j=i+1;j<n;j++)
+    for (j=i+1;j<n;j++)
       sum+=a[i][j]*b[j];
     b[i]=(b[i]-sum)/a[i][i];
   }
@@ -579,7 +572,7 @@ void newtonSolve(double f[8][3],double *u1,double *v1,double *w1)
     double wu=w*u;
     double uvw=u*v*w;
 
-    for(int j=0; j<3; j++) {
+    for (int j=0; j<3; j++) {
       rhs[j] = f[0][j] + f[1][j]*u + f[2][j]*v + f[3][j]*w
              + f[4][j]*uv + f[5][j]*vw + f[6][j]*wu + f[7][j]*uvw;
     }
@@ -610,7 +603,7 @@ void newtonSolve(double f[8][3],double *u1,double *v1,double *w1)
   *v1=v;
   *w1=w;
 
-  for(int i=0;i<3;i++) free(lhs[i]);
+  for (int i=0;i<3;i++) free(lhs[i]);
   free(lhs);
   free(rhs);
   return;
@@ -633,12 +626,12 @@ void computeNodalWeights(double xv[8][3],double *xp,double frac[8],int nvert)
       // tetrahedron
       //
       lhs=(double **)malloc(sizeof(double)*3);
-      for(i=0;i<3;i++)
+      for (i=0;i<3;i++)
         lhs[i]=(double *)malloc(sizeof(double)*3);
       rhs=(double *)malloc(sizeof(double)*3);
-      for(k=0;k<3;k++)
+      for (k=0;k<3;k++)
       {
-        for(j=0;j<3;j++)
+        for (j=0;j<3;j++)
           lhs[j][k]=xv[k][j]-xv[3][j];
         rhs[k]=xp[k]-xv[3][k];
       }
@@ -651,7 +644,7 @@ void computeNodalWeights(double xv[8][3],double *xp,double frac[8],int nvert)
       //
       if (isolflag)
       {
-        for(k=0;k<3;k++) frac[k]=rhs[k];
+        for (k=0;k<3;k++) frac[k]=rhs[k];
         frac[3]=1.-frac[0]-frac[1]-frac[2];
       }
       else
@@ -659,7 +652,7 @@ void computeNodalWeights(double xv[8][3],double *xp,double frac[8],int nvert)
         frac[0]=1.0;
         frac[1]=frac[2]=frac[3]=0;
       }
-      for(i=0;i<3;i++) free(lhs[i]);
+      for (i=0;i<3;i++) free(lhs[i]);
       free(lhs);
       free(rhs);
       break;
@@ -668,7 +661,7 @@ void computeNodalWeights(double xv[8][3],double *xp,double frac[8],int nvert)
       //
       // pyramid
       //
-      for(j=0;j<3;j++)
+      for (j=0;j<3;j++)
       {
         f[0][j]=xv[0][j]-xp[j];
         f[1][j]=xv[1][j]-xv[0][j];
@@ -698,7 +691,7 @@ void computeNodalWeights(double xv[8][3],double *xp,double frac[8],int nvert)
       //
       // prizm
       //
-      for(j=0;j<3;j++)
+      for (j=0;j<3;j++)
       {
         f[0][j]=xv[0][j]-xp[j];
         f[1][j]=xv[1][j]-xv[0][j];
@@ -731,7 +724,7 @@ void computeNodalWeights(double xv[8][3],double *xp,double frac[8],int nvert)
       //
       // hexahedra
       //
-      for(j=0;j<3;j++)
+      for (j=0;j<3;j++)
       {
         f[0][j]=xv[0][j]-xp[j];
         f[1][j]=xv[1][j]-xv[0][j];

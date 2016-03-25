@@ -106,6 +106,9 @@ void refineGridBySplitting2D(matrix<int> &c2v, matrix<int> &c2f, matrix<int> &f2
 
 void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shapeOrder_f);
 
+//! Get reference location out_rst of point in_xyz within an element defined by the points in xv
+bool getRefLocNewton(double *xv, double *in_xyz, double *out_rst, int nNodes, int nDims);
+
 /*!
  * Nelder-Mead Minimzation Routine.
  *

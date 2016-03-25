@@ -1172,3 +1172,90 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
   grid_f.c2nv.assign(nEles_f, nNodes_f);
   grid_f.c2nf.assign(nEles_f, 4);
 }
+
+
+bool getRefLocNewton(double *xv, double *in_xyz, double *out_rst, int nNodes, int nDims)
+{
+  // First, do a quick check to see if the point is even close to being in the element
+  double xmin, ymin, zmin;
+  double xmax, ymax, zmax;
+  xmin = ymin = zmin =  1e15;
+  xmax = ymax = zmax = -1e15;
+  double eps = 1e-10;
+
+  vector<double> box(6);
+  getBoundingBox(xv, nNodes, nDims, box.data());
+  xmin = box[0];  ymin = box[1];  zmin = box[2];
+  xmax = box[3];  ymax = box[4];  zmax = box[5];
+
+  point pos = point(in_xyz);
+  if (pos.x < xmin-eps || pos.y < ymin-eps || pos.z < zmin-eps ||
+      pos.x > xmax+eps || pos.y > ymax+eps || pos.z > zmax+eps) {
+    // Point does not lie within cell - return an obviously bad ref position
+    for (int i = 0; i < nDims; i++) out_rst[i] = 99.;
+    return false;
+  }
+
+  // Use a relative tolerance to handle extreme grids
+  double h = min(xmax-xmin,ymax-ymin);
+  if (nDims==3) h = min(h,zmax-zmin);
+
+  double tol = 1e-12*h;
+
+  vector<double> shape(nNodes);
+  matrix<double> dshape(nNodes,nDims);
+  matrix<double> grad(nDims,nDims);
+
+  int iter = 0;
+  int iterMax = 20;
+  double norm = 1;
+
+  // Starting location: {0,0,0}
+  for (int i = 0; i < nDims; i++) out_rst[i] = 0;
+  point loc = point(out_rst,nDims);
+
+  while (norm > tol && iter<iterMax) {
+    if (nDims == 2) {
+      shape_quad(loc,shape,nNodes);
+      dshape_quad(loc,dshape,nNodes);
+    } else {
+      shape_hex(loc,shape,nNodes);
+      dshape_hex(loc,dshape,nNodes);
+    }
+
+    point dx = pos;
+    grad.initializeToZero();
+
+    for (int n=0; n<nNodes; n++) {
+      for (int i=0; i<nDims; i++) {
+        for (int j=0; j<nDims; j++) {
+          grad(i,j) += xv[n*nDims+i]*dshape(n,j);
+        }
+        dx[i] -= shape[n]*xv[n*nDims+i];
+      }
+    }
+
+    double detJ = grad.det();
+
+    auto ginv = grad.adjoint();
+
+    point delta = {0,0,0};
+    for (int i=0; i<nDims; i++)
+      for (int j=0; j<nDims; j++)
+        delta[i] += ginv(i,j)*dx[j]/detJ;
+
+    norm = 0;
+    for (int i=0; i<nDims; i++) {
+      norm += dx[i]*dx[i];
+      loc[i] += delta[i];
+      loc[i] = max(min(loc[i],1.01),-1.01);
+    }
+
+    iter++;
+  }
+
+  if (max( abs(loc[0]), max( abs(loc[1]), abs(loc[2]) ) ) <= 1. + 1e-10)
+    return true;
+  else
+    return false;
+}

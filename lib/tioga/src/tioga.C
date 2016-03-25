@@ -57,10 +57,6 @@ void tioga::registerGridData(int btag,int nnodes,double *xyz,int *iblank, int nw
 void tioga::profile(void)
 {
   mb->preprocess();
-  //mb->writeGridFile(myid);
-  //mb->writeOBB(myid);
-  //if (myid==4) mb->writeOutput(myid);
-  //if (myid==4) mb->writeOBB(myid);
 }
 
 void tioga::performConnectivity(void)
@@ -74,19 +70,13 @@ void tioga::performConnectivity(void)
     mb->getCellIblanks();
     mb->writeCellFile(myid);
   }
-  //mb->writeOutput(myid);
-  //tracei(myid);
 }
 
 void tioga::performConnectivityHighOrder(void)
 {
-  //cout << "getInternalNodes" << endl;
   mb->getInternalNodes();
-  MPI_Barrier(MPI_COMM_WORLD);
-  //cout << "exchangePointSearchData" << endl;
   exchangePointSearchData();
   mb->ihigh=1;
-  //cout << "search" << endl;
   mb->search();
   mb->processPointDonors();
   iorphanPrint=1;
@@ -689,8 +679,8 @@ void tioga::exchangeSearchData(void)
   // now get data for each packet
   for (int k = 0; k < nsend; k++)
     mb->getQueryPoints(&obblist[k],
-           &sndPack[k].nints,&sndPack[k].intData,
-           &sndPack[k].nreals,&sndPack[k].realData);
+           sndPack[k].nints,&sndPack[k].intData,
+           sndPack[k].nreals,&sndPack[k].realData);
 
   // exchange the data
   pc->sendRecvPackets(sndPack,rcvPack);
@@ -858,8 +848,8 @@ void tioga::getHoleMap(void)
   int bufferSize;
 
  // get the local bounding box
- mb->getWallBounds(&meshtag,&existWall,wbox);
- MPI_Allreduce(&meshtag,&maxtag,1,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
+ mb->getWallBounds(meshtag,&existWall,wbox);
+ MPI_Allreduce(&meshtag, &maxtag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
  if (holeMap)
  {
@@ -867,8 +857,8 @@ void tioga::getHoleMap(void)
  }
  holeMap=new HOLEMAP[maxtag];
 
- vector<int> existHoleLocal(maxtag);
- vector<int> existHole(maxtag);
+ std::vector<int> existHoleLocal(maxtag);
+ std::vector<int> existHole(maxtag);
 
  for (int i = 0; i < maxtag; i++) existHole[i] = existHoleLocal[i] = 0;
 
@@ -878,13 +868,13 @@ void tioga::getHoleMap(void)
 
  for (int i = 0; i < maxtag; i++) holeMap[i].existWall = existHole[i];
 
- vector<double> bboxLocal(6*maxtag);
- vector<double> bboxGlobal(6*maxtag);
+ std::vector<double> bboxLocal(6*maxtag);
+ std::vector<double> bboxGlobal(6*maxtag);
 
- for (int i = 0;i < 3*maxtag; i++) bboxLocal[i]           =  BIGVALUE;
- for (int i = 0;i < 3*maxtag; i++) bboxLocal[i+3*maxtag]  = -BIGVALUE;
- for (int i = 0;i < 3*maxtag; i++) bboxGlobal[i]          =  BIGVALUE;
- for (int i = 0;i < 3*maxtag; i++) bboxGlobal[i+3*maxtag] = -BIGVALUE;
+ for (int i = 0; i < 3*maxtag; i++) bboxLocal[i]           =  BIGVALUE;
+ for (int i = 0; i < 3*maxtag; i++) bboxLocal[i+3*maxtag]  = -BIGVALUE;
+ for (int i = 0; i < 3*maxtag; i++) bboxGlobal[i]          =  BIGVALUE;
+ for (int i = 0; i < 3*maxtag; i++) bboxGlobal[i+3*maxtag] = -BIGVALUE;
 
  for (int i = 0; i < 3; i++)
  {

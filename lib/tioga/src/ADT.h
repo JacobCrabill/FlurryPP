@@ -37,6 +37,7 @@ public :
 
   void clearData(void)
   {
+    nelem = 0;
     if (adtIntegers) free(adtIntegers);
     if (adtReals) free(adtReals);
     if (adtExtents) free(adtExtents);

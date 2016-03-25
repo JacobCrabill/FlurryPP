@@ -11,43 +11,41 @@
 void searchIntersections(MeshBlock *mb,int *cellIndex,int *adtIntegers,double *adtReals,
        double *coord,int level,int node,double *xsearch,int nelem,int ndim)
 {
-  int i;
-  int d,nodeChild,dimcut;
   double element[ndim];
-  bool flag;
 
-  for(i=0;i<ndim;i++)
-    element[i]=coord[ndim*(adtIntegers[4*node])+i];
+  for (int i = 0; i < ndim; i++)
+    element[i] = coord[ndim*(adtIntegers[4*node])+i];
 
   // Check if point is inside bounding box of current mesh element, index 'node'
-  flag=1;
-  for(i=0;i<ndim/2;i++)
-    flag = (flag && (xsearch[i] >=element[i]-TOL));
-  for(i=ndim/2;i<ndim;i++)
-    flag = (flag && (xsearch[i-ndim/2] <=element[i]+TOL));
+  bool flag = true;
+  for (int i = 0; i < ndim/2; i++)
+    flag = (flag && (xsearch[i] >= element[i]-TOL));
+  for (int i = ndim/2; i < ndim; i++)
+    flag = (flag && (xsearch[i-ndim/2] <= element[i]+TOL));
 
   if (flag)
-    {
-      mb->checkContainment(cellIndex,adtIntegers[4*node],xsearch);
-      if (*cellIndex > -1) return;
-    }
+  {
+    mb->checkContainment(cellIndex,adtIntegers[4*node],xsearch);
+    if (*cellIndex > -1) return;
+  }
 
   // check the left and right children
   // now
-  for(d=1;d<3;d++)
+  for(int d = 1; d < 3; d++)
   {
-    nodeChild=adtIntegers[4*node+d];
-    if (nodeChild > -1) {
-      nodeChild=adtIntegers[4*nodeChild+3];
-      for(i=0;i<ndim;i++)
-      {
-        element[i]=adtReals[ndim*nodeChild+i];
-      }
-      flag=1;
-      for(i=0;i<ndim/2;i++)
+    int nodeChild = adtIntegers[4*node+d];
+    if (nodeChild > -1)
+    {
+      nodeChild = adtIntegers[4*nodeChild+3];
+      for (int i = 0; i < ndim; i++)
+        element[i] = adtReals[ndim*nodeChild+i];
+
+      flag = true;
+      for (int i = 0; i < ndim/2; i++)
         flag = (flag && (xsearch[i] >=element[i]-TOL));
-      for(i=ndim/2;i<ndim;i++)
+      for (int i = ndim/2; i < ndim; i++)
         flag = (flag && (xsearch[i-ndim/2] <=element[i]+TOL));
+
       if (flag)
       {
         searchIntersections(mb,cellIndex,adtIntegers,adtReals,coord,level+1,
