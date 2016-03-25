@@ -43,6 +43,7 @@ void MeshBlock::tagBoundary(void)
 {
   vector<int> inode;
   double xv[8][3];
+  vector<double> xv2;
   std::vector<int> iflag(nnodes, 0);
 
   // do this only once
@@ -63,18 +64,35 @@ void MeshBlock::tagBoundary(void)
       {
         int nvert = nv[n];
         inode.resize(nvert);
+        if (nvert > 8) xv2.resize(nvert*3);
+
         for (int i = 0; i < nc[n]; i++)
         {
-          for (int m = 0; m < nvert; m++)
+          double vol = 0.;
+
+          if (nvert > 8)
           {
-            inode[m] = vconn[n][nvert*i+m]-BASE;
-            if (m < 8) {
+            for (int m = 0; m < nvert; m++)
+            {
+              inode[m] = vconn[n][nvert*i+m]-BASE;
+              int i3 = 3*inode[m];
+              for (int j = 0; j < 3; j++)
+                xv2[m*3+j] = x[i3+j];
+            }
+            vol = computeVolume(xv2.data(), nvert, 3);
+          }
+          else
+          {
+            for (int m = 0; m < nvert; m++)
+            {
+              inode[m] = vconn[n][nvert*i+m]-BASE;
               int i3 = 3*inode[m];
               for (int j = 0; j < 3; j++)
                 xv[m][j] = x[i3+j];
             }
+            vol = computeCellVolume(xv, nvert);
           }
-          double vol = computeCellVolume(xv,min(nvert,8));  /// TODO: add support for high-order hexas
+
           cellRes[k++] = vol;
           for (int m = 0; m < nvert; m++)
           {
@@ -1591,7 +1609,7 @@ void MeshBlock::findInterpData(int *recid,int irecord,double receptorRes)
   double xp[3];
   double frac[8];
   vector<double> frac2;
-  int inode[8];
+  vector<int> inode;
   INTEGERLIST *clist;
 
   int procid=isearch[2*irecord];
@@ -1619,6 +1637,7 @@ void MeshBlock::findInterpData(int *recid,int irecord,double receptorRes)
   int acceptFlag = 1;
   int nvert = nv[N];
 
+  inode.resize(nvert);
   if (nvert > 8)
     xv2.resize(nvert*3);
 
@@ -1678,9 +1697,7 @@ void MeshBlock::findInterpData(int *recid,int irecord,double receptorRes)
     computeNodalWeights(xv,xp,frac,nvert); /// TODO: support nvert > 8
   } else {
     double xref[3];
-    int isInEle;
-    Solver->donorInclusionTest(&idonor,&xp[0],&isInEle,&xref[0]);
-
+    getRefLocNewton(xv2.data(), &xp[0], &xref[0], nvert, 3);
     frac2.resize(nvert);
     shape_hex(point(&xref[0]),frac2,nvert);
   }
@@ -1692,7 +1709,8 @@ void MeshBlock::findInterpData(int *recid,int irecord,double receptorRes)
   interpList[*recid].receptorInfo[1]=pointid;
   interpList[*recid].inode=(int *)malloc(sizeof(int)*nvert);
   interpList[*recid].weights=(double *)malloc(sizeof(double)*nvert);
-  for (int iv=0;iv<nvert;iv++)
+
+  for (int iv = 0; iv < nvert;iv++)
   {
     interpList[*recid].inode[iv]=inode[iv];
     if (nvert > 8)

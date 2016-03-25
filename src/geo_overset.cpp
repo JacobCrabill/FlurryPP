@@ -153,9 +153,9 @@ void geo::setupOverset3D(void)
 
   int nwall = iwall.size();
   int nover = iover.size();
-  int ntypes = 1;           //! Number of element types in grid block
-  nodesPerCell = new int[1];
-  nodesPerCell[0] = 8;      //! Number of nodes per element for each element type (but only one type so far)
+  int ntypes = 1;                  //! Number of element types in grid block
+  nodesPerCell = new int[ntypes];
+  nodesPerCell[0] = nNodesPerCell; //! Number of nodes per element for each element type (but only one type so far)
   iblank.resize(nVerts);
   iblankCell.resize(nEles);
   iblankFace.resize(nFaces);

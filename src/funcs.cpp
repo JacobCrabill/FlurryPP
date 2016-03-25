@@ -1259,3 +1259,75 @@ bool getRefLocNewton(double *xv, double *in_xyz, double *out_rst, int nNodes, in
   else
     return false;
 }
+
+
+double computeVolume(double *xv, int nNodes, int nDims)
+{
+  int order;
+  vector<point> locSpts;
+
+  if (nDims == 2)
+  {
+    order = max((int)sqrt(nNodes)-1, 0);
+    locSpts = getLocSpts(QUAD,order,string("Legendre"));
+  }
+  else
+  {
+    order = max((int)cbrt(nNodes)-1, 0);
+    locSpts = getLocSpts(HEX,order,string("Legendre"));
+  }
+
+  auto weights = getQptWeights(order, nDims);
+
+  uint nSpts = locSpts.size();
+
+  matrix<double> shape(nSpts,nNodes);
+  Array<double,3> dshape(nSpts,nNodes,nDims);
+
+  if (nDims == 2)
+  {
+    for (uint spt = 0; spt < nSpts; spt++)
+    {
+      shape_quad(locSpts[spt], &shape(spt,0), nNodes);
+      dshape_quad(locSpts[spt], &dshape(spt,0,0), nNodes);
+    }
+  }
+  else
+  {
+    for (uint spt = 0; spt < nSpts; spt++)
+    {
+      shape_hex(locSpts[spt], &shape(spt,0), nNodes);
+      dshape_hex(locSpts[spt], &dshape(spt,0,0), nNodes);
+    }
+  }
+
+  matrix<double> jaco(nDims,nDims);
+  double vol = 0.;
+
+  for (uint spt = 0; spt < nSpts; spt++)
+  {
+    jaco.initializeToZero();
+    for (uint n = 0; n < nNodes; n++)
+      for (uint d1 = 0; d1 < nDims; d1++)
+        for (uint d2 = 0; d2 < nDims; d2++)
+          jaco(d1,d2) += dshape(spt,n,d2) * xv[n*nDims+d1];
+
+    double detJac = 0;
+    if (nDims == 2)
+    {
+      detJac = jaco(0,0)*jaco(1,1) - jaco(1,0)*jaco(0,1);
+    }
+    else
+    {
+      double xr = jaco(0,0);   double xs = jaco(0,1);   double xt = jaco(0,2);
+      double yr = jaco(1,0);   double ys = jaco(1,1);   double yt = jaco(1,2);
+      double zr = jaco(2,0);   double zs = jaco(2,1);   double zt = jaco(2,2);
+      detJac = xr*(ys*zt - yt*zs) - xs*(yr*zt - yt*zr) + xt*(yr*zs - ys*zr);
+    }
+    if (detJac<0) FatalError("Negative Jacobian at quadrature point.");
+
+    vol += detJac * weights[spt];
+  }
+
+  return vol;
+}
