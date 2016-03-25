@@ -283,20 +283,26 @@ void solver::removeElement(uint ele_ind)
 
 void solver::getNodesPerCell(int* cellID, int* nNodes)
 {
-  (*nNodes) = eles[*cellID]->getNSpts();
+  int ie = Geo->eleMap[*cellID];
+  (*nNodes) = eles[ie]->getNSpts();
 }
 
 void solver::getReceptorNodes(int* cellID, int* nNodes, double* posNodes)
 {
-  if (*cellID >= eles.size()) cout << "Invalid cellID!  cellID = " << *cellID << endl;
-  eles[*cellID]->getPosSpts(posNodes);
+  int ie = Geo->eleMap[*cellID];
+  //if (ie >= eles.size()) cout << "Invalid cellID!  cellID = " << *cellID << endl;
+  eles[ie]->getPosSpts(posNodes);
 }
 
 void solver::donorInclusionTest(int* cellID, double* xyz, int* passFlag, double* rst)
 {
   // Determine if point is in cell: [x,y,z] should all lie between [-1,1]
-  point refPt;
-  (*passFlag) = eles[*cellID]->getRefLocNelderMead(point(xyz),refPt);
+  point refPt = {99., 99., 99.};
+  int ie = Geo->eleMap[*cellID];
+  if (ie > 0)
+    (*passFlag) = eles[ie]->getRefLocNewton(point(xyz),refPt);
+  else
+    *passFlag = 0;
 
   rst[0] = refPt.x;
   rst[1] = refPt.y;
@@ -305,7 +311,7 @@ void solver::donorInclusionTest(int* cellID, double* xyz, int* passFlag, double*
 
 void solver::donorWeights(int* cellID, double* xyz, int* nWeights, int* iNode, double* weights, double* rst, int* fracSize)
 {
-  int ic = *cellID;
+  int ic = Geo->eleMap[*cellID];
 
   // Get starting offset for global solution-point index
   int iStart = 0;
@@ -325,7 +331,7 @@ void solver::convertToModal(int* cellID, int* nPtsIn, double* uIn, int* nPtsOut,
   // This is apparently supposed to convert nodal data to modal data...
   // ...but I don't need it.  So, just copy the data over.
 
-  int ic = *cellID;
+  int ic = Geo->eleMap[*cellID];
   *nPtsOut = *nPtsIn;
 
   // Copy uIn to uOut

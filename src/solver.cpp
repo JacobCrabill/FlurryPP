@@ -1158,16 +1158,16 @@ void solver::moveMesh(int step)
       }
     }
 
-    if ( !(step==0 && params->RKa[step]==0) )
+//    if ( !(step==0 && params->RKa[step]==0) )
       Geo->moveMesh(params->RKa[step]);
 
-    if (gridID == 0) { /*! ONLY FOR CERTAIN MOTION TYPES! !*/
+//    if (gridID == 0) { /*! ONLY FOR CERTAIN MOTION TYPES! !*/
     updatePosSptsFpts();
 
     updateGridVSptsFpts();
 
     updateTransforms();
-    }
+//    }
     Geo->updateADT();
 
     if (params->oversetMethod != 2) {

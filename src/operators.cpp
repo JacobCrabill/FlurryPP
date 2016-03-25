@@ -113,14 +113,14 @@ void oper::setupExtrapolateSptsFpts(void)
     for (uint spt=0; spt<nSpts; spt++) {
       switch(eType) {
         case QUAD: {
-          // First, get the i an j ID of the spt
+          // First, get the i and j ID of the spt
           uint ispt = spt%(order+1);
           uint jspt = floor(spt/(order+1));
           opp_spts_to_fpts(fpt,spt) = Lagrange(locSpts1D,loc_fpts[fpt].x,ispt) * Lagrange(locSpts1D,loc_fpts[fpt].y,jspt);
           break;
         }
         case HEX: {
-          // First, get the i an j ID of the spt
+          // First, get the i and j ID of the spt
           uint kspt = spt/((order+1)*(order+1));
           uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
           uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
@@ -137,13 +137,13 @@ void oper::setupExtrapolateSptsFpts(void)
 void oper::setupExtrapolateSptsPpts(void)
 {
   opp_spts_to_ppts.setup(nPpts,nSpts);
-
+_(nPpts);
   vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
 
   if (nDims == 2) {
     for (uint ppt = 0; ppt < nPpts; ppt++) {
       for (uint spt = 0; spt < nSpts; spt++) {
-        // First, get the i an j ID of the spt
+        // First, get the i and j ID of the spt
         uint ispt = spt%(order+1);
         uint jspt = floor(spt/(order+1));
         opp_spts_to_ppts(ppt,spt) = Lagrange(locSpts1D,loc_ppts[ppt].x,ispt) * Lagrange(locSpts1D,loc_ppts[ppt].y,jspt);
@@ -152,7 +152,7 @@ void oper::setupExtrapolateSptsPpts(void)
   } else {
     for (uint ppt = 0; ppt < nPpts; ppt++) {
       for (uint spt = 0; spt < nSpts; spt++) {
-        // First, get the i an j ID of the spt
+        // First, get the i, j and k ID of the spt
         uint kspt = spt/((order+1)*(order+1));
         uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
         uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
@@ -170,7 +170,7 @@ void oper::setupExtrapolateSptsMpts(void)
       opp_spts_to_mpts.setup(4,nSpts);
       vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
-        // First, get the i an j ID of the spt
+        // First, get the i and j ID of the spt
         ispt = spt%(nSpts/(order+1));
         jspt = floor(spt/(order+1));
         // Next, get evaluate Lagrange solution basis at corners
@@ -188,7 +188,7 @@ void oper::setupExtrapolateSptsMpts(void)
       opp_spts_to_mpts.setup(nv+ne*(order+1),nSpts);
       vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
-        // First, get the i an j ID of the spt
+        // First, get the i, j and k ID of the spt
         kspt = spt/((order+1)*(order+1));
         jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
         ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;

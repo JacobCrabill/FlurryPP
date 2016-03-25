@@ -237,6 +237,11 @@ void overComm::setupOverFacePoints(vector<shared_ptr<overFace>> &overFaces, int 
       }
     }
   }
+//_print(params->rank,params->iter); /// DEBUGGING
+//  if (params->rank==3 && params->iter>245) {
+//    _(overPts.getDim0());
+//    overPts.print();
+//  }
 }
 
 void overComm::setupFringeCellPoints(vector<shared_ptr<ele>> &eles, const unordered_set<int> &fringeCells, const vector<int> &eleMap)
@@ -310,7 +315,9 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, const vector<in
       foundNorm[p].resize(0);
     for (int i=0; i<nPts_rank[p]; i++) {
       // Get requested interpolation point
-      point pt = point(&interpPtsPhys[3*(offset+i)]);
+      double *pt_ptr = &interpPtsPhys[3*(offset+i)];
+      double *norm_ptr = &interpNorms[3*(offset+i)];
+      point pt = point(pt_ptr);
 
       if (params->nDims == 2) {
         // First, check that point even lies within bounding box of grid
@@ -332,27 +339,25 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, const vector<in
             foundEles[p].push_back(ic); // Local ele id for this grid
             foundLocs[p].push_back(refLoc);
             if (params->oversetMethod==1)
-              foundNorm[p].push_back(point(&interpNorms[3*(offset+i)]));
+              foundNorm[p].push_back(point(norm_ptr));
             break;
           }
         }
       }
       else {
-        int ic = tg->findPointDonor(&interpPtsPhys[3*(offset+i)]);
+        int ic = tg->findPointDonor(pt_ptr);
         if (ic>=0 && eleMap[ic]>=0) {
           int ie = eleMap[ic];
           point refLoc;
           bool isInEle = eles[ie]->getRefLocNewton(pt,refLoc);
 
-//          if (!isInEle) isInEle = eles[ie]->getRefLocNelderMead(pt,refLoc);
+          /*if (!isInEle) isInEle = eles[ie]->getRefLocNelderMead(pt,refLoc);*/
           if (!isInEle) {
-            _(ie);
-            _print(params->rank,p);
+//            _print(ic,ie);
+//            _print(params->rank,p);
             cout << setprecision(16);
             _print(pt, refLoc);
             cout.setf(ios::fixed,ios::floatfield);
-            isInEle = eles[ie]->getRefLocNelderMead(pt,refLoc);
-            _print(pt, refLoc);
             //cout << setprecision(16) << 1-std::abs(refLoc.z) << endl;
             for (int i = 0; i < eles[ie]->nNodes; i++)
               cout << point(&eles[ie]->nodesRK(i,0)) << endl;
@@ -366,9 +371,13 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, const vector<in
                 cout.setf(ios::fixed,ios::floatfield);
                 cout << setprecision(16);
                 _print(pt,refLoc);
+                if (isInEle) {
+                  ic = eles[ie]->Geo->c2c(ic,j);
+                  break;
+                }
               }
             }
-            FatalError("Unable to match fringe point!");
+            if (!isInEle) FatalError("Unable to match fringe point!");
           }
 
           foundPts[p].push_back(i);
@@ -1236,7 +1245,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>
 
   if (nOverPts > getSum(nPtsRecv)) {
     cout << "rank " << params->rank << ", # Unmatched Points = " << nOverPts - getSum(nPtsRecv) << " out of " << nOverPts << endl;
-    FatalError("Unmatched points remaining!");
+    //FatalError("Unmatched points remaining!");
   }
 
   recvPts.resize(nproc);
@@ -1250,6 +1259,25 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>
   if (params->oversetMethod == 1) nVars *= 2;
 
   sendRecvData(nPtsSend,nPtsRecv,foundPts,recvPts,U_out,U_in,nVars,true);
+
+  if (nOverPts > getSum(nPtsRecv)) {
+    for (int i = 0; i < nOverPts; i++) {
+      bool found = false;
+      for (int p = 0; p < nproc; p++) {
+        if (p==rank) continue;
+        if (findFirst(recvPts[p],i) > -1) {
+          found = true;
+          break;
+        }
+      }
+
+      if (found) continue;
+      else
+        cout << "Unmatched point on rank " << rank << ": " << point(overPts[i]) << endl;
+    }
+
+    FatalError("blah");
+  }
 #endif
 }
 
