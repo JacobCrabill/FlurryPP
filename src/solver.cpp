@@ -46,7 +46,7 @@ class boundFace;
 #include "geo.hpp"
 #include "intFace.hpp"
 #include "boundFace.hpp"
-
+#include "output.hpp" /// DEBUGGING
 solver::solver()
 {
 
@@ -1140,8 +1140,20 @@ void solver::moveMesh(int step)
         Geo->updateADT();
       Geo->processBlanks(eles,faces,mpiFaces,overFaces,this);
       Geo->processUnblanks(eles,faces,mpiFaces,overFaces,this);
-      OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->quadOrder);
-      OComm->performGalerkinProjection(eles,opers,Geo->eleMap,order);
+      if (params->projection)
+      {
+        /* --- Use LGP with supermeshing; NOTE: For linear shape funcs only --- */
+        OComm->matchUnblankCells(eles,Geo->unblankCells,Geo->eleMap,params->quadOrder);
+        OComm->performGalerkinProjection(eles,opers,Geo->eleMap,order);
+      }
+      else
+      {
+        /* --- Use collocation projection; Use for nonlinear shape funcs --- */
+        OComm->setupFringeCellPoints(eles,Geo->unblankCells,Geo->eleMap);
+        OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
+        OComm->exchangeOversetData(eles,opers,Geo->eleMap);
+        OComm->transferEleData(eles,Geo->unblankCells,Geo->eleMap);
+      }
     }
 
     if (params->oversetMethod == 2) {
@@ -1161,13 +1173,13 @@ void solver::moveMesh(int step)
 //    if ( !(step==0 && params->RKa[step]==0) )
       Geo->moveMesh(params->RKa[step]);
 
-//    if (gridID == 0) { /*! ONLY FOR CERTAIN MOTION TYPES! !*/
+    if (gridID == 0) { /*! ONLY FOR CERTAIN MOTION TYPES! !*/
     updatePosSptsFpts();
 
     updateGridVSptsFpts();
 
     updateTransforms();
-//    }
+    }
     Geo->updateADT();
 
     if (params->oversetMethod != 2) {

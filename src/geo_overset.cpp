@@ -909,16 +909,6 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
   }
   for (auto &mface:mFaces) mface->getPointers();
   for (auto &oface:oFaces) oface->getPointers();
-
-  /// DEBUGGING
-  int nBlanksMe = blankCells.size();
-  int nBlanks;
-  MPI_Allreduce(&nBlanksMe,&nBlanks,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
-  if (nBlanks > 0) {
-    params->iter++;
-    writeData(Solver,params);
-  }
-
 #endif
 }
 
@@ -1028,7 +1018,7 @@ void geo::removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEle
 
   for (auto &ic:blankEles) {
     if (ic<0) continue;
-cout << "Iter " << params->iter << ", Removing element " << ic << " from rank " << params->rank << endl; /// DEBUGGING
+//cout << "Iter " << params->iter << ", Removing element " << ic << " from rank " << params->rank << endl; /// DEBUGGING
     int ind = eleMap[ic];
     if (ind<0) continue; //FatalError("Should not have marked a hole cell for blanking!");
     eles.erase(eles.begin()+ind,eles.begin()+ind+1);
@@ -1055,7 +1045,7 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles, 
   for (auto &ic:ubEles) {
     // Find the next-lowest index
     int ind = eleMap[ic];
-    cout << "Inserting element " << ic << " on rank " << params->rank << endl; /// DEBUGGING
+//    cout << "Inserting element " << ic << " on rank " << params->rank << endl; /// DEBUGGING
     if (ind>=0) FatalError("Should not have marked a non-hole cell for un-blanking! Is eleMap wrong?");
     int j = 1;
     while (ind < 0 && j<=ic) {

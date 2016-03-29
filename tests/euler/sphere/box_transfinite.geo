@@ -3,12 +3,12 @@ R1 = 1.5;  // Size of inner cube
 //R3 = 75;  // Width of outer prism
 R2 = 25;  // Length of outer prism
 R3 = 25;  // Width of outer prism
-//NN = 6;  // Number of cells in each direction on inner cube
-//NL = 16;  // Number of cells going outwards
-NN = 4;  // Number of cells in each direction on inner cube
-NL = 7;  // Number of cells going outwards
-//prog1 = 1.31;  // Geometric progression factor for outward layers
-prog1 = 1.8;  // Geometric progression factor for outward layers
+NN = 6;  // Number of cells in each direction on inner cube
+NL = 16;  // Number of cells going outwards
+//NN = 4;  // Number of cells in each direction on inner cube
+//NL = 7;  // Number of cells going outwards
+prog1 = 1.31;  // Geometric progression factor for outward layers
+//prog1 = 1.8;  // Geometric progression factor for outward layers
 
 /* ---- Inner Sphere Surface ---- */
 

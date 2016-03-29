@@ -137,7 +137,7 @@ void oper::setupExtrapolateSptsFpts(void)
 void oper::setupExtrapolateSptsPpts(void)
 {
   opp_spts_to_ppts.setup(nPpts,nSpts);
-_(nPpts);
+
   vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
 
   if (nDims == 2) {

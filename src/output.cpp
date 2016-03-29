@@ -263,10 +263,6 @@ void writeParaview(solver *Solver, input *params)
 
   dataFile << "	<UnstructuredGrid>" << endl;
 
-  // If this is the initial file, need to extrapolate solution to flux points
-  //if (params->iter==params->initIter)
-    Solver->extrapolateU();
-
   Solver->extrapolateUPpts();
 
   if (params->motion)

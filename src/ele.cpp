@@ -1034,9 +1034,11 @@ matrix<double> ele::calcError(void)
     }
   }
 
-  for (int spt=0; spt<nSpts; spt++)
-    for (int j=0; j<nFields; j++)
-      err(spt,j) = U_spts(spt,j) - err(spt,j);
+  if (params->errorNorm > 0) {
+    for (int spt=0; spt<nSpts; spt++)
+      for (int j=0; j<nFields; j++)
+        err(spt,j) = U_spts(spt,j) - err(spt,j);
+  }
 
   if (params->errorNorm == 1)
     for (auto &val:err.data) val = abs(val); // L1 norm

@@ -986,6 +986,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   // Get the locations of the quadrature points for each target cell, and
   // interpolate the solution error to them
   vector<matrix<double>> superErr(supers.size());
+  vector<matrix<double>> superU(supers.size());
   int nSpts = (order+1)*(order+1);
   if (nDims == 3) nSpts *= (order+1);
   offset = 0;
@@ -1001,8 +1002,6 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
         point refLoc;
         bool isInEle = eles[ic]->getRefLocNewton(point(qpts_tmp[j],nDims),refLoc);
 
-        // Try again with alternate (slower but better?) algorithm
-        if (!isInEle) isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
         if (!isInEle) {
           cout << "qpt: " << qpts_tmp(j,0) << ", " << qpts_tmp(j,1) << endl;
           auto box = eles[ic]->getBoundingBox();
@@ -1011,19 +1010,28 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
           FatalError("Quadrature Point Reference Location not found in ele!");
         }
 
-        matrix<double> tmpErrSpts = eles[ic]->calcError();
-
         vector<double> tmpErr(nFields);
-        opers[eles[ic]->order].interpolateToPoint(tmpErrSpts, tmpErr.data(), refLoc);
+        vector<double> tmpU(nFields);
+        matrix<double> tmpUSpts(nSpts,nFields);
 
-//        int nSpts = eles[ic]->nSpts;
-//        for (uint spt = 0; spt < nSpts; spt++)
-//          for (uint k = 0; k < nFields; k++)
-//            tmpUspts(spt,k) = eles[ic]->U_spts(spt,k);
-//
-//        vector<double> tmpU(nFields);
-//        opers[eles[ic]->order].interpolateToPoint(tmpUspts, tmpU.data(), refLoc);
-//        vector<double> tmpErr = calcError(tmpU.data(),point(qpts_tmp[j],nDims),params);
+        for (int spt = 0; spt < nSpts; spt++)
+          for (int k = 0; k < nFields; k++)
+            tmpUSpts(spt,k) = eles[ic]->U_spts(spt,k);
+
+        opers[eles[ic]->order].interpolateToPoint(tmpUSpts, tmpU.data(), refLoc);
+
+        if (params->errorNorm == 0)
+        {
+          /* Calculate 'relative' error [\int(u(T) - u(0)) dV] */
+          matrix<double> tmpErrSpts = eles[ic]->calcError();
+          opers[eles[ic]->order].interpolateToPoint(tmpErrSpts, tmpErr.data(), refLoc);  
+          superU[offset+i].insertRow(tmpU);
+        }
+        else
+        {
+          /* Calculate Lp error [\int(u(t) - ue)^p dV] */
+          tmpErr = calcError(tmpU.data(),point(qpts_tmp[j],nDims),params);
+        }
 
         superErr[offset+i].insertRow(tmpErr);
       }
@@ -1044,6 +1052,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   for (auto &pt: qpts) quadPoints.insertRow({pt.x,pt.y,pt.z});
 
   vector<double> intErr(nFields);
+  vector<double> intU(nFields);
   matrix<double> U_qpts;
   vector<double> detJac_qpts;
   for (uint ic=0; ic<eles.size(); ic++) {
@@ -1059,10 +1068,24 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
     }
     opers[eles[ic]->order].interpolateSptsToPoints(tmpU_spts, U_qpts, quadPoints);
     opers[eles[ic]->order].interpolateSptsToPoints(tmpDetJac_spts, detJac_qpts, quadPoints);
-    for (uint i=0; i<qpts.size(); i++) {
-      auto tmpErr = calcError(U_qpts[i], eles[ic]->calcPos(qpts[i]), params);
-      for (int j=0; j<nFields; j++)
-        intErr[j] += tmpErr[j] * wts[i] * detJac_qpts[i];
+
+    if (params->errorNorm == 0)
+    {
+      matrix<double> tmpErr = eles[ic]->calcError();
+      for (uint i=0; i<eles[ic]->nSpts; i++) {
+        for (uint j=0; j<nFields; j++) {
+          intErr[j] += tmpErr(i,j) * wts[i] * eles[ic]->detJac_spts(i);
+          intU[j] += eles[ic]->U_spts(i,j) * wts[i] * eles[ic]->detJac_spts(i);
+        }
+      }
+    }
+    else
+    {
+      for (uint i=0; i<qpts.size(); i++) {
+        auto tmpErr = calcError(U_qpts[i], eles[ic]->calcPos(qpts[i]), params);
+        for (int j=0; j<nFields; j++)
+          intErr[j] += tmpErr[j] * wts[i] * detJac_qpts[i];
+      }
     }
   }
 
@@ -1075,10 +1098,25 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
 
     for (int j=0; j<nFields; j++)
       intErr[j] -= 0.5*tmperr[j];
+
+    if (params->errorNorm == 0) {
+      auto tmpu = supers[i].integrate(superU[i]);
+
+      for (int j=0; j<nFields; j++)
+        intU[j] -= 0.5*tmpu[j];
+    }
   }
 
   vector<double> tmpErr = intErr;
   MPI_Allreduce(tmpErr.data(),intErr.data(),nFields,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+
+  if (params->errorNorm == 0) {
+    vector<double> tmpU = intU;
+    MPI_Allreduce(tmpU.data(),intU.data(),nFields,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+
+    for (int j = 0; j < nFields; j++)
+      intErr[j] = (intErr[j] - intU[j]);
+  }
 
   if (params->errorNorm == 2)
     for (auto &val:intErr) val = std::sqrt(std::abs(val));
@@ -1260,6 +1298,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>
 
   sendRecvData(nPtsSend,nPtsRecv,foundPts,recvPts,U_out,U_in,nVars,true);
 
+  /// DEBUGGING
   if (nOverPts > getSum(nPtsRecv)) {
     for (int i = 0; i < nOverPts; i++) {
       bool found = false;

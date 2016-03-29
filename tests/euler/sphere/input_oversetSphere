@@ -7,24 +7,25 @@ motion     5   (0: Static, 1: Perturbation test case)
 nDims      3
 
 # Discretization Options
-order      1    (Polynomial order to use)
+order      2    (Polynomial order to use)
 timeType   4    (0: Forward Euler, 4: RK44)
 dtType     1    (0: Fixed, 1: CFL-based)
 CFL       .7    (For CFL-based time stepping)
 oversetMethod  0  (0: AB-U, 1: AB-F, 2: LGP)
+projection     0  (For volume interp: use LGP [1] or collocation [0]?)
 
 # Simulation Start/Run/Stop Conditions
 maxTime      500   (Non-dimensional time limit)
-iterMax      500  (Total iteration limit)
-restart      0    (Start from restart file?)
-restartIter  200    (Iteration of restart file)
+iterMax      10000  (Total iteration limit)
+restart      1    (Start from restart file?)
+restartIter  5000    (Iteration of restart file)
 testCase     0    (Calculate error w.r.t. test case?)
 
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        100   (Frequency to write plot files)
-monitorResFreq  20    (Frequency to print residual to terminal)
+plotFreq        200   (Frequency to write plot files)
+monitorResFreq  50    (Frequency to print residual to terminal)
 monitorErrFreq  -1     (Frequency to print test-case error to terminal)
 resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    OverOscSphere    (Filename prefix for output files)
