@@ -313,7 +313,7 @@ void oper::getBasisValues(double* loc_ipt, double* weights)
       vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
         // Structured I,J indices of current solution point
-        uint ispt = spt%(nSpts/(order+1));
+        uint ispt = spt%(order+1);
         uint jspt = floor(spt/(order+1));
         // 3D Tensor-Product Lagrange Interpolation
         weights[spt] =  Lagrange(locSpts1D,loc_ipt[0],ispt) * Lagrange(locSpts1D,loc_ipt[1],jspt);
@@ -1043,7 +1043,7 @@ void oper::applyExtrapolateFn(Array<double,3> &F_spts, matrix<double> &Fn_fpts)
 
 void oper::applyExtrapolateFn(Array<double,3> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts, vector<double>& dA_fpts)
 {
-  matrix<double> tempFn(nFpts,nDims);
+  matrix<double> tempFn(nFpts,nFields);
   tempFn.initializeToZero();
   Fn_fpts.initializeToZero();
 

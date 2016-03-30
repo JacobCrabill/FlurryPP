@@ -127,7 +127,7 @@ void face::getLeftState()
 
     /* For dynamic grids (besides rigid translation), need to update
      * geometry-related data on every iteration, not just during setup */
-    if ((params->iter <= params->initIter+1) || (params->motion != 0 && params->motion != 4)) {
+    if (isNew || (params->motion != 0 && params->motion != 4)) {
       for (int dim=0; dim<nDims; dim++) {
         normL(fpt,dim) = (eL->norm_fpts(i,dim));
       }
@@ -141,6 +141,8 @@ void face::getLeftState()
 
     fpt++;
   }
+
+  isNew = false;
 }
 
 void face::getLeftGradient()

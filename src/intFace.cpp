@@ -121,13 +121,15 @@ void intFace::getRightState(void)
 
     /* For dynamic grids (besides rigid translation), need to update
      * geometry-related data on every iteration, not just during setup */
-    if ((params->iter <= params->initIter+1) || (params->motion != 0 && params->motion != 4)) {
+    if (isNew_R || (params->motion != 0 && params->motion != 4)) {
       for (int dim=0; dim<nDims; dim++) {
         normR(fpt,dim) = (eR->norm_fpts(fptR[fpt],dim));
       }
       dAR[fpt] = (eR->dA_fpts(fptR[fpt]));
     }
   }
+
+  isNew_R = false;
 }
 
 void intFace::getRightGradient(void)

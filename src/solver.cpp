@@ -312,13 +312,13 @@ void solver::update(bool PMG_Source)
   for (int step=0; step<nRKSteps-1; step++) {
     params->rkTime = params->time + params->RKa[step]*params->dt;
 
+    if (step == 0 && params->dtType != 0) calcDt();
+
     moveMesh(step);
 
     if (step == 0) copyUspts_U0(); // Store starting values for RK method
 
     calcResidual(step);
-
-    if (step == 0 && params->dtType != 0) calcDt();
 
     timeStepA(step, params->RKa[step+1], PMG_Source);
   }
@@ -1170,15 +1170,16 @@ void solver::moveMesh(int step)
       }
     }
 
-//    if ( !(step==0 && params->RKa[step]==0) )
+    if ( !(step==0 && params->RKa[step]==0) )
       Geo->moveMesh(params->RKa[step]);
 
-    if (gridID == 0) { /*! ONLY FOR CERTAIN MOTION TYPES! !*/
-    updatePosSptsFpts();
+    if (gridID == 0 || Geo->unblankCells.size()>0) {
+      /*! WARNING: ONLY FOR CERTAIN MOTION TYPES! !*/
+      updatePosSptsFpts();
 
-    updateGridVSptsFpts();
+      updateGridVSptsFpts();
 
-    updateTransforms();
+      updateTransforms();
     }
     Geo->updateADT();
 
@@ -1190,6 +1191,13 @@ void solver::moveMesh(int step)
       OComm->setupOverFacePoints(overFaces,nPtsFace);
       OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
     }
+
+    if (step==0 && Geo->unblankCells.size() > 0) {
+      extrapolateU();
+      for (auto &e:eles)
+        e->calcWaveSpFpts();
+    }
+
   } else {
     Geo->moveMesh(params->RKa[step]);
 
@@ -1199,7 +1207,6 @@ void solver::moveMesh(int step)
 
     updateTransforms();
   }
-
 }
 
 void solver::setPosSptsFpts(void)

@@ -237,11 +237,6 @@ void overComm::setupOverFacePoints(vector<shared_ptr<overFace>> &overFaces, int 
       }
     }
   }
-//_print(params->rank,params->iter); /// DEBUGGING
-//  if (params->rank==3 && params->iter>245) {
-//    _(overPts.getDim0());
-//    overPts.print();
-//  }
 }
 
 void overComm::setupFringeCellPoints(vector<shared_ptr<ele>> &eles, const unordered_set<int> &fringeCells, const vector<int> &eleMap)
@@ -587,9 +582,6 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
 
         isInEle = eles[ic]->getRefLocNewton(point(qpts_tmp[j],nDims),refLoc);
 
-        // Second try with slower (but more robust?) algorithm
-        if (!isInEle) isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
-
         if (!isInEle) {
           _(refLoc);
           FatalError("Quadrature Point Reference Location not found in ele!");
@@ -645,11 +637,8 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
       bool isInEle = eles[ie]->getRefLocNewton(pos,refLoc);
 
       if (!isInEle) {
-        isInEle = eles[ie]->getRefLocNelderMead(pos,refLoc);
-        if (!isInEle) {
-          cout << setprecision(16) << "qpt: " << pos << endl;
-          FatalError("Quadrature Point Reference Location not found in ele!");
-        }
+        cout << setprecision(16) << "qpt: " << pos << endl;
+        FatalError("Quadrature Point Reference Location not found in ele!");
       }
 
       qpts_recv[p](i,0) = refLoc.x;

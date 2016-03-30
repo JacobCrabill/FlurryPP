@@ -67,6 +67,8 @@ private:
   int fptStartR, fptEndR;
   vector<int> fptR;        //! Indices of flux points in right element
 
+  bool isNew_R = true; //! Flag for initialization (esp. due to unblanking)
+
   /* --- Storage for all solution/geometry data at flux points [right state] --- */
   vector<matrix<double>> FR;   //! Flux array [nFpts, nDims, nFields]
   vector<double*> FnR;    //! Common normal flux for right ele [in ele's memory]

@@ -378,7 +378,7 @@ void geo::setIterIblanks(void)
     tg->performConnectivity();
   }
 
-//  //! DEBUGGING in 3D - need better hole blanking...
+  //! DEBUGGING in 3D - need better hole blanking...
 for (int iv = 0; iv < nVerts; iv++) {
     if (nodeType[iv] == OVERSET_NODE && iblank[iv] != HOLE)
       iblank[iv] = NORMAL;
@@ -431,7 +431,6 @@ for (int iv = 0; iv < nVerts; iv++) {
         unblankCells.insert(ic);
     }
   }
-
   holeCells = holeCells_tmp;
 #endif
 }
@@ -819,7 +818,16 @@ void geo::matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &d
 void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces, solver *Solver)
 {
 #ifndef _NO_MPI
+  /* --- Check whether anything needs to be done --- */
+
+  int NB = blankCells.size();
+  int nBlanks;
+  MPI_Allreduce(&NB,&nBlanks,1,MPI_INT,MPI_SUM,gridComm);
+
+  if (nBlanks == 0) return;
+
   /* --- Set blank/unblank faces for all elements to be blanked --- */
+
   unordered_set<int> blankIFaces, blankMFaces, blankOFaces, ubOFaces;
   for (auto &ic:blankCells) {
     if (eleMap[ic] < 0) continue; // Ignore already-blanked cells
@@ -914,6 +922,14 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
 
 void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces, solver *Solver)
 {
+  /* --- Check whether anything needs to be done --- */
+
+  int nUB = unblankCells.size();
+  int nUnblanks;
+  MPI_Allreduce(&nUB,&nUnblanks,1,MPI_INT,MPI_SUM,gridComm);
+
+  if (nUnblanks == 0) return;
+
   /* --- Set Unblank/Blank Faces for All Unblank Elements --- */
 
   unordered_set<int> ubIntFaces, ubMpiFaces, ubOFaces;
@@ -1018,7 +1034,7 @@ void geo::removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEle
 
   for (auto &ic:blankEles) {
     if (ic<0) continue;
-//cout << "Iter " << params->iter << ", Removing element " << ic << " from rank " << params->rank << endl; /// DEBUGGING
+
     int ind = eleMap[ic];
     if (ind<0) continue; //FatalError("Should not have marked a hole cell for blanking!");
     eles.erase(eles.begin()+ind,eles.begin()+ind+1);
@@ -1033,7 +1049,6 @@ void geo::removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEle
 
     for (int k = ind; k < eles.size(); k++) {
       eles[k]->sID = k;
-      eleMap[eles[k]->ID] = k; /// DEBUGGING
     }
   }
 }
@@ -1045,8 +1060,9 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles, 
   for (auto &ic:ubEles) {
     // Find the next-lowest index
     int ind = eleMap[ic];
-//    cout << "Inserting element " << ic << " on rank " << params->rank << endl; /// DEBUGGING
+
     if (ind>=0) FatalError("Should not have marked a non-hole cell for un-blanking! Is eleMap wrong?");
+
     int j = 1;
     while (ind < 0 && j<=ic) {
       ind = eleMap[ic-j];

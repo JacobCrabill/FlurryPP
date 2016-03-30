@@ -157,7 +157,6 @@ void solver::insertElement(uint ele_ind)
     dUc_fpts.add_dim_1(ele_ind, 0.);
   }
 
-  //dF_spts.setup(nDims, nDims);
   for (auto &mat:dF_spts.data)
     mat.add_dim_1(ele_ind, 0.);
 
@@ -229,7 +228,6 @@ void solver::removeElement(uint ele_ind)
     dUc_fpts.remove_dim_1(ele_ind);
   }
 
-  //dF_spts.setup(nDims, nDims);
   for (auto &mat:dF_spts.data)
     mat.remove_dim_1(ele_ind);
 

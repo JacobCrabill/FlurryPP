@@ -524,7 +524,7 @@ void writeResidual(solver *Solver, input *params)
       if (params->meshType == OVERSET_MESH && Solver->Geo->iblankCell[Solver->eles[e]->ID]!=NORMAL) continue;
       auto resTmp = Solver->eles[e]->getNormResidual(params->resType);
       if(checkNaN(resTmp)) {
-        cout << "rank " << params->rank << ", ele " << e << ": ";
+        cout << "Iter " << params->iter << ", rank " << params->rank << ", ele " << e << ": ";
         auto box = Solver->eles[e]->getBoundingBox();
         cout << " minPt = " << box[0] << "," << box[1] << "," << box[2] << ", maxPt = " << box[3] << "," << box[4] << "," << box[5] << endl;
         FatalError("NaN Encountered in Solution Residual!");
@@ -540,7 +540,7 @@ void writeResidual(solver *Solver, input *params)
       if (params->meshType == OVERSET_MESH && Solver->Geo->iblankCell[Solver->eles[e]->ID]!=NORMAL) continue;
       auto resTmp = Solver->eles[e]->getNormResidual(params->resType);
       if(checkNaN(resTmp)) {
-        cout << "rank " << params->rank << ", ele " << e << ": " << flush;
+        cout << "Iter " << params->iter << ", rank " << params->rank << ", ele " << e << ": " << flush;
         auto box = Solver->eles[e]->getBoundingBox();
         cout << " minPt = " << box[0] << "," << box[1] << "," << box[2] << ", maxPt = " << box[3] << "," << box[4] << "," << box[5] << endl;
         FatalError("NaN Encountered in Solution Residual!");

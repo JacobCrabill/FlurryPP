@@ -169,5 +169,7 @@ public:
   int isMPI;  //! Flag for MPI faces to separate communication from flux calculation
   int isBnd;  //! Flag for boundary faces for use in LDG routines
 
+  bool isNew = true; //! Flag for initialization (esp. due to unblanking)
+
   int bcType;
 };
