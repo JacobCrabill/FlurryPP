@@ -186,6 +186,8 @@ public:
 
   double oneOverS;  //! Precompute for characteristic boundary condition
 
+  double vortexAngle; //! Angle for vortex propagation (icType==2)
+
   // Viscous Boundary Conditions / Initial Conditions
   double nxBound, nyBound, nzBound;
   double MachBound;

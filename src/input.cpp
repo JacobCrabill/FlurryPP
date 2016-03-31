@@ -296,6 +296,9 @@ void input::readInputFile(char *filename)
       opts.getScalarValue("vzIC",vzIC,wBound);
       opts.getScalarValue("pIC",pIC,pBound);
     }
+    else if (icType == 2) {
+      opts.getScalarValue("vortexAngle",vortexAngle,atan(0.5));
+    }
     if (nDims == 2)
       nFields = 4;
     else

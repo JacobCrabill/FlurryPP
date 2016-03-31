@@ -796,7 +796,7 @@ vector<double> calcError(const double* const U, const point &pos, input *params)
       double Minf = .3;
       double Uinf = 1;
       double rhoInf = 1;
-      double theta = atan(0.5);
+      double theta = params->vortexAngle;
       double Pinf = pow(Minf,-2)/gamma;
 
       double eM = (eps*Minf)*(eps*Minf);
