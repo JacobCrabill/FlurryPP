@@ -970,8 +970,8 @@ matrix<double> ele::calcError(void)
         ymax = params->ymax;
       } else {
         // Assuming a 'standard' mesh for the test case
-        xmin = -5;  xmax = 5;
-        ymin = -5;  ymax = 5;
+        xmin = params->vortexXmin;  xmax = params->vortexXmax;
+        ymin = params->vortexYmin;  ymax = params->vortexYmax;
       }
 
       for (int spt=0; spt<nSpts; spt++) {

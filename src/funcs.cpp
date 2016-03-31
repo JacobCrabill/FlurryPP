@@ -809,8 +809,8 @@ vector<double> calcError(const double* const U, const point &pos, input *params)
         ymax = params->ymax;
       } else {
         // Assuming a 'standard' mesh for the test case
-        xmin = -5;  xmax = 5;
-        ymin = -5;  ymax = 5;
+        xmin = params->vortexXmin;  xmax = params->vortexXmax;
+        ymin = params->vortexYmin;  ymax = params->vortexYmax;
       }
 
       double advX = Uinf*cos(theta)*params->time;

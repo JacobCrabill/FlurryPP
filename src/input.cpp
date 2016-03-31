@@ -298,6 +298,10 @@ void input::readInputFile(char *filename)
     }
     else if (icType == 2) {
       opts.getScalarValue("vortexAngle",vortexAngle,atan(0.5));
+      opts.getScalarValue("vortexXmin",vortexXmin,-5.);
+      opts.getScalarValue("vortexXmax",vortexXmax,5.);
+      opts.getScalarValue("vortexYmin",vortexYmin,-5.);
+      opts.getScalarValue("vortexYmax",vortexYmax,5.);
     }
     if (nDims == 2)
       nFields = 4;
