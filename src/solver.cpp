@@ -1737,7 +1737,9 @@ void solver::initializeSolution(bool PMG)
     } else {
       if (params->nDims==2)
         getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
-      OComm->setupFringeCellPoints(eles,Geo->fringeCells,Geo->eleMap);
+      int nPtsFace = order+1;
+      if (nDims==3) nPtsFace *= order+1;
+      OComm->setupOverFacePoints(overFaces, nPtsFace);
       OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
       OComm->exchangeOversetData(eles,opers,Geo->eleMap);
     }
