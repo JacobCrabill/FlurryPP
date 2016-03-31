@@ -652,6 +652,7 @@ void geo::matchMPIFaces(void)
         mpiLocF.push_back(fid);
       }
       bndFaces[i] = -1;
+      bcType[i] = -1;
     }
   }
   nMpiFaces = mpiFaces.size();
