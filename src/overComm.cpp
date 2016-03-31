@@ -1272,7 +1272,7 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>
 
   if (nOverPts > getSum(nPtsRecv)) {
     cout << "rank " << params->rank << ", # Unmatched Points = " << nOverPts - getSum(nPtsRecv) << " out of " << nOverPts << endl;
-    //FatalError("Unmatched points remaining!");
+    FatalError("Unmatched points remaining!");
   }
 
   recvPts.resize(nproc);
@@ -1286,26 +1286,6 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>
   if (params->oversetMethod == 1) nVars *= 2;
 
   sendRecvData(nPtsSend,nPtsRecv,foundPts,recvPts,U_out,U_in,nVars,true);
-
-  /// DEBUGGING
-  if (nOverPts > getSum(nPtsRecv)) {
-    for (int i = 0; i < nOverPts; i++) {
-      bool found = false;
-      for (int p = 0; p < nproc; p++) {
-        if (p==rank) continue;
-        if (findFirst(recvPts[p],i) > -1) {
-          found = true;
-          break;
-        }
-      }
-
-      if (found) continue;
-      else
-        cout << "Unmatched point on rank " << rank << ": " << point(overPts[i]) << endl;
-    }
-
-    FatalError("blah");
-  }
 #endif
 }
 

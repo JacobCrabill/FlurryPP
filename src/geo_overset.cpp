@@ -42,7 +42,7 @@
 #include "overFace.hpp"
 #include "overComm.hpp"
 #include "superMesh.hpp"
-#include "output.hpp" /// DEBUGGING
+
 #ifndef _NO_MPI
 #include "ADT.h"
 #include "mpi.h"
@@ -343,28 +343,12 @@ void geo::setIterIblanks(void)
     iblankVert1 = iblank;
   }
 
-  //! DEBUGGING in 3D - need better hole blanking...
-  for (int iv = 0; iv < nVerts; iv++)
-    if (nodeType[iv] == OVERSET_NODE && iblankVert1[iv] != HOLE)
-      iblankVert1[iv] = NORMAL;
-//  for (int iv = 0; iv < nVerts; iv++) {
-//    if (iblank[iv] != NORMAL) {
-//      bool nearAB = false;
-//      for (int j = 0; j < v2nv[iv]; j++) {
-//        if (nodeType[v2v(iv,j)] == OVERSET_NODE) {
-//          nearAB = true;
-//          break;
-//        }
-//      }
-//
-//      if (nearAB) continue;
-//
-//      for (int j = 0; j < v2nv[iv]; j++) {
-//        if (iblank[v2v(iv,j)] != HOLE)
-//          iblankVert1[v2v(iv,j)] = FRINGE;
-//      }
-//    }
-//  }
+  //! TODO: in 3D - need better hole blanking...
+  if (nDims == 3) {
+    for (int iv = 0; iv < nVerts; iv++)
+      if (nodeType[iv] == OVERSET_NODE && iblankVert1[iv] != HOLE)
+        iblankVert1[iv] = NORMAL;
+  }
 
   /* ---- Get iblank data for beginning of iteration ---- */
 
@@ -378,30 +362,13 @@ void geo::setIterIblanks(void)
     tg->performConnectivity();
   }
 
-  //! DEBUGGING in 3D - need better hole blanking...
-for (int iv = 0; iv < nVerts; iv++) {
-    if (nodeType[iv] == OVERSET_NODE && iblank[iv] != HOLE)
-      iblank[iv] = NORMAL;
-}
-//  vector<int> iblank0 = iblank;
-//  for (int iv = 0; iv < nVerts; iv++) {
-//    if (iblank0[iv] != NORMAL) {
-//      bool nearAB = false;
-//      for (int j = 0; j < v2nv[iv]; j++) {
-//        if (nodeType[v2v(iv,j)] == OVERSET_NODE) {
-//          nearAB = true;
-//          break;
-//        }
-//      }
-//
-//      if (nearAB) continue;
-//
-//      for (int j = 0; j < v2nv[iv]; j++) {
-//        if (iblank0[v2v(iv,j)] != HOLE)
-//          iblank[v2v(iv,j)] = FRINGE;
-//      }
-//    }
-//  }
+  //! TODO: in 3D - need better hole blanking...
+  if (nDims == 3) {
+    for (int iv = 0; iv < nVerts; iv++) {
+      if (nodeType[iv] == OVERSET_NODE && iblank[iv] != HOLE)
+        iblank[iv] = NORMAL;
+    }
+  }
 
   // Take the union of the hole and normal regions, leaving the intersection of
   // the fringe regions

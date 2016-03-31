@@ -46,7 +46,7 @@ class boundFace;
 #include "geo.hpp"
 #include "intFace.hpp"
 #include "boundFace.hpp"
-#include "output.hpp" /// DEBUGGING
+
 solver::solver()
 {
 
