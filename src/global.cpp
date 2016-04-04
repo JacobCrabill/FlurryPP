@@ -51,6 +51,7 @@ map<string,int> bcStr2Num = {
   {"sub_out", SUB_OUT},
   {"slip_wall", SLIP_WALL},
   {"isothermal_noslip", ISOTHERMAL_NOSLIP},
+  {"isothermal_noslip_moving", ISOTHERMAL_NOSLIP_MOVING},
   {"adiabatic_noslip", ADIABATIC_NOSLIP},
   {"overset", OVERSET},
   {"symmetry", SYMMETRY}

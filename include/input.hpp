@@ -183,6 +183,9 @@ public:
   double pBound;
 
   double TWall;
+  double MachWall;               //! For moving-wall BC
+  double nxWall, nyWall, nzWall; //! For moving-wall BC
+  double uWall, vWall, wWall;    //! For moving-wall BC
 
   double oneOverS;  //! Precompute for characteristic boundary condition
 

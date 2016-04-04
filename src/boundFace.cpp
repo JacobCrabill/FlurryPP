@@ -214,6 +214,31 @@ void boundFace::applyBCs(void)
       }
 
       // Isothermal, no-slip wall (fixed)
+      else if(bcType == ISOTHERMAL_NOSLIP_MOVING) {
+        // extrapolate pressure
+        pR = pL;
+
+        // isothermal temperature
+        TR = params->TWall;
+
+        // density
+        rhoR = pR/(params->RGas*TR);
+
+        // no-slip + moving wall
+        vR[0] = vG[0] + params->uWall;
+        vR[1] = vG[1] + params->vWall;
+        if (nDims==3)
+          vR[2] = vG[2] + params->wWall;
+
+        // energy
+        vSq = 0.;
+        for (uint i=0; i<nDims; i++)
+          vSq += (vR[i]*vR[i]);
+
+        ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
+      }
+
+      // Isothermal, no-slip wall (fixed)
       else if(bcType == ISOTHERMAL_NOSLIP) {
         // extrapolate pressure
         pR = pL;

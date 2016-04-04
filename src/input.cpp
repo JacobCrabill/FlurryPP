@@ -352,12 +352,16 @@ void input::readInputFile(char *filename)
       opts.getScalarValue("RGas",RGas,286.9);
       opts.getScalarValue("fixVis",fixVis,0);
 
-      opts.getScalarValue("TWall",TWall,300.);
       opts.getScalarValue("TBound",TBound,300.);
+      opts.getScalarValue("TWall",TWall,300.);
       opts.getScalarValue("MachBound",MachBound);
       opts.getScalarValue("nxBound",nxBound,1.);
       opts.getScalarValue("nyBound",nyBound,0.);
       opts.getScalarValue("nzBound",nzBound,0.);
+      opts.getScalarValue("MachWall",MachWall);
+      opts.getScalarValue("nxWall",nxWall,1.);
+      opts.getScalarValue("nyWall",nyWall,0.);
+      opts.getScalarValue("nzWall",nzWall,0.);
     }
   }
 
@@ -542,6 +546,11 @@ void input::nonDimensionalize(void)
   rhoBound = muBound*Re/(UBound*Lref);
   pBound = rhoBound * RGas * TBound;
 
+  double UWall = MachWall * sqrt(gamma*RGas*TWall);  _(UWall);
+  uWall = UWall * nxWall;
+  vWall = UWall * nyWall;
+  wWall = UWall * nzWall;
+
   double rhoRef = rhoBound;
   double pRef = rhoRef*UBound*UBound;
   double muRef = rhoRef*UBound*Lref;
@@ -567,6 +576,11 @@ void input::nonDimensionalize(void)
   Uinf = sqrt(uBound*uBound+vBound*vBound+wBound*wBound);
 
   TWall = TWall / Tref;
+
+  // For isothermal moving-wall boundary condition
+  uWall /= UBound;
+  vWall /= UBound;
+  wWall /= UBound; _(uWall);
 
   oneOverS = pow(rhoBound,gamma)/pBound;
 

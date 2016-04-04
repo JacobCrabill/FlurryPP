@@ -126,7 +126,8 @@ enum BC_TYPE {
   ISOTHERMAL_NOSLIP = 9,
   ADIABATIC_NOSLIP = 10,
   OVERSET = 11,
-  SYMMETRY = 12
+  SYMMETRY = 12,
+  ISOTHERMAL_NOSLIP_MOVING = 13
 };
 
 /*! Enumeration for VCJH scheme (correction function) to use */
