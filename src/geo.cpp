@@ -297,6 +297,7 @@ void geo::processConn2D(void)
 
   bcFaces.resize(nBounds);
   bcType.assign(nBndFaces,-1);
+  bcID.resize(nBndFaces);
   for (int i=0; i<nBndFaces; i++) {
     int iv1 = f2v(bndFaces[i],0);
     int iv2 = f2v(bndFaces[i],1);
@@ -304,6 +305,7 @@ void geo::processConn2D(void)
       if (findFirst(bndPts[bnd],iv1,bndPts.dims[1])!=-1 && findFirst(bndPts[bnd],iv2,bndPts.dims[1])!=-1) {
         // The edge lies on this boundary
         bcType[i] = bcList[bnd];
+        bcID[i] = bnd;
         bcFaces[bnd].insertRow(f2v[bndFaces[i]],INSERT_AT_END,f2v.dims[1]);
         break;
       }
@@ -382,12 +384,12 @@ void geo::processConn3D(void)
   map<int,matrix<int>> ct2fv;
   map<int,vector<int>> ct2fnv;
   // --- FIX ORDERING FOR FUTURE USE ---
-  ct2fv[HEX].insertRow(vector<int>{0,1,2,3});  // Bottom
-  ct2fv[HEX].insertRow(vector<int>{4,5,6,7});  // Top
-  ct2fv[HEX].insertRow(vector<int>{3,0,4,7});  // Left
-  ct2fv[HEX].insertRow(vector<int>{2,1,5,6});  // Right
-  ct2fv[HEX].insertRow(vector<int>{1,0,4,5});  // Front
-  ct2fv[HEX].insertRow(vector<int>{3,2,6,7});  // Back
+  ct2fv[HEX].insertRow(vector<int>{0,1,2,3});  // Bottom (zmin)
+  ct2fv[HEX].insertRow(vector<int>{4,5,6,7});  // Top    (zmax)
+  ct2fv[HEX].insertRow(vector<int>{3,0,4,7});  // Left   (xmin)
+  ct2fv[HEX].insertRow(vector<int>{2,1,5,6});  // Right  (xmax)
+  ct2fv[HEX].insertRow(vector<int>{1,0,4,5});  // Front  (ymin)
+  ct2fv[HEX].insertRow(vector<int>{3,2,6,7});  // Back   (ymax)
   ct2fnv[HEX] = {4,4,4,4,4,4};
   //ct2fnv[PRISM] = {3,3,4,4,4};
   //ct2fnv[TET] = {3,3,3,3};
@@ -473,6 +475,7 @@ void geo::processConn3D(void)
 
   bcFaces.resize(nBounds);
   bcType.assign(nBndFaces,NONE);
+  bcID.resize(nBndFaces);
   for (int i=0; i<nBndFaces; i++) {
     for (int bnd=0; bnd<nBounds; bnd++) {
       bool isOnBound = true;
@@ -487,6 +490,7 @@ void geo::processConn3D(void)
         //cout << "bndFace matched to bc " << bcList[bnd] << endl;
         // The edge lies on this boundary
         bcType[i] = bcList[bnd];
+        bcID[i] = bnd;
         bcFaces[bnd].insertRow(f2v[bndFaces[i]],INSERT_AT_END,f2v.dims[1]);
         break;
       }
@@ -653,6 +657,7 @@ void geo::matchMPIFaces(void)
       }
       bndFaces[i] = -1;
       bcType[i] = -1;
+      bcID[i] = -999;
     }
   }
   nMpiFaces = mpiFaces.size();
@@ -660,6 +665,7 @@ void geo::matchMPIFaces(void)
   // Clean up the bcType and bndEdges arrays now that it's safe to do so [remove mpiFaces from them]
   bndFaces.erase(std::remove(bndFaces.begin(), bndFaces.end(), -1), bndFaces.end());
   bcType.erase(std::remove(bcType.begin(), bcType.end(), -1), bcType.end());
+  bcID.erase(std::remove(bcID.begin(), bcID.end(), -999), bcID.end());
   nBndFaces = bndFaces.size();
 
   // For future compatibility with 3D mixed meshes: allow faces with different #'s nodes
@@ -1038,13 +1044,12 @@ void geo::readGmsh(string fileName)
   }
 
   // Read number of boundaries and fields defined
-  int nBnds;              // Temp. variable for # of Gmsh regions ("PhysicalNames")
-  meshFile >> nBnds;
+  meshFile >> nGmshBnds;
   getline(meshFile,str);  // clear rest of line
 
   nBounds = 0;
-  for (int i=0; i<nBnds; i++) {
-    string bcStr;
+  for (int i=0; i<nGmshBnds; i++) {
+    string bcStr, bcName;
     stringstream ss;
     int bcdim, bcid;
 
@@ -1058,6 +1063,7 @@ void geo::readGmsh(string fileName)
       bcStr.erase(ind,1);
       ind = bcStr.find("\"");
     }
+    bcName = bcStr;
 
     // Convert to lowercase to match Flurry's boundary condition strings
     std::transform(bcStr.begin(), bcStr.end(), bcStr.begin(), ::tolower);
@@ -1085,6 +1091,7 @@ void geo::readGmsh(string fileName)
     }
     else {
       bcList.push_back(bcStr2Num[bcStr]);
+      bcNames.push_back(bcName);
       bcIdMap[bcid] = nBounds; // Map Gmsh bcid to Flurry bound index
       nBounds++;
     }
@@ -1126,6 +1133,7 @@ void geo::readGmsh(string fileName)
   int nElesGmsh;
   vector<int> c2v_tmp(27,0);  // Maximum number of nodes/element possible
   vector<set<int>> boundPoints(nBounds);
+//  bndPtsGmsh.resize(nGmshBnds);
   map<int,int> eType2nv;
   eType2nv[3] = 4;  // Linear quad
   eType2nv[16] = 4; // Quadratic serendipity quad
@@ -1144,6 +1152,7 @@ void geo::readGmsh(string fileName)
     int id, eType, nTags, bcid, tmp;
     meshFile >> id >> eType >> nTags;
     meshFile >> bcid;
+    int gmshID = bcid;
     bcid = bcIdMap[bcid];
     for (int tag=0; tag<nTags-1; tag++)
       meshFile >> tmp;
@@ -1413,10 +1422,16 @@ void geo::readGmsh(string fileName)
       for (int i=0; i<nPtsFace; i++) {
         meshFile >> iv;  iv--;
         boundPoints[bcid].insert(iv);
+        //bndPtsGmsh[gmshID].push_back(iv);
       }
       getline(meshFile,str);
     }
   } // End of loop over entities
+
+//  for (int i = 0; i < nGmshBnds; i++) {
+//    std::sort(bndPtsGmsh[i].begin(),bndPtsGmsh[i].end());
+//    bndPtsGmsh[i].erase( std::unique(bndPtsGmsh[i].begin(),bndPtsGmsh[i].end()), bndPtsGmsh[i].end() );
+//  }
 
   int maxNBndPts = 0;
   for (int i=0; i<nBounds; i++) {
@@ -1791,6 +1806,8 @@ void geo::processPeriodicBoundaries(void)
         bndFaces[j] = -10;
         bcType[i] = -10;
         bcType[j] = -10;
+        bcID[i] = -999;
+        bcID[j] = -999;
 
         break;
       }
@@ -1803,6 +1820,7 @@ void geo::processPeriodicBoundaries(void)
   // Remove no-longer-existing periodic boundary faces and update nBndFaces
   bndFaces.erase(std::remove(bndFaces.begin(), bndFaces.end(), -10), bndFaces.end());
   bcType.erase(std::remove(bcType.begin(), bcType.end(), -10), bcType.end());
+  bcID.erase(std::remove(bcID.begin(), bcID.end(), -999), bcID.end());
   nBndFaces = bndFaces.size();
   nIntFaces = intFaces.size();
 

@@ -72,6 +72,7 @@ typedef unsigned int uint;
 static double pi = 4.0*atan(1);
 
 extern map<string,int> bcStr2Num;
+//extern map<int,string> bcNum2Str;
 
 /*! enumeration for element type */
 enum ETYPE {

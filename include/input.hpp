@@ -165,6 +165,7 @@ public:
   int quadOrder;
   int plotFreq;
   int plotType;
+  int plotSurfaces;
 
   bool calcEntropySensor;
 

@@ -154,8 +154,12 @@ public:
   vector<int> intFaces, bndFaces, mpiFaces, mpiCells;
   unordered_set<int> overFaces, overCells; //! List of all faces / cells which have an overset-boundary-condition face
   vector<int> bcList;            //! List of boundary conditions for each boundary
+  vector<string> bcNames;        //! List of boundaries given in mesh file
   vector<int> bcType;            //! Boundary condition for each boundary face
   matrix<int> bndPts;            //! List of node IDs on each boundary
+  vector<vector<int>> bndPtsGmsh; //! List of node IDs on each Gmsh boundary ("PhysicalName")
+  vector<int> bcID;
+  int nGmshBnds;
   vector<int> nBndPts;           //! Number of points on each boudary
   vector<matrix<int> > bcFaces;  //! List of nodes on each face (edge) for each boundary condition
   vector<int> nFacesPerBnd;      //! List of # of faces on each boundary

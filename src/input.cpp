@@ -433,6 +433,7 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("resType",resType,2);
   opts.getScalarValue("plotFreq",plotFreq,100);
   opts.getScalarValue("plotType",plotType,1);
+  opts.getScalarValue("plotSurfaces",plotSurfaces,1);
   opts.getScalarValue("restart_freq",restart_freq,100);
   opts.getScalarValue("dataFileName",dataFileName,string("simData"));
 
@@ -546,7 +547,7 @@ void input::nonDimensionalize(void)
   rhoBound = muBound*Re/(UBound*Lref);
   pBound = rhoBound * RGas * TBound;
 
-  double UWall = MachWall * sqrt(gamma*RGas*TWall);  _(UWall);
+  double UWall = MachWall * sqrt(gamma*RGas*TWall);
   uWall = UWall * nxWall;
   vWall = UWall * nyWall;
   wWall = UWall * nzWall;
@@ -580,7 +581,7 @@ void input::nonDimensionalize(void)
   // For isothermal moving-wall boundary condition
   uWall /= UBound;
   vWall /= UBound;
-  wWall /= UBound; _(uWall);
+  wWall /= UBound;
 
   oneOverS = pow(rhoBound,gamma)/pBound;
 

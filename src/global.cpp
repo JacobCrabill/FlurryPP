@@ -57,6 +57,22 @@ map<string,int> bcStr2Num = {
   {"symmetry", SYMMETRY}
 };
 
+//map<int,string> bcNum2Str = {
+//  {NONE, "none"},
+//  {PERIODIC, "periodic"},
+//  {CHAR_INOUT, "char"},
+//  {SUP_IN, "sup_in"},
+//  {SUP_OUT,"sup_out"},
+//  {SUB_IN, "sub_in"},
+//  {SUB_OUT, "sub_out"},
+//  {SLIP_WALL, "slip_wall"},
+//  {ISOTHERMAL_NOSLIP, "isothermal_noslip"},
+//  {ISOTHERMAL_NOSLIP_MOVING, "isothermal_noslip_moving"},
+//  {ADIABATIC_NOSLIP, "adiabatic_noslip"},
+//  {OVERSET, "overset"},
+//  {SYMMETRY, "symmetry"}
+//};
+
 int factorial(int n)
 {
   return (n == 1 || n == 0) ? 1 : factorial(n - 1) * n;
