@@ -71,10 +71,10 @@ public:
   void setup(input* params, bool HMG = false);
 
   //! Multigrid-specific setup function [from mesh-refinement method]
-  void setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, const vector<int> &_gridIdList = {0}, const vector<int>& _epart = {-1});
+  void setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, int nSplit, const vector<int> &_gridIdList = {0}, const vector<int>& _epart = {-1});
 
   //! Take the basic connectivity data and generate the rest
-  void processConnectivity();
+  void processConnectivity(int HMG_nSplit = 0);
 
   //! Create the elements and faces needed for the simulation
   void setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<shared_ptr<face> > &faces, vector<shared_ptr<mpiFace> > &mpiFacesVec, vector<shared_ptr<overFace> >& overFacesVec);
@@ -91,7 +91,7 @@ public:
   void createMesh();
 
   //! Update connectivity / node-blanking for overset grids
-  void setupOverset3D();
+  void setupOverset3D(void);
 
   /*!
    * \brief Call TIOGA to re-process overset connectivity
@@ -109,20 +109,20 @@ public:
   void updateBlankingTioga(void);
 
   //! Remove cells and faces which were tagged for blanking
-  void processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
+  void processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces, solver* Solver);
 
   //! Setup cells and faces which were tagged for un-blanking
-  void processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces);
+  void processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces, solver* Solver);
 
   //! Create and insert elements into the eles vector
-  void insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &uEles);
+  void insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &uEles, solver* Solver);
 
   //! Create and insert faces into the face vectors
   void insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,
                    unordered_set<int> &ubIFaces, unordered_set<int> &ubMFaces, unordered_set<int> &ubOFaces);
 
   //! Remove elements from the eles vector
-  void removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEles);
+  void removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEles, solver* Solver);
 
   //! Remove faces from the face vectors
   void removeFaces(vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,
@@ -141,6 +141,7 @@ public:
   // Basic Moving-Grid Variables
   vector<point> xv_new;   //! Physical position of vertices for next time step [moving grids]
   vector<point> xv0;      //! Initial position of vertices [moving grids]
+  matrix<double> rv0;     //! Initial posiiton of vertices in polar coords [moving grids, vibrating sphere test case]
   matrix<double> gridVel; //! Grid velocity of vertices
 
   point minPt;   //! Centroid of all vertices on grid partition
@@ -153,8 +154,12 @@ public:
   vector<int> intFaces, bndFaces, mpiFaces, mpiCells;
   unordered_set<int> overFaces, overCells; //! List of all faces / cells which have an overset-boundary-condition face
   vector<int> bcList;            //! List of boundary conditions for each boundary
+  vector<string> bcNames;        //! List of boundaries given in mesh file
   vector<int> bcType;            //! Boundary condition for each boundary face
   matrix<int> bndPts;            //! List of node IDs on each boundary
+  vector<vector<int>> bndPtsGmsh; //! List of node IDs on each Gmsh boundary ("PhysicalName")
+  vector<int> bcID;
+  int nGmshBnds;
   vector<int> nBndPts;           //! Number of points on each boudary
   vector<matrix<int> > bcFaces;  //! List of nodes on each face (edge) for each boundary condition
   vector<int> nFacesPerBnd;      //! List of # of faces on each boundary

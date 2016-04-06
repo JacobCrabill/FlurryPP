@@ -1,15 +1,13 @@
 #include "MeshBlock.h"
 
 #include "utils.h"
+#include "funcs.hpp"
 
 void MeshBlock::setData(int btag,int nnodesi,double *xyzi, int *ibli,int nwbci, int nobci,
 			int *wbcnodei,int *obcnodei,
 			int ntypesi,int *nvi,int *nci,int **vconni)
 {
-  int i;
-  //
   // set internal pointers
-  //
   meshtag=btag;
   nnodes=nnodesi;
   x=xyzi;
@@ -18,44 +16,35 @@ void MeshBlock::setData(int btag,int nnodesi,double *xyzi, int *ibli,int nwbci, 
   nobc=nobci;
   wbcnode=wbcnodei;
   obcnode=obcnodei;
-  //
+
   ntypes=ntypesi;
-  //
+
   nv=nvi;
   nc=nci;
   vconn=vconni;
-  //
-  //tracei(nnodes);
-  //for(i=0;i<ntypes;i++) tracei(nc[i]);
+
   ncells=0;
-  for(i=0;i<ntypes;i++) ncells+=nc[i];
+  for (int i = 0; i < ntypes; i++) ncells += nc[i];
 }
 
 void MeshBlock::preprocess(void)
 {
-  int i;
-  //
   // set all iblanks = 1
-  //
-  for(i=0;i<nnodes;i++) iblank[i]=1;
-  //
+  for (int i = 0; i < nnodes; i++) iblank[i] = 1;
+
   // find oriented bounding boxes
-  //
   if (obb) free(obb);
-  obb=(OBB *) malloc(sizeof(OBB));
+  obb = (OBB *) malloc(sizeof(OBB));
   findOBB(x,obb->xc,obb->dxc,obb->vec,nnodes);
   tagBoundary();
 }
 
 void MeshBlock::tagBoundary(void)
 {
-  int i,j,k,n,m;
-  int itag;
-  int inode[8];
+  vector<int> inode;
   double xv[8][3];
-  double vol;
-  int *iflag;
-  int nvert,i3;
+  vector<double> xv2;
+  std::vector<int> iflag(nnodes, 0);
 
   // do this only once
   // i.e. when the meshblock is first
@@ -63,94 +52,106 @@ void MeshBlock::tagBoundary(void)
 
   if (cellRes == NULL)
   {
+    cellRes = (double *) malloc(sizeof(double)*ncells);
+    nodeRes = (double *) malloc(sizeof(double)*nnodes);
 
-    cellRes=(double *) malloc(sizeof(double)*ncells);
-    nodeRes=(double *) malloc(sizeof(double)*nnodes);
     if (userSpecifiedNodeRes == NULL && userSpecifiedCellRes == NULL)
     {
+      for (int i = 0; i < nnodes; i++) nodeRes[i] = 0.0;
 
-      // this is a local array
-
-      iflag=(int *)malloc(sizeof(int)*nnodes);
-
-      for(i=0;i<nnodes;i++) iflag[i]=0;
-      for(i=0;i<nnodes;i++) nodeRes[i]=0.0;
-
-      k=0;
-      for(n=0;n<ntypes;n++)
+      int k = 0;
+      for (int n = 0; n < ntypes; n++)
       {
-        nvert=nv[n];
-        for(i=0;i<nc[n];i++)
+        int nvert = nv[n];
+        inode.resize(nvert);
+        if (nvert > 8) xv2.resize(nvert*3);
+
+        for (int i = 0; i < nc[n]; i++)
         {
-          for(m=0;m<nvert;m++)
+          double vol = 0.;
+
+          if (nvert > 8)
           {
-            inode[m]=vconn[n][nvert*i+m]-BASE;
-            i3=3*inode[m];
-            for(j=0;j<3;j++)
-              xv[m][j]=x[i3+j];
+            for (int m = 0; m < nvert; m++)
+            {
+              inode[m] = vconn[n][nvert*i+m]-BASE;
+              int i3 = 3*inode[m];
+              for (int j = 0; j < 3; j++)
+                xv2[m*3+j] = x[i3+j];
+            }
+            vol = computeVolume(xv2.data(), nvert, 3);
           }
-          vol=computeCellVolume(xv,nvert);
-          cellRes[k++]=vol;
-          for(m=0;m<nvert;m++)
+          else
+          {
+            for (int m = 0; m < nvert; m++)
+            {
+              inode[m] = vconn[n][nvert*i+m]-BASE;
+              int i3 = 3*inode[m];
+              for (int j = 0; j < 3; j++)
+                xv[m][j] = x[i3+j];
+            }
+            vol = computeCellVolume(xv, nvert);
+          }
+
+          cellRes[k++] = vol;
+          for (int m = 0; m < nvert; m++)
           {
             iflag[inode[m]]++;
-            nodeRes[inode[m]]+=vol;
+            nodeRes[inode[m]] += vol;
           }
         }
       }
     }
     else
     {
-      k=0;
-      for(n=0;n<ntypes;n++)
+      int k = 0;
+      for (int n = 0; n < ntypes; n++)
       {
-        for(i=0;i<nc[n];i++)
+        for (int i = 0; i < nc[n]; i++)
         {
           cellRes[k]=userSpecifiedCellRes[k];
           k++;
         }
       }
-      for(k=0;k<nnodes;k++) nodeRes[k]=userSpecifiedNodeRes[k];
+      for (int k = 0; k < nnodes; k++) nodeRes[k] = userSpecifiedNodeRes[k];
     }
 
     // compute nodal resolution as the average of
     // all the cells associated with it. This takes care
     // of partition boundaries as well.
 
-    for(i=0;i<nnodes;i++)
+    for (int i = 0; i < nnodes; i++)
     {
-      if (iflag[i]!=0)  nodeRes[i]/=iflag[i];
-      iflag[i]=0;
+      if (iflag[i] != 0)  nodeRes[i] /= iflag[i];
+      iflag[i] = 0;
     }
 
     // now tag the overset-boundary nodes
     // reuse the iflag array
 
-    //tracei(nobc);
-    for(i=0;i<nobc;i++)
+    for (int i = 0; i < nobc; i++)
     {
-      iflag[(obcnode[i]-BASE)]=1;
+      iflag[(obcnode[i]-BASE)] = 1;
     }
 
     // now tag all the nodes of overset-boundary cells
     // to be mandatory receptors
 
-    for(n=0;n<ntypes;n++)
+    for (int n = 0; n < ntypes; n++)
     {
-      nvert=nv[n];
-      for(i=0;i<nc[n];i++)
+      int nvert = nv[n];
+      for (int i = 0; i < nc[n]; i++)
       {
-        itag=0;
-        for(m=0;m<nvert;m++)
+        int itag = 0;
+        for (int m = 0; m < nvert; m++)
         {
-          inode[m]=vconn[n][nvert*i+m]-BASE;
-          if (iflag[inode[m]]) itag=1;
+          inode[m] = vconn[n][nvert*i+m]-BASE;
+          if (iflag[inode[m]]) itag = 1;
         }
         if (itag)
         {
-          for(m=0;m<nvert;m++)
+          for (int m = 0; m < nvert; m++)
           {
-            //iflag[inode[m]]=1;
             nodeRes[inode[m]]=BIGVALUE;
           }
         }
@@ -160,25 +161,24 @@ void MeshBlock::tagBoundary(void)
     // now tag all the cells which have
     // mandatory receptors as nodes as not acceptable
     // donors
-    k=0;
-    for(n=0;n<ntypes;n++)
+    int k = 0;
+    for (int n = 0; n < ntypes; n++)
     {
-      nvert=nv[n];
-      for(i=0;i<nc[n];i++)
+      int nvert = nv[n];
+      for (int i = 0; i < nc[n]; i++)
       {
-        for(m=0;m<nvert;m++)
+        for (int m = 0; m < nvert; m++)
         {
-          inode[m]=vconn[n][nvert*i+m]-BASE;
+          inode[m] = vconn[n][nvert*i+m]-BASE;
           if (iflag[inode[m]])
           {
-            cellRes[k]=BIGVALUE;
+            cellRes[k] = BIGVALUE;
             break;
           }
         }
         k++;
       }
     }
-    free(iflag);
   }
 }
 
@@ -186,12 +186,7 @@ void MeshBlock::writeGridFile(int bid)
 {
   char fname[80];
   char intstring[7];
-  char hash,c;
-  int i,n,j;
-  int bodytag;
   FILE *fp;
-  int ba;
-  int nvert;
 
   sprintf(intstring,"%d",100000+bid);
   sprintf(fname,"part%s.dat",&(intstring[1]));
@@ -200,67 +195,68 @@ void MeshBlock::writeGridFile(int bid)
   fprintf(fp,"VARIABLES=\"X\",\"Y\",\"Z\",\"IBLANK\"\n");
   fprintf(fp,"ZONE T=\"VOL_MIXED\",N=%d E=%d ET=BRICK, F=FEPOINT\n",nnodes,
 	  ncells);
-  for(i=0;i<nnodes;i++)
-    {
-      fprintf(fp,"%.14e %.14e %.14e %d\n",x[3*i],x[3*i+1],x[3*i+2],iblank[i]);
-    }
+  for (int i = 0; i < nnodes; i++)
+  {
+    fprintf(fp,"%.14e %.14e %.14e %d\n",x[3*i],x[3*i+1],x[3*i+2],iblank[i]);
+  }
 
-  ba=1-BASE;
-  for(n=0;n<ntypes;n++)
+  int ba=1-BASE;
+  for (int n = 0; n < ntypes; n++)
+  {
+    int nvert = nv[n];
+    int nvert_type = min(nvert,8);
+    for (int i = 0; i < nc[n]; i++)
     {
-      nvert=nv[n];
-      for(i=0;i<nc[n];i++)
-	{
-	  if (nvert==4)
-	    {
-	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
-		      vconn[n][nvert*i]+ba,
-		      vconn[n][nvert*i+1]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+3]+ba);
-	    }
-	  else if (nvert==5)
-	    {
-	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
-		      vconn[n][nvert*i]+ba,
-		      vconn[n][nvert*i+1]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+4]+ba);
-	    }
-	  else if (nvert==6)
-	    {
-	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
-		      vconn[n][nvert*i]+ba,
-		      vconn[n][nvert*i+1]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+5]+ba,
-		      vconn[n][nvert*i+5]+ba);
-	    }
-	  else if (nvert==8)
-	    {
-	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
-		      vconn[n][nvert*i]+ba,
-		      vconn[n][nvert*i+1]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+5]+ba,
-		      vconn[n][nvert*i+6]+ba,
-		      vconn[n][nvert*i+7]+ba);
-	    }
-	}
+      if (nvert_type==4)
+      {
+        fprintf(fp,"%d %d %d %d %d %d %d %d\n",
+                vconn[n][nvert*i]+ba,
+            vconn[n][nvert*i+1]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+3]+ba);
+      }
+      else if (nvert_type==5)
+      {
+        fprintf(fp,"%d %d %d %d %d %d %d %d\n",
+                vconn[n][nvert*i]+ba,
+            vconn[n][nvert*i+1]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+4]+ba);
+      }
+      else if (nvert_type==6)
+      {
+        fprintf(fp,"%d %d %d %d %d %d %d %d\n",
+                vconn[n][nvert*i]+ba,
+            vconn[n][nvert*i+1]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+5]+ba,
+            vconn[n][nvert*i+5]+ba);
+      }
+      else if (nvert_type==8)
+      {
+        fprintf(fp,"%d %d %d %d %d %d %d %d\n",
+                vconn[n][nvert*i]+ba,
+            vconn[n][nvert*i+1]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+5]+ba,
+            vconn[n][nvert*i+6]+ba,
+            vconn[n][nvert*i+7]+ba);
+      }
     }
+  }
   fclose(fp);
   return;
 }
@@ -268,14 +264,8 @@ void MeshBlock::writeGridFile(int bid)
 void MeshBlock::writeCellFile(int bid)
 {
   char fname[80];
-  char qstr[2];
   char intstring[7];
-  char hash,c;
-  int i,n,j;
-  int bodytag;
   FILE *fp;
-  int ba;
-  int nvert;
 
   sprintf(intstring,"%d",100000+bid);
   sprintf(fname,"cell%s.dat",&(intstring[1]));
@@ -286,67 +276,69 @@ void MeshBlock::writeCellFile(int bid)
   fprintf(fp,"ZONE T=\"VOL_MIXED\",N=%d E=%d ET=BRICK, F=FEBLOCK\n",nnodes,
 	  ncells);
   fprintf(fp,"VARLOCATION =  (1=NODAL, 2=NODAL, 3=NODAL, 4=NODAL,5=CELLCENTERED)\n");
-  for(i=0;i<nnodes;i++) fprintf(fp,"%lf\n",x[3*i]);
-  for(i=0;i<nnodes;i++) fprintf(fp,"%lf\n",x[3*i+1]);
-  for(i=0;i<nnodes;i++) fprintf(fp,"%lf\n",x[3*i+2]);
-  for(i=0;i<nnodes;i++) fprintf(fp,"%d\n",iblank[i]);
-  for(i=0;i<ncells;i++) fprintf(fp,"%d\n",iblank_cell[i]);
-  ba=1-BASE;
-  for(n=0;n<ntypes;n++)
+  for (int i = 0; i < nnodes; i++) fprintf(fp,"%lf\n",x[3*i]);
+  for (int i = 0; i < nnodes; i++) fprintf(fp,"%lf\n",x[3*i+1]);
+  for (int i = 0; i < nnodes; i++) fprintf(fp,"%lf\n",x[3*i+2]);
+  for (int i = 0; i < nnodes; i++) fprintf(fp,"%d\n",iblank[i]);
+  for (int i = 0; i < ncells; i++) fprintf(fp,"%d\n",iblank_cell[i]);
+
+  int ba=1-BASE;
+  for (int n = 0; n < ntypes; n++)
+  {
+    int nvert = nv[n];
+    int nvert_type = min(nvert,8);
+    for (int i = 0; i < nc[n]; i++)
     {
-      nvert=nv[n];
-      for(i=0;i<nc[n];i++)
-	{
-	  if (nvert==4)
-	    {
-	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
-		      vconn[n][nvert*i]+ba,
-		      vconn[n][nvert*i+1]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+3]+ba);
-	    }
-	  else if (nvert==5)
-	    {
-	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
-		      vconn[n][nvert*i]+ba,
-		      vconn[n][nvert*i+1]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+4]+ba);
-	    }
-	  else if (nvert==6)
-	    {
-	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
-		      vconn[n][nvert*i]+ba,
-		      vconn[n][nvert*i+1]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+5]+ba,
-		      vconn[n][nvert*i+5]+ba);
-	    }
-	  else if (nvert==8)
-	    {
-	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
-		      vconn[n][nvert*i]+ba,
-		      vconn[n][nvert*i+1]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+5]+ba,
-		      vconn[n][nvert*i+6]+ba,
-		      vconn[n][nvert*i+7]+ba);
-	    }
-	}
+      if (nvert_type==4)
+      {
+        fprintf(fp,"%d %d %d %d %d %d %d %d\n",
+                vconn[n][nvert*i]+ba,
+            vconn[n][nvert*i+1]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+3]+ba);
+      }
+      else if (nvert_type==5)
+      {
+        fprintf(fp,"%d %d %d %d %d %d %d %d\n",
+                vconn[n][nvert*i]+ba,
+            vconn[n][nvert*i+1]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+4]+ba);
+      }
+      else if (nvert_type==6)
+      {
+        fprintf(fp,"%d %d %d %d %d %d %d %d\n",
+                vconn[n][nvert*i]+ba,
+            vconn[n][nvert*i+1]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+5]+ba,
+            vconn[n][nvert*i+5]+ba);
+      }
+      else if (nvert_type==8)
+      {
+        fprintf(fp,"%d %d %d %d %d %d %d %d\n",
+                vconn[n][nvert*i]+ba,
+            vconn[n][nvert*i+1]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+5]+ba,
+            vconn[n][nvert*i+6]+ba,
+            vconn[n][nvert*i+7]+ba);
+      }
     }
+  }
   fclose(fp);
   return;
 }
@@ -356,118 +348,115 @@ void MeshBlock::writeFlowFile(int bid,double *q,int nvar,int type)
   char fname[80];
   char qstr[2];
   char intstring[7];
-  char hash,c;
-  int i,n,j;
-  int bodytag;
   FILE *fp;
-  int ba;
-  int nvert;
 
   sprintf(intstring,"%d",100000+bid);
   sprintf(fname,"flow%s.dat",&(intstring[1]));
   fp=fopen(fname,"w");
   fprintf(fp,"TITLE =\"Tioga output\"\n");
   fprintf(fp,"VARIABLES=\"X\",\"Y\",\"Z\",\"IBLANK\" ");
-  for(i=0;i<nvar;i++)
-    {
-      sprintf(qstr,"Q%d",i);
-      fprintf(fp,"\"%s\",",qstr);
-    }
+  for (int i = 0; i < nvar; i++)
+  {
+    sprintf(qstr,"Q%d",i);
+    fprintf(fp,"\"%s\",",qstr);
+  }
   fprintf(fp,"\n");
   fprintf(fp,"ZONE T=\"VOL_MIXED\",N=%d E=%d ET=BRICK, F=FEPOINT\n",nnodes,
-	  ncells);
+          ncells);
 
   if (type==0)
+  {
+    for (int i = 0; i < nnodes; i++)
     {
-      for(i=0;i<nnodes;i++)
-	{
-	  fprintf(fp,"%lf %lf %lf %d ",x[3*i],x[3*i+1],x[3*i+2],iblank[i]);
-	  for(j=0;j<nvar;j++)
-	    fprintf(fp,"%lf ",q[i*nvar+j]);
-	  //for(j=0;j<nvar;j++)
-	  //  fprintf(fp,"%lf ", x[3*i]+x[3*i+1]+x[3*i+2]);
-          fprintf(fp,"\n");
-	}
+      fprintf(fp,"%lf %lf %lf %d ",x[3*i],x[3*i+1],x[3*i+2],iblank[i]);
+      for (int j = 0; j < nvar; j++)
+        fprintf(fp,"%lf ",q[i*nvar+j]);
+      //for (int j = 0; j < nvar; j++)
+      //  fprintf(fp,"%lf ", x[3*i]+x[3*i+1]+x[3*i+2]);
+      fprintf(fp,"\n");
     }
+  }
   else
+  {
+    for (int i = 0; i < nnodes; i++)
     {
-      for(i=0;i<nnodes;i++)
-        {
-          fprintf(fp,"%lf %lf %lf %d ",x[3*i],x[3*i+1],x[3*i+2],iblank[i]);
-          for(j=0;j<nvar;j++)
-            fprintf(fp,"%lf ",q[j*nnodes+i]);
-          fprintf(fp,"\n");
-        }
+      fprintf(fp,"%lf %lf %lf %d ",x[3*i],x[3*i+1],x[3*i+2],iblank[i]);
+      for (int j = 0; j < nvar; j++)
+        fprintf(fp,"%lf ",q[j*nnodes+i]);
+      fprintf(fp,"\n");
     }
-  ba=1-BASE;
-  for(n=0;n<ntypes;n++)
+  }
+
+  int ba=1-BASE;
+  for (int n = 0; n < ntypes; n++)
+  {
+    int nvert = nv[n];
+    int nvert_type = min(nvert,8);
+    for (int i = 0; i < nc[n]; i++)
     {
-      nvert=nv[n];
-      for(i=0;i<nc[n];i++)
-	{
-	  if (nvert==4)
-	    {
-	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
-		      vconn[n][nvert*i]+ba,
-		      vconn[n][nvert*i+1]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+3]+ba);
-	    }
-	  else if (nvert==5)
-	    {
-	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
-		      vconn[n][nvert*i]+ba,
-		      vconn[n][nvert*i+1]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+4]+ba);
-	    }
-	  else if (nvert==6)
-	    {
-	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
-		      vconn[n][nvert*i]+ba,
-		      vconn[n][nvert*i+1]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+5]+ba,
-		      vconn[n][nvert*i+5]+ba);
-	    }
-	  else if (nvert==8)
-	    {
-	      fprintf(fp,"%d %d %d %d %d %d %d %d\n",
-		      vconn[n][nvert*i]+ba,
-		      vconn[n][nvert*i+1]+ba,
-		      vconn[n][nvert*i+2]+ba,
-		      vconn[n][nvert*i+3]+ba,
-		      vconn[n][nvert*i+4]+ba,
-		      vconn[n][nvert*i+5]+ba,
-		      vconn[n][nvert*i+6]+ba,
-		      vconn[n][nvert*i+7]+ba);
-	    }
-	}
+      if (nvert_type==4)
+      {
+        fprintf(fp,"%d %d %d %d %d %d %d %d\n",
+                vconn[n][nvert*i]+ba,
+            vconn[n][nvert*i+1]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+3]+ba);
+      }
+      else if (nvert_type==5)
+      {
+        fprintf(fp,"%d %d %d %d %d %d %d %d\n",
+                vconn[n][nvert*i]+ba,
+            vconn[n][nvert*i+1]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+4]+ba);
+      }
+      else if (nvert_type==6)
+      {
+        fprintf(fp,"%d %d %d %d %d %d %d %d\n",
+                vconn[n][nvert*i]+ba,
+            vconn[n][nvert*i+1]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+5]+ba,
+            vconn[n][nvert*i+5]+ba);
+      }
+      else if (nvert_type==8)
+      {
+        fprintf(fp,"%d %d %d %d %d %d %d %d\n",
+                vconn[n][nvert*i]+ba,
+            vconn[n][nvert*i+1]+ba,
+            vconn[n][nvert*i+2]+ba,
+            vconn[n][nvert*i+3]+ba,
+            vconn[n][nvert*i+4]+ba,
+            vconn[n][nvert*i+5]+ba,
+            vconn[n][nvert*i+6]+ba,
+            vconn[n][nvert*i+7]+ba);
+      }
     }
+  }
   fclose(fp);
   return;
 }
 
-void MeshBlock::getWallBounds(int *mtag,int *existWall, double wbox[6])
+void MeshBlock::getWallBounds(int &mtag,int *existWall, double wbox[6])
 {
   int i,j,i3;
   int inode;
 
-  *mtag=meshtag+(1-BASE);
+  mtag = meshtag+(1-BASE);
   if (nwbc <=0) {
     *existWall=0;
-    for(i=0;i<6;i++) wbox[i]=0;
+    for (int i = 0; i < 6; i++) wbox[i]=0;
     return;
   }
 
@@ -475,11 +464,11 @@ void MeshBlock::getWallBounds(int *mtag,int *existWall, double wbox[6])
   wbox[0]=wbox[1]=wbox[2]=BIGVALUE;
   wbox[3]=wbox[4]=wbox[5]=-BIGVALUE;
 
-  for(i=0;i<nwbc;i++)
+  for (int i = 0; i < nwbc; i++)
     {
       inode=wbcnode[i]-BASE;
       i3=3*inode;
-      for(j=0;j<3;j++)
+      for (int j = 0; j < 3; j++)
 	{
 	  wbox[j]=min(wbox[j],x[i3+j]);
 	  wbox[j+3]=max(wbox[j+3],x[i3+j]);
@@ -490,154 +479,120 @@ void MeshBlock::getWallBounds(int *mtag,int *existWall, double wbox[6])
 
 void MeshBlock::markWallBoundary(int *sam,int nx[3],double extents[6])
 {
-  int i,j,k,m,n;
-  int nvert;
-  int ii,jj,kk,mm;
-  int i3,iv;
-  int *iflag;
-  int *inode;
-  char intstring[7];
-  char fname[80];
+  vector<int> iflag(ncells,0);
+  vector<int> inode(nnodes,0);
   double ds[3];
-  double xv;
   int imin[3];
   int imax[3];
-  FILE *fp;
-  //
-  iflag=(int *)malloc(sizeof(int)*ncells);
-  inode=(int *) malloc(sizeof(int)*nnodes);
-  ///
-  //sprintf(intstring,"%d",100000+myid);
-  //sprintf(fname,"wbc%s.dat",&(intstring[1]));
-  //fp=fopen(fname,"w");
-  for(i=0;i<ncells;i++) iflag[i]=0;
-  for(i=0;i<nnodes;i++) inode[i]=0;
-  //
-  for(i=0;i<nwbc;i++)
-   {
-    ii=wbcnode[i]-BASE;
-    //fprintf(fp,"%e %e %e\n",x[3*ii],x[3*ii+1],x[3*ii+2]);
+
+  for (int i = 0; i<nwbc; i++)
+  {
+    int ii=wbcnode[i]-BASE;
     inode[ii]=1;
-   }
-  //fclose(fp);
-  //
+  }
+
   // mark wall boundary cells
-  //
-  m=0;
-  for(n=0;n<ntypes;n++)
+  int m = 0;
+  for (int n = 0; n<ntypes; n++)
+  {
+    int nvert=nv[n];
+    for (int i = 0; i<nc[n]; i++)
     {
-      nvert=nv[n];
-      for(i=0;i<nc[n];i++)
-	{
-	  for(j=0;j<nvert;j++)
-	    {
-	      ii=vconn[n][nvert*i+j]-BASE;
-	      if (inode[ii]==1)
-		{
-		  iflag[m]=1;
-		  break;
-		}
-	    }
-	  m++;
-	}
+      for (int j = 0; j<nvert; j++)
+      {
+        int ii=vconn[n][nvert*i+j]-BASE;
+        if (inode[ii]==1)
+        {
+          iflag[m]=1;
+          break;
+        }
+      }
+      m++;
     }
-  //
+  }
+
   // find delta's in each directions
-  //
-  for(k=0;k<3;k++) ds[k]=(extents[k+3]-extents[k])/nx[k];
-  //
+  for (int k = 0; k<3; k++) ds[k]=(extents[k+3]-extents[k])/nx[k];
+
   // mark sam cells with wall boundary cells now
-  //
-   m=0;
-   for(n=0;n<ntypes;n++)
-     {
-       nvert=nv[n];
-       for(i=0;i<nc[n];i++)
- 	{
-	  if (iflag[m]==1)
-	    {
-	      //
-	      // find the index bounds of each wall boundary cell
-	      // bounding box
-	      //
-	      imin[0]=imin[1]=imin[2]=BIGINT;
-	      imax[0]=imax[1]=imax[2]=-BIGINT;
-	      for(j=0;j<nvert;j++)
-		{
-		  i3=3*(vconn[n][nvert*i+j]-BASE);
-		  for(k=0;k<3;k++)
-		    {
-		      xv=x[i3+k];
-		      iv=floor((xv-extents[k])/ds[k]);
-		      imin[k]=min(imin[k],iv);
-		      imax[k]=max(imax[k],iv);
-		    }
-		}
-	     for(j=0;j<3;j++)
-              {
-	       imin[j]=max(imin[j],0);
-               imax[j]=min(imax[j],nx[j]-1);
-              }
-	      //
-	      // mark sam to 1
-	      //
-	      for(kk=imin[2];kk<imax[2]+1;kk++)
-	        for(jj=imin[1];jj<imax[1]+1;jj++)
-		  for (ii=imin[0];ii<imax[0]+1;ii++)
-		   {
-		    mm=kk*nx[1]*nx[0]+jj*nx[0]+ii;
-		     sam[mm]=2;
-		   }
-	    }
-	  m++;
-	}
-     }
-   free(iflag);
-   free(inode);
+  m = 0;
+  for (int n = 0; n<ntypes; n++)
+  {
+    int nvert = nv[n];
+    for (int i = 0; i<nc[n]; i++)
+    {
+      if (iflag[m]==1)
+      {
+        // find the index bounds of each wall boundary cell
+        // bounding box
+        imin[0]=imin[1]=imin[2]=BIGINT;
+        imax[0]=imax[1]=imax[2]=-BIGINT;
+        for (int j = 0; j < nvert; j++)
+        {
+          int i3=3*(vconn[n][nvert*i+j]-BASE);
+          for (int k = 0; k < 3; k++)
+          {
+            double xv=x[i3+k];
+            int iv=floor((xv-extents[k])/ds[k]);
+            imin[k]=min(imin[k],iv);
+            imax[k]=max(imax[k],iv);
+          }
+        }
+        for (int j = 0; j < 3; j++)
+        {
+          imin[j]=max(imin[j],0);
+          imax[j]=min(imax[j],nx[j]-1);
+        }
+
+        // mark sam to 1
+        for (int kk = imin[2]; kk < imax[2]+1; kk++)
+          for (int jj = imin[1]; jj < imax[1]+1; jj++)
+            for (int ii = imin[0]; ii < imax[0]+1; ii++)
+            {
+              int mm = kk*nx[1]*nx[0]+jj*nx[0]+ii;
+              sam[mm] = 2;
+            }
+      }
+      m++;
+    }
+  }
 }
 
-void MeshBlock::getQueryPoints(OBB *obc,int *nints,int **intData,int *nreals, double **realData)
+void MeshBlock::getQueryPoints(OBB *obc,int &nints,int **intData,int &nreals, double **realData)
 {
-  int i,j,k;
-  int i3;
   double xd[3];
-  int *inode;
-  int iptr;
-  int m;
+  vector<int> inode(nnodes);
 
-  inode=(int *)malloc(sizeof(int)*nnodes);
-  *nints=*nreals=0;
-  for(i=0;i<nnodes;i++)
+  nints = nreals = 0;
+  for (int i = 0; i < nnodes; i++)
   {
-    i3=3*i;
-    for(j=0;j<3;j++) xd[j]=0;
-    for(j=0;j<3;j++)
-      for(k=0;k<3;k++)
+    int i3=3*i;
+    for (int j = 0; j < 3; j++) xd[j]=0;
+    for (int j = 0; j < 3; j++)
+      for (int k = 0; k < 3; k++)
         xd[j]+=(x[i3+k]-obc->xc[k])*obc->vec[j][k];
 
     if (fabs(xd[0]) <= obc->dxc[0] && fabs(xd[1]) <= obc->dxc[1] && fabs(xd[2]) <= obc->dxc[2])
     {
-      inode[*nints]=i;
-      (*nints)++;
-      (*nreals)+=3;
+      inode[nints]=i;
+      nints++;
+      nreals += 3;
 
     }
   }
 
-  (*intData)=(int *)malloc(sizeof(int)*(*nints));
-  (*realData)=(double *)malloc(sizeof(double)*(*nreals));
+  (*intData)=(int *)malloc(sizeof(int)*nints);
+  (*realData)=(double *)malloc(sizeof(double)*nreals);
 
-  m=0;
-  for(i=0;i<*nints;i++)
+  int m = 0;
+  for (int i = 0; i < nints; i++)
   {
-    i3=3*inode[i];
+    int i3=3*inode[i];
     (*intData)[i]=inode[i];
     (*realData)[m++]=x[i3];
     (*realData)[m++]=x[i3+1];
     (*realData)[m++]=x[i3+2];
   }
-
-  free(inode);
 }
 
 void MeshBlock::writeOBB(int bid)
@@ -653,38 +608,37 @@ void MeshBlock::writeOBB(int bid)
   fp=fopen(fname,"w");
   fprintf(fp,"TITLE =\"Box file\"\n");
   fprintf(fp,"VARIABLES=\"X\",\"Y\",\"Z\"\n");
-  fprintf(fp,"ZONE T=\"VOL_MIXED\",N=%d E=%d ET=BRICK, F=FEPOINT\n",8,
-	  1);
+  fprintf(fp,"ZONE T=\"VOL_MIXED\",N=%d E=%d ET=BRICK, F=FEPOINT\n",8,1);
 
-  for(l=0;l<2;l++)
+  for (int l = 0; l < 2; l++)
+  {
+    il=2*(l%2)-1;
+    for (int k = 0; k < 2; k++)
     {
-      il=2*(l%2)-1;
-      for(k=0;k<2;k++)
-	{
-	  ik=2*(k%2)-1;
-	  for(j=0;j<2;j++)
-	    {
-	      ij=2*(j%2)-1;
-	      xx[0]=xx[1]=xx[2]=0;
-	      for(m=0;m<3;m++)
-		xx[m]=obb->xc[m]+ij*obb->vec[0][m]*obb->dxc[0]
-		  +ik*obb->vec[1][m]*obb->dxc[1]
-		  +il*obb->vec[2][m]*obb->dxc[2];
-	      fprintf(fp,"%f %f %f\n",xx[0],xx[1],xx[2]);
-	    }
-	}
+      ik=2*(k%2)-1;
+      for (int j = 0; j < 2; j++)
+      {
+        ij=2*(j%2)-1;
+        xx[0]=xx[1]=xx[2]=0;
+        for (int m = 0; m < 3; m++)
+          xx[m]=obb->xc[m]+ij*obb->vec[0][m]*obb->dxc[0]
+              +ik*obb->vec[1][m]*obb->dxc[1]
+              +il*obb->vec[2][m]*obb->dxc[2];
+        fprintf(fp,"%f %f %f\n",xx[0],xx[1],xx[2]);
+      }
     }
+  }
   fprintf(fp,"1 2 4 3 5 6 8 7\n");
   fprintf(fp,"%e %e %e\n",obb->xc[0],obb->xc[1],obb->xc[2]);
-  for(k=0;k<3;k++)
+  for (int k = 0; k < 3; k++)
    fprintf(fp,"%e %e %e\n",obb->vec[0][k],obb->vec[1][k],obb->vec[2][k]);
   fprintf(fp,"%e %e %e\n",obb->dxc[0],obb->dxc[1],obb->dxc[2]);
   fclose(fp);
 }
-//
-// destructor that deallocates all the
-// the dynamic objects inside
-//
+
+/*! destructor that deallocates all the
+ *  the dynamic objects inside
+ */
 MeshBlock::~MeshBlock()
 {
   int i;
@@ -698,11 +652,11 @@ MeshBlock::~MeshBlock()
   if (elementList) free(elementList);
   if (adt) delete[] adt;
   if (donorList) {
-    for(i=0;i<nnodes;i++) deallocateLinkList(donorList[i]);
+    for (int i = 0; i < nnodes; i++) deallocateLinkList(donorList[i]);
     free(donorList);
   }
   if (interpList) {
-    for(i=0;i<ninterp;i++)
+    for (int i = 0; i < ninterp; i++)
       {
 	free(interpList[i].inode);
 	free(interpList[i].weights);
@@ -710,7 +664,7 @@ MeshBlock::~MeshBlock()
     free(interpList);
   }
   if (interpList2) {
-    for(i=0;i<ninterp2;i++)
+    for (int i = 0; i < ninterp2; i++)
       {
 	free(interpList2[i].inode);
 	free(interpList2[i].weights);
@@ -746,69 +700,111 @@ int MeshBlock::getCellIndex(int adtEle)
 
 void MeshBlock::checkContainment(int *cellIndex, int adtElement, double *xsearch)
 {
-  int i,j,k,m,n,i3;
-  int nvert;
-  int icell,icell1;
-  int passFlag;
-  int isum;
   double xv[8][3];
   double frac[8];
 
-  icell=elementList[adtElement];
+  int icell = elementList[adtElement];
+
+  // get the type of the cell & the type-specific cell index
+  int isum = 0;
+  int ic = -1;
+  int N = 0;
+  for (int n = 0; n < ntypes; n++)
+  {
+    isum += nc[n];
+    if (icell < isum)
+    {
+      ic = icell-(isum-nc[n]);
+      N = n;
+      break;
+    }
+  }
+
+  if (ic<0) {
+    std::cout << "invalid icell (adtElement) in checkContainment" << std::endl;
+    exit(1);
+  }
+
+  *cellIndex = icell+BASE;
+
   if (ihigh==0)
   {
     /* --- Normal [Not high-order] --- */
 
-    // get the type of the cell & the type-specific cell index
-    isum=0;
-    i = -1;
-    for(n=0;n<ntypes;n++)
+    int nvert = nv[N];
+    if (nvert > 8)
     {
-      isum+=nc[n];
-      if (icell < isum)
+      /* --- Quadratic or higher-order shape functions - use general func --- */
+      //Solver->donorInclusionTest(cellIndex,xsearch,&isInEle,&refloc[0]);
+
+      vector<double> xv2(nvert*3);
+      for (int m = 0; m < nvert; m++)
       {
-        i=icell-(isum-nc[n]);
-        break;
+        int i3 = 3*(vconn[N][nvert*ic+m]-BASE);
+        for (int j = 0; j < 3; j++)
+          xv2[m*3+j] = x[i3+j];
       }
-    }
 
-    if (i<0) {
-      std::cout << "invalid icell (adtElement) in checkContainment" << std::endl;
-      exit(1);
-    }
+      double refloc[3];
+      bool isInEle = getRefLocNewton(xv2.data(), xsearch, &refloc[0], nvert, 3);
 
-    // now collect all the vertices in the array xv
-    nvert=nv[n];
-    for(m=0;m<nvert;m++)
-    {
-      i3=3*(vconn[n][nvert*i+m]-BASE);
-      for(j=0;j<3;j++)
-        xv[m][j]=x[i3+j];
-    }
-
-    computeNodalWeights(xv,xsearch,frac,nvert);
-
-    *cellIndex=icell;
-
-    // if any of the nodal weights are not in between [-TOL 1+TOL] discard cell
-    for(m=0;m<nvert;m++)
-    {
-      if ((frac[m]+TOL)*(frac[m]-1.0-TOL) > 0)
+      // if any of the nodal weights are not in between [-TOL 1+TOL] discard cell
+      if (!isInEle)
       {
         *cellIndex=-1;
         return;
       }
+      return;
     }
-    return;
+    else
+    {
+      /* --- Linear shape functions --- */
+      // now collect all the vertices in the array xv
+      for (int m = 0; m < nvert; m++)
+      {
+        int i3 = 3*(vconn[N][nvert*ic+m]-BASE);
+        for (int j = 0; j < 3; j++)
+          xv[m][j] = x[i3+j];
+      }
+
+      computeNodalWeights(xv,xsearch,frac,nvert);
+
+      // if any of the nodal weights are not in between [-TOL 1+TOL] discard cell
+      for (int m = 0; m < nvert; m++)
+      {
+        if ((frac[m]+TOL)*(frac[m]-1.0-TOL) > 0)
+        {
+          *cellIndex=-1;
+          return;
+        }
+      }
+      return;
+    }
   }
   else
   {
-    /* --- High-Order: Use user-given callback function --- */
-    icell1=icell+BASE;
-    *cellIndex=-1;
-    // Outputs: passFlag, rst
-    Solver->donorInclusionTest(&icell1,xsearch,&passFlag,&(rst[ipoint]));
-    if (passFlag) *cellIndex=icell;
+    /* --- Quadratic or higher-order shape functions - use general func --- */
+
+    int nvert = nv[N];
+    vector<double> xv2(nvert*3);
+    for (int m = 0; m < nvert; m++)
+    {
+      int i3 = 3*(vconn[N][nvert*ic+m]-BASE);
+      for (int j = 0; j < 3; j++)
+        xv2[m*3+j] = x[i3+j];
+    }
+
+    double refloc[3];
+    bool isInEle = getRefLocNewton(xv2.data(), xsearch, &refloc[0], nvert, 3);
+
+    if (!isInEle) *cellIndex = -1;
+
+//    /* --- High-Order: Use user-given callback function --- */
+//    int icell1=icell+BASE;
+//    *cellIndex=-1;
+//    bool isInEle = false;
+//    Solver->donorInclusionTest(&icell1,xsearch,&isInEle,&(rst[ipoint]));
+//    if (!passFlag) *cellIndex = -1;
     return;
   }
 
@@ -826,7 +822,7 @@ void MeshBlock::getInterpolatedSolution(int* nints, int* nreals, int** intData, 
   qq=(double *)malloc(sizeof(double)*nvar);
 
   (*nints)=(*nreals)=0;
-  for(i=0; i<ninterp; i++)
+  for (int i = 0; i<ninterp; i++)
   {
     if (!interpList[i].cancel)
     {
@@ -842,12 +838,12 @@ void MeshBlock::getInterpolatedSolution(int* nints, int* nreals, int** intData, 
 
   if (interptype==ROW) // Row-major vs. col-major data
   {
-    for(i=0; i<ninterp; i++)
+    for (int i = 0; i<ninterp; i++)
     {
       if (!interpList[i].cancel)
       {
-        for(k=0; k<nvar; k++) qq[k]=0;
-        for(m=0; m<interpList[i].nweights; m++)
+        for (int k = 0; k<nvar; k++) qq[k]=0;
+        for (int m = 0; m<interpList[i].nweights; m++)
         {
           inode=interpList[i].inode[m];
           weight=interpList[i].weights[m];
@@ -855,33 +851,33 @@ void MeshBlock::getInterpolatedSolution(int* nints, int* nreals, int** intData, 
             traced(weight);
             printf("warning: weights are not convex\n");
           }
-          for(k=0; k<nvar; k++)
+          for (int k = 0; k<nvar; k++)
             qq[k]+=q[inode*nvar+k]*weight;
         }
         (*intData)[icount++]=interpList[i].receptorInfo[0];
         (*intData)[icount++]=interpList[i].receptorInfo[1];
-        for(k=0; k<nvar; k++)
+        for (int k = 0; k<nvar; k++)
           (*realData)[dcount++]=qq[k];
       }
     }
   }
   else if (interptype==COLUMN)
   {
-    for(i=0; i<ninterp; i++)
+    for (int i = 0; i<ninterp; i++)
     {
       if (!interpList[i].cancel)
       {
-        for(k=0; k<nvar; k++) qq[k]=0;
-        for(m=0; m<interpList[i].nweights; m++)
+        for (int k = 0; k<nvar; k++) qq[k]=0;
+        for (int m = 0; m<interpList[i].nweights; m++)
         {
           inode=interpList[i].inode[m];
           weight=interpList[i].weights[m];
-          for(k=0; k<nvar; k++)
+          for (int k = 0; k<nvar; k++)
             qq[k]+=q[k*nnodes+inode]*weight;
         }
         (*intData)[icount++]=interpList[i].receptorInfo[0];
         (*intData)[icount++]=interpList[i].receptorInfo[1];
-        for(k=0; k<nvar; k++)
+        for (int k = 0; k<nvar; k++)
           (*realData)[dcount++]=qq[k];
       }
     }
@@ -894,12 +890,12 @@ void MeshBlock::updateSolnData(int inode,double* qvar,double* q,int nvar,int int
 
   if (interptype==ROW) // Row-major vs. col-major data
   {
-    for(k=0; k<nvar; k++)
+    for (int k = 0; k<nvar; k++)
       q[inode* nvar+k]=qvar[k];
   }
   if (interptype==COLUMN)
   {
-    for(k=0; k<nvar; k++)
+    for (int k = 0; k<nvar; k++)
       q[nnodes* k+inode]=qvar[k];
   }
 }
@@ -909,7 +905,7 @@ void MeshBlock::getDonorCount(int* dcount,int* fcount)
   int i;
   *dcount=0;
   *fcount=0;
-  for(i=0; i<ninterp; i++)
+  for (int i = 0; i<ninterp; i++)
   {
     if (!interpList[i].cancel)
     {
@@ -924,13 +920,13 @@ void MeshBlock::getDonorInfo(int* receptors,int* indices,double* frac)
   int i,j,k,m;
   int dcount=0;
 
-  j=0;
-  k=0;
-  for(i=0; i<ninterp; i++)
+  j = 0;
+  k = 0;
+  for (int i = 0; i<ninterp; i++)
   {
     if (!interpList[i].cancel)
     {
-      for(m=0; m<interpList[i].nweights; m++)
+      for (int m = 0; m<interpList[i].nweights; m++)
       {
         indices[j]=interpList[i].inode[m];
         frac[j]=interpList[i].weights[m];
@@ -954,15 +950,15 @@ void MeshBlock::getCellIblanks(void)
   int ncount,flag;
 
   icell=0;
-  for(n=0;n<ntypes;n++)
+  for (int n = 0; n < ntypes; n++)
   {
     nvert=nv[n];
-    for(i=0;i<nc[n];i++)
+    for (int i = 0; i < nc[n]; i++)
     {
       flag=1;
       iblank_cell[icell] = NORMAL;
       ncount=0;
-      for(m=0;m<nvert && flag;m++)
+      for (int m = 0; m < nvert && flag; m++)
       {
         // If any node is set to hole (iblank == 0), set entire cell to hole
         inode[m]=vconn[n][nvert*i+m]-BASE;
@@ -991,7 +987,7 @@ void MeshBlock::getInternalNodes(void)
   if (ctag!=NULL) free(ctag);
   ctag=(int *)malloc(sizeof(int)*ncells);
 
-  for(int i=0;i<ncells;i++)
+  for (int i = 0; i < ncells; i++)
     if (iblank_cell[i]==-1) ctag[nreceptorCells++]=i+BASE;
 
   if (pointsPerCell!=NULL) free(pointsPerCell);
@@ -999,7 +995,7 @@ void MeshBlock::getInternalNodes(void)
 
   maxPointsPerCell=0;
 
-  for(int i=0;i<nreceptorCells;i++)
+  for (int i = 0; i < nreceptorCells; i++)
   {
     // Use user-specified callback function to assign number of points within cell
     Solver->getNodesPerCell(&(ctag[i]),&(pointsPerCell[i]));
@@ -1011,8 +1007,8 @@ void MeshBlock::getInternalNodes(void)
   //printf("getInternalNodes : %d %d\n",myid,ntotalPoints);
   rxyz=(double *)malloc(sizeof(double)*ntotalPoints*3);
 
-  int m=0;
-  for(int i=0;i<nreceptorCells;i++)
+  int m = 0;
+  for (int i = 0; i < nreceptorCells; i++)
   {
     Solver->getReceptorNodes(&(ctag[i]),&(pointsPerCell[i]),&(rxyz[m]));
     m+=(3*pointsPerCell[i]);
@@ -1031,15 +1027,15 @@ void MeshBlock::getExtraQueryPoints(OBB *obc,
 
   inode=(int *)malloc(sizeof(int)*ntotalPoints);
   *nints=*nreals=0;
-  for(i=0;i<ntotalPoints;i++)
+  for (int i = 0; i < ntotalPoints; i++)
   {
     i3=3*i;
-    for(j=0;j<3;j++) xd[j]=0;
+    for (int j = 0; j < 3; j++) xd[j]=0;
 
     // Calculate distance of receptor point from center of OBB, rotated to align
     // with the OBB's axes
-    for(j=0;j<3;j++)
-      for(k=0;k<3;k++)
+    for (int j = 0; j < 3; j++)
+      for (int k = 0; k < 3; k++)
         xd[j]+=(rxyz[i3+k]-obc->xc[k])*obc->vec[j][k];
 
     // If receptor point is within bounding box, add to list
@@ -1055,8 +1051,8 @@ void MeshBlock::getExtraQueryPoints(OBB *obc,
   (*intData)=(int *)malloc(sizeof(int)*(*nints));
   (*realData)=(double *)malloc(sizeof(double)*(*nreals));
 
-  m=0;
-  for(i=0;i<*nints;i++)
+  m = 0;
+  for (int i = 0; i < *nints; i++)
   {
     i3=3*inode[i];
     (*intData)[i]=inode[i];
@@ -1080,11 +1076,11 @@ void MeshBlock::processPointDonors(void)
   ind =(int    *) malloc(sizeof(int   )*ndim);
   ninterp2=0;
 
-  for(int i=0; i<nsearch; i++)
+  for (int i = 0; i<nsearch; i++)
     if (donorId[i] > -1 && iblank_cell[donorId[i]]==NORMAL) ninterp2++;
 
   if (interpList2) {
-    for(int i=0; i<ninterp2; i++)
+    for (int i = 0; i<ninterp2; i++)
     {
       free(interpList2[i].inode);
       free(interpList2[i].weights);
@@ -1093,8 +1089,8 @@ void MeshBlock::processPointDonors(void)
   }
   interpList2=(INTERPLIST *)malloc(sizeof(INTERPLIST)*ninterp2);
 
-  int m=0;
-  for(int i=0; i<nsearch; i++)
+  int m = 0;
+  for (int i = 0; i<nsearch; i++)
   {
     if (donorId[i] > -1 && iblank_cell[donorId[i]]==1)
     {
@@ -1109,7 +1105,7 @@ void MeshBlock::processPointDonors(void)
       interpList2[m].weights=(double *)malloc(sizeof(double)*interpList2[m].nweights);
       interpList2[m].inode  =(int    *)malloc(sizeof(int   )*interpList2[m].nweights);
 
-      for(int j=0; j<interpList2[m].nweights; j++) {
+      for (int j = 0; j<interpList2[m].nweights; j++) {
         interpList2[m].weights[j] = frac[j];
         interpList2[m].inode[j]   = ind[j];
       }
@@ -1144,23 +1140,23 @@ void MeshBlock::getInterpolatedSolutionAtPoints(int *nints,int *nreals,int **int
 
   if (interptype==ROW)
   {
-    for(i=0;i<ninterp2;i++)
+    for (int i = 0; i < ninterp2; i++)
     {
-      for(k=0;k<nvar;k++) qq[k]=0;
+      for (int k = 0; k < nvar; k++) qq[k]=0;
       inode=interpList2[i].inode[0]-BASE;
-      for(m=0;m<interpList2[i].nweights;m++)
+      for (int m = 0; m < interpList2[i].nweights; m++)
       {
         weight=interpList2[i].weights[m];
         //if (weight < 0 || weight > 1.0) {
         //	traced(weight);
         //	printf("warning: weights are not convex\n");
         //    }
-        for(k=0;k<nvar;k++)
+        for (int k = 0; k < nvar; k++)
           qq[k]+=q[inode+m*nvar+k]*weight;
       }
       (*intData)[icount++]=interpList2[i].receptorInfo[0];
       (*intData)[icount++]=interpList2[i].receptorInfo[1];
-      for(k=0;k<nvar;k++)
+      for (int k = 0; k < nvar; k++)
         (*realData)[dcount++]=qq[k];
     }
   }
@@ -1171,22 +1167,19 @@ void MeshBlock::getInterpolatedSolutionAtPoints(int *nints,int *nreals,int **int
 
 void MeshBlock::updatePointData(double *q,double *qtmp,int nvar,int interptype)
 {
-  int i,j,k,n,m;
-  double *qout;
   int index_out;
-  int npts;
 
-  npts=NFRAC;
-  qout=(double *)malloc(sizeof(double)*nvar*npts);
+  int npts = NFRAC;
+  double *qout = (double *)malloc(sizeof(double)*nvar*npts);
 
-  m=0;
-  for(i=0;i<nreceptorCells;i++)
+  int m = 0;
+  for (int i = 0; i < nreceptorCells; i++)
   {
     Solver->convertToModal(&(ctag[i]),&(pointsPerCell[i]),&(qtmp[m]),&npts,&index_out,qout);
     index_out-=BASE;
-    k=0;
-    for(j=0;j<npts;j++) {
-      for(n=0;n<nvar;n++)
+    int k = 0;
+    for (int j = 0; j < npts; j++) {
+      for (int n = 0; n < nvar; n++)
       {
         q[index_out+j*nvar+n]=qout[k];
         k++;
@@ -1202,10 +1195,10 @@ void MeshBlock::updatePointData(double *q,double *qtmp,int nvar,int interptype)
 
 void MeshBlock::search(void)
 {
-  double xd[3];
-  double dxc[3];
-  double xmin[3];
-  double xmax[3];
+  double xd[3] = {0,0,0};
+  double dxc[3] = {0,0,0};
+  double xmin[3] = {0,0,0};
+  double xmax[3] = {0,0,0};
 
   // form the bounding box of the query points
   /* --- For Flurry: Must have access to the ADT for all ranks, so don't return! --- */
@@ -1221,31 +1214,31 @@ void MeshBlock::search(void)
   // the OBB
 
   int* icell=(int *)malloc(sizeof(int)*ncells);
-  for(int i=0;i<ncells;i++) icell[i]=-1;
+  for (int i = 0; i < ncells; i++) icell[i]=-1;
 
   int iptr=-1;
   int cell_count=0;
-  for(int n=0;n<ntypes;n++)
+  for (int n = 0; n < ntypes; n++)
   {
     int nvert=nv[n];
-    for(int i=0;i<nc[n];i++)
+    for (int i = 0; i < nc[n]; i++)
     {
       // find each cell that has
       // overlap with the bounding box
       xmin[0]=xmin[1]=xmin[2]=BIGVALUE;
       xmax[0]=xmax[1]=xmax[2]=-BIGVALUE;
-      for(int m=0;m<nvert;m++)
+      for (int m = 0; m < nvert; m++)
       {
         int i3=3*(vconn[n][nvert*i+m]-BASE);
-        for(int j=0;j<3;j++)
+        for (int j = 0; j < 3; j++)
         {
           xd[j]=0;
-          for(int k=0;k<3;k++)
+          for (int k = 0; k < 3; k++)
             xd[j]+=(x[i3+k]-obq->xc[k])*obq->vec[j][k];
           xmin[j]=min(xmin[j],xd[j]);
           xmax[j]=max(xmax[j],xd[j]);
         }
-        for(int j=0;j<3;j++)
+        for (int j = 0; j < 3; j++)
         {
           xd[j]=(xmax[j]+xmin[j])*0.5;
           dxc[j]=(xmax[j]-xmin[j])*0.5;
@@ -1282,24 +1275,26 @@ void MeshBlock::search(void)
   while(k!=-1)
   {
     int cellindex=k;
-    int isum=0;
-    int ic,n;
-    for(n=0;n<ntypes;n++)
+    int isum = 0;
+    int ic = 0;
+    int N = 0;
+    for (int n = 0; n < ntypes; n++)
     {
       isum+=nc[n];
       if (cellindex < isum)
       {
-        ic=cellindex-(isum-nc[n]);
+        ic = cellindex-(isum-nc[n]);
+        N = n;
         break;
       }
     }
-    int nvert=nv[n];
+    int nvert=nv[N];
     xmin[0]=xmin[1]=xmin[2]=BIGVALUE;
     xmax[0]=xmax[1]=xmax[2]=-BIGVALUE;
-    for(int m=0;m<nvert;m++)
+    for (int m = 0; m < nvert; m++)
     {
-      int i3=3*(vconn[n][nvert*ic+m]-BASE);
-      for(int j=0;j<3;j++)
+      int i3=3*(vconn[N][nvert*ic+m]-BASE);
+      for (int j = 0; j < 3; j++)
       {
         xmin[j]=min(xmin[j],x[i3+j]);
         xmax[j]=max(xmax[j],x[i3+j]);
@@ -1334,7 +1329,7 @@ void MeshBlock::search(void)
 
   donorCount=0;
   ipoint=0;
-  for(int i=0;i<nsearch;i++)
+  for (int i = 0; i < nsearch; i++)
   {
     adt->searchADT_point(this,&(donorId[i]),&(xsearch[3*i]));
     if (donorId[i] > -1) {
@@ -1375,7 +1370,7 @@ void MeshBlock::getDonorPacket(PACKET *sndPack, int nsend)
   //
   // count numbers to send first
   //
-  for(i=0;i<nsearch;i++)
+  for (int i = 0; i < nsearch; i++)
     {
       if (donorId[i] > -1)
         {
@@ -1384,15 +1379,15 @@ void MeshBlock::getDonorPacket(PACKET *sndPack, int nsend)
           sndPack[k].nreals++;
         }
     }
-  for(k=0;k<nsend;k++)
+  for (int k = 0; k < nsend; k++)
     {
       sndPack[k].intData=(int *)malloc(sizeof(int)*sndPack[k].nints);
       sndPack[k].realData=(double *)malloc(sizeof(double)*sndPack[k].nreals);
     }
 
-  for(i=0;i<nsend;i++) {icount[i]=dcount[i]=0;};
+  for (int i = 0; i < nsend; i++) {icount[i]=dcount[i]=0;};
   //
-  for(i=0;i<nsearch;i++)
+  for (int i = 0; i < nsearch; i++)
     {
       if (donorId[i] > -1)
         {
@@ -1411,12 +1406,12 @@ void MeshBlock::initializeDonorList(void)
   int i;
   if (donorList)
     {
-      for(i=0;i<nnodes;i++)
+      for (int i = 0; i < nnodes; i++)
   deallocateLinkList(donorList[i]);
       free(donorList);
     }
   donorList=(DONORLIST **)malloc(sizeof(DONORLIST *)*nnodes);
-  for(i=0;i<nnodes;i++)
+  for (int i = 0; i < nnodes; i++)
     donorList[i]=NULL;
 }
 
@@ -1435,27 +1430,22 @@ void MeshBlock::insertAndSort(int pointid,int senderid,int meshtagdonor, int rem
 void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,double **receptorResolution,
             int *nrecords)
 {
-  int i,j,k,m,n,mm,ii;
-  int nvert;
   DONORLIST *temp;
-  int *iflag;
   int meshtagdonor;
-  int *mtag,*mtag1;
-  int iter;
 
   // first mark hole points
 
-  iflag=(int *)malloc(sizeof(int)*nmesh);
+  int* iflag=(int *)malloc(sizeof(int)*nmesh);
 
-  for(i=0;i<nnodes;i++)
+  for (int i = 0; i < nnodes; i++)
   {
     iblank[i] = NORMAL;
     if (donorList[i]==NULL)
     {
-      for(j=0;j<nmesh;j++) {
+      for (int j = 0; j < nmesh; j++) {
         if (j!=(meshtag-BASE) && holemap[j].existWall)
         {
-          if (checkHoleMap(&x[3*i],holemap[j].nx,holemap[j].sam,holemap[j].extents))
+          if (checkHoleMap(&x[3*i],holemap[j].nx,holemap[j].sam.data(),holemap[j].extents))
           {
             iblank[i] = HOLE;
             break;
@@ -1466,19 +1456,19 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
     else
     {
       temp=donorList[i];
-      for(j=0;j<nmesh;j++) iflag[j]=0;
+      for (int j = 0; j < nmesh; j++) iflag[j]=0;
       while(temp!=NULL)
       {
         meshtagdonor=temp->donorData[1]-BASE;
         iflag[meshtagdonor]=1;
         temp=temp->next;
       }
-      for(j=0;j<nmesh;j++)
+      for (int j = 0; j < nmesh; j++)
       {
         if (j!=(meshtag-BASE) && holemap[j].existWall)
         {
           if (!iflag[j]) {
-            if (checkHoleMap(&x[3*i],holemap[j].nx,holemap[j].sam,holemap[j].extents))
+            if (checkHoleMap(&x[3*i],holemap[j].nx,holemap[j].sam.data(),holemap[j].extents))
             {
               iblank[i] = HOLE;
               break;
@@ -1489,12 +1479,12 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
     }
   }
 
-  for(i=0;i<nwbc;i++) {
+  for (int i = 0; i < nwbc; i++) {
     if (iblank[wbcnode[i]-BASE]==HOLE) {
       printf("--------------------------------------------------------------------\n");
       printf("Alarm from process %d : wall node is being tagged as a hole %d %p\n",myid,wbcnode[i]-BASE,
              donorList[wbcnode[i]-BASE]);
-      ii=wbcnode[i]-BASE;
+      int ii=wbcnode[i]-BASE;
       printf("xloc=%e %e %e\n",x[3*ii],x[3*ii+1],x[3*ii+2]);
       printf("Computations will continue, but may suffer from accuracy problems\n");
       printf("Please recheck positions of your grids\n");
@@ -1505,46 +1495,46 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
   // mark mandatory fringes as neighbors (up to nfringe depth)
   // of hole points
 
-  mtag=(int *)malloc(sizeof(int)*nnodes);
-  mtag1=(int *)malloc(sizeof(int)*nnodes);
+  int* mtag = new int[nnodes];
+  int* mtag1 = new int[nnodes];
 
-  for(i=0;i<nnodes;i++)
+  for (int i = 0; i < nnodes; i++)
   {
     mtag[i]=mtag1[i]=0;
     if (iblank[i] == HOLE) mtag[i]=mtag1[i]=NORMAL;
   }
 
-  for(iter=0;iter<nfringe;iter++)
+  for (int iter=0; iter<nfringe; iter++)
   {
-    for(n=0;n<ntypes;n++)
+    for (int n = 0; n < ntypes; n++)
     {
-      nvert=nv[n];
-      for(i=0;i<nc[n];i++)
+      int nvert=nv[n];
+      for (int i = 0; i < nc[n]; i++)
       {
-        for(m=0;m<nvert;m++)
+        for (int m = 0; m < nvert; m++)
         {
           if (mtag[(vconn[n][nvert*i+m]-BASE)]==NORMAL)
           {
-            for(mm=0;mm<nvert;mm++)
+            for (int mm = 0;mm<nvert;mm++)
               if (m!=mm && mtag[vconn[n][nvert*i+mm]-BASE] !=NORMAL)
                 mtag1[vconn[n][nvert*i+mm]-BASE] = NORMAL;
           }
         }
       }
     }
-    for(i=0;i<nnodes;i++) mtag[i]=mtag1[i];
+    for (int i = 0; i < nnodes; i++) mtag[i]=mtag1[i];
   }
 
-  for(i=0;i<nnodes;i++)
+  for (int i = 0; i < nnodes; i++)
     if (mtag1[i] && iblank[i]) nodeRes[i]=BIGVALUE;
 
-  free(mtag);
-  free(mtag1);
+  delete [] mtag;
+  delete [] mtag1;
 
   // now find fringes
 
   *nrecords=0;
-  for(i=0;i<nnodes;i++)
+  for (int i = 0; i < nnodes; i++)
   {
     if (donorList[i]!=NULL && iblank[i]!=HOLE)
     {
@@ -1568,9 +1558,9 @@ void MeshBlock::processDonors(HOLEMAP *holemap, int nmesh, int **donorRecords,do
   (*donorRecords)=(int *)malloc(sizeof(int)*2*(*nrecords));
   (*receptorResolution)=(double *)malloc(sizeof(double)*(*nrecords));
 
-  m=0;
-  k=0;
-  for(i=0;i<nnodes;i++)
+  int m = 0;
+  int k = 0;
+  for (int i = 0; i < nnodes; i++)
   {
     if (iblank[i] == FRINGE)
     {
@@ -1593,7 +1583,7 @@ void MeshBlock::initializeInterpList(int ninterp_input)
   int i;
 
   if (interpList) {
-    for(i=0;i<ninterp;i++)
+    for (int i = 0; i < ninterp; i++)
       {
   free(interpList[i].inode);
   free(interpList[i].weights);
@@ -1607,55 +1597,65 @@ void MeshBlock::initializeInterpList(int ninterp_input)
   ncancel=0;
   if (interp2donor) free(interp2donor);
   interp2donor=(int *)malloc(sizeof(int)*nsearch);
-  for(i=0;i<nsearch;i++) interp2donor[i]=-1;
+  for (int i = 0; i < nsearch; i++) interp2donor[i]=-1;
 
 }
 
 void MeshBlock::findInterpData(int *recid,int irecord,double receptorRes)
 {
-  int idonor,j,i3,n;
-  int nvert;
-  int isum;
-  int procid,pointid;
+  int idonor = 0;
   double xv[8][3];
+  vector<double> xv2;
   double xp[3];
   double frac[8];
-  int inode[8];
-  int acceptFlag;
+  vector<double> frac2;
+  vector<int> inode;
   INTEGERLIST *clist;
 
-  procid=isearch[2*irecord];
-  pointid=isearch[2*irecord+1];
-  i3=3*irecord;
+  int procid=isearch[2*irecord];
+  int pointid=isearch[2*irecord+1];
+  int i3 = 3*irecord;
   xp[0]=xsearch[i3];
   xp[1]=xsearch[i3+1];
   xp[2]=xsearch[i3+2];
 
   // Get the donor cell for the given receptor point
-  isum=0;
-  for(n=0;n<ntypes;n++)
+  int isum = 0;
+  int N = 0;
+  for (int n = 0; n < ntypes; n++)
   {
     isum+=nc[n];
     if (donorId[irecord] < isum)
     {
       idonor=donorId[irecord]-(isum-nc[n]);
+      N = n;
       break;
     }
   }
 
   // Get the physical node positions of the donor cell
-  nvert=nv[n];
-  acceptFlag=1;
-  for(int iv=0;iv<nvert;iv++)
+  int acceptFlag = 1;
+  int nvert = nv[N];
+
+  inode.resize(nvert);
+  if (nvert > 8)
+    xv2.resize(nvert*3);
+
+  for (int iv=0; iv<nvert; iv++)
   {
-    inode[iv]=vconn[n][nvert*idonor+iv]-BASE;
-    i3=3*inode[iv];
+    inode[iv]=vconn[N][nvert*idonor+iv]-BASE;
+    int i3=3*inode[iv];
     if (iblank[inode[iv]] <=0) {
       // If donor-cell node is also a receptor or hole node, skip
       acceptFlag=0;
     }
-    for(j=0;j<3;j++)
-      xv[iv][j]=x[i3+j];
+
+    if (nvert > 8)
+      for (int j = 0; j < 3; j++)
+        xv2[iv*3+j]=x[i3+j];
+    else
+      for (int j = 0; j < 3; j++)
+        xv[iv][j]=x[i3+j];
   }
 
   if (acceptFlag==0 && receptorRes!=BIGVALUE) return;
@@ -1666,9 +1666,9 @@ void MeshBlock::findInterpData(int *recid,int irecord,double receptorRes)
     // go to the end of the list
     if (clist != NULL) while(clist->next != NULL) clist=clist->next;
 
-    for(int iv=0; iv<nvert; iv++)
+    for (int iv=0; iv<nvert; iv++)
     {
-      inode[iv]=vconn[n][nvert*idonor+iv]-BASE;
+      inode[iv]=vconn[N][nvert*idonor+iv]-BASE;
       if (iblank[inode[iv]]==-1 && nodeRes[inode[iv]]!=BIGVALUE)
       {
         iblank[inode[iv]]=1;
@@ -1693,7 +1693,14 @@ void MeshBlock::findInterpData(int *recid,int irecord,double receptorRes)
 
   /* Compute the (linear) shape-function interpolation weights of the receptor
    * node within the donor cell */
-  computeNodalWeights(xv,xp,frac,nvert);
+  if (nvert <= 8) {
+    computeNodalWeights(xv,xp,frac,nvert); /// TODO: support nvert > 8
+  } else {
+    double xref[3];
+    getRefLocNewton(xv2.data(), &xp[0], &xref[0], nvert, 3);
+    frac2.resize(nvert);
+    shape_hex(point(&xref[0]),frac2,nvert);
+  }
 
   interp2donor[irecord]=*recid;
   interpList[*recid].cancel=0;
@@ -1702,10 +1709,14 @@ void MeshBlock::findInterpData(int *recid,int irecord,double receptorRes)
   interpList[*recid].receptorInfo[1]=pointid;
   interpList[*recid].inode=(int *)malloc(sizeof(int)*nvert);
   interpList[*recid].weights=(double *)malloc(sizeof(double)*nvert);
-  for(int iv=0;iv<nvert;iv++)
+
+  for (int iv = 0; iv < nvert;iv++)
   {
     interpList[*recid].inode[iv]=inode[iv];
-    interpList[*recid].weights[iv]=frac[iv];
+    if (nvert > 8)
+      interpList[*recid].weights[iv]=frac2[iv];
+    else
+      interpList[*recid].weights[iv]=frac[iv];
   }
   (*recid)++;
 }
@@ -1724,8 +1735,8 @@ void MeshBlock::getCancellationData(int *nrecords,int **intData)
   if (ncancel > 0)
     {
       (*intData)=(int *)malloc(sizeof(int)*(*nrecords)*2);
-      i=0;
-      for(clist=cancelList;clist!=NULL;clist=clist->next)
+      i = 0;
+      for (clist=cancelList;clist!=NULL;clist=clist->next)
   {
     inode=clist->inode;
     (*intData)[i++]=donorList[inode]->donorData[0];
@@ -1746,11 +1757,11 @@ void MeshBlock::getInterpData(int *nrecords, int **intData)
   int i,k;
   //
   *nrecords=0;
-  for(i=0;i<ninterp;i++)
+  for (int i = 0; i < ninterp; i++)
     if (!interpList[i].cancel) (*nrecords)++;
   //
   (*intData)=(int *)malloc(sizeof(int)*2*(*nrecords));
-  for(i=0,k=0;i<ninterp;i++)
+  for (i=0,k = 0; i < ninterp; i++)
     if (!interpList[i].cancel) {
        (*intData)[k++]=interpList[i].receptorInfo[0];
        (*intData)[k++]=interpList[i].receptorInfo[1];
@@ -1760,7 +1771,7 @@ void MeshBlock::getInterpData(int *nrecords, int **intData)
 void MeshBlock::clearIblanks(void)
 {
   int i;
-  for(i=0;i<nnodes;i++)
+  for (int i = 0; i < nnodes; i++)
      if (iblank[i] < 0) iblank[i]=1;
 }
 

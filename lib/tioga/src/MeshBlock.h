@@ -162,7 +162,7 @@ class MeshBlock
     cancelList=NULL;
     userSpecifiedNodeRes=NULL;
     userSpecifiedCellRes=NULL;
-    nfringe=2;
+    nfringe=1;
     // new vars
     ctag=NULL;
     pointsPerCell=NULL;
@@ -213,12 +213,11 @@ class MeshBlock
 
   void checkContainment(int *cellIndex,int adtElement,double *xsearch);
 
-  void getWallBounds(int *mtag,int *existWall, double wbox[6]);
+  void getWallBounds(int &mtag, int *existWall, double wbox[6]);
 
   void markWallBoundary(int *sam,int nx[3],double extents[6]);
 
-  void getQueryPoints(OBB *obb,int *nints,int **intData,int *nreals,
-		      double **realData);
+  void getQueryPoints(OBB *obb, int &nints, int **intData, int &nreals, double **realData);
 
 
   /** routines that do book keeping */

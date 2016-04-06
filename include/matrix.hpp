@@ -102,6 +102,17 @@ public:
   uint dims[4];  //! Dimensions of the Array
 
   vector<T> data;
+
+  void add_dim_0(uint ind, const T &val);
+  void add_dim_1(uint ind, const T &val);
+  void add_dim_2(uint ind, const T &val);
+  void add_dim_3(uint ind, const T &val);
+
+  void remove_dim_0(uint ind);
+  void remove_dim_1(uint ind);
+  void remove_dim_2(uint ind);
+  void remove_dim_3(uint ind);
+
 };
 
 template<typename T>

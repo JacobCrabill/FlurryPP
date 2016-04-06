@@ -7,7 +7,7 @@ timeType     6    (0: Forward Euler, 4: RK44)
 dtType       2    (0: Fixed, 1: CFL-based)
 CFL          .2
 dt           1e-6
-iterMax      50000
+iterMax      10000
 maxTime      5000
 restart      0
 restartIter  25000
@@ -31,17 +31,17 @@ icType       0
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        5000      (Frequency to write plot files)
-monitorResFreq  100       (Frequency to print residual to terminal)
+plotFreq        1000      (Frequency to write plot files)
+monitorResFreq  500       (Frequency to print residual to terminal)
 resType         2         (1: 1-norm, 2: 2-norm, 3: Inf-norm)
-dataFileName    fp_a2     (Filename prefix for output files)
+dataFileName    Couette     (Filename prefix for output files)
 entropySensor   0         (Calculate & plot entropy-error sensor)
 
 # =============================================================
 # Mesh Options
 # =============================================================
 meshType      0    (0: Read mesh, 1: Create mesh, 2: Overset Mesh)
-meshFileName  flatplate_a2_gmsh.msh
+meshFileName  couette.msh
 
 # =============================================================
 # Boundary Conditions
@@ -49,12 +49,13 @@ meshFileName  flatplate_a2_gmsh.msh
 # Gmsh Boundary Conditions
 # List each Gmsh boundary:  'mesh_bound <Gmsh_Physical_Name> <Flurry_BC>'
 #                     i.e.   mesh_bound  airfoil  slip_wall
-mesh_bound   wall       adiabatic_noslip
-mesh_bound   symmetry   symmetry
-mesh_bound   inlet      char
-mesh_bound   outlet     char
-mesh_bound   farfield   char
-mesh_bound   fluid      fluid
+mesh_bound   bottom    isothermal_noslip
+mesh_bound   top       isothermal_noslip_moving
+mesh_bound   left      periodic
+mesh_bound   right     periodic
+mesh_bound   fluid     fluid
+
+periodicDX 2
 
 # =============================================================
 # Freestream Boundary Conditions [for all freestream/inlet-type boundaries]
@@ -67,8 +68,8 @@ wBound   0.
 pBound   .7142857143
 
 # Viscous Flows
-MachBound  .1
-Re       100
+MachBound  .2
+Re       200
 Lref     1.0
 TBound   300
 nxBound  1
@@ -76,8 +77,13 @@ nyBound  0
 nzBound  0
 TWall    300
 
+MachWall   .2
+nxWall  1
+nyWall  0
+nzWall  0
+
 LDG_penFact  0
-LDG_tau      1
+LDG_tau      .1
 
 # =============================================================
 # Numerics Options

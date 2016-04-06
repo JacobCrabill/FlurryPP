@@ -145,34 +145,23 @@ void geo::setupOverset3D(void)
       }
     }
     else {
-      nodeType[bndPts(ib,ib)] = BOUNDARY_NODE;
+      for (int iv=0; iv<nBndPts[ib]; iv++) {
+        nodeType[bndPts(ib,iv)] = BOUNDARY_NODE;
+      }
     }
   }
 
   int nwall = iwall.size();
   int nover = iover.size();
-  int ntypes = 1;           //! Number of element types in grid block
-  nodesPerCell = new int[1];
-  nodesPerCell[0] = 8;      //! Number of nodes per element for each element type (but only one type so far)
+  int ntypes = 1;                  //! Number of element types in grid block
+  nodesPerCell = new int[ntypes];
+  nodesPerCell[0] = nNodesPerCell; //! Number of nodes per element for each element type (but only one type so far)
   iblank.resize(nVerts);
   iblankCell.resize(nEles);
   iblankFace.resize(nFaces);
 
-  if (c2v.getDim1() > 8) {
-    // Quadratic elements present; setup a different c2v specifically for TIOGA
-    tg_c2v.setup(nEles,8);
-    for (int ic=0; ic<nEles; ic++) {
-      for (int j=0; j<8; j++) {
-        tg_c2v(ic,j) = c2v(ic,j);
-      }
-    }
-    // Need an int**, even if only have one element type
-    conn[0] = tg_c2v.getData();
-  }
-  else {
-    // Need an int**, even if only have one element type
-    conn[0] = c2v.getData();
-  }
+  // Need an int**, even if only have one element type
+  conn[0] = c2v.getData();
 
   tg->registerGridData(gridID,nVerts,xv.getData(),iblank.data(),nwall,nover,iwall.data(),
                        iover.data(),ntypes,nodesPerCell,&nEles,&conn[0]);
@@ -354,6 +343,13 @@ void geo::setIterIblanks(void)
     iblankVert1 = iblank;
   }
 
+  //! TODO: in 3D - need better hole blanking...
+  if (nDims == 3) {
+    for (int iv = 0; iv < nVerts; iv++)
+      if (nodeType[iv] == OVERSET_NODE && iblankVert1[iv] != HOLE)
+        iblankVert1[iv] = NORMAL;
+  }
+
   /* ---- Get iblank data for beginning of iteration ---- */
 
   moveMesh(0.);
@@ -364,6 +360,14 @@ void geo::setIterIblanks(void)
     // Pre-process the grids, then have TIOGA set nodal iblank values
     tg->profile();
     tg->performConnectivity();
+  }
+
+  //! TODO: in 3D - need better hole blanking...
+  if (nDims == 3) {
+    for (int iv = 0; iv < nVerts; iv++) {
+      if (nodeType[iv] == OVERSET_NODE && iblank[iv] != HOLE)
+        iblank[iv] = NORMAL;
+    }
   }
 
   // Take the union of the hole and normal regions, leaving the intersection of
@@ -394,7 +398,6 @@ void geo::setIterIblanks(void)
         unblankCells.insert(ic);
     }
   }
-
   holeCells = holeCells_tmp;
 #endif
 }
@@ -465,6 +468,26 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
         }
       }
     }
+    else if (params->oversetMethod == 0 && nDims == 3) {
+      for (int ic=0; ic<nEles; ic++) {
+        if (iblankEle[ic] != NORMAL) {
+          for (int j=0; j<c2nf[ic]; j++) {
+            int ic2 = c2c(ic,j);
+            if (ic2 > -1) {
+              if (iblankEle1[ic2] == NORMAL) {
+                iblankEle1[ic2] = FRINGE;
+              }
+            } else {
+              // MPI Boundary
+              int F = findFirst(mpiFaces,c2f(ic,j));
+              if (F > -1) {
+                mpiFringeFaces.push_back(mpiFaces[F]);
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   else if (params->oversetMethod == 2) {
@@ -479,8 +502,6 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
         }
         if (nfringe == c2nv[ic]) {
           iblankEle[ic] = FRINGE;
-//        } else if (nfringe > 0) {
-//          iblankEle1[ic] = FRINGE;
         }
       }
     }
@@ -507,10 +528,11 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
     }
   }
 
-  if (params->oversetMethod > 0) {
+  if (params->oversetMethod > 0 || nDims == 3) {
     // Enforce consistency across MPI boundaries for fringe->hole conversion
     vector<int> nFringe_proc(nProcGrid);
     int nFringe = mpiFringeFaces.size();
+
     MPI_Allgather(&nFringe,1,MPI_INT,nFringe_proc.data(),1,MPI_INT,gridComm);
 
     int maxNFringe = getMax(nFringe_proc);
@@ -534,6 +556,22 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
             int fr2 = mpiFringeFaces_proc(p,i);
             if (fr == fr2) {
               iblankEle1[f2c(ff,0)] = NORMAL;
+              break;
+            }
+          }
+        }
+      }
+    }
+    else if (params->oversetMethod == 0 && nDims == 3) {
+            for (int F=0; F<nMpiFaces; F++) {
+        int ff = mpiFaces[F];
+        int fr = faceID_R[F];
+        if (iblankEle1[f2c(ff,0)] == NORMAL) {
+          int p = procR[F];
+          for (int i=0; i<recvCnts[p]; i++) {
+            int fr2 = mpiFringeFaces_proc(p,i);
+            if (fr == fr2) {
+              iblankEle1[f2c(ff,0)] = FRINGE;
               break;
             }
           }
@@ -572,6 +610,69 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
     }
   }
 
+  //! ---- QUICK HACK FOR 3D SPHERE CASE ----
+  if (params->oversetMethod == 0 && nDims == 3) {
+    for (int ic = 0; ic < nEles; ic++) {
+      if (iblankEle[ic] == NORMAL && iblankEle1[ic] != NORMAL)
+        iblankEle[ic] = iblankEle1[ic];
+      else if (iblankEle[ic] == FRINGE && iblankEle1[ic] == HOLE)
+        iblankEle[ic] = HOLE;
+    }
+    iblankEle1 = iblankEle;
+
+    mpiFringeFaces.resize(0);
+    for (int ic=0; ic<nEles; ic++) {
+      if (iblankEle[ic] != NORMAL) {
+        for (int j=0; j<c2nf[ic]; j++) {
+          int ic2 = c2c(ic,j);
+          if (ic2 > -1) {
+            if (iblankEle1[ic2] == NORMAL) {
+              iblankEle1[ic2] = FRINGE;
+            }
+          } else {
+            // MPI Boundary
+            int F = findFirst(mpiFaces,c2f(ic,j));
+            if (F > -1) {
+              mpiFringeFaces.push_back(mpiFaces[F]);
+            }
+          }
+        }
+      }
+    }
+
+    // Enforce consistency across MPI boundaries for fringe->hole conversion
+    vector<int> nFringe_proc(nProcGrid);
+    int nFringe = mpiFringeFaces.size();
+    MPI_Allgather(&nFringe,1,MPI_INT,nFringe_proc.data(),1,MPI_INT,gridComm);
+
+    int maxNFringe = getMax(nFringe_proc);
+    matrix<int> mpiFringeFaces_proc(nProcGrid,maxNFringe);
+
+    vector<int> recvCnts(nProcGrid);
+    vector<int> recvDisp(nProcGrid);
+    for (int i=0; i<nProcGrid; i++) {
+      recvCnts[i] = nFringe_proc[i];
+      recvDisp[i] = i*maxNFringe;
+    }
+    MPI_Allgatherv(mpiFringeFaces.data(),mpiFringeFaces.size(),MPI_INT,mpiFringeFaces_proc.getData(),recvCnts.data(),recvDisp.data(),MPI_INT,gridComm);
+
+    for (int F=0; F<nMpiFaces; F++) {
+      int ff = mpiFaces[F];
+      int fr = faceID_R[F];
+      if (iblankEle1[f2c(ff,0)] == NORMAL) {
+        int p = procR[F];
+        for (int i=0; i<recvCnts[p]; i++) {
+          int fr2 = mpiFringeFaces_proc(p,i);
+          if (fr == fr2) {
+            iblankEle1[f2c(ff,0)] = FRINGE;
+            break;
+          }
+        }
+      }
+    }
+  }
+  //! ---- END HACK ----
+
   // Final blanking update for both AB methods
   if (params->oversetMethod != 2) {
     for (int ic=0; ic<nEles; ic++) {
@@ -581,6 +682,9 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
         iblankEle[ic] = HOLE;
     }
   }
+
+  ///! EVEN BIGGER HACK
+  if (gridID == 0) iblankEle.assign(nEles,NORMAL);
 
 #endif
 }
@@ -603,25 +707,72 @@ void geo::updateBlankingTioga(void)
 
 void geo::setFaceIblanks(void)
 {
+  overFaces.clear();
   iblankFace.assign(nFaces,NORMAL);
 
   for (int ic=0; ic<nEles; ic++) {
     if (iblankCell[ic]!=HOLE) continue;
 
     for (int j=0; j<c2nf[ic]; j++) {
+      int ff = c2f(ic,j);
       if (c2c(ic,j)>=0) {
         // Internal face
         if (iblankCell[c2c(ic,j)] == HOLE) {
-          iblankFace[c2f(ic,j)] = HOLE;
+          iblankFace[ff] = HOLE;
         } else {
-          iblankFace[c2f(ic,j)] = FRINGE;
+          iblankFace[ff] = FRINGE;
+          overFaces.insert(ff);
         }
       } else {
         // Boundary or MPI face
-        iblankFace[c2f(ic,j)] = HOLE;
+        iblankFace[ff] = HOLE;
       }
     }
   }
+
+#ifndef _NO_MPI
+  // Get the number of mpiFaces on each processor (for later communication)
+  vector<int> nMpiFaces_proc(nProcGrid);
+  MPI_Allgather(&nMpiFaces,1,MPI_INT,nMpiFaces_proc.data(),1,MPI_INT,gridComm);
+  int maxNMpiFaces = getMax(nMpiFaces_proc);
+
+  vector<int> mpiIblank(nMpiFaces);
+  matrix<int> mpiIblank_proc(nProcGrid,maxNMpiFaces);
+  matrix<int> mpiFid_proc(nProcGrid,maxNMpiFaces);
+
+  vector<int> recvCnts(nProcGrid);
+  vector<int> recvDisp(nProcGrid);
+  for (int i=0; i<nProcGrid; i++) {
+    recvCnts[i] = nMpiFaces_proc[i];
+    recvDisp[i] = i*maxNMpiFaces;
+  }
+
+  for (int i = 0; i < nMpiFaces; i++)
+    mpiIblank[i] = iblankCell[f2c(mpiFaces[i],0)];
+
+  // Get iblank data for all mpi faces
+  MPI_Allgatherv(mpiFaces.data(), nMpiFaces, MPI_INT, mpiFid_proc.getData(), recvCnts.data(), recvDisp.data(), MPI_INT, gridComm);
+  MPI_Allgatherv(mpiIblank.data(), nMpiFaces, MPI_INT, mpiIblank_proc.getData(), recvCnts.data(), recvDisp.data(), MPI_INT, gridComm);
+
+  for (int F = 0; F < nMpiFaces; F++) {
+    int ff = mpiFaces[F];
+    int p = procR[F];
+    for (int i = 0; i < nMpiFaces_proc[p]; i++) {
+      if (mpiFid_proc(p,i) == faceID_R[F]) {
+        if (mpiIblank[F] != NORMAL || mpiIblank_proc(p,i) != NORMAL) {
+          // Not a normal face; figure out if hole or fringe
+          if (mpiIblank[F] == HOLE && mpiIblank_proc(p,i) == HOLE)
+            iblankFace[ff] = HOLE;
+          else {
+            iblankFace[ff] = FRINGE;
+            overFaces.insert(ff);
+          }
+        }
+      }
+    }
+  }
+
+#endif
 }
 
 void geo::matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &donors)
@@ -631,10 +782,19 @@ void geo::matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &d
 #endif
 }
 
-void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
+void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces, solver *Solver)
 {
 #ifndef _NO_MPI
+  /* --- Check whether anything needs to be done --- */
+
+  int NB = blankCells.size();
+  int nBlanks;
+  MPI_Allreduce(&NB,&nBlanks,1,MPI_INT,MPI_SUM,gridComm);
+
+  if (nBlanks == 0) return;
+
   /* --- Set blank/unblank faces for all elements to be blanked --- */
+
   unordered_set<int> blankIFaces, blankMFaces, blankOFaces, ubOFaces;
   for (auto &ic:blankCells) {
     if (eleMap[ic] < 0) continue; // Ignore already-blanked cells
@@ -714,7 +874,7 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
 
   unordered_set<int> ubIFaces, ubMFaces;
 
-  removeEles(eles,blankCells);
+  removeEles(eles,blankCells,Solver);
   removeFaces(faces,mFaces,oFaces,blankIFaces,blankMFaces,blankOFaces);
   insertFaces(eles,faces,mFaces,oFaces,ubIFaces,ubMFaces,ubOFaces);
 
@@ -727,8 +887,16 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
 #endif
 }
 
-void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces)
+void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces, solver *Solver)
 {
+  /* --- Check whether anything needs to be done --- */
+
+  int nUB = unblankCells.size();
+  int nUnblanks;
+  MPI_Allreduce(&nUB,&nUnblanks,1,MPI_INT,MPI_SUM,gridComm);
+
+  if (nUnblanks == 0) return;
+
   /* --- Set Unblank/Blank Faces for All Unblank Elements --- */
 
   unordered_set<int> ubIntFaces, ubMpiFaces, ubOFaces;
@@ -815,7 +983,7 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
     if (overFaces.count(ff))
       blankOFaces.insert(ff);
 
-  insertEles(eles,unblankCells);
+  insertEles(eles,unblankCells,Solver);
   removeFaces(faces,mFaces,oFaces,blankIFaces,blankMFaces,blankOFaces);
   insertFaces(eles,faces,mFaces,oFaces,ubIntFaces,ubMpiFaces,ubOFaces);
 
@@ -827,32 +995,41 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
   for (auto &oface:oFaces) oface->getPointers();
 }
 
-void geo::removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEles)
+void geo::removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEles, solver *Solver)
 {
   /* --- Remove Newly-Blanked Elements --- */
 
   for (auto &ic:blankEles) {
     if (ic<0) continue;
+
     int ind = eleMap[ic];
     if (ind<0) continue; //FatalError("Should not have marked a hole cell for blanking!");
     eles.erase(eles.begin()+ind,eles.begin()+ind+1);
     eleMap[ic] = -1;
 
+    Solver->removeElement(ind);
+
     // Update the map
     for (int k=ic+1; k<nEles; k++)
       if (eleMap[k]>=0)
         eleMap[k]--;
+
+    for (int k = ind; k < eles.size(); k++) {
+      eles[k]->sID = k;
+    }
   }
 }
 
-void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles)
+void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles, solver *Solver)
 {
   /* --- Setup & Insert Unblanked Elements --- */
 
   for (auto &ic:ubEles) {
     // Find the next-lowest index
     int ind = eleMap[ic];
+
     if (ind>=0) FatalError("Should not have marked a non-hole cell for un-blanking! Is eleMap wrong?");
+
     int j = 1;
     while (ind < 0 && j<=ic) {
       ind = eleMap[ic-j];
@@ -862,6 +1039,7 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles)
 
     shared_ptr<ele> e = make_shared<ele>();
     e->ID = ic;
+    e->sID = ind;
     if (nProcGrid>1)
       e->IDg = ic2icg[ic];
     else
@@ -873,32 +1051,24 @@ void geo::insertEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &ubEles)
     else
       e->nMpts = 8;
 
-    // Shape [mesh] nodes
-    e->nodeID.resize(c2nv[ic]);
-    e->nodes.resize(c2nv[ic]);
-    for (int iv=0; iv<c2nv[ic]; iv++) {
-      e->nodeID[iv] = c2v(ic,iv);
-      e->nodes[iv] = point(xv[c2v(ic,iv)],nDims);
-    }
+    Solver->insertElement(ind);
 
-    // Global face IDs for internal & boundary faces
-    e->faceID.resize(c2nf[ic]);
-    e->bndFace.resize(c2nf[ic]);
-    for (int k=0; k<c2nf[ic]; k++) {
-      e->bndFace[k] = c2b(ic,k);
-      e->faceID[k] = c2f(ic,k);
-    }
-
-    e->setup(params,this);
+    e->setup(params,Solver,this);
 
     eles.insert(eles.begin()+ind,1,e);
 
     // Update the map
     eleMap[ic] = ind;
-    for (int k=ic+1; k<nEles; k++)
+    for (int k = ic+1; k < nEles; k++)
       if (eleMap[k]>=0)
         eleMap[k]++;
+
+    for (int k = ind+1; k < eles.size(); k++)
+      eles[k]->sID = k;
   }
+
+  if (ubEles.size() > 0)
+    Solver->updatePosSptsFpts();
 }
 
 void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces,

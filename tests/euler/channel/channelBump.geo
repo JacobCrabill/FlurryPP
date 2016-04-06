@@ -44,4 +44,4 @@ Physical Line("Top") = {3};
 Physical Line("Bottom") = {1};
 Physical Surface("FLUID") = {1};
 
-Mesh.ElementOrder = 8; // order 1-5 available
+Mesh.ElementOrder = 10; // arbitrary orders available

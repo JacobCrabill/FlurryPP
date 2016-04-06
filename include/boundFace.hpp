@@ -69,7 +69,7 @@ public:
   vector<double> computeMassFlux(void);
 
 private:
-  int bcType;  //! Boundary condition to apply to this face
+  //int bcType;  //! Boundary condition to apply to this face
 
   matrix<double> deltaU;
   matrix<double> deltaUdot;

@@ -1,45 +1,39 @@
 # =============================================================
 # Basic Options
 # =============================================================
-equation      1       (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
-order         3       (Polynomial order to use)
-timeType      4       (0: Forward Euler, 4: RK44)
-dtType        1       (0: Constant, 1: Global CFL-based)
-dt            1.25e-5 (Constant time step size)
-CFL           .05      (CFL number for time-step calculation)
-
+equation      1   (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
 viscous       0   (0: Inviscid, 1: Viscous)
+order         3   (Polynomial order to use)
 motion        2   (0: Static, 1: Kui test case, 2: Liang test case)
 riemannType   0   (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
 nDims         2
 
-# =============================================================
-# Physics Parameters
-# =============================================================
-# Advection-Diffusion Equation Parameters
-advectVx      1   (Wave speed, x-direction)
-advectVy      1   (Wave speed, y-direction)
-advectVz     -1   (Wave speed, z-direction)
-lambda        1   (Upwinding Parameter - 0: Central, 1: Upwind)
-diffD        .1   (Diffusion Coefficient)
+# Time-Stepping Optiosn
+timeType      4       (0: Forward Euler, 4: RK44)
+dtType        1       (0: Constant, 1: Global CFL-based, 2: Local CFL-based)
+dt            1.25e-5 (Constant time step size)
+CFL           .4      (CFL number for time-step calculation)
 
-# =============================================================
-# Initial Condition
-# =============================================================
-#   Advection: 0-Gaussian,     1-u=x+y+z test case,  2-u=cos(x)*cos(y)*cos(z) test case
-#   N-S:       0-Uniform flow, 1-Uniform+Vortex
-icType       2
-testCase     0
-iterMax      5000
+# IC's for Advection: 0-Gaussian,     1-u=x+y+z test case,  2-u=cos(x)*cos(y)*cos(z) test case
+# IC's for N-S:       0-Uniform flow, 1-Vortex (Kui), 2-Vortex (Liang/Miyaji)
+icType       2 
+restart      0  (Load restart file?)
+restartIter  0
+
+# Stopping Criteria
+maxTime       44.7214
+iterMax       5000
 
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq          200          (Frequency to write plot files)
+plotFreq          500          (Frequency to write plot files)
 monitorResFreq    100          (Frequency to print residual to terminal)
 resType           2            (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName      DeformVortex (Filename prefix for output files)
 entropySensor     0            (Calculate & plot entropy-error sensor)
+testCase          0   (Calculate error wrt analytical solution?)
+writeIBLANK       0   (Output Tecplot file with node & cell Iblank data?)
 
 # =============================================================
 # Mesh Options
@@ -85,3 +79,13 @@ TBound  300
 nxBound   1
 nyBound   0
 nzBound   0
+
+# =============================================================
+# Physics Parameters
+# =============================================================
+# Advection-Diffusion Equation Parameters
+advectVx      1   (Wave speed, x-direction)
+advectVy      1   (Wave speed, y-direction)
+advectVz     -1   (Wave speed, z-direction)
+lambda        1   (Upwinding Parameter - 0: Central, 1: Upwind)
+diffD        .1   (Diffusion Coefficient)

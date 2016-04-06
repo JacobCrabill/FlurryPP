@@ -34,47 +34,49 @@
 #include <array>
 #include <vector>
 
-void inviscidFlux(const double* U, matrix<double> &F, input *params)
+void inviscidFlux(const double* U, double F[3][5], input *params)
 {
   /* --- Note: Flux matrix expected to be <nDims x nFields> --- */
   if (params->equation == ADVECTION_DIFFUSION) {
-    F(0,0) = params->advectVx*U[0];
-    F(1,0) = params->advectVy*U[0];
+    F[0][0] = params->advectVx*U[0];
+    F[1][0] = params->advectVy*U[0];
     if (params->nDims == 3)
-      F(2,0) = params->advectVz*U[0];
+      F[2][0] = params->advectVz*U[0];
   }
   else if (params->equation == NAVIER_STOKES) {
     if (params->nDims == 2) {
       double rho = U[0];
       double u = U[1]/rho;
       double v = U[2]/rho;
-      double p = (params->gamma-1.0)*(U[3]-(0.5*rho*((u*u)+(v*v))));
+      double E = U[3];
+      double p = (params->gamma-1.0)*(E - 0.5*rho*(u*u + v*v));
 
       /* --- Assuming F has already been sized properly... --- */
-      F(0,0) =  U[1];       F(1,0) =  U[2];
-      F(0,1) =  U[1]*u+p;   F(1,1) =  U[1]*v;
-      F(0,2) =  U[2]*u;     F(1,2) =  U[2]*v+p;
-      F(0,3) = (U[3]+p)*u;  F(1,3) = (U[3]+p)*v;
+      F[0][0] =  rho*u;      F[1][0] =  rho*v;
+      F[0][1] =  rho*u*u+p;  F[1][1] =  rho*u*v;
+      F[0][2] =  rho*v*u;    F[1][2] =  rho*v*v+p;
+      F[0][3] = (E+p)*u;     F[1][3] = (E+p)*v;
     }
     else if (params->nDims == 3) {
       double rho = U[0];
       double u = U[1]/rho;
       double v = U[2]/rho;
       double w = U[3]/rho;
-      double p = (params->gamma-1.0)*(U[4]-(0.5*rho*((u*u)+(v*v)+(w*w))));
+      double E = U[4];
+      double p = (params->gamma-1.0)*(E - 0.5*rho*(u*u + v*v + w*w));
 
       /* --- Assuming F has already been sized properly... --- */
-      F(0,0) =  U[1];       F(1,0) =  U[2];       F(2,0) =  U[3];
-      F(0,1) =  U[1]*u+p;   F(1,1) =  U[1]*v;     F(2,1) =  U[1]*w;
-      F(0,2) =  U[2]*u;     F(1,2) =  U[2]*v+p;   F(2,2) =  U[2]*w;
-      F(0,3) =  U[3]*u;     F(1,3) =  U[3]*v;     F(2,3) =  U[3]*w+p;
-      F(0,4) = (U[4]+p)*u;  F(1,4) = (U[4]+p)*v;  F(2,4) = (U[4]+p)*w;
+      F[0][0] =  rho*u;     F[1][0] =  rho*v;     F[2][0] =  rho*w;
+      F[0][1] =  rho*u*u+p; F[1][1] =  rho*u*v;   F[2][1] =  rho*u*w;
+      F[0][2] =  rho*v*u;   F[1][2] =  rho*v*v+p; F[2][2] =  rho*v*w;
+      F[0][3] =  rho*w*u;   F[1][3] =  rho*w*v;   F[2][3] =  rho*w*w+p;
+      F[0][4] = (E+p)*u;    F[1][4] = (E+p)*v;    F[2][4] = (E+p)*w;
     }
   }
 }
 
 
-void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *params)
+void viscousFlux(double* U, matrix<double> &gradU, double Fvis[3][5], input *params)
 {
   int nDims = params->nDims;
 
@@ -185,25 +187,25 @@ void viscousFlux(double* U, matrix<double> &gradU, matrix<double> &Fvis, input *
   }
 
   /* --- Calculate Viscous Flux --- */
-  Fvis(0,0) =  0.0;
-  Fvis(0,1) = -tauxx;
-  Fvis(0,2) = -tauxy;
-  Fvis(0,nDims+1) = -(u*tauxx+v*tauxy+w*tauxz+(mu/params->prandtl)*(params->gamma)*de_dx);
+  Fvis[0][0] =  0.0;
+  Fvis[0][1] = -tauxx;
+  Fvis[0][2] = -tauxy;
+  Fvis[0][nDims+1] = -(u*tauxx+v*tauxy+w*tauxz+(mu/params->prandtl)*(params->gamma)*de_dx);
 
-  Fvis(1,0) =  0.0;
-  Fvis(1,1) = -tauxy;
-  Fvis(1,2) = -tauyy;
-  Fvis(1,nDims+1) = -(u*tauxy+v*tauyy+w*tauyz+(mu/params->prandtl)*(params->gamma)*de_dy);
+  Fvis[1][0] =  0.0;
+  Fvis[1][1] = -tauxy;
+  Fvis[1][2] = -tauyy;
+  Fvis[1][nDims+1] = -(u*tauxy+v*tauyy+w*tauyz+(mu/params->prandtl)*(params->gamma)*de_dy);
 
   if (nDims == 3) {
-    Fvis(0,3) = -tauzz;
-    Fvis(1,3) = -tauyz;
+    Fvis[0][3] = -tauzz;
+    Fvis[1][3] = -tauyz;
 
-    Fvis(2,0) =  0.0;
-    Fvis(2,1) = -tauxz;
-    Fvis(2,2) = -tauyz;
-    Fvis(2,3) = -tauzz;
-    Fvis(2,4) = -(u*tauxz+v*tauyz+w*tauzz+(mu/params->prandtl)*(params->gamma)*de_dz);
+    Fvis[2][0] =  0.0;
+    Fvis[2][1] = -tauxz;
+    Fvis[2][2] = -tauyz;
+    Fvis[2][3] = -tauzz;
+    Fvis[2][4] = -(u*tauxz+v*tauyz+w*tauzz+(mu/params->prandtl)*(params->gamma)*de_dz);
   }
 }
 
@@ -338,12 +340,12 @@ matrix<double> viscousStressTensor(double* U, matrix<double> &gradU, input *para
   return tau;
 }
 
-void viscousFluxAD(matrix<double> &gradU, matrix<double> &Fvis, input *params)
+void viscousFluxAD(matrix<double> &gradU, double Fvis[3][5], input *params)
 {
-  Fvis(0,0) = -params->diffD * gradU(0,0);
-  Fvis(1,0) = -params->diffD * gradU(1,0);
+  Fvis[0][0] = -params->diffD * gradU(0,0);
+  Fvis[1][0] = -params->diffD * gradU(1,0);
   if (params->nDims == 3)
-    Fvis(2,0) = -params->diffD * gradU(2,0);
+    Fvis[2][0] = -params->diffD * gradU(2,0);
 }
 
 void centralFlux(double* uL, double* uR, double* norm, double* Fn, input *params)
@@ -357,12 +359,12 @@ void centralFlux(double* uL, double* uR, double* norm, double* Fn, input *params
   }
 }
 
-void centralFlux(matrix<double> &FL, matrix<double> &FR, double* norm, double* Fn, input *params)
+void centralFlux(double FL[3][5], double FR[3][5], double* norm, double* Fn, input *params)
 {
   for (int i=0; i<params->nFields; i++) {
     Fn[i] = 0;
     for (int j=0; j<params->nDims; j++) {
-      Fn[i] += 0.5*(FL(j,i)+FR(j,i))*norm[j];
+      Fn[i] += 0.5*(FL[j][i]+FR[j][i])*norm[j];
     }
   }
 }

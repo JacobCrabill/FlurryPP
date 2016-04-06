@@ -47,6 +47,7 @@ void shape_quad(const point &in_rs, double* out_shape, int nNodes);
 
 //! Derivative of shape functions for linear or quadratic quad
 void dshape_quad(const point &in_rs, matrix<double> &out_dshape, int nNodes);
+void dshape_quad(const point &in_rs, double* out_dshape, int nNodes);
 
 //! Second derivative (Hessian) of shape functions for linear or quadratic quad
 void ddshape_quad(const point &in_rs, Array<double,3> &out_dshape, int nNodes);
@@ -57,6 +58,7 @@ void shape_hex(const point &in_rst, double* out_shape, int nNodes);
 
 //! Derivative of shape functions for linear or quadratic hexahedron
 void dshape_hex(const point &in_rst, matrix<double> &out_dshape, int nNodes);
+void dshape_hex(const point &in_rst, double* out_dshape, int nNodes);
 
 //! Shape function for linear triangle (TODO: Generalize to N-noded tri)
 void shape_tri(const point &in_rs, vector<double> &out_shape);
@@ -94,9 +96,7 @@ void getBoundingBox(matrix<double> &pts, point &minPt, point &maxPt);
 void getBoundingBox(double *pts, int nPts, int nDims, point &minPt, point &maxPt);
 void getBoundingBox(double *pts, int nPts, int nDims, double *bbox);
 
-vector<double> calcError(const vector<double> &U, const point &pos, input *params);
-
-void calcSolutionFromFlux(matrix<double> &F, vector<double> &U, input *params);
+vector<double> calcError(const double * const U, const point &pos, input *params);
 
 void calcFluxJacobian2D(const vector<double> &U, matrix<double> &dFdU, matrix<double> &dGdU, input *params);
 
@@ -105,6 +105,12 @@ void refineGridBySplitting2D(matrix<int> &c2v, matrix<int> &c2f, matrix<int> &f2
                              vector<int> &parentCell, vector<int> &parentFace);
 
 void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shapeOrder_f);
+
+//! Get reference location out_rst of point in_xyz within an element defined by the points in xv
+bool getRefLocNewton(double *xv, double *in_xyz, double *out_rst, int nNodes, int nDims);
+
+//! Compute the volume of a high-order quad or hex
+double computeVolume(double *xv, int nNodes, int nDims);
 
 /*!
  * Nelder-Mead Minimzation Routine.

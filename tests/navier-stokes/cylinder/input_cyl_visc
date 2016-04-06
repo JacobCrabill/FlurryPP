@@ -3,11 +3,12 @@
 # =============================================================
 equation      1    (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
 order         2    (Polynomial order to use)
-timeType      4    (0: Forward Euler, 4: RK44)
-dtType        0    (0: Fixed, 1: CFL-based)
-CFL           .05
-dt            .0005
-iterMax       10000
+timeType      6    (0: Forward Euler, 4: RK44)
+dtType        2    (0: Fixed, 1: CFL-based)
+CFL           .3
+dt            .0001
+iterMax       5000
+maxTime       1000
 restart       0
 restartIter   3000
 
@@ -16,15 +17,8 @@ motion        0   (0: Static, 1: Perturbation test case)
 riemannType   0   (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
 nDims         2
 
-# =============================================================
-# Physics Parameters
-# =============================================================
-# Advection-Diffusion Equation Parameters
-advectVx      1   (Wave speed, x-direction)
-advectVy      1   (Wave speed, y-direction)
-advectVz     -1   (Wave speed, z-direction)
-lambda        1   (Upwinding Parameter - 0: Central, 1: Upwind)
-diffD        .1   (Diffusion Coefficient)
+PMG         1
+smoothSteps 2
 
 # =============================================================
 # Initial Condition
@@ -37,12 +31,22 @@ testCase     0
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        1000   (Frequency to write plot files)
+plotFreq        200   (Frequency to write plot files)
 monitorResFreq  50    (Frequency to print residual to terminal)
 resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    viscCyl    (Filename prefix for output files)
 entropySensor   0      (Calculate & plot entropy-error sensor)
 writeIBLANK     0      (Write cell iblank values in ParaView files)
+
+# =============================================================
+# Physics Parameters
+# =============================================================
+# Advection-Diffusion Equation Parameters
+advectVx      1   (Wave speed, x-direction)
+advectVy      1   (Wave speed, y-direction)
+advectVz     -1   (Wave speed, z-direction)
+lambda        1   (Upwinding Parameter - 0: Central, 1: Upwind)
+diffD        .1   (Diffusion Coefficient)
 
 # =============================================================
 # Mesh Options
@@ -68,7 +72,7 @@ mesh_bound   bottom   char
 mesh_bound   top      char
 mesh_bound   left     char
 mesh_bound   right    char
-mesh_bound   circle   isothermal_noslip
+mesh_bound   circle   adiabatic_noslip
 mesh_bound   fluid    fluid
 
 # =============================================================

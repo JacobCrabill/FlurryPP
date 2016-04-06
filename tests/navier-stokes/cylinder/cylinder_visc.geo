@@ -62,3 +62,5 @@ Physical Line("Left")   = {14};
 Physical Line("Circle") = {5,6};
 
 Physical Surface("FLUID") = {1,2,3,4};
+
+Mesh.ElementOrder = 4;

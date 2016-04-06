@@ -214,6 +214,31 @@ void boundFace::applyBCs(void)
       }
 
       // Isothermal, no-slip wall (fixed)
+      else if(bcType == ISOTHERMAL_NOSLIP_MOVING) {
+        // extrapolate pressure
+        pR = pL;
+
+        // isothermal temperature
+        TR = params->TWall;
+
+        // density
+        rhoR = pR/(params->RGas*TR);
+
+        // no-slip + moving wall
+        vR[0] = vG[0] + params->uWall;
+        vR[1] = vG[1] + params->vWall;
+        if (nDims==3)
+          vR[2] = vG[2] + params->wWall;
+
+        // energy
+        vSq = 0.;
+        for (uint i=0; i<nDims; i++)
+          vSq += (vR[i]*vR[i]);
+
+        ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
+      }
+
+      // Isothermal, no-slip wall (fixed)
       else if(bcType == ISOTHERMAL_NOSLIP) {
         // extrapolate pressure
         pR = pL;
@@ -257,7 +282,7 @@ void boundFace::applyBCs(void)
       }
 
       // Characteristic [Copied from HiFiLES]
-      else if (bcType == CHAR) {
+      else if (bcType == CHAR_INOUT) {
         double one_over_s;
         double h_free_stream;
 
@@ -279,7 +304,7 @@ void boundFace::applyBCs(void)
         // Inflow
         if (vnL<0) {
           // HACK
-          one_over_s = pow(params->rhoBound,gamma)/params->pBound;
+          one_over_s = params->oneOverS;
 
           // freestream total enthalpy
           vSq = 0.;
@@ -431,7 +456,7 @@ vector<double> boundFace::computeMassFlux(void)
 {
   vector<double> flux(nFields);
 
-  if (bcType == CHAR || bcType == SUP_IN || bcType == SUP_OUT || bcType == SUB_IN || bcType == SUB_OUT) {
+  if (bcType == CHAR_INOUT || bcType == SUP_IN || bcType == SUP_OUT || bcType == SUB_IN || bcType == SUB_OUT) {
     int order;
     if (params->nDims == 2)
       order = nFptsL-1;
@@ -450,8 +475,16 @@ vector<double> boundFace::computeMassFlux(void)
         weight = weights[ifpt]*weights[jfpt];
       }
 
-      for (int k=0; k<nFields; k++)
-        flux[k] += Fn(fpt,k)*weight;
+      if (params->errorNorm == 0) {
+        for (int k=0; k<nFields; k++)
+          flux[k] += Fn(fpt,k)*dAL[fpt]*weight;
+      } else if (params->errorNorm == 1) {
+        for (int k=0; k<nFields; k++)
+          flux[k] += std::abs(Fn(fpt,k))*dAL[fpt]*weight*normL(fpt,0);
+      } else if (params->errorNorm == 2) {
+        for (int k=0; k<nFields; k++)
+          flux[k] += (Fn(fpt,k)*dAL[fpt])*(Fn(fpt,k)*dAL[fpt])*weight*normL(fpt,0);
+      }
     }
   }
 

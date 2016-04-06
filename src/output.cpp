@@ -47,6 +47,8 @@ void writeData(solver *Solver, input *params)
   }
   else if (params->plotType == 1) {
     writeParaview(Solver,params);
+    if (params->plotSurfaces)
+      writeSurfaces(Solver,params);
   }
 
   /* Write out mesh in Tecplot format, with IBLANK data [Overset cases only] */
@@ -92,9 +94,9 @@ void writeCSV(solver *Solver, input *params)
   // Solution data
   for (auto& e:Solver->eles) {
     if (params->motion != 0) {
-      e->updatePosSpts();
-      e->updatePosFpts();
-      e->setPpts();
+//      e->updatePosSpts();
+//      e->updatePosFpts();
+//      e->setPpts();
     }
     for (uint spt=0; spt<e->getNSpts(); spt++) {
       V = e->getPrimitives(spt);
@@ -263,14 +265,10 @@ void writeParaview(solver *Solver, input *params)
 
   dataFile << "	<UnstructuredGrid>" << endl;
 
-  // If this is the initial file, need to extrapolate solution to flux points
-  //if (params->iter==params->initIter)
-    Solver->extrapolateU();
+  Solver->extrapolateUPpts();
 
-  Solver->extrapolateUMpts();
-
-  if (params->motion && params->nDims==3)
-    Solver->extrapolateGridVelMpts();
+  if (params->motion)
+    Solver->extrapolateGridVelPpts();
 
   if (params->equation == NAVIER_STOKES) {
     if (params->squeeze) {
@@ -285,14 +283,11 @@ void writeParaview(solver *Solver, input *params)
     }
   }
 
+  if (params->motion != 0)
+    Solver->updatePosSptsFpts();
+
   for (auto& e:Solver->eles) {
     if (params->meshType == OVERSET_MESH && Solver->Geo->iblankCell[e->ID]!=NORMAL) continue;
-
-    if (params->motion != 0) {
-      e->updatePosSpts();
-      e->updatePosFpts();
-      e->setPpts();
-    }
 
     // The combination of spts + fpts will be the plot points
     matrix<double> vPpts, gridVelPpts, errPpts;
@@ -428,7 +423,7 @@ void writeParaview(solver *Solver, input *params)
     // Loop over plot points in element
     for(int k=0; k<nPpts; k++) {
       for(int l=0;l<params->nDims;l++) {
-        dataFile << ppts[k][l] << " ";
+        dataFile << e->pos_ppts(k,l) << " ";
       }
 
       // If 2D, write a 0 as the z-component
@@ -516,6 +511,502 @@ void writeParaview(solver *Solver, input *params)
   if (params->rank == 0) cout << "done." <<  endl;
 }
 
+void writeSurfaces(solver *Solver, input *params)
+{
+  ofstream dataFile;
+  int iter = params->iter;
+
+  char Iter[12];
+  sprintf(Iter,"%.09d",iter);
+
+  string fileName = params->dataFileName;
+
+  geo *Geo = Solver->Geo;
+
+#ifndef _NO_MPI
+  /* --- Master rank creates a subdirectory to store .vtu files --- */
+
+  if (params->rank == 0) {
+    char datadirC[256];
+    char *datadir = &datadirC[0];
+    sprintf(datadirC,"%s_%.09d",&fileName[0],iter);
+
+    if (params->rank == 0) {
+      struct stat st = {0};
+      if (stat(datadir, &st) == -1) {
+        mkdir(datadir, 0755);
+      }
+    }
+  }
+
+  /* --- Wait for all processes to get here, otherwise there won't be a
+   *     directory to put .vtus into --- */
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+  /* --- Write out each boundary surface into separate .vtu file --- */
+
+  for (int bnd = 0; bnd < Geo->nBounds; bnd++) {
+    char fileNameC[256];
+    string bndName = Geo->bcNames[bnd];
+
+#ifndef _NO_MPI
+    /* --- All processors write their solution to their own .vtu file --- */
+    if (params->meshType == OVERSET_MESH)
+      sprintf(fileNameC,"%s_%.09d/surf_%s_%d_%d.vtu",&fileName[0],iter,&bndName[0],Solver->gridID,Solver->gridRank);
+    else
+      sprintf(fileNameC,"%s_%.09d/surf_%s_%d.vtu",&fileName[0],iter,&bndName[0],params->rank);
+#else
+    /* --- Filename to write to --- */
+    sprintf(fileNameC,"%s_surf_%s_%.09d.vtu",&fileName[0],&bndName[0],iter);
+#endif
+
+    if (params->rank == 0)
+      cout << "Writing ParaView surface file " << fileName << "_surf_" << bndName << "_" << string(Iter) << ".vtu...  " << flush;
+
+    /* --- Move onto the rank-specific data file --- */
+    if (Solver->eles.size()==0) return;
+
+    dataFile.open(fileNameC);
+    dataFile.precision(16);
+
+    // File header
+    dataFile << "<?xml version=\"1.0\" ?>" << endl;
+    dataFile << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" compressor=\"vtkZLibDataCompressor\">" << endl;
+
+    // Write simulation time and iteration number
+    dataFile << "<!-- TIME " << params->time << " -->" << endl;
+    dataFile << "<!-- ITER " << params->iter << " -->" << endl;
+
+    dataFile << "	<UnstructuredGrid>" << endl;
+
+    int nFields = params->nFields;
+    int nDims = params->nDims;
+    int nPts1D = Solver->order+3;
+    int nPtsFace = nPts1D;
+    if (nDims==3) nPtsFace *= nPts1D;
+    int nSubCells = nPts1D - 1;
+    if (nDims==3) nSubCells *= nSubCells;
+
+    matrix<double> vPpts, vFace(nPtsFace,nFields);
+    matrix<double> gridVelPpts, gridVelFace;
+    matrix<double> errPpts, errFace;
+    matrix<double> posPpts(nPtsFace,nDims);
+
+    if (params->motion)
+      gridVelFace.setup(nPtsFace,nDims);
+
+    bool EntErrFlag = (params->equation == NAVIER_STOKES && params->calcEntropySensor);
+    if (EntErrFlag)
+      errFace.setup(nPtsFace,1);
+
+    int nFaces = 0;
+    for (int i = 0; i < Geo->bndFaces.size(); i++) {
+      if (Geo->bcID[i] != bnd) continue;
+
+      int ff = Geo->bndFaces[i];
+      int ic = Geo->f2c(ff,0);
+      auto cellFaces = Geo->c2f.getRow(ic);
+      int fid = findFirst(cellFaces,ff);
+
+      int ie = Geo->eleMap[ic];
+      if (ie < 0) continue;
+
+      nFaces++;
+
+      auto &e = Solver->eles[ie];
+
+      e->getPrimitivesPlot(vPpts);
+      if (params->motion)
+        e->getGridVelPlot(gridVelPpts);
+
+      // Shock Capturing stuff
+      double sensor;
+      if(params->scFlag == 1)
+        sensor = e->getSensor();
+
+      if (EntErrFlag)
+        e->getEntropyErrPlot(errPpts);
+
+      int start = 0;
+      int stride = 0;
+      if (fid < 4)
+      {
+        if (nDims == 2)
+        {
+          switch (fid)
+          {
+            case 0:
+              start = 0;
+              stride = 1;
+              break;
+
+            case 1:
+              start = nPts1D-1;
+              stride = nPts1D;
+              break;
+
+            case 2:
+              start = nPts1D*nPts1D - 1;
+              stride = -1;
+              break;
+
+            case 3:
+              start = 0;
+              stride = nPts1D;
+              break;
+          }
+        }
+        else
+        {
+          switch (fid)
+          {
+            case 0:
+              // Zmin
+              start = 0;
+              stride = 1;
+              break;
+
+            case 1:
+              // Zmax
+              start = nPts1D * nPtsFace - 1;
+              stride = -1;
+              break;
+
+            case 2:
+              // Xmin / Left
+              start = 0;
+              stride = nPts1D;
+              break;
+
+            case 3:
+              // Xmax / Right
+              start = nPts1D - 1;
+              stride = nPts1D;
+              break;
+          }
+        }
+
+        int j2 = start;
+        for (int j = 0; j < nPtsFace; j++) {
+          for (int k = 0; k < nFields; k++) {
+            vFace(j,k) = vPpts(j2,k);
+          }
+          for (int k = 0; k < nDims; k++) {
+            posPpts(j,k) = e->pos_ppts(j2,k);
+            if (params->motion)
+              gridVelFace(j,k) = gridVelPpts(j2,k);
+          }
+          if (EntErrFlag)
+            errFace(j) = errPpts(j2);
+          j2 += stride;
+        }
+      }
+      else
+      {
+        if (fid == 4)
+        {
+          // Ymin / Front
+          for (int j1 = 0; j1 < nPts1D; j1++) {
+            for (int j2 = 0; j2 < nPts1D; j2++) {
+              int J  = j2 + j1*nPts1D;
+              int J2 = j2 + j1*nPtsFace;
+              for (int k = 0; k < nFields; k++) {
+                vFace(J,k) = vPpts(J2,k);
+              }
+              for (int k = 0; k < 3; k++) {
+                posPpts(J,k) = e->pos_ppts(J2,k);
+              }
+              if (EntErrFlag)
+                errFace(J) = errPpts(J2);
+            }
+          }
+        }
+        else if (fid == 5)
+        {
+          // Ymax / Back
+          for (int j1 = 0; j1 < nPts1D; j1++) {
+            for (int j2 = 0; j2 < nPts1D; j2++) {
+              int J  = j2 + j1*nPts1D;
+              int J2 = j2 + (j1+1)*nPtsFace - nPts1D;
+              for (int k = 0; k < nFields; k++) {
+                vFace(J,k) = vPpts(J2,k);
+              }
+              for (int k = 0; k < 3; k++) {
+                posPpts(J,k) = e->pos_ppts(J2,k);
+                if (params->motion)
+                  gridVelFace(J,k) = gridVelPpts(J2,k);
+              }
+              if (EntErrFlag)
+                errFace(J) = errPpts(J2);
+            }
+          }
+        }
+        else
+          FatalError("Invalid cell-local face ID found.");
+      }
+
+
+      // Write cell header
+      dataFile << "		<Piece NumberOfPoints=\"" << nPtsFace << "\" NumberOfCells=\"" << nSubCells << "\">" << endl;
+
+      /* ==== Write out solution to file ==== */
+
+      dataFile << "			<PointData>" << endl;
+
+      /* --- Density --- */
+      dataFile << "				<DataArray type=\"Float32\" Name=\"Density\" format=\"ascii\">" << endl;
+      for(int k=0; k<nPtsFace; k++) {
+        dataFile << vFace(k,0) << " ";
+      }
+      dataFile << endl;
+      dataFile << "				</DataArray>" << endl;
+
+      if (params->equation == NAVIER_STOKES) {
+        /* --- Velocity --- */
+        dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" Name=\"Velocity\" format=\"ascii\">" << endl;
+        for(int k=0; k<nPtsFace; k++) {
+          dataFile << vFace(k,1) << " " << vFace(k,2) << " ";
+
+          // In 2D the z-component of velocity is not stored, but Paraview needs it so write a 0.
+          if(params->nDims==2) {
+            dataFile << 0.0 << " ";
+          }
+          else {
+            dataFile << vFace(k,3) << " ";
+          }
+        }
+        dataFile << endl;
+        dataFile << "				</DataArray>" << endl;
+
+        /* --- Pressure --- */
+        dataFile << "				<DataArray type=\"Float32\" Name=\"Pressure\" format=\"ascii\">" << endl;
+        for(int k=0; k<nPtsFace; k++) {
+          dataFile << vFace(k,params->nDims+1) << " ";
+        }
+        dataFile << endl;
+        dataFile << "				</DataArray>" << endl;
+
+        if (params->calcEntropySensor) {
+          /* --- Entropy Error Estimate --- */
+          dataFile << "				<DataArray type=\"Float32\" Name=\"EntropyErr\" format=\"ascii\">" << endl;
+          for(int k=0; k<nPtsFace; k++) {
+            dataFile << std::abs(errPpts(k)) << " ";
+          }
+          dataFile << endl;
+          dataFile << "				</DataArray>" << endl;
+        }
+      }
+
+      if(params->scFlag == 1) {
+        /* --- Shock Sensor --- */
+        dataFile << "				<DataArray type=\"Float32\" Name=\"Sensor\" format=\"ascii\">" << endl;
+        for(int k=0; k<nPtsFace; k++) {
+          dataFile << sensor << " ";
+        }
+        dataFile << endl;
+        dataFile << "				</DataArray>" << endl;
+      }
+
+      if (params->motion > 0) {
+        /* --- Grid Velocity --- */
+        dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" Name=\"GridVelocity\" format=\"ascii\">" << endl;
+        for(int k=0; k<nPtsFace; k++) {
+          // Divide momentum components by density to obtain velocity components
+          dataFile << gridVelFace(k,0) << " " << gridVelFace(k,1) << " ";
+
+          // In 2D the z-component of velocity is not stored, but Paraview needs it so write a 0.
+          if(params->nDims==2) {
+            dataFile << 0.0 << " ";
+          }
+          else {
+            dataFile << gridVelFace(k,2) << " ";
+          }
+        }
+        dataFile << endl;
+        dataFile << "				</DataArray>" << endl;
+      }
+
+      if (params->plotPolarCoords) {
+        /* --- Polar/Spherical Coordinates (Useful for plotting) --- */
+        dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" Name=\"PolarCoords\" format=\"ascii\">" << endl;
+        for(int k=0; k<nPtsFace; k++) {
+          double x = posPpts(k,0);
+          double y = posPpts(k,1);
+          double z = 0;
+          if (nDims==3) z = posPpts(k,2);
+          double r = sqrt(x*x+y*y+z*z);
+          double theta = std::atan2(y,x);
+          double psi = 0;
+          if (nDims==3) psi = std::acos(z/r);
+          // Divide momentum components by density to obtain velocity components
+          dataFile << r << " " << theta << " " << psi << " ";
+        }
+
+        dataFile << endl;
+        dataFile << "				</DataArray>" << endl;
+      }
+
+      /* --- End of Cell's Solution Data --- */
+
+      dataFile << "			</PointData>" << endl;
+
+      /* ==== Write Out Cell Points & Connectivity==== */
+
+      /* --- Write out the plot point coordinates --- */
+      dataFile << "			<Points>" << endl;
+      dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">" << endl;
+
+      // Loop over plot points in element
+      for(int k=0; k<nPtsFace; k++) {
+        for(int l=0; l<params->nDims; l++) {
+          dataFile << posPpts(k,l) << " ";
+        }
+
+        // If 2D, write a 0 as the z-component
+        if(params->nDims == 2) {
+          dataFile << "0 ";
+        }
+      }
+
+      dataFile << endl;
+      dataFile << "				</DataArray>" << endl;
+      dataFile << "			</Points>" << endl;
+
+      /* --- Write out Cell data: connectivity, offsets, element types --- */
+      dataFile << "			<Cells>" << endl;
+
+      /* --- Write connectivity array --- */
+      dataFile << "				<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">" << endl;
+
+      if (params->nDims == 2) {
+        for (int j=0; j<nPts1D-1; j++) {
+          dataFile << j << " ";
+          dataFile << j + 1 << " ";
+          dataFile << endl;
+        }
+
+      }
+      else if (params->nDims == 3) {
+        for (int j=0; j<nPts1D-1; j++) {
+          for (int i=0; i<nPts1D-1; i++) {
+            dataFile << j*nPts1D     + i   << " ";
+            dataFile << j*nPts1D     + i+1 << " ";
+            dataFile << (j+1)*nPts1D + i+1 << " ";
+            dataFile << (j+1)*nPts1D + i   << " ";
+            dataFile << endl;
+          }
+        }
+      }
+      dataFile << "				</DataArray>" << endl;
+
+      // Write cell-node offsets
+      int nvPerCell;
+      if (params->nDims == 2) nvPerCell = 2;
+      else                    nvPerCell = 4;
+      dataFile << "				<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">" << endl;
+      for(int k=0; k<nSubCells; k++){
+        dataFile << (k+1)*nvPerCell << " ";
+      }
+      dataFile << endl;
+      dataFile << "				</DataArray>" << endl;
+
+      // Write VTK element type
+      // 5 = tri, 9 = quad, 10 = tet, 12 = hex
+      int eType;
+      if (params->nDims == 2) eType = 3;
+      else                    eType = 9;
+      dataFile << "				<DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">" << endl;
+      for(int k=0; k<nSubCells; k++) {
+        dataFile << eType << " ";
+      }
+      dataFile << endl;
+      dataFile << "				</DataArray>" << endl;
+
+      /* --- Write cell and piece footers --- */
+      dataFile << "			</Cells>" << endl;
+      dataFile << "		</Piece>" << endl;
+    }
+
+    /* --- Write footer of file & close --- */
+    dataFile << "	</UnstructuredGrid>" << endl;
+    dataFile << "</VTKFile>" << endl;
+
+    dataFile.close();
+
+    if (params->rank == 0) cout << "done." <<  endl;
+
+#ifndef _NO_MPI
+    /* --- Write 'master' .pvtu file (for each grid, if overset) --- */
+
+    // Get # of faces on each rank to avoid printing completely-blanked ranks (if exist)
+    vector<int> nFaces_rank(Solver->nprocPerGrid);
+    MPI_Allgather(&nFaces,1,MPI_INT,nFaces_rank.data(),1,MPI_INT,Geo->gridComm);
+
+    if (Solver->gridRank == 0) {
+      ofstream pVTU;
+      char pvtuC[256];
+      if (params->meshType == OVERSET_MESH)
+        sprintf(pvtuC,"%s%d_surf_%s_%.09d.pvtu",&fileName[0],Solver->gridID,&bndName[0],iter);
+      else
+        sprintf(pvtuC,"%s_surf_%s_%.09d.pvtu",&fileName[0],&bndName[0],iter);
+
+      pVTU.open(pvtuC);
+
+      pVTU << "<?xml version=\"1.0\" ?>" << endl;
+      pVTU << "<VTKFile type=\"PUnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" compressor=\"vtkZLibDataCompressor\">" << endl;
+
+      // Use XML / ParaView comments here for simulation time
+      pVTU << "<!-- TIME " << params->time << " -->" << endl;
+      pVTU << "<!-- ITER " << params->iter << " -->" << endl;
+
+      pVTU << "  <PUnstructuredGrid GhostLevel=\"1\">" << endl;
+      // NOTE: Must be careful with order here [particularly of vector data], or else ParaView gets confused
+      pVTU << "    <PPointData Scalars=\"Density\" Vectors=\"Velocity\" >" << endl;
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"Density\" />" << endl;
+      if (params->equation == NAVIER_STOKES) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"Velocity\" NumberOfComponents=\"3\" />" << endl;
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"Pressure\" />" << endl;
+        if (params->calcEntropySensor) {
+          pVTU << "      <PDataArray type=\"Float32\" Name=\"EntropyErr\" />" << endl;
+        }
+      }
+      if (params->scFlag == 1) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"Sensor\" />" << endl;
+      }
+      if (params->motion) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"GridVelocity\" NumberOfComponents=\"3\" />" << endl;
+      }
+      if (params->plotPolarCoords) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"PolarCoords\" NumberOfComponents=\"3\" />" << endl;
+      }
+      if (params->meshType == OVERSET_MESH && params->writeIBLANK) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"IBLANK\" />" << endl;
+      }
+      pVTU << "    </PPointData>" << endl;
+      pVTU << "    <PPoints>" << endl;
+      pVTU << "      <PDataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\" />" << endl;
+      pVTU << "    </PPoints>" << endl;
+
+      char filnameTmpC[256];
+      for (int p=0; p<Solver->nprocPerGrid; p++) {
+        if (nFaces_rank[p] == 0) continue;
+        if (params->meshType == OVERSET_MESH)
+          sprintf(filnameTmpC,"%s_%.09d/surf_%s_%d_%d.vtu",&fileName[0],iter,&bndName[0],Solver->gridID,p);
+        else
+          sprintf(filnameTmpC,"%s_%.09d/surf_%s_%d.vtu",&fileName[0],iter,&bndName[0],p);
+        if (nFaces_rank[p]>0)
+          pVTU << "    <Piece Source=\"" << string(filnameTmpC) << "\" />" << endl;
+      }
+      pVTU << "  </PUnstructuredGrid>" << endl;
+      pVTU << "</VTKFile>" << endl;
+
+      pVTU.close();
+    }
+#endif
+  }
+}
+
 
 void writeResidual(solver *Solver, input *params)
 {
@@ -531,7 +1022,7 @@ void writeResidual(solver *Solver, input *params)
       if (params->meshType == OVERSET_MESH && Solver->Geo->iblankCell[Solver->eles[e]->ID]!=NORMAL) continue;
       auto resTmp = Solver->eles[e]->getNormResidual(params->resType);
       if(checkNaN(resTmp)) {
-        cout << "rank " << params->rank << ", ele " << e << ": ";
+        cout << "Iter " << params->iter << ", rank " << params->rank << ", ele " << e << ": ";
         auto box = Solver->eles[e]->getBoundingBox();
         cout << " minPt = " << box[0] << "," << box[1] << "," << box[2] << ", maxPt = " << box[3] << "," << box[4] << "," << box[5] << endl;
         FatalError("NaN Encountered in Solution Residual!");
@@ -547,7 +1038,7 @@ void writeResidual(solver *Solver, input *params)
       if (params->meshType == OVERSET_MESH && Solver->Geo->iblankCell[Solver->eles[e]->ID]!=NORMAL) continue;
       auto resTmp = Solver->eles[e]->getNormResidual(params->resType);
       if(checkNaN(resTmp)) {
-        cout << "rank " << params->rank << ", ele " << e << ": " << flush;
+        cout << "Iter " << params->iter << ", rank " << params->rank << ", ele " << e << ": " << flush;
         auto box = Solver->eles[e]->getBoundingBox();
         cout << " minPt = " << box[0] << "," << box[1] << "," << box[2] << ", maxPt = " << box[3] << "," << box[4] << "," << box[5] << endl;
         FatalError("NaN Encountered in Solution Residual!");

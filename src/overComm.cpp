@@ -65,6 +65,7 @@ void overComm::setup(input* _params, int _nGrids, int _gridID, int _gridRank, in
 {
   params = _params;
 
+  nDims = params->nDims;
   nGrids = _nGrids;
   gridID = _gridID;
   gridRank = _gridRank;
@@ -210,21 +211,30 @@ unordered_set<int> overComm::findCellDonors2D(vector<shared_ptr<ele>> &eles, con
   return hitCells;
 }
 
-void overComm::setupOverFacePoints(vector<shared_ptr<overFace>> &overFaces)
+void overComm::setupOverFacePoints(vector<shared_ptr<overFace>> &overFaces, int nFptsPerFace)
 {
   // Get all of the fringe points on this grid
-  overPts.setup(0,0);
-  overNorm.setup(0,0);
+  overPts.setup(overFaces.size()* nFptsPerFace, 3);
+  overNorm.setup(overFaces.size()* nFptsPerFace, 3);
+  uint ipt = 0, jpt = 0;
   for (auto &oface: overFaces) {
     oface->OComm = this;
-    oface->fptOffset = overPts.getDim0();
+    oface->fptOffset = ipt;
     auto pts = oface->getPosFpts();
-    for (auto &pt:pts)
-      overPts.insertRow({pt.x, pt.y, pt.z});
+    for (uint i = 0; i < pts.size(); i++) {
+      overPts(ipt,0) = pts[i].x;
+      overPts(ipt,1) = pts[i].y;
+      overPts(ipt,2) = pts[i].z;
+      ipt++;
+    }
     if (params->oversetMethod==1) {
       auto norms = oface->getNormFpts();
-      for (auto &vec:norms)
-        overNorm.insertRow({vec.x,vec.y,vec.z});
+      for (uint i = 0; i < norms.size(); i++) {
+        overNorm(jpt,0) = norms[i].x;
+        overNorm(jpt,1) = norms[i].y;
+        overNorm(jpt,2) = norms[i].z;
+        jpt++;
+      }
     }
   }
 }
@@ -300,7 +310,9 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, const vector<in
       foundNorm[p].resize(0);
     for (int i=0; i<nPts_rank[p]; i++) {
       // Get requested interpolation point
-      point pt = point(&interpPtsPhys[3*(offset+i)]);
+      double *pt_ptr = &interpPtsPhys[3*(offset+i)];
+      double *norm_ptr = &interpNorms[3*(offset+i)];
+      point pt = point(pt_ptr);
 
       if (params->nDims == 2) {
         // First, check that point even lies within bounding box of grid
@@ -322,19 +334,46 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, const vector<in
             foundEles[p].push_back(ic); // Local ele id for this grid
             foundLocs[p].push_back(refLoc);
             if (params->oversetMethod==1)
-              foundNorm[p].push_back(point(&interpNorms[3*(offset+i)]));
+              foundNorm[p].push_back(point(norm_ptr));
             break;
           }
         }
       }
       else {
-        int ic = tg->findPointDonor(&interpPtsPhys[3*(offset+i)]);
+        int ic = tg->findPointDonor(pt_ptr);
         if (ic>=0 && eleMap[ic]>=0) {
           int ie = eleMap[ic];
           point refLoc;
-          bool isInEle = eles[ie]->getRefLocNelderMead(pt,refLoc);
+          bool isInEle = eles[ie]->getRefLocNewton(pt,refLoc);
 
-          if (!isInEle) FatalError("Unable to match fringe point!");
+          /*if (!isInEle) isInEle = eles[ie]->getRefLocNelderMead(pt,refLoc);*/
+          if (!isInEle) {
+//            _print(ic,ie);
+//            _print(params->rank,p);
+            cout << setprecision(16);
+            _print(pt, refLoc);
+            cout.setf(ios::fixed,ios::floatfield);
+            //cout << setprecision(16) << 1-std::abs(refLoc.z) << endl;
+            for (int i = 0; i < eles[ie]->nNodes; i++)
+              cout << point(&eles[ie]->nodesRK(i,0)) << endl;
+
+
+            for (int j = 0; j < eles[ie]->Geo->c2nf[ic]; j++) {
+              int ie2 = eleMap[eles[ie]->Geo->c2c(ic,j)];
+              if (ie2 >= 0) {
+                isInEle = eles[ie2]->getRefLocNewton(pt,refLoc);
+                _print(ie,ie2);
+                cout.setf(ios::fixed,ios::floatfield);
+                cout << setprecision(16);
+                _print(pt,refLoc);
+                if (isInEle) {
+                  ic = eles[ie]->Geo->c2c(ic,j);
+                  break;
+                }
+              }
+            }
+            if (!isInEle) FatalError("Unable to match fringe point!");
+          }
 
           foundPts[p].push_back(i);
           foundEles[p].push_back(ic); // Local ele id for this grid
@@ -366,7 +405,6 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
 
   nUnblanks = unblankCells.size();
 
-  int nDims = params->nDims;
   int nv = (nDims==2) ? 4 : 8;
   quadOrder = max(quadOrder,1);
 
@@ -384,11 +422,11 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
     if (params->motion) {
       for (int j=0; j<nv; j++)
         for (int k=0; k<nDims; k++)
-          ubCellNodes(i,j,k) = eles[ie]->nodesRK[j][k];
+          ubCellNodes(i,j,k) = eles[ie]->nodesRK(j,k);
     } else {
       for (int j=0; j<nv; j++)
         for (int k=0; k<nDims; k++)
-          ubCellNodes(i,j,k) = eles[ie]->nodes[j][k];
+          ubCellNodes(i,j,k) = eles[ie]->nodes(j,k);
     }
 
     i++;
@@ -463,11 +501,29 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
 
         Array2D<point> donorPts;
         if (params->motion) {
-          for (auto &ic:donorsIDs)
-            donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
+          for (auto &ic:donorsIDs) {
+            int sIC = eleMap[ic];
+            vector<point> tmpPts;
+            for (uint npt = 0; npt < eles[sIC]->nNodes; npt++) {
+              point node;
+              for (uint dim = 0; dim < nDims; dim++)
+                node[dim] = eles[sIC]->nodesRK(npt,dim);
+              tmpPts.push_back(node);
+            }
+            donorPts.insertRow(tmpPts);
+          }
         } else {
-          for (auto &ic:donorsIDs)
-            donorPts.insertRow(eles[eleMap[ic]]->nodes);
+          for (auto &ic:donorsIDs) {
+            int sIC = eleMap[ic];
+            vector<point> tmpPts;
+            for (uint npt = 0; npt < eles[sIC]->nNodes; npt++) {
+              point node;
+              for (uint dim = 0; dim < nDims; dim++)
+                node[dim] = eles[sIC]->nodes(npt,dim);
+              tmpPts.push_back(node);
+            }
+            donorPts.insertRow(tmpPts);
+          }
         }
 
         superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,donors.size());
@@ -485,11 +541,9 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
 #endif
 }
 
-void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &eleMap, int order)
+void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int, oper > &opers, vector<int> &eleMap, int order)
 {
 #ifndef _NO_MPI
-  int nDims = params->nDims;
-
   if (nUnblanksTotal == 0) return;
 
   // Get the locations of the quadrature points for each target cell, and
@@ -525,36 +579,35 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
         int ic = eleMap[donorID[p].back()];
         point refLoc;
         bool isInEle;
-        if (nDims==2) {
-          isInEle = eles[ic]->getRefLocNewton(point(qpts_tmp[j],nDims),refLoc);
-          if (!isInEle) {
-            // Second try with slower (but more robust) algorithm
-            isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
-          }
-        } else {
-          isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
-        }
 
-        if (!isInEle)
+        isInEle = eles[ic]->getRefLocNewton(point(qpts_tmp[j],nDims),refLoc);
+
+        if (!isInEle) {
+          _(refLoc);
           FatalError("Quadrature Point Reference Location not found in ele!");
+        }
 
         qptsD_ref[p].insertRow({refLoc.x,refLoc.x,refLoc.z});
 
         vector<double> basisTmp;
-        opers[eles[ic]->eType][eles[ic]->order].getBasisValues(refLoc,basisTmp);
+        opers[eles[ic]->order].getBasisValues(refLoc,basisTmp);
         donorBasis[p].insertRow(basisTmp);
       }
 
       for (int id=0; id<foundCellNDonors[p][i]; id++) {
         int ic = eleMap[foundCellDonors[p](i,id)];
-        for (int spt=0; spt<nSpts; spt++)
-          donorU[p].insertRow(eles[ic]->U_spts[spt],INSERT_AT_END,nFields);
+        vector<double> tmpU(nFields);
+        for (int spt=0; spt<nSpts; spt++) {
+          for (int k = 0; k < nFields; k++)
+            tmpU[k] = eles[ic]->U_spts(spt,k);
+          donorU[p].insertRow(tmpU);
+        }
       }
     }
   }
 
   // Exchange superMesh quadrature points among the grids
-  nQptsSend.resize(nproc);
+  nQptsSend.assign(nproc,0);
   for (int p=0; p<nproc; p++) {
     if (gridIdList[p] == gridID) continue;
     nQptsSend[p] = qpts[p].getDim0();
@@ -581,13 +634,10 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
 
       point refLoc;
       point pos = point(qpts_recv[p][i],nDims);
-      bool isInEle = eles[ie]->getRefLocNelderMead(pos,refLoc);
+      bool isInEle = eles[ie]->getRefLocNewton(pos,refLoc);
 
       if (!isInEle) {
         cout << setprecision(16) << "qpt: " << pos << endl;
-        cout << "Ele nodes:" << endl;
-        for (int n=0; n<4; n++)
-          _(eles[ie]->nodes[n]);
         FatalError("Quadrature Point Reference Location not found in ele!");
       }
 
@@ -596,7 +646,7 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
       qpts_recv[p](i,2) = refLoc.z;
 
       vector<double> basisTmp;
-      opers[eles[ie]->eType][eles[ie]->order].getBasisValues(refLoc,basisTmp);
+      opers[eles[ie]->order].getBasisValues(refLoc,basisTmp);
 
       sendBasis[p].insertRow(basisTmp);
     }
@@ -649,7 +699,7 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
   }
 
   // Send/recv the final target-cell data
-  nCellsSend.resize(nproc);
+  nCellsSend.assign(nproc,0);
   for (int p=0; p<nproc; p++) {
     nCellsSend[p] = foundCells[p].size();
   }
@@ -690,7 +740,10 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
   // Apply the new values to the unblank ele objects
   for (int i=0; i<nUnblanks; i++) {
     int ic = ubCells[i];
-    eles[ic]->U_spts.initializeToZero();
+    for (int spt=0; spt<nSpts; spt++)
+      for (int k=0; k<nFields; k++)
+        eles[ic]->U_spts(spt,k) = 0;
+
     auto unblankU = solveCholesky(ubLHS[i],ubRHS[i]);
     for (int spt=0; spt<nSpts; spt++)
       for (int k=0; k<nFields; k++)
@@ -702,8 +755,6 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
 void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<int> &eleMap, int order)
 {
 #ifndef _NO_MPI
-  int nDims = params->nDims;
-
   if (foundCells.size()<nproc)
     foundCells.resize(nproc);
 
@@ -719,8 +770,12 @@ void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<in
     for (int i=0; i<foundCells[p].size(); i++) {
       for (int id=0; id<foundCellNDonors[p][i]; id++) {
         int ic = eleMap[foundCellDonors[p](i,id)];
-        for (int spt=0; spt<nSpts; spt++)
-          donorU[p].insertRow(eles[ic]->U_spts[spt],INSERT_AT_END,nFields);
+        vector<double> tmpU(nFields);
+        for (int spt=0; spt<nSpts; spt++) {
+          for (int k = 0; k < nFields; k++)
+            tmpU[k] = eles[ic]->U_spts(spt,k);
+          donorU[p].insertRow(tmpU);
+        }
       }
     }
   }
@@ -773,7 +828,10 @@ void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<in
   // Apply the new values to the unblank ele objects
   for (int i=0; i<nUnblanks; i++) {
     int ic = ubCells[i];
-    eles[ic]->U_spts.initializeToZero();
+    for (int spt=0; spt<nSpts; spt++)
+      for (int k=0; k<nFields; k++)
+        eles[ic]->U_spts(spt,k) = 0;
+
     auto unblankU = solveCholesky(ubLHS[i],ubRHS[i]);
     for (int spt=0; spt<nSpts; spt++)
       for (int k=0; k<nFields; k++)
@@ -782,14 +840,13 @@ void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<in
 #endif
 }
 
-vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<int,map<int,oper>> &opers, vector<int> &iblankCell, vector<int> &eleMap, int order, int quadOrder)
+vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<int, oper> &opers, vector<int> &iblankCell, vector<int> &eleMap, int order, int quadOrder)
 {
 #ifndef _NO_MPI
   /* ---- Send Unblanked-Cell Nodes to All Grids ---- */
 
   int nOverlap = eles.size();
 
-  int nDims = params->nDims;
   int nv = (nDims==2) ? 4 : 8;
 
   vector<int> ubCells;
@@ -803,11 +860,11 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
     if (params->motion) {
       for (int j=0; j<nv; j++)
         for (int k=0; k<nDims; k++)
-          ubCellNodes(i,j,k) = eles[ie]->nodesRK[j][k];
+          ubCellNodes(i,j,k) = eles[ie]->nodesRK(j,k);
     } else {
       for (int j=0; j<nv; j++)
         for (int k=0; k<nDims; k++)
-          ubCellNodes(i,j,k) = eles[ie]->nodes[j][k];
+          ubCellNodes(i,j,k) = eles[ie]->nodes(j,k);
     }
     i++;
   }
@@ -886,12 +943,21 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
         foundCellDonors[p].insertRowUnsized(donorsIDs);
 
         Array2D<point> donorPts;
-        if (params->motion)
-          for (auto &ic:donorsIDs)
-            donorPts.insertRow(eles[eleMap[ic]]->nodesRK);
-        else
-          for (auto &ic:donorsIDs)
-            donorPts.insertRow(eles[eleMap[ic]]->nodes);
+        if (params->motion) {
+          for (auto &ic:donorsIDs) {
+            vector<point> tmpPts;
+            for (uint npt = 0; npt < eles[eleMap[ic]]->nNodes; npt++)
+              tmpPts.push_back(point(&eles[eleMap[ic]]->nodesRK(npt,0),nDims));
+            donorPts.insertRow(tmpPts);
+          }
+        } else {
+          for (auto &ic:donorsIDs) {
+            vector<point> tmpPts;
+            for (uint npt = 0; npt < eles[eleMap[ic]]->nNodes; npt++)
+              tmpPts.push_back(point(&eles[eleMap[ic]]->nodes(npt,0),nDims));
+            donorPts.insertRow(tmpPts);
+          }
+        }
 
         superMesh mesh(targetNodes,donorPts,quadOrder,nDims,rank,supers.size());
         supers.push_back(mesh);
@@ -909,6 +975,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   // Get the locations of the quadrature points for each target cell, and
   // interpolate the solution error to them
   vector<matrix<double>> superErr(supers.size());
+  vector<matrix<double>> superU(supers.size());
   int nSpts = (order+1)*(order+1);
   if (nDims == 3) nSpts *= (order+1);
   offset = 0;
@@ -922,7 +989,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
       for (int j=0; j<parents_tmp.size(); j++) {
         int ic = eleMap[foundCellDonors[p](i,parents_tmp[j])];
         point refLoc;
-        bool isInEle = eles[ic]->getRefLocNelderMead(point(qpts_tmp[j],nDims),refLoc);
+        bool isInEle = eles[ic]->getRefLocNewton(point(qpts_tmp[j],nDims),refLoc);
 
         if (!isInEle) {
           cout << "qpt: " << qpts_tmp(j,0) << ", " << qpts_tmp(j,1) << endl;
@@ -932,9 +999,29 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
           FatalError("Quadrature Point Reference Location not found in ele!");
         }
 
+        vector<double> tmpErr(nFields);
         vector<double> tmpU(nFields);
-        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tmpU.data(), refLoc);
-        vector<double> tmpErr = calcError(tmpU,point(qpts_tmp[j],nDims),params);
+        matrix<double> tmpUSpts(nSpts,nFields);
+
+        for (int spt = 0; spt < nSpts; spt++)
+          for (int k = 0; k < nFields; k++)
+            tmpUSpts(spt,k) = eles[ic]->U_spts(spt,k);
+
+        opers[eles[ic]->order].interpolateToPoint(tmpUSpts, tmpU.data(), refLoc);
+
+        if (params->errorNorm == 0)
+        {
+          /* Calculate 'relative' error [\int(u(T) - u(0)) dV] */
+          matrix<double> tmpErrSpts = eles[ic]->calcError();
+          opers[eles[ic]->order].interpolateToPoint(tmpErrSpts, tmpErr.data(), refLoc);  
+          superU[offset+i].insertRow(tmpU);
+        }
+        else
+        {
+          /* Calculate Lp error [\int(u(t) - ue)^p dV] */
+          tmpErr = calcError(tmpU.data(),point(qpts_tmp[j],nDims),params);
+        }
+
         superErr[offset+i].insertRow(tmpErr);
       }
     }
@@ -954,16 +1041,40 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
   for (auto &pt: qpts) quadPoints.insertRow({pt.x,pt.y,pt.z});
 
   vector<double> intErr(nFields);
+  vector<double> intU(nFields);
   matrix<double> U_qpts;
   vector<double> detJac_qpts;
   for (uint ic=0; ic<eles.size(); ic++) {
     if (iblankCell[eles[ic]->ID]!=NORMAL) continue;
-    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->U_spts, U_qpts, quadPoints);
-    opers[eles[ic]->eType][eles[ic]->order].interpolateSptsToPoints(eles[ic]->detJac_spts, detJac_qpts, quadPoints);
-    for (uint i=0; i<qpts.size(); i++) {
-      auto tmpErr = calcError(U_qpts.getRow(i), eles[ic]->calcPos(qpts[i]), params);
-      for (int j=0; j<nFields; j++)
-        intErr[j] += tmpErr[j] * wts[i] * detJac_qpts[i];
+
+    int nSpts = eles[ic]->nSpts;
+    matrix<double> tmpU_spts(eles[ic]->nSpts,nFields);
+    vector<double> tmpDetJac_spts(eles[ic]->nSpts);
+    for (uint spt = 0; spt < nSpts; spt++) {
+      for (uint k = 0; k < nFields; k++)
+        tmpU_spts(spt,k) = eles[ic]->U_spts(spt,k);
+      tmpDetJac_spts[spt] = eles[ic]->detJac_spts(spt);
+    }
+    opers[eles[ic]->order].interpolateSptsToPoints(tmpU_spts, U_qpts, quadPoints);
+    opers[eles[ic]->order].interpolateSptsToPoints(tmpDetJac_spts, detJac_qpts, quadPoints);
+
+    if (params->errorNorm == 0)
+    {
+      matrix<double> tmpErr = eles[ic]->calcError();
+      for (uint i=0; i<eles[ic]->nSpts; i++) {
+        for (uint j=0; j<nFields; j++) {
+          intErr[j] += tmpErr(i,j) * wts[i] * eles[ic]->detJac_spts(i);
+          intU[j] += eles[ic]->U_spts(i,j) * wts[i] * eles[ic]->detJac_spts(i);
+        }
+      }
+    }
+    else
+    {
+      for (uint i=0; i<qpts.size(); i++) {
+        auto tmpErr = calcError(U_qpts[i], eles[ic]->calcPos(qpts[i]), params);
+        for (int j=0; j<nFields; j++)
+          intErr[j] += tmpErr[j] * wts[i] * detJac_qpts[i];
+      }
     }
   }
 
@@ -976,10 +1087,25 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
 
     for (int j=0; j<nFields; j++)
       intErr[j] -= 0.5*tmperr[j];
+
+    if (params->errorNorm == 0) {
+      auto tmpu = supers[i].integrate(superU[i]);
+
+      for (int j=0; j<nFields; j++)
+        intU[j] -= 0.5*tmpu[j];
+    }
   }
 
   vector<double> tmpErr = intErr;
   MPI_Allreduce(tmpErr.data(),intErr.data(),nFields,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+
+  if (params->errorNorm == 0) {
+    vector<double> tmpU = intU;
+    MPI_Allreduce(tmpU.data(),intU.data(),nFields,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+
+    for (int j = 0; j < nFields; j++)
+      intErr[j] = (intErr[j] - intU[j]);
+  }
 
   if (params->errorNorm == 2)
     for (auto &val:intErr) val = std::sqrt(std::abs(val));
@@ -988,7 +1114,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
 #endif
 }
 
-void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap)
+void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper> &opers, vector<int> &eleMap)
 {
 #ifndef _NO_MPI
   U_out.resize(nproc);
@@ -1005,6 +1131,9 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
 
       int ic = eleMap[foundEles[p][i]];
 
+      uint nSpts = eles[ic]->nSpts;
+      uint nFpts = eles[ic]->nFpts;
+
       if (ic<0 || ic>eles.size())
         FatalError("bad value of ic!");
 
@@ -1016,26 +1145,64 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
          *   transform as required. */
         if (!correctedEles.count(ic)) {
           correctedEles.insert(ic);
-          if (params->motion) {
-            opers[eles[ic]->eType][eles[ic]->order].applyExtrapolateFn(eles[ic]->F_spts,eles[ic]->norm_fpts,eles[ic]->disFn_fpts,eles[ic]->dA_fpts);
-          } else {
-            opers[eles[ic]->eType][eles[ic]->order].applyExtrapolateFn(eles[ic]->F_spts,eles[ic]->tNorm_fpts,eles[ic]->disFn_fpts);
+
+          Array<double,3> tempF_spts(nDims,nSpts,nFields);
+          matrix<double> norm_fpts(nFpts,nDims), tempFn_fpts(nFpts,nFields);
+          vector<double> dA_fpts(nFpts);
+
+          for (uint dim = 0; dim < nDims; dim++)
+            for (uint spt = 0; spt < nSpts; spt++)
+              for (uint k = 0; k < nFields; k++)
+                tempF_spts(dim,spt,k) = eles[ic]->F_spts(dim,spt,k);
+
+          for (uint fpt = 0; fpt < nFpts; fpt++) {
+            dA_fpts[fpt] = eles[ic]->dA_fpts(fpt);
+            for (uint dim = 0; dim < nDims; dim++)
+              norm_fpts(fpt,dim) = eles[ic]->norm_fpts(fpt,dim);
           }
-          eles[ic]->calcDeltaFn();
+
+          if (params->motion) {
+            opers[eles[ic]->order].applyExtrapolateFn(tempF_spts,norm_fpts,tempFn_fpts,dA_fpts);
+          } else {
+            opers[eles[ic]->order].applyExtrapolateFn(tempF_spts,tempFn_fpts);
+          }
+
+          for (uint fpt = 0; fpt < nFpts; fpt++)
+            for (uint k = 0; k < nFields; k++)
+              eles[ic]->disFn_fpts(fpt,k) = tempFn_fpts(fpt,k);
         }
 
-        vector<matrix<double>> tempF_spts;
-        if (params->motion) {
+        Array<double,3> tempF_spts(nDims,nSpts,nFields);
+        if (params->motion)
+        {
           // Flux vector must be in ref. space in order to apply correction functions
-          tempF_spts = eles[ic]->transformFlux_physToRef();
-        } else {
-          tempF_spts = eles[ic]->F_spts;
+          auto blah = eles[ic]->transformFlux_physToRef();
+          for (uint dim = 0; dim < nDims; dim++)
+            for (uint spt = 0; spt < nSpts; spt++)
+              for (uint k = 0; k < nFields; k++)
+                tempF_spts(dim,spt,k) = blah[dim](spt,k);
+        }
+        else
+        {
+          for (uint dim = 0; dim < nDims; dim++)
+            for (uint spt = 0; spt < nSpts; spt++)
+              for (uint k = 0; k < nFields; k++)
+                tempF_spts(dim,spt,k) = eles[ic]->F_spts(dim,spt,k);
         }
 
-        matrix<double> tempF_ref = opers[eles[ic]->eType][eles[ic]->order].interpolateCorrectedFlux(tempF_spts, eles[ic]->dFn_fpts, refPos);
+        matrix<double> deltaFn(nFpts,nFields);
+        for (uint fpt = 0; fpt < nFpts; fpt++)
+          for (uint k = 0; k < nFields; k++)
+            deltaFn(fpt,k) = eles[ic]->Fn_fpts(fpt,k) - eles[ic]->disFn_fpts(fpt,k);
+
+        matrix<double> tempF_ref = opers[eles[ic]->order].interpolateCorrectedFlux(tempF_spts, deltaFn, refPos);
 
         vector<double> tempU(nFields);
-        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, tempU.data(), refPos);
+        matrix<double> tempU_spts(nSpts,nFields);
+        for (uint spt = 0; spt < nSpts; spt++)
+          for (uint k = 0; k < nFields; k++)
+            tempU_spts(spt,k) = eles[ic]->U_spts(spt,k);
+        opers[eles[ic]->order].interpolateToPoint(tempU_spts, tempU.data(), refPos);
 
         // NOW we can transform flux vector back to physical space
         // [Recall: F_phys = (G/|G|) * F_ref]
@@ -1043,7 +1210,6 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
         double detJac;
         eles[ic]->calcTransforms_point(jacobian,invJaco,detJac,refPos);
 
-        int nDims = params->nDims;
         matrix<double> tempF(nDims,nFields);
         for (int dim1=0; dim1<nDims; dim1++)
           for (int dim2=0; dim2<nDims; dim2++)
@@ -1085,14 +1251,18 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
 
       else {
         // Interpolate discontinuous solution [Original 'Artificial Boundary' Method]
-        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(eles[ic]->U_spts, U_out[p][i], refPos);
+        matrix<double> tempU_spts(nSpts,nFields);
+        for (uint spt = 0; spt < nSpts; spt++)
+          for (uint k = 0; k < nFields; k++)
+            tempU_spts(spt,k) = eles[ic]->U_spts(spt,k);
+        opers[eles[ic]->order].interpolateToPoint(tempU_spts, U_out[p][i], refPos);
       }
 
     }
   }
 
   /* ---- Send/Receive the the interpolated data across grids using interComm ---- */
-  nPtsSend.resize(nproc);
+  nPtsSend.assign(nproc,0);
   for (int p=0; p<nproc; p++) {
     if (gridIdList[p] == gridID) continue;
     nPtsSend[p] = foundPts[p].size();
@@ -1119,10 +1289,9 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<i
 #endif
 }
 
-void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap)
+void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, oper> &opers, vector<int> &eleMap)
 {
 #ifndef _NO_MPI
-  int nDims = params->nDims;
   gradU_out.resize(nproc);
 
   for (int p=0; p<nproc; p++) {
@@ -1146,12 +1315,15 @@ void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, m
         // Gradient vector must be in ref. space in order to apply correction functions
         tempDU_spts = eles[ic]->transformGradU_physToRef();
       } else {
-        tempDU_spts = eles[ic]->dU_spts;
+        for (uint dim = 0; dim < params->nDims; dim++)
+          for (uint spt = 0; spt < nSpts; spt++)
+            for (uint k = 0; k < params->nFields; k++)
+              tempDU_spts[dim](spt,k) = eles[ic]->dU_spts(dim,spt,k);
       }
 
       matrix<double> tempDU_ref(nDims,nFields);
       for (int dim=0; dim<nDims; dim++)
-        opers[eles[ic]->eType][eles[ic]->order].interpolateToPoint(tempDU_spts[dim], tempDU_ref[dim], refPos);
+        opers[eles[ic]->order].interpolateToPoint(tempDU_spts[dim], tempDU_ref[dim], refPos);
 
       // NOW we can transform flux vector back to physical space
       // [Recall: F_phys = JGinv .dot. F_ref]
@@ -1167,7 +1339,7 @@ void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, m
   }
 
   /* ---- Send/Receive the the interpolated data across grids using interComm ---- */
-  nPtsSend.resize(nproc);
+  nPtsSend.assign(nproc,0);
   for (int p=0; p<nproc; p++) {
     if (gridIdList[p] == gridID) continue;
     nPtsSend[p] = foundPts[p].size();
@@ -1180,7 +1352,7 @@ void overComm::exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, m
     FatalError("Unmatched points remaining!");
   }
 
-  recvPts.resize(nproc);
+  recvPts.assign(nproc,{0});
   for (int p=0; p<nproc; p++) {
     if (p==rank) continue;
     recvPts[p].resize(nPtsRecv[p]);

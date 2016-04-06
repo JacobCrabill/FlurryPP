@@ -296,6 +296,13 @@ void input::readInputFile(char *filename)
       opts.getScalarValue("vzIC",vzIC,wBound);
       opts.getScalarValue("pIC",pIC,pBound);
     }
+    else if (icType == 2) {
+      opts.getScalarValue("vortexAngle",vortexAngle,atan(0.5));
+      opts.getScalarValue("vortexXmin",vortexXmin,-5.);
+      opts.getScalarValue("vortexXmax",vortexXmax,5.);
+      opts.getScalarValue("vortexYmin",vortexYmin,-5.);
+      opts.getScalarValue("vortexYmax",vortexYmax,5.);
+    }
     if (nDims == 2)
       nFields = 4;
     else
@@ -308,6 +315,7 @@ void input::readInputFile(char *filename)
   if (dtType != 0) {
     opts.getScalarValue("CFL",CFL);
     opts.getScalarValue("maxTime",maxTime);
+    dt = 0;
   } else {
     opts.getScalarValue("dt",dt);
     maxTime = iterMax * dt;
@@ -324,6 +332,9 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("moveAy",moveAy);
     opts.getScalarValue("moveFx",moveFx);
     opts.getScalarValue("moveFy",moveFy);
+  } else if (motion == 5) {
+    opts.getScalarValue("moveAr",moveAr);
+    opts.getScalarValue("moveFr",moveFr);
   }
 
   if (viscous) {
@@ -341,12 +352,16 @@ void input::readInputFile(char *filename)
       opts.getScalarValue("RGas",RGas,286.9);
       opts.getScalarValue("fixVis",fixVis,0);
 
-      opts.getScalarValue("TWall",TWall,300.);
       opts.getScalarValue("TBound",TBound,300.);
+      opts.getScalarValue("TWall",TWall,300.);
       opts.getScalarValue("MachBound",MachBound);
       opts.getScalarValue("nxBound",nxBound,1.);
       opts.getScalarValue("nyBound",nyBound,0.);
       opts.getScalarValue("nzBound",nzBound,0.);
+      opts.getScalarValue("MachWall",MachWall);
+      opts.getScalarValue("nxWall",nxWall,1.);
+      opts.getScalarValue("nyWall",nyWall,0.);
+      opts.getScalarValue("nzWall",nzWall,0.);
     }
   }
 
@@ -418,6 +433,8 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("resType",resType,2);
   opts.getScalarValue("plotFreq",plotFreq,100);
   opts.getScalarValue("plotType",plotType,1);
+  opts.getScalarValue("plotSurfaces",plotSurfaces,1);
+  opts.getScalarValue("plotPolarCoords",plotPolarCoords,1);
   opts.getScalarValue("restart_freq",restart_freq,100);
   opts.getScalarValue("dataFileName",dataFileName,string("simData"));
 
@@ -457,31 +474,52 @@ void input::readInputFile(char *filename)
 
   switch (timeType) {
     case 0:
+      // Forward Euler
       nRKSteps = 1;
       RKa = {0};
       RKb = {1};
       break;
     case 4:
+      // RK44
       nRKSteps = 4;
       RKa = {0., .5, .5, 1.};
       RKb = {1./6., 1./3., 1./3., 1./6.};
+      break;
+    case 5:
+      // Equivalent to RK44, but in different format
+      nRKSteps = 4;
+      RKa = {0., 1./4., 1./3., 1./2., 1.0};
+      RKb = {0.};
+      break;
+    case 6:
+      // High-wavenumber-damping steady-state schemes
+      nRKSteps = 4;
+      if (order<=2)
+        RKa = {0., .153, .442, .931, 1.0}; // Josh's secret-sauce P=2 optimal coeffs
+      else
+        RKa = {0., .158, .477, 1., 1.}; // Josh's secret-sauce P=3 optimal coeffs
+      RKb = {0.};
       break;
     default:
       FatalError("Time-Stepping type not supported.");
   }
 
-  if (squeeze) {
-    // Entropy bound for polynomial squeezing
-    exps0 = 0.0*pBound/(pow(rhoBound,gamma));
-  }
-
   iter = initIter;
 
-  // Calculate U_infinity for force-coefficient normalization
-  if (nDims==2) wBound = 0;
-  Uinf = sqrt(uBound*uBound+vBound*vBound+wBound*wBound);
+  if (equation == NAVIER_STOKES) {
+    if (squeeze) {
+      // Entropy bound for polynomial squeezing
+      exps0 = 0.0*pBound/(pow(rhoBound,gamma));
+    }
 
-  if (viscous) nonDimensionalize();
+    oneOverS = pow(rhoBound,gamma)/pBound;
+
+    // Calculate U_infinity for force-coefficient normalization
+    if (nDims==2) wBound = 0;
+    Uinf = sqrt(uBound*uBound+vBound*vBound+wBound*wBound);
+
+    if (viscous) nonDimensionalize();
+  }
 }
 
 
@@ -510,6 +548,11 @@ void input::nonDimensionalize(void)
   rhoBound = muBound*Re/(UBound*Lref);
   pBound = rhoBound * RGas * TBound;
 
+  double UWall = MachWall * sqrt(gamma*RGas*TWall);
+  uWall = UWall * nxWall;
+  vWall = UWall * nyWall;
+  wWall = UWall * nzWall;
+
   double rhoRef = rhoBound;
   double pRef = rhoRef*UBound*UBound;
   double muRef = rhoRef*UBound*Lref;
@@ -535,6 +578,13 @@ void input::nonDimensionalize(void)
   Uinf = sqrt(uBound*uBound+vBound*vBound+wBound*wBound);
 
   TWall = TWall / Tref;
+
+  // For isothermal moving-wall boundary condition
+  uWall /= UBound;
+  vWall /= UBound;
+  wWall /= UBound;
+
+  oneOverS = pow(rhoBound,gamma)/pBound;
 
   rhoIC = rhoBound;
   vxIC = uBound;

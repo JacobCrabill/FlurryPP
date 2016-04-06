@@ -42,6 +42,9 @@ void writeCSV(solver *Solver, input *params);
 /*! Write solution data to a Paraview .vtu file. */
 void writeParaview(solver *Solver, input *params);
 
+/*! Write out surface data to a Paraview .vtu file. */
+void writeSurfaces(solver *Solver, input *params);
+
 /*! Compute the residual and print to both the terminal and history file. */
 void writeResidual(solver *Solver, input *params);
 

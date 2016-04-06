@@ -2,20 +2,23 @@
 # Basic Options
 # =============================================================
 equation      1    (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
-order         1    (Polynomial order to use)
+order         2    (Polynomial order to use)
 timeType      0    (0: Forward Euler, 4: RK44)
 dtType        1    (0: Fixed, 1: CFL-based)
-CFL           .2
+CFL           .5
 dt            .02
+
 iterMax       1000
+maxTime       1000
 restart       0
 restartIter   50
 
 viscous       0   (0: Inviscid, 1: Viscous)
 motion        0   (0: Static, 1: Perturbation test case)
-riemannType  0   (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
-testCase     0
-nDims        3
+riemannType   0   (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
+oversetMethod 0
+testCase      0
+nDims         3
 
 # =============================================================
 # Physics Parameters
@@ -37,7 +40,7 @@ icType       0
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        100   (Frequency to write plot files)
+plotFreq        1000   (Frequency to write plot files)
 monitorResFreq  100    (Frequency to print residual to terminal)
 resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    Box    (Filename prefix for output files)
@@ -56,6 +59,15 @@ periodicDZ    99
 
 # The following parameters are only needed when creating a mesh:
 # nx, ny, nz, xmin, xmax, etc.
+nx  15
+ny  15
+nz  2
+xmin -5
+xmax 5
+ymin -5
+ymax 5
+zmin 0
+zmax .5
 
 # =============================================================
 # Boundary Conditions
@@ -64,6 +76,13 @@ periodicDZ    99
 # (default is periodic)
 #create_bcTop     sup_in
 #create_bcBottom  slip_wall  ... etc.
+create_bcTop  periodic
+create_bcBottom periodic
+create_bcLeft sup_in
+create_bcRight  sup_out
+create_bcFront  sup_in
+create_bcBack  slip_wall
+
 
 # Gmsh Boundary Conditions
 # List each Gmsh boundary:  'mesh_bound <Gmsh_Physical_Name> <Flurry_BC>'
@@ -91,8 +110,8 @@ mesh_bound   fluid    fluid
 # Inviscid Flows
 rhoBound 1
 uBound   2
-vBound   0.
-wBound   -0.2
+vBound   -.2
+wBound   0.
 pBound   .7142857143
 
 # Viscous Flows

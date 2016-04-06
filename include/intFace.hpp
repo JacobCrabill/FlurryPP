@@ -67,11 +67,12 @@ private:
   int fptStartR, fptEndR;
   vector<int> fptR;        //! Indices of flux points in right element
 
+  bool isNew_R = true; //! Flag for initialization (esp. due to unblanking)
+
   /* --- Storage for all solution/geometry data at flux points [right state] --- */
   vector<matrix<double>> FR;   //! Flux array [nFpts, nDims, nFields]
   vector<double*> FnR;    //! Common normal flux for right ele [in ele's memory]
-  vector<double*> UcR;    //! Common solution for left ele (in ele's memory)  [nFpts, nFields]
+  Array<double*,2> dUcR;    //! Common solution for left ele (in ele's memory)  [nFpts, nFields]
   matrix<double> normR;   //! Unit outward normal at flux points  [nFpts, nDims]
   vector<double> dAR;     //! Local face-area equivalent at flux points
-  vector<double> detJacR; //! Determinant of transformation Jacobian
 };

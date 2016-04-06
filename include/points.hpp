@@ -38,6 +38,9 @@ vector<point> getLocSpts(int eType, int order, string sptsType);
 //! Get the reference-domain location of the flux points for the given element & polynomial order
 vector<point> getLocFpts(int eType, int order, string sptsType);
 
+//! Get the reference-domain location of the plot points for the given element & polynomial order
+vector<point> getLocPpts(int eType, int order, string sptsType);
+
 //! Get the point locations of the requested type (i.e. Gauss, Lobatto) for the given order
 vector<double> getPts1D(string ptsType, int order);
 

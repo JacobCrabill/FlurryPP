@@ -25,11 +25,17 @@
  *
  */
 
-#include "../include/operators.hpp"
+#include "operators.hpp"
 
 #include <cmath>
 
-#include "../include/polynomials.hpp"
+#ifdef _MKL_BLAS
+#include "mkl_types.h"
+#include "mkl_cblas.h"
+#else
+#include "cblas.h"
+#endif
+#include "polynomials.hpp"
 
 //! Binary helper operation [for use with STL algorithms]
 static bool abs_compare(int a, int b)
@@ -54,30 +60,38 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
   else
     FatalError("Only quads and hexes implemented.");
 
-  vector<point> loc_spts = getLocSpts(eType,order,sptsType);
-  vector<point> loc_fpts = getLocFpts(eType,order,sptsType);
+  loc_spts = getLocSpts(eType,order,sptsType);
+  loc_fpts = getLocFpts(eType,order,sptsType);
+  loc_ppts = getLocPpts(eType,order,sptsType);
 
   nSpts = loc_spts.size();
   nFpts = loc_fpts.size();
+  nPpts = loc_ppts.size();
 
   tempFn.setup(nFpts,nDims);
 
   // Set up each operator
-  setupExtrapolateSptsFpts(loc_fpts);
+  setupExtrapolateSptsFpts();
 
-  setupExtrapolateSptsMpts(loc_spts);
+  setupExtrapolateSptsPpts();
 
-  setupGradSpts(loc_spts);
+  setupExtrapolateSptsMpts();
 
-  setupCorrection(loc_spts,loc_fpts);
+  setupGradSpts();
+
+  setupExtrapolateFn();
+
+  setupCorrection();
 
   if (params->viscous) {
     setupCorrectGradU();
   }
 
+  setupInterpolateSptsQpts(params->quadOrder);
+
   // Operators needed for Shock capturing
   if (params->scFlag) {
-    setupVandermonde(loc_spts);
+    setupVandermonde();
 
     setupSensingMatrix();
 
@@ -89,31 +103,27 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
   }
 }
 
-void oper::setupExtrapolateSptsFpts(vector<point> &loc_fpts)
+void oper::setupExtrapolateSptsFpts(void)
 {
-  uint spt, fpt, ispt, jspt, kspt;
   opp_spts_to_fpts.setup(nFpts,nSpts);
 
-  for (fpt=0; fpt<nFpts; fpt++) {
-    for (spt=0; spt<nSpts; spt++) {
+  vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+
+  for (uint fpt=0; fpt<nFpts; fpt++) {
+    for (uint spt=0; spt<nSpts; spt++) {
       switch(eType) {
-        case TRI:
-          opp_spts_to_fpts(fpt,spt) = eval_dubiner_basis_2d(loc_fpts[fpt],spt,order);
-          break;
         case QUAD: {
-          vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
-          // First, get the i an j ID of the spt
-          ispt = spt%(order+1);
-          jspt = floor(spt/(order+1));
+          // First, get the i and j ID of the spt
+          uint ispt = spt%(order+1);
+          uint jspt = floor(spt/(order+1));
           opp_spts_to_fpts(fpt,spt) = Lagrange(locSpts1D,loc_fpts[fpt].x,ispt) * Lagrange(locSpts1D,loc_fpts[fpt].y,jspt);
           break;
         }
         case HEX: {
-          vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
-          // First, get the i an j ID of the spt
-          kspt = spt/((order+1)*(order+1));
-          jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
-          ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+          // First, get the i and j ID of the spt
+          uint kspt = spt/((order+1)*(order+1));
+          uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+          uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
           opp_spts_to_fpts(fpt,spt) = Lagrange(locSpts1D,loc_fpts[fpt].x,ispt) * Lagrange(locSpts1D,loc_fpts[fpt].y,jspt) * Lagrange(locSpts1D,loc_fpts[fpt].z,kspt);
           break;
         }
@@ -124,30 +134,43 @@ void oper::setupExtrapolateSptsFpts(vector<point> &loc_fpts)
   }
 }
 
-void oper::setupExtrapolateSptsMpts(vector<point> &loc_spts)
+void oper::setupExtrapolateSptsPpts(void)
 {
-  uint nSpts = loc_spts.size();
+  opp_spts_to_ppts.setup(nPpts,nSpts);
 
-  switch(eType) {
-    case TRI: {
-      opp_spts_to_mpts.setup(3,nSpts);
-      point vert1, vert2, vert3;
-      vert1.x = -1;  vert1.y = -1;
-      vert2.x =  1;  vert2.y = -1;
-      vert3.x = -1;  vert3.y =  1;
-      for (uint spt=0; spt<nSpts; spt++) {
-        opp_spts_to_mpts(0,spt) = eval_dubiner_basis_2d(vert1,spt,order);
-        opp_spts_to_mpts(1,spt) = eval_dubiner_basis_2d(vert2,spt,order);
-        opp_spts_to_mpts(2,spt) = eval_dubiner_basis_2d(vert3,spt,order);
+  vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
+
+  if (nDims == 2) {
+    for (uint ppt = 0; ppt < nPpts; ppt++) {
+      for (uint spt = 0; spt < nSpts; spt++) {
+        // First, get the i and j ID of the spt
+        uint ispt = spt%(order+1);
+        uint jspt = floor(spt/(order+1));
+        opp_spts_to_ppts(ppt,spt) = Lagrange(locSpts1D,loc_ppts[ppt].x,ispt) * Lagrange(locSpts1D,loc_ppts[ppt].y,jspt);
       }
-      break;
     }
+  } else {
+    for (uint ppt = 0; ppt < nPpts; ppt++) {
+      for (uint spt = 0; spt < nSpts; spt++) {
+        // First, get the i, j and k ID of the spt
+        uint kspt = spt/((order+1)*(order+1));
+        uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+        uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+        opp_spts_to_ppts(ppt,spt) = Lagrange(locSpts1D,loc_ppts[ppt].x,ispt) * Lagrange(locSpts1D,loc_ppts[ppt].y,jspt) * Lagrange(locSpts1D,loc_ppts[ppt].z,kspt);
+      }
+    }
+  }
+}
+
+void oper::setupExtrapolateSptsMpts(void)
+{
+  switch(eType) {
     case QUAD: {
       uint ispt, jspt;
       opp_spts_to_mpts.setup(4,nSpts);
       vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
-        // First, get the i an j ID of the spt
+        // First, get the i and j ID of the spt
         ispt = spt%(nSpts/(order+1));
         jspt = floor(spt/(order+1));
         // Next, get evaluate Lagrange solution basis at corners
@@ -165,7 +188,7 @@ void oper::setupExtrapolateSptsMpts(vector<point> &loc_spts)
       opp_spts_to_mpts.setup(nv+ne*(order+1),nSpts);
       vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
-        // First, get the i an j ID of the spt
+        // First, get the i, j and k ID of the spt
         kspt = spt/((order+1)*(order+1));
         jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
         ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
@@ -215,17 +238,6 @@ matrix<double> oper::setupInterpolateSptsIpts(matrix<double> &loc_ipts)
   matrix<double> opp_interp(nIpts,nSpts);
 
   switch(eType) {
-    case TRI: {
-      for (uint ipt=0; ipt<nIpts; ipt++) {
-        // Location of the current interpolation point
-        point pt = point(loc_ipts[ipt]);
-
-        // Use the orthogonal 2D Dubiner basis for triangular elements
-        for (uint spt=0; spt<nSpts; spt++)
-          opp_interp(ipt,spt) = eval_dubiner_basis_2d(pt,spt,order);
-      }
-      break;
-    }
     case QUAD: {
       vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint ipt=0; ipt<nIpts; ipt++) {
@@ -264,6 +276,19 @@ matrix<double> oper::setupInterpolateSptsIpts(matrix<double> &loc_ipts)
   return opp_interp;
 }
 
+void oper::setupInterpolateSptsQpts(int quadOrder)
+{
+  if (params->nDims == 2)
+   loc_qpts = getLocSpts(QUAD,quadOrder,string("Legendre"));
+  else
+   loc_qpts = getLocSpts(HEX,quadOrder,string("Legendre"));
+
+  matrix<double> quadPoints;
+  for (auto &pt: loc_qpts) quadPoints.insertRow({pt.x,pt.y,pt.z});
+
+  opp_spts_to_qpts = setupInterpolateSptsIpts(quadPoints);
+}
+
 void oper::getBasisValues(point &ipt, vector<double> &weights)
 {
   double loc_ipt[] = {ipt.x, ipt.y, ipt.z};
@@ -288,7 +313,7 @@ void oper::getBasisValues(double* loc_ipt, double* weights)
       vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
       for (uint spt=0; spt<nSpts; spt++) {
         // Structured I,J indices of current solution point
-        uint ispt = spt%(nSpts/(order+1));
+        uint ispt = spt%(order+1);
         uint jspt = floor(spt/(order+1));
         // 3D Tensor-Product Lagrange Interpolation
         weights[spt] =  Lagrange(locSpts1D,loc_ipt[0],ispt) * Lagrange(locSpts1D,loc_ipt[1],jspt);
@@ -510,32 +535,20 @@ void oper::interpolateFluxToPoint(vector<matrix<double>> &F_spts, matrix<double>
   }
 }
 
-void oper::setupGradSpts(vector<point> &loc_spts)
+void oper::setupGradSpts(void)
 {
-  uint nSpts, spt1, spt2, dim;
-  uint ispt1, jspt1, kspt1, ispt2, jspt2, kspt2;
-  nSpts = loc_spts.size();
-
   opp_grad_spts.resize(nDims);
   for (auto& dim:opp_grad_spts) dim.setup(nSpts,nSpts);
 
-  if (eType == TRI) {
-    for (spt1=0; spt1<nSpts; spt1++) {
-      for (spt2=0; spt2<nSpts; spt2++) {
-        opp_grad_spts[0](spt1,spt2) = eval_dr_dubiner_basis_2d(loc_spts[spt1],spt2,order); // double-check the spt vs. spt2 in this
-        opp_grad_spts[1](spt1,spt2) = eval_ds_dubiner_basis_2d(loc_spts[spt1],spt2,order);
-      }
-    }
-  }
-  else if (eType == QUAD) {
+  if (eType == QUAD) {
     vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
-    for (dim=0; dim<nDims; dim++) {
-      for (spt1=0; spt1<nSpts; spt1++) {
-        ispt1 = spt1%(nSpts/(order+1));      // col index - also = to (spt1 - (order+1)*row)
-        jspt1 = floor(spt1/(order+1));       // row index
-        for (spt2=0; spt2<nSpts; spt2++) {
-          ispt2 = spt2%(nSpts/(order+1));
-          jspt2 = floor(spt2/(order+1));
+    for (uint dim=0; dim<nDims; dim++) {
+      for (uint spt1=0; spt1<nSpts; spt1++) {
+        uint ispt1 = spt1%(nSpts/(order+1));      // col index - also = to (spt1 - (order+1)*row)
+        uint jspt1 = floor(spt1/(order+1));       // row index
+        for (uint spt2=0; spt2<nSpts; spt2++) {
+          uint ispt2 = spt2%(nSpts/(order+1));
+          uint jspt2 = floor(spt2/(order+1));
           if (dim==0) {
             opp_grad_spts[dim](spt1,spt2) = dLagrange(loc_spts_1D,loc_spts_1D[ispt1],ispt2) * Lagrange(loc_spts_1D,loc_spts_1D[jspt1],jspt2);
           } else {
@@ -547,15 +560,15 @@ void oper::setupGradSpts(vector<point> &loc_spts)
   }
   else if (eType == HEX) {
     vector<double> loc_spts_1D = getPts1D(params->sptsTypeQuad,order);
-    for (dim=0; dim<nDims; dim++) {
-      for (spt1=0; spt1<nSpts; spt1++) {
-        kspt1 = spt1/((order+1)*(order+1));                         // col index - also = to (spt1 - (order+1)*row)
-        jspt1 = (spt1-(order+1)*(order+1)*kspt1)/(order+1);         // row index
-        ispt1 = spt1 - (order+1)*jspt1 - (order+1)*(order+1)*kspt1; // page index
-        for (spt2=0; spt2<nSpts; spt2++) {
-          kspt2 = spt2/((order+1)*(order+1));                         // col index - also = to (spt1 - (order+1)*row)
-          jspt2 = (spt2-(order+1)*(order+1)*kspt2)/(order+1);         // row index
-          ispt2 = spt2 - (order+1)*jspt2 - (order+1)*(order+1)*kspt2; // page index
+    for (uint dim=0; dim<nDims; dim++) {
+      for (uint spt1=0; spt1<nSpts; spt1++) {
+        uint kspt1 = spt1/((order+1)*(order+1));                         // col index - also = to (spt1 - (order+1)*row)
+        uint jspt1 = (spt1-(order+1)*(order+1)*kspt1)/(order+1);         // row index
+        uint ispt1 = spt1 - (order+1)*jspt1 - (order+1)*(order+1)*kspt1; // page index
+        for (uint spt2=0; spt2<nSpts; spt2++) {
+          uint kspt2 = spt2/((order+1)*(order+1));                         // col index - also = to (spt1 - (order+1)*row)
+          uint jspt2 = (spt2-(order+1)*(order+1)*kspt2)/(order+1);         // row index
+          uint ispt2 = spt2 - (order+1)*jspt2 - (order+1)*(order+1)*kspt2; // page index
           if (dim == 0) {
             opp_grad_spts[dim](spt1,spt2) = dLagrange(loc_spts_1D,loc_spts_1D[ispt1],ispt2) * Lagrange(loc_spts_1D,loc_spts_1D[jspt1],jspt2) * Lagrange(loc_spts_1D,loc_spts_1D[kspt1],kspt2);
           }
@@ -574,14 +587,93 @@ void oper::setupGradSpts(vector<point> &loc_spts)
   }
 }
 
-
-void oper::setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
+void oper::setupExtrapolateFn(void)
 {
-  uint nSpts, nFpts;
-  vector<double> loc(nDims);
-  nSpts = loc_spts.size();
-  nFpts = loc_fpts.size();
+  opp_extrapolateFn.resize(nDims);
+  for (auto &dim:opp_extrapolateFn) {
+    dim.setup(nFpts,nSpts);
+    dim.initializeToZero();
+  }
 
+  if (eType == QUAD) {
+    for(uint spt=0; spt<nSpts; spt++) {
+      for(uint fpt=0; fpt<nFpts; fpt++) {
+        uint iFace = floor(fpt / (order+1));
+
+        double tNorm[2];
+        switch(iFace) {
+          case(0):
+            tNorm[0] = 0;
+            tNorm[1] = -1;
+            break;
+          case(1):
+            tNorm[0] = 1;
+            tNorm[1] = 0;
+            break;
+          case(2):
+            tNorm[0] = 0;
+            tNorm[1] = 1;
+            break;
+          case(3):
+            tNorm[0] = -1;
+            tNorm[1] = 0;
+            break;
+        }
+
+        for (int dim=0; dim<nDims; dim++)
+          opp_extrapolateFn[dim](fpt,spt) = opp_spts_to_fpts(fpt,spt) * tNorm[dim];
+      }
+    }
+  }
+  else if (eType == HEX) {
+    for(uint spt=0; spt<nSpts; spt++) {
+      for(uint fpt=0; fpt<nFpts; fpt++) {
+        uint iFace = floor(fpt / ((order+1)*(order+1)));
+
+        double tNorm[3];
+        switch(iFace) {
+          case 0:
+            tNorm[0] =  0;
+            tNorm[1] =  0;
+            tNorm[2] = -1;
+            break;
+          case 1:
+            tNorm[0] =  0;
+            tNorm[1] =  0;
+            tNorm[2] =  1;
+            break;
+          case 2:
+            tNorm[0] = -1;
+            tNorm[1] =  0;
+            tNorm[2] =  0;
+            break;
+          case 3:
+            tNorm[0] =  1;
+            tNorm[1] =  0;
+            tNorm[2] =  0;
+            break;
+          case 4:
+            tNorm[0] =  0;
+            tNorm[1] = -1;
+            tNorm[2] =  0;
+            break;
+          case 5:
+            tNorm[0] =  0;
+            tNorm[1] =  1;
+            tNorm[2] =  0;
+            break;
+        }
+
+        for (int dim=0; dim<nDims; dim++)
+          opp_extrapolateFn[dim](fpt,spt) = opp_spts_to_fpts(fpt,spt) * tNorm[dim];
+      }
+    }
+  }
+}
+
+
+void oper::setupCorrection(void)
+{
   opp_correction.setup(nSpts,nFpts);
   opp_correction.initializeToZero();
 
@@ -606,7 +698,7 @@ void oper::setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts)
   }
 }
 
-void oper::setupCorrectF(vector<point> &loc_spts)
+void oper::setupCorrectF(void)
 {
   opp_correctF.resize(nDims);
   for (auto &dim:opp_correctF) {
@@ -703,11 +795,7 @@ void oper::setupCorrectGradU(void)
     op.initializeToZero();
   }
 
-  if (eType == TRI) {
-    // Not yet implemented
-  }
-  else if (eType == QUAD) {
-
+  if (eType == QUAD) {
     vector<double> tNorm(nDims);
 
     for(uint fpt=0; fpt<nFpts; fpt++) {
@@ -788,7 +876,7 @@ void oper::setupCorrectGradU(void)
 }
 
 // Setup Vandermonde Matrices
-void oper::setupVandermonde(vector<point> &loc_spts)
+void oper::setupVandermonde(void)
 {
   if (eType == TRI) {
     // Not yet implemented
@@ -922,37 +1010,85 @@ void oper::applySptsMpts(matrix<double> &U_spts, matrix<double> &U_mpts)
   opp_spts_to_mpts.timesMatrix(U_spts,U_mpts);
 }
 
-void oper::applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &tnorm_fpts, matrix<double> &Fn_fpts)
+void oper::applyExtrapolateFn(Array<double,3> &F_spts, matrix<double> &Fn_fpts)
 {
-  opp_spts_to_fpts.timesMatrix(F_spts[0],tempFn);
-  for (uint fpt=0; fpt<nFpts; fpt++)
-    for (uint i=0; i<nFields; i++)
-      Fn_fpts(fpt,i) = tempFn(fpt,i)*tnorm_fpts(fpt,0);
-  
-  for (uint dim=1; dim<nDims; dim++) {
-    opp_spts_to_fpts.timesMatrix(F_spts[dim],tempFn);
-    for (uint fpt=0; fpt<nFpts; fpt++)
-      for (uint i=0; i<nFields; i++)
-        Fn_fpts(fpt,i) += tempFn(fpt,i)*tnorm_fpts(fpt,dim);
+  int m = nFpts;
+  int n = nFields;
+  int k = nSpts;
+
+  auto &C = Fn_fpts(0, 0);
+
+  auto &A = opp_extrapolateFn[0](0,0);
+  auto &B = F_spts(0, 0, 0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#else
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
+
+  for (uint dim = 1; dim < nDims; dim++) {
+    auto &A = opp_extrapolateFn[dim](0,0);
+    auto &B = F_spts(dim, 0, 0);
+#ifdef _OMP
+    omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 1.0, &C, n);
+#else
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 1.0, &C, n);
+#endif
   }
 }
 
-void oper::applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts, vector<double>& dA_fpts)
+void oper::applyExtrapolateFn(Array<double,3> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts, vector<double>& dA_fpts)
 {
-  uint nFpts = norm_fpts.getDim0();
-  matrix<double> tempFn(nFpts,nDims);
+  matrix<double> tempFn(nFpts,nFields);
   tempFn.initializeToZero();
   Fn_fpts.initializeToZero();
 
-  for (uint dim=0; dim<nDims; dim++) {
-    opp_spts_to_fpts.timesMatrix(F_spts[dim],tempFn);
-    for (uint fpt=0; fpt<nFpts; fpt++)
-      for (uint i=0; i<nFields; i++)
-        Fn_fpts(fpt,i) += tempFn(fpt,i)*norm_fpts(fpt,dim)*dA_fpts[fpt];
+  /* Extrapolate physical normal flux */
+
+  int m = nFpts;
+  int n = nFields;
+  int k = nSpts;
+
+  auto &A = opp_spts_to_fpts(0,0);
+
+  auto &B = F_spts(0, 0, 0);
+  auto &C = Fn_fpts(0, 0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#else
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
+
+#pragma omp parallel for collapse(2)
+  for (uint fpt = 0; fpt < nFpts; fpt++)
+    for (uint k = 0; k < nFields; k++)
+      Fn_fpts(fpt,k) *= norm_fpts(fpt,0) * dA_fpts[fpt];
+
+  for (uint dim = 1; dim < nDims; dim++) {
+    auto &B = F_spts(dim, 0, 0);
+    auto &C = tempFn(0, 0);
+#ifdef _OMP
+    omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 0.0, &C, n);
+#else
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 0.0, &C, n);
+#endif
+
+#pragma omp parallel for collapse(2)
+    for (uint fpt = 0; fpt < nFpts; fpt++)
+        for (uint k = 0; k < nFields; k++)
+          Fn_fpts(fpt,k) += tempFn(fpt,k) * norm_fpts(fpt,dim) * dA_fpts[fpt];
   }
 }
 
-matrix<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &F_spts, matrix<double> &dFn_fpts, point refLoc)
+matrix<double> oper::interpolateCorrectedFlux(Array<double,3> &F_spts, matrix<double> &dFn_fpts, point refLoc)
 {
   vector<double> locSpts1D = getPts1D(params->sptsTypeQuad,order);
 
@@ -966,7 +1102,7 @@ matrix<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &F_spts, ma
 
       for (uint dim=0; dim<nDims; dim++)
         for (uint k=0; k<nFields; k++)
-          Fi(dim,k) += F_spts[dim](spt,k) * Lagrange(locSpts1D,refLoc.x,ispt) * Lagrange(locSpts1D,refLoc.y,jspt);
+          Fi(dim,k) += F_spts(dim,spt,k) * Lagrange(locSpts1D,refLoc.x,ispt) * Lagrange(locSpts1D,refLoc.y,jspt);
     }
 
     // Contribution from flux points [Correction function]
@@ -1006,7 +1142,7 @@ matrix<double> oper::interpolateCorrectedFlux(vector<matrix<double>> &F_spts, ma
 
       for (uint dim=0; dim<nDims; dim++)
         for (uint k=0; k<nFields; k++)
-          Fi(dim,k) += F_spts[dim](spt,k) * Lagrange(locSpts1D,refLoc.x,ispt) * Lagrange(locSpts1D,refLoc.y,jspt) * Lagrange(locSpts1D,refLoc.z,kspt);
+          Fi(dim,k) += F_spts(dim,spt,k) * Lagrange(locSpts1D,refLoc.x,ispt) * Lagrange(locSpts1D,refLoc.y,jspt) * Lagrange(locSpts1D,refLoc.z,kspt);
     }
 
     // Contributions from flux points [Correction function]
@@ -1295,6 +1431,10 @@ void oper::setupPMG(int my_order)
   unsigned int nSpts_res_1D = order;
   unsigned int nSpts_pro = nSpts_pro_1D * nSpts_pro_1D;
   unsigned int nSpts_res = nSpts_res_1D * nSpts_res_1D;
+  if (nDims == 3) {
+    nSpts_pro *= nSpts_pro_1D;
+    nSpts_res *= nSpts_res_1D;
+  }
 
   auto loc_spts = getPts1D(sptsType,my_order);
 
@@ -1305,14 +1445,31 @@ void oper::setupPMG(int my_order)
 
   auto loc_spts_pro_1D = getPts1D(sptsType,order+1);
 
-  for (uint spt = 0; spt < nSpts; spt++) {
-    uint ispt = spt % (nSpts/(order+1));
-    uint jspt = floor(spt/(order+1));
-    for (uint pspt = 0; pspt < nSpts_pro; pspt++) {
-      loc[0] = loc_spts_pro_1D[pspt%nSpts_pro_1D];
-      loc[1] = loc_spts_pro_1D[floor(pspt/nSpts_pro_1D)];
+  if (nDims == 2) {
+    for (uint spt = 0; spt < nSpts; spt++) {
+      uint ispt = spt % (order+1);
+      uint jspt = floor(spt/(order+1));
+      for (uint pspt = 0; pspt < nSpts_pro; pspt++) {
+        loc[0] = loc_spts_pro_1D[pspt%nSpts_pro_1D];
+        loc[1] = loc_spts_pro_1D[floor(pspt/nSpts_pro_1D)];
 
-      opp_prolong(pspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt);
+        opp_prolong(pspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt);
+      }
+    }
+  } else {
+    for (uint spt = 0; spt < nSpts; spt++) {
+      uint kspt = spt/((order+1)*(order+1));
+      uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+      uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+      for (uint pspt = 0; pspt < nSpts_pro; pspt++) {
+        uint kppt = pspt/((nSpts_pro_1D)*(nSpts_pro_1D));
+        uint jppt = (pspt-(nSpts_pro_1D)*(nSpts_pro_1D)*kppt)/(nSpts_pro_1D);
+        uint ippt = pspt - (nSpts_pro_1D)*jppt - (nSpts_pro_1D)*(nSpts_pro_1D)*kppt;
+        loc[0] = loc_spts_pro_1D[ippt];
+        loc[1] = loc_spts_pro_1D[jppt];
+        loc[2] = loc_spts_pro_1D[kppt];
+        opp_prolong(pspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt) * Lagrange(loc_spts,loc[2],kspt);
+      }
     }
   }
 
@@ -1322,13 +1479,30 @@ void oper::setupPMG(int my_order)
 
     auto loc_spts_res_1D = getPts1D(sptsType,order-1);
 
-    for (uint spt = 0; spt < nSpts; spt++) {
-      uint ispt = spt % (nSpts/(order+1));
-      uint jspt = floor(spt/(order+1));
-      for (uint rspt = 0; rspt < nSpts_res; rspt++) {
-        loc[0] = loc_spts_res_1D[rspt%nSpts_res_1D];
-        loc[1] = loc_spts_res_1D[floor(rspt/nSpts_res_1D)];
-        opp_restrict(rspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt);
+    if (nDims == 2) {
+      for (uint spt = 0; spt < nSpts; spt++) {
+        uint ispt = spt % (order+1);
+        uint jspt = floor(spt/(order+1));
+        for (uint rspt = 0; rspt < nSpts_res; rspt++) {
+          loc[0] = loc_spts_res_1D[rspt%nSpts_res_1D];
+          loc[1] = loc_spts_res_1D[floor(rspt/nSpts_res_1D)];
+          opp_restrict(rspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt);
+        }
+      }
+    } else {
+      for (uint spt = 0; spt < nSpts; spt++) {
+        uint kspt = spt/((order+1)*(order+1));
+        uint jspt = (spt-(order+1)*(order+1)*kspt)/(order+1);
+        uint ispt = spt - (order+1)*jspt - (order+1)*(order+1)*kspt;
+        for (uint rspt = 0; rspt < nSpts_res; rspt++) {
+          uint krpt = rspt/((nSpts_res_1D)*(nSpts_res_1D));
+          uint jrpt = (rspt-(nSpts_res_1D)*(nSpts_res_1D)*krpt)/(nSpts_res_1D);
+          uint irpt = rspt - (nSpts_res_1D)*jrpt - (nSpts_res_1D)*(nSpts_res_1D)*krpt;
+          loc[0] = loc_spts_res_1D[irpt];
+          loc[1] = loc_spts_res_1D[jrpt];
+          loc[2] = loc_spts_res_1D[krpt];
+          opp_restrict(rspt, spt) = Lagrange(loc_spts,loc[0],ispt) * Lagrange(loc_spts,loc[1],jspt) * Lagrange(loc_spts,loc[2],kspt);
+        }
       }
     }
   }

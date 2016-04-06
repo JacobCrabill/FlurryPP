@@ -143,7 +143,7 @@ public:
   vector<int> rightParams;
   struct faceInfo myInfo;
 
-protected:
+//protected:
   shared_ptr<ele> eL;
   shared_ptr<ele> eR;
 
@@ -153,21 +153,23 @@ protected:
   matrix<double> UC;      //! Common solution at interface [nFpts, nFields]
   vector<matrix<double>> gradUL; //! Solution gradient at left side
   vector<matrix<double>> gradUR; //! Solution gradient at right side
-  //Array<double,3> gradUR; //! Solution gradient at right side
   matrix<double> Vg;      //! Grid velocity at interface
   vector<matrix<double>> FL; //! Flux matrix at each flux point [nFpts, nDims, nFields]
   vector<double*> FnL;    //! Common normal flux for left ele (in ele's memory)  [nFpts, nFields]
-  vector<double*> UcL;    //! Common solution for left ele (in ele's memory)  [nFpts, nFields]
+  Array<double*,2> dUcL;    //! Common solution for left ele (in ele's memory)  [nFpts, nFields]
   matrix<double> Fn;      //! Common numerical flux at interface  [nFpts, nFields]
   matrix<double> normL;   //! Unit outward normal at flux points
   vector<double> dAL;     //! Local face-area equivalent (aka edge Jacobian) at flux points
-  vector<double> detJacL; //! Determinant of transformation Jacobian at flux points
   vector<double*> waveSp; //! Maximum numerical wave speed at flux point (in left ele's memory)
 
   //! Temporary vectors for calculating common flux
-  matrix<double> tempFL, tempFR;
+  double tempFL[3][5], tempFR[3][5];
   vector<double> tempUL;
 
   int isMPI;  //! Flag for MPI faces to separate communication from flux calculation
   int isBnd;  //! Flag for boundary faces for use in LDG routines
+
+  bool isNew = true; //! Flag for initialization (esp. due to unblanking)
+
+  int bcType;
 };

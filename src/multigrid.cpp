@@ -33,6 +33,13 @@
 #include <sstream>
 #include <omp.h>
 
+#ifdef _MKL_BLAS
+#include "mkl_types.h"
+#include "mkl_cblas.h"
+#else
+#include "cblas.h"
+#endif
+
 #include "input.hpp"
 #include "output.hpp"
 #include "solver.hpp"
@@ -44,6 +51,8 @@ void multiGrid::setup(int order, input *params, solver &Solver)
 
   pInputs.assign(order, *params);
   pGrids.resize(order);
+
+  if (params->HMG && params->n_h_levels == 0) params->HMG = 0;
 
   /* H-P Multigrid using Refinement Method */
   if (params->HMG)
@@ -66,7 +75,7 @@ void multiGrid::setup(int order, input *params, solver &Solver)
     {
       if (params->rank == 0) cout << endl << "H-Multigrid: Setting up H = " << H << endl;
 
-      hInputs[H].dataFileName += "_H" + std::to_string(H) + "_";
+      hInputs[H].dataFileName += "_H" + std::to_string((long long)H) + "_";
       hGrids[H] = make_shared<solver>();
       hGeos[H] = make_shared<geo>();
 
@@ -82,24 +91,25 @@ void multiGrid::setup(int order, input *params, solver &Solver)
     fine_grid = make_shared<geo>();
     setup_h_level(coarse_grid, *fine_grid, params->n_h_levels);
     Solver.setup(params, order, &(*fine_grid));
-    Solver.initializeSolution();
+    Solver.initializeSolution(false);
 
     /* Instantiate P-grid solvers using finest mesh */
     for (int P = 0; P < order; P++)
     {
       if (P < params->lowOrder)
       {
-        pGrids[P] = NULL;
+        //pGrids[P] = NULL;
       }
       else
       {
         if (params->rank == 0) cout << endl << "P-Multigrid: Setting up P = " << P << endl;
 
-        pInputs[P].dataFileName += "_P" + std::to_string(P) + "_";
-        pGeos[P] = make_shared<geo>(*fine_grid);
+        pInputs[P].dataFileName += "_P" + std::to_string((long long)P) + "_";
         pGrids[P] = make_shared<solver>();
+        pGeos[P] = make_shared<geo>();
 
-        pGeos[P]->setup_hmg(&pInputs[P], fine_grid->gridID, fine_grid->gridRank, fine_grid->nProcGrid, fine_grid->gridIdList);
+        setup_h_level(coarse_grid, *pGeos[P], params->n_h_levels);
+
         pGrids[P]->setup(&pInputs[P], P, &(*pGeos[P]));
         pGrids[P]->initializeSolution(true);
       }
@@ -113,13 +123,14 @@ void multiGrid::setup(int order, input *params, solver &Solver)
     {
       if (P < params->lowOrder)
       {
-        pGrids[P] = NULL;
+        //pGrids[P] = NULL;
       }
       else
       {
         if (params->rank == 0) cout << endl << "P-Multigrid: Setting up P = " << P << endl;
 
-        pInputs[P].dataFileName += "_P" + std::to_string(P) + "_";
+        pInputs[P].dataFileName += "_P" + std::to_string((long long)P) + "_";
+        pInputs[P].order = P;
         pGrids[P] = make_shared<solver>();
         pGrids[P]->setup(&pInputs[P], P);
         pGrids[P]->initializeSolution(true);
@@ -128,13 +139,8 @@ void multiGrid::setup(int order, input *params, solver &Solver)
 
     if (params->rank == 0) cout << endl << "P-Multigrid: Setting up P = " << params->order << endl;
     Solver.setup(params, params->order);
-    Solver.initializeSolution();
+    Solver.initializeSolution(false);
   }
-
-  /* Still some weird bug in initialization of PMG solvers; this is a
-   * workaround for the moment */
-  cycle(Solver);
-  Solver.initializeSolution();
 }
 
 void multiGrid::setup_h_level(geo &mesh_c, geo &mesh_f, int refine_level)
@@ -144,12 +150,12 @@ void multiGrid::setup_h_level(geo &mesh_c, geo &mesh_f, int refine_level)
   else
     mesh_f = mesh_c;
 
+  int nSplit = 1 << params->nDims;
+  nSplit = std::pow(nSplit, refine_level);
+
   vector<int> epart(0);
 #ifndef _NO_MPI
   if (mesh_c.nproc > 1) {
-    int nSplit = 1 << params->nDims;
-    nSplit = std::pow(nSplit, refine_level);
-
     epart.resize(mesh_f.nEles);
     for (uint e = 0; e < mesh_f.nEles; e++) {
       epart[e] = mesh_c.epart[e/nSplit];
@@ -157,7 +163,7 @@ void multiGrid::setup_h_level(geo &mesh_c, geo &mesh_f, int refine_level)
   }
 #endif
 
-  mesh_f.setup_hmg(params, mesh_c.gridID, mesh_c.gridRank, mesh_c.nProcGrid, mesh_c.gridIdList, epart);
+  mesh_f.setup_hmg(params, mesh_c.gridID, mesh_c.gridRank, mesh_c.nProcGrid, nSplit, mesh_c.gridIdList, epart);
 }
 
 void multiGrid::cycle(solver &Solver)
@@ -173,11 +179,11 @@ void multiGrid::cycle(solver &Solver)
     compute_source_term(*pGrids[P]);
 
     /* Copy initial solution to solution storage */
-#pragma omp parallel for
-    for (uint e = 0; e < pGrids[P]->eles.size(); e++)
-    {
-      pGrids[P]->eles[e]->sol_spts = pGrids[P]->eles[e]->U_spts;
-    }
+#pragma omp parallel for collapse(3)
+    for (uint spt = 0; spt < pGrids[P]->nSpts; spt++)
+      for (uint e = 0; e < pGrids[P]->nEles; e++)
+        for (uint k = 0; k < params->nFields; k++)
+          pGrids[P]->sol_spts(spt, e, k) = pGrids[P]->U_spts(spt, e, k);
 
     /* Update solution on coarse level */
     for (uint step = 0; step < params->smoothSteps; step++)
@@ -190,11 +196,11 @@ void multiGrid::cycle(solver &Solver)
       /* Update residual and add source */
       pGrids[P]->calcResidual(0);
 
-#pragma omp parallel for
-      for (uint e = 0; e < pGrids[P]->eles.size(); e++)
-      {
-        pGrids[P]->eles[e]->divF_spts[0] += pGrids[P]->eles[e]->src_spts;
-      }
+#pragma omp parallel for collapse(3)
+      for (uint spt = 0; spt < pGrids[P]->nSpts; spt++)
+        for (uint e = 0; e < pGrids[P]->nEles; e++)
+          for (uint k = 0; k < params->nFields; k++)
+            pGrids[P]->divF_spts[0](spt,e,k) += pGrids[P]->src_spts(spt,e,k);
 
       if (P-1 >= (int) params->lowOrder)
       {
@@ -215,11 +221,11 @@ void multiGrid::cycle(solver &Solver)
       compute_source_term(*hGrids[H]);
 
       /* Copy initial solution to solution storage */
-  #pragma omp parallel for
-      for (uint e = 0; e < hGrids[H]->eles.size(); e++)
-      {
-        hGrids[H]->eles[e]->sol_spts = hGrids[H]->eles[e]->U_spts;
-      }
+#pragma omp parallel for collapse(3)
+      for (uint spt = 0; spt < hGrids[H]->nSpts; spt++)
+        for (uint e = 0; e < hGrids[H]->nEles; e++)
+          for (uint k = 0; k < params->nFields; k++)
+            hGrids[H]->sol_spts(spt, e, k) = hGrids[H]->U_spts(spt, e, k);
 
       /* Update solution on coarse level */
       for (uint step = 0; step < params->smoothSteps; step++)
@@ -232,11 +238,11 @@ void multiGrid::cycle(solver &Solver)
         /* Update residual and add source */
         hGrids[H]->calcResidual(0);
 
-#pragma omp parallel for
-        for (uint e = 0; e < hGrids[H]->eles.size(); e++)
-        {
-          hGrids[H]->eles[e]->divF_spts[0] += hGrids[H]->eles[e]->src_spts;
-        }
+#pragma omp parallel for collapse(3)
+      for (uint spt = 0; spt < hGrids[H]->nSpts; spt++)
+        for (uint e = 0; e < hGrids[H]->nEles; e++)
+          for (uint k = 0; k < params->nFields; k++)
+            hGrids[H]->divF_spts[0](spt, e, k) += hGrids[H]->src_spts(spt, e, k);
 
         /* Restrict to next coarse grid */
         restrict_hmg(*hGrids[H], *hGrids[H+1], H+1);
@@ -253,11 +259,14 @@ void multiGrid::cycle(solver &Solver)
       }
 
       /* Generate error */
-  #pragma omp parallel for
-      for (int e = 0; e < hGrids[H]->eles.size(); e++)
-      {
-        hGrids[H]->eles[e]->corr_spts  = hGrids[H]->eles[e]->U_spts;
-        hGrids[H]->eles[e]->corr_spts -= hGrids[H]->eles[e]->sol_spts;
+#pragma omp parallel for collapse(3)
+      for (uint spt = 0; spt < hGrids[H]->nSpts; spt++) {
+        for (uint e = 0; e < hGrids[H]->nEles; e++) {
+          for (uint k = 0; k < params->nFields; k++) {
+            hGrids[H]->corr_spts(spt, e, k)  = hGrids[H]->U_spts(spt, e, k);
+            hGrids[H]->corr_spts(spt, e, k) -= hGrids[H]->sol_spts(spt, e, k);
+          }
+        }
       }
 
       /* Prolong error and add to fine grid solution */
@@ -282,11 +291,14 @@ void multiGrid::cycle(solver &Solver)
     }
 
     /* Generate error */
-#pragma omp parallel for
-    for (int e = 0; e < pGrids[P]->eles.size(); e++)
-    {
-      pGrids[P]->eles[e]->corr_spts  = pGrids[P]->eles[e]->U_spts;
-      pGrids[P]->eles[e]->corr_spts -= pGrids[P]->eles[e]->sol_spts;
+#pragma omp parallel for collapse(3)
+    for (uint spt = 0; spt < pGrids[P]->nSpts; spt++) {
+      for (uint e = 0; e < pGrids[P]->nEles; e++) {
+        for (uint k = 0; k < params->nFields; k++) {
+          pGrids[P]->corr_spts(spt, e, k)  = pGrids[P]->U_spts(spt, e, k);
+          pGrids[P]->corr_spts(spt, e, k) -= pGrids[P]->sol_spts(spt, e, k);
+        }
+      }
     }
 
     /* Prolong error and add to fine grid solution */
@@ -305,74 +317,103 @@ void multiGrid::restrict_pmg(solver &grid_f, solver &grid_c)
   if (grid_f.order - grid_c.order > 1)
     FatalError("Cannot restrict more than 1 order currently!");
 
-#pragma omp parallel for
-  for (uint e = 0; e < grid_f.eles.size(); e++)
-  {
-    auto &e_f = *grid_f.eles[e];
-    auto &e_c = *grid_c.eles[e];
-    auto &opp_res = grid_f.opers[e_f.eType][e_f.order].opp_restrict;
+  int m = grid_c.nSpts;
+  int k = grid_f.nSpts;
+  int n = grid_c.nEles * grid_c.nFields;
 
-    /* Restrict solution */
-    opp_res.timesMatrix(e_f.U_spts, e_c.U_spts);
+  auto &opp_res = grid_f.opers[grid_f.order].opp_restrict(0,0);
 
-    /* Restrict residual */
-    opp_res.timesMatrix(e_f.divF_spts[0], e_c.divF_spts[0]);
-  }
+  auto &UF = grid_f.U_spts(0,0,0);
+  auto &UC = grid_c.U_spts(0,0,0);
+
+  auto &dfF = grid_f.divF_spts[0](0,0,0);
+  auto &dfC = grid_c.divF_spts[0](0,0,0);
+
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &opp_res, k, &UF, n, 0.0, &UC, n);
+
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &opp_res, k, &dfF, n, 0.0, &dfC, n);
+#else
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &opp_res, k, &UF, n, 0.0, &UC, n);
+
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &opp_res, k, &dfF, n, 0.0, &dfC, n);
+#endif
 }
 
 void multiGrid::prolong_err(solver &grid_c, solver &grid_f)
 {
-#pragma omp parallel for
-  for (uint e = 0; e < grid_c.eles.size(); e++)
-  {
-    auto &e_c = *grid_c.eles[e];
-    auto &e_f = *grid_f.eles[e];
-    auto &opp_pro = grid_c.opers[e_c.eType][e_c.order].opp_prolong;
-    opp_pro.timesMatrixPlus(e_c.corr_spts, e_f.U_spts);
-  }
+  int m = grid_f.nSpts;
+  int k = grid_c.nSpts;
+  int n = grid_c.nEles * grid_c.nFields;
+
+  auto &opp_pro = grid_c.opers[grid_c.order].opp_prolong(0,0);
+  auto &corr = grid_c.corr_spts(0,0,0);
+  auto &U = grid_f.U_spts(0,0,0);
+
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &opp_pro, k, &corr, n, 1.0, &U, n);
+#else
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+              1.0, &opp_pro, k, &corr, n, 1.0, &U, n);
+#endif
 }
 
 void multiGrid::compute_source_term(solver &grid)
 {
   /* Copy restricted fine grid residual to source term */
-#pragma omp parallel for
-  for (uint e = 0; e < grid.eles.size(); e++)
-  {
-    grid.eles[e]->src_spts = grid.eles[e]->divF_spts[0];
-  }
+#pragma omp parallel for collapse(3)
+  for (uint spt = 0; spt < grid.nSpts; spt++)
+    for (uint e = 0; e < grid.nEles; e++)
+      for (uint k = 0; k < params->nFields; k++)
+        grid.src_spts(spt,e,k) = grid.divF_spts[0](spt,e,k);
 
   /* Update residual on current coarse grid */
   grid.calcResidual(0);
 
   /* Subtract to generate source term */
-#pragma omp parallel for
-  for (uint e = 0; e < grid.eles.size(); e++)
-  {
-    grid.eles[e]->src_spts -= grid.eles[e]->divF_spts[0];
-  }
+#pragma omp parallel for collapse(3)
+  for (uint spt = 0; spt < grid.nSpts; spt++)
+    for (uint e = 0; e < grid.nEles; e++)
+      for (uint k = 0; k < params->nFields; k++)
+        grid.src_spts(spt,e,k) -= grid.divF_spts[0](spt,e,k);
 }
 
 void multiGrid::restrict_hmg(solver &grid_f, solver &grid_c, uint H)
 {
   int nSplit = 1 << params->nDims;
 
-#pragma omp parallel for
-  for (uint e = 0; e < grid_c.eles.size(); e++)
-  {
-    auto &e_c = *grid_c.eles[e];
-    e_c.U_spts.initializeToZero();
-    e_c.divF_spts[0].initializeToZero();
+  // what to do...? Take avg (Josh's simple method), or do Galerkin projection?
+  // For the moment: take avg value [Only remotely reasonable for P = 0]
 
-    for (uint j = 0; j < nSplit; j++)
-    {
-      // what to do...? Take avg (Josh's simple method), or do Galerkin projection?
-      // For the moment: take avg value [Only remotely reasonable for P = 0]
-      auto &e_f = *grid_f.eles[e*nSplit+j];
-      e_c.U_spts += e_f.U_spts;
-      e_c.divF_spts[0] += e_f.divF_spts[0];
+#pragma omp parallel for
+  for (uint spt = 0; spt < grid_c.nSpts; spt++) {
+    for (uint ec = 0; ec < grid_c.eles.size(); ec++) {
+
+      for (uint k = 0; k < grid_c.nFields; k++) {
+        grid_c.U_spts(spt,ec,k) = 0;
+        grid_c.divF_spts[0](spt,ec,k) = 0;
+      }
+
+      double vol = 0;
+      for (uint j = 0; j < nSplit; j++) {
+        uint ef = ec*nSplit+j;
+        vol += grid_f.detJac_spts(spt,ef);
+        for (uint k = 0; k < grid_c.nFields; k++) {
+          grid_c.U_spts(spt,ec,k) += grid_f.U_spts(spt,ef,k) * grid_f.detJac_spts(spt,ef);
+          grid_c.divF_spts[0](spt,ec,k) += grid_f.divF_spts[0](spt,ef,k) * grid_f.detJac_spts(spt,ef); // / nSplit <-- Jameson doesn't average divF, he sums
+        }
+      }
+
+      for (uint k = 0; k < grid_c.nFields; k++) {
+        grid_c.U_spts(spt,ec,k) /= vol;
+        grid_c.divF_spts[0](spt,ec,k) /= vol;
+      }
     }
-    e_c.U_spts /= nSplit;
-    e_c.divF_spts[0] /= nSplit;
   }
 }
 
@@ -380,13 +421,16 @@ void multiGrid::prolong_hmg(solver &grid_c, solver &grid_f, uint H)
 {
   int nSplit = 1 << params->nDims;
 
-#pragma omp parallel for
-  for (uint e = 0; e < grid_f.eles.size(); e++)
-  {
-    auto &e_f = *grid_f.eles[e];
-    auto &e_c = *grid_c.eles[e/nSplit];
-    // what to do...? Copy value (Josh's simple method), or do Galerkin projection?
-    // For the moment: simple method [Only remotely reasonable for P = 0]
-    e_f.U_spts += e_c.corr_spts;
+  // what to do...? Copy value (Josh's simple method), or do Galerkin projection?
+  // For the moment: simple method [Only remotely reasonable for P = 0]
+
+#pragma omp parallel for collapse(2)
+  for (uint spt = 0; spt < grid_c.nSpts; spt++) {
+    for (uint ef = 0; ef < grid_f.eles.size(); ef++) {
+      uint ec = ef / nSplit;
+      for (uint k = 0; k < params->nFields; k++) {
+        grid_f.U_spts(spt,ef,k) += grid_c.corr_spts(spt,ec,k);
+      }
+    }
   }
 }

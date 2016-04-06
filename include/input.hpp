@@ -153,6 +153,7 @@ public:
 
   /* --- Moving-Grid Parameters --- */
   double moveAx, moveAy, moveFx, moveFy;
+  double moveAr, moveFr;
 
   /* --- Output Parameters --- */
 
@@ -164,6 +165,8 @@ public:
   int quadOrder;
   int plotFreq;
   int plotType;
+  int plotSurfaces;
+  int plotPolarCoords;
 
   bool calcEntropySensor;
 
@@ -182,6 +185,14 @@ public:
   double pBound;
 
   double TWall;
+  double MachWall;               //! For moving-wall BC
+  double nxWall, nyWall, nzWall; //! For moving-wall BC
+  double uWall, vWall, wWall;    //! For moving-wall BC
+
+  double oneOverS;  //! Precompute for characteristic boundary condition
+
+  double vortexAngle; //! Angle for vortex propagation (icType==2)
+  double vortexXmin, vortexXmax, vortexYmin, vortexYmax;
 
   // Viscous Boundary Conditions / Initial Conditions
   double nxBound, nyBound, nzBound;

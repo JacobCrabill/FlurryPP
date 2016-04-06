@@ -56,6 +56,13 @@ int main(int argc, char *argv[]) {
   params.rank = rank;
   params.nproc = nproc;
 
+#ifdef _OMP
+  /* This will work, but appears to operate much less efficiently than setting
+   * OMP_NUM_THREADS = # manually before run */
+//  int nThreads = omp_get_num_threads();
+//  omp_set_num_threads(nThreads / mpi_nproc);
+#endif
+
   if (rank == 0) {
     cout << endl;
     cout << R"(  ========================================================  )" << endl;
@@ -121,7 +128,8 @@ int main(int argc, char *argv[]) {
   double maxTime = params.maxTime;
   int initIter = params.initIter;
   int iterMax = params.iterMax;
-  int iter = initIter;
+  int &iter = params.iter;
+  iter = initIter;
 
   /* --- Calculation Loop --- */
   while (params.iter < iterMax and params.time < maxTime) {
@@ -148,4 +156,6 @@ int main(int argc, char *argv[]) {
 #ifndef _NO_MPI
  MPI_Finalize();
 #endif
+
+ return 0;
 }

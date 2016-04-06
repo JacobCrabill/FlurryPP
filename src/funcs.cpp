@@ -152,13 +152,7 @@ void shape_quad(const point &in_rs, double* out_shape, int nNodes)
 {
   double xi  = in_rs.x;
   double eta = in_rs.y;
-  if (nNodes == 4) {
-      out_shape[0] = 0.25*(1-xi)*(1-eta);
-      out_shape[1] = 0.25*(1+xi)*(1-eta);
-      out_shape[2] = 0.25*(1+xi)*(1+eta);
-      out_shape[3] = 0.25*(1-xi)*(1+eta);
-  }
-  else if (nNodes == 8) {
+  if (nNodes == 8) {
       out_shape[0] = -0.25*(1-xi)*(1-eta)*(1+eta+xi);
       out_shape[1] = -0.25*(1+xi)*(1-eta)*(1+eta-xi);
       out_shape[2] = -0.25*(1+xi)*(1+eta)*(1-eta-xi);
@@ -267,39 +261,33 @@ void shape_hex(const point &in_rst, double* out_shape, int nNodes)
 
 void dshape_quad(const point &in_rs, matrix<double> &out_dshape, int nNodes)
 {
+  out_dshape.setup(nNodes,2);
+  dshape_quad(in_rs, &out_dshape(0,0), nNodes);
+}
+
+void dshape_quad(const point &in_rs, double* out_dshape, int nNodes)
+{
   double xi  = in_rs.x;
   double eta = in_rs.y;
-  out_dshape.setup(nNodes,2);
 
-  if (nNodes == 4) {
-    out_dshape(0,0) = -0.25*(1-eta);
-    out_dshape(1,0) =  0.25*(1-eta);
-    out_dshape(2,0) =  0.25*(1+eta);
-    out_dshape(3,0) = -0.25*(1+eta);
+  if (nNodes == 8) {
+    out_dshape[0*2+0] = -0.25*(-1+eta)*(2*xi+eta);
+    out_dshape[1*2+0] =  0.25*(-1+eta)*(eta - 2*xi);
+    out_dshape[2*2+0] =  0.25*( 1+eta)*(2*xi+eta);
+    out_dshape[3*2+0] = -0.25*( 1+eta)*(eta-2*xi);
+    out_dshape[4*2+0] =    xi*(-1+eta);
+    out_dshape[5*2+0] = -0.5 *( 1+eta)*(-1+eta);
+    out_dshape[6*2+0] =   -xi*( 1+eta);
+    out_dshape[7*2+0] =  0.5 *( 1+eta)*(-1+eta);
 
-    out_dshape(0,1) = -0.25*(1-xi);
-    out_dshape(1,1) = -0.25*(1+xi);
-    out_dshape(2,1) =  0.25*(1+xi);
-    out_dshape(3,1) =  0.25*(1-xi);
-  }
-  else if (nNodes == 8) {
-    out_dshape(0,0) = -0.25*(-1+eta)*(2*xi+eta);
-    out_dshape(1,0) =  0.25*(-1+eta)*(eta - 2*xi);
-    out_dshape(2,0) =  0.25*( 1+eta)*(2*xi+eta);
-    out_dshape(3,0) = -0.25*( 1+eta)*(eta-2*xi);
-    out_dshape(4,0) =    xi*(-1+eta);
-    out_dshape(5,0) = -0.5 *( 1+eta)*(-1+eta);
-    out_dshape(6,0) =   -xi*( 1+eta);
-    out_dshape(7,0) =  0.5 *( 1+eta)*(-1+eta);
-
-    out_dshape(0,1) = -0.25*(-1+xi)*(2*eta+xi);
-    out_dshape(1,1) =  0.25*( 1+xi)*(2*eta - xi);
-    out_dshape(2,1) =  0.25*( 1+xi)*(2*eta+xi);
-    out_dshape(3,1) = -0.25*(-1+xi)*(2*eta-xi);
-    out_dshape(4,1) =  0.5 *( 1+xi)*(-1+xi);
-    out_dshape(5,1) =  -eta*( 1+xi);
-    out_dshape(6,1) = -0.5 *( 1+xi)*(-1+xi);
-    out_dshape(7,1) =   eta*(-1+xi);
+    out_dshape[0*2+1] = -0.25*(-1+xi)*(2*eta+xi);
+    out_dshape[1*2+1] =  0.25*( 1+xi)*(2*eta - xi);
+    out_dshape[2*2+1] =  0.25*( 1+xi)*(2*eta+xi);
+    out_dshape[3*2+1] = -0.25*(-1+xi)*(2*eta-xi);
+    out_dshape[4*2+1] =  0.5 *( 1+xi)*(-1+xi);
+    out_dshape[5*2+1] =  -eta*( 1+xi);
+    out_dshape[6*2+1] = -0.5 *( 1+xi)*(-1+xi);
+    out_dshape[7*2+1] =   eta*(-1+xi);
   }
   else {
     int nSide = sqrt(nNodes);
@@ -322,79 +310,83 @@ void dshape_quad(const point &in_rs, matrix<double> &out_dshape, int nNodes)
     for (int i = 0; i < nLevels; i++) {
       // Corners
       int i2 = (nSide-1) - i;
-      out_dshape(nPts+0,0) = dLagrange(xlist, xi, i)  * Lagrange(xlist, eta, i);
-      out_dshape(nPts+1,0) = dLagrange(xlist, xi, i2) * Lagrange(xlist, eta, i);
-      out_dshape(nPts+2,0) = dLagrange(xlist, xi, i2) * Lagrange(xlist, eta, i2);
-      out_dshape(nPts+3,0) = dLagrange(xlist, xi, i)  * Lagrange(xlist, eta, i2);
+      out_dshape[2*(nPts+0)+0] = dLagrange(xlist, xi, i)  * Lagrange(xlist, eta, i);
+      out_dshape[2*(nPts+1)+0] = dLagrange(xlist, xi, i2) * Lagrange(xlist, eta, i);
+      out_dshape[2*(nPts+2)+0] = dLagrange(xlist, xi, i2) * Lagrange(xlist, eta, i2);
+      out_dshape[2*(nPts+3)+0] = dLagrange(xlist, xi, i)  * Lagrange(xlist, eta, i2);
 
-      out_dshape(nPts+0,1) = Lagrange(xlist, xi, i)  * dLagrange(xlist, eta, i);
-      out_dshape(nPts+1,1) = Lagrange(xlist, xi, i2) * dLagrange(xlist, eta, i);
-      out_dshape(nPts+2,1) = Lagrange(xlist, xi, i2) * dLagrange(xlist, eta, i2);
-      out_dshape(nPts+3,1) = Lagrange(xlist, xi, i)  * dLagrange(xlist, eta, i2);
+      out_dshape[2*(nPts+0)+1] = Lagrange(xlist, xi, i)  * dLagrange(xlist, eta, i);
+      out_dshape[2*(nPts+1)+1] = Lagrange(xlist, xi, i2) * dLagrange(xlist, eta, i);
+      out_dshape[2*(nPts+2)+1] = Lagrange(xlist, xi, i2) * dLagrange(xlist, eta, i2);
+      out_dshape[2*(nPts+3)+1] = Lagrange(xlist, xi, i)  * dLagrange(xlist, eta, i2);
       nPts += 4;
 
       // Edges
       int nSide2 = nSide - 2 * (i+1);
       for (int j = 0; j < nSide2; j++) {
-        out_dshape(nPts+0*nSide2+j,0) = dLagrange(xlist, xi, i+1+j)  * Lagrange(xlist, eta, i);
-        out_dshape(nPts+1*nSide2+j,0) = dLagrange(xlist, xi, i2)   * Lagrange(xlist, eta, i+1+j);
-        out_dshape(nPts+2*nSide2+j,0) = dLagrange(xlist, xi, i2-1-j) * Lagrange(xlist, eta, i2);
-        out_dshape(nPts+3*nSide2+j,0) = dLagrange(xlist, xi, i)    * Lagrange(xlist, eta, i2-1-j);
+        out_dshape[2*(nPts+0*nSide2+j)] = dLagrange(xlist, xi, i+1+j)  * Lagrange(xlist, eta, i);
+        out_dshape[2*(nPts+1*nSide2+j)] = dLagrange(xlist, xi, i2)   * Lagrange(xlist, eta, i+1+j);
+        out_dshape[2*(nPts+2*nSide2+j)] = dLagrange(xlist, xi, i2-1-j) * Lagrange(xlist, eta, i2);
+        out_dshape[2*(nPts+3*nSide2+j)] = dLagrange(xlist, xi, i)    * Lagrange(xlist, eta, i2-1-j);
 
-        out_dshape(nPts+0*nSide2+j,1) = Lagrange(xlist, xi, i+1+j)  * dLagrange(xlist, eta, i);
-        out_dshape(nPts+1*nSide2+j,1) = Lagrange(xlist, xi, i2)   * dLagrange(xlist, eta, i+1+j);
-        out_dshape(nPts+2*nSide2+j,1) = Lagrange(xlist, xi, i2-1-j) * dLagrange(xlist, eta, i2);
-        out_dshape(nPts+3*nSide2+j,1) = Lagrange(xlist, xi, i)    * dLagrange(xlist, eta, i2-1-j);
+        out_dshape[2*(nPts+0*nSide2+j)+1] = Lagrange(xlist, xi, i+1+j)  * dLagrange(xlist, eta, i);
+        out_dshape[2*(nPts+1*nSide2+j)+1] = Lagrange(xlist, xi, i2)   * dLagrange(xlist, eta, i+1+j);
+        out_dshape[2*(nPts+2*nSide2+j)+1] = Lagrange(xlist, xi, i2-1-j) * dLagrange(xlist, eta, i2);
+        out_dshape[2*(nPts+3*nSide2+j)+1] = Lagrange(xlist, xi, i)    * dLagrange(xlist, eta, i2-1-j);
       }
       nPts += 4*nSide2;
     }
 
     // Center node for even-ordered Lagrange quads (odd value of nSide)
     if (isOdd) {
-      out_dshape(nNodes-1,0) = dLagrange(xlist, xi, nSide/2) * Lagrange(xlist, eta, nSide/2);
-      out_dshape(nNodes-1,1) = Lagrange(xlist, xi, nSide/2) * dLagrange(xlist, eta, nSide/2);
+      out_dshape[2*(nNodes-1)+0] = dLagrange(xlist, xi, nSide/2) * Lagrange(xlist, eta, nSide/2);
+      out_dshape[2*(nNodes-1)+1] = Lagrange(xlist, xi, nSide/2) * dLagrange(xlist, eta, nSide/2);
     }
   }
 }
 
 void dshape_hex(const point &in_rst, matrix<double> &out_dshape, int nNodes)
 {
+  out_dshape.setup(nNodes,3);
+  dshape_hex(in_rst, &out_dshape(0,0), nNodes);
+}
+
+void dshape_hex(const point &in_rst, double* out_dshape, int nNodes)
+{
   double xi  = in_rst.x;
   double eta = in_rst.y;
   double mu = in_rst.z;
-  out_dshape.setup(nNodes,3);
-
   switch(nNodes) {
     case 8:
-      out_dshape(0,0) = -0.125*(1-eta)*(1-mu);
-      out_dshape(1,0) =  0.125*(1-eta)*(1-mu);
-      out_dshape(2,0) =  0.125*(1+eta)*(1-mu);
-      out_dshape(3,0) = -0.125*(1+eta)*(1-mu);
+      out_dshape[3*0+0] = -0.125*(1-eta)*(1-mu);
+      out_dshape[3*1+0] =  0.125*(1-eta)*(1-mu);
+      out_dshape[3*2+0] =  0.125*(1+eta)*(1-mu);
+      out_dshape[3*3+0] = -0.125*(1+eta)*(1-mu);
 
-      out_dshape(4,0) = -0.125*(1-eta)*(1+mu);
-      out_dshape(5,0) =  0.125*(1-eta)*(1+mu);
-      out_dshape(6,0) =  0.125*(1+eta)*(1+mu);
-      out_dshape(7,0) = -0.125*(1+eta)*(1+mu);
+      out_dshape[3*4+0] = -0.125*(1-eta)*(1+mu);
+      out_dshape[3*5+0] =  0.125*(1-eta)*(1+mu);
+      out_dshape[3*6+0] =  0.125*(1+eta)*(1+mu);
+      out_dshape[3*7+0] = -0.125*(1+eta)*(1+mu);
 
-      out_dshape(0,1) = -0.125*(1-xi)*(1-mu);
-      out_dshape(1,1) = -0.125*(1+xi)*(1-mu);
-      out_dshape(2,1) =  0.125*(1+xi)*(1-mu);
-      out_dshape(3,1) =  0.125*(1-xi)*(1-mu);
+      out_dshape[3*0+1] = -0.125*(1-xi)*(1-mu);
+      out_dshape[3*1+1] = -0.125*(1+xi)*(1-mu);
+      out_dshape[3*2+1] =  0.125*(1+xi)*(1-mu);
+      out_dshape[3*3+1] =  0.125*(1-xi)*(1-mu);
 
-      out_dshape(4,1) = -0.125*(1-xi)*(1+mu);
-      out_dshape(5,1) = -0.125*(1+xi)*(1+mu);
-      out_dshape(6,1) =  0.125*(1+xi)*(1+mu);
-      out_dshape(7,1) =  0.125*(1-xi)*(1+mu);
+      out_dshape[3*4+1] = -0.125*(1-xi)*(1+mu);
+      out_dshape[3*5+1] = -0.125*(1+xi)*(1+mu);
+      out_dshape[3*6+1] =  0.125*(1+xi)*(1+mu);
+      out_dshape[3*7+1] =  0.125*(1-xi)*(1+mu);
 
-      out_dshape(0,2) = -0.125*(1-xi)*(1-eta);
-      out_dshape(1,2) = -0.125*(1+xi)*(1-eta);
-      out_dshape(2,2) = -0.125*(1+xi)*(1+eta);
-      out_dshape(3,2) = -0.125*(1-xi)*(1+eta);
+      out_dshape[3*0+2] = -0.125*(1-xi)*(1-eta);
+      out_dshape[3*1+2] = -0.125*(1+xi)*(1-eta);
+      out_dshape[3*2+2] = -0.125*(1+xi)*(1+eta);
+      out_dshape[3*3+2] = -0.125*(1-xi)*(1+eta);
 
-      out_dshape(4,2) =  0.125*(1-xi)*(1-eta);
-      out_dshape(5,2) =  0.125*(1+xi)*(1-eta);
-      out_dshape(6,2) =  0.125*(1+xi)*(1+eta);
-      out_dshape(7,2) =  0.125*(1-xi)*(1+eta);
+      out_dshape[3*4+2] =  0.125*(1-xi)*(1-eta);
+      out_dshape[3*5+2] =  0.125*(1+xi)*(1-eta);
+      out_dshape[3*6+2] =  0.125*(1+xi)*(1+eta);
+      out_dshape[3*7+2] =  0.125*(1-xi)*(1+eta);
       break;
     case 20: {
       double XI[8]  = {-1,1,1,-1,-1,1,1,-1};
@@ -402,25 +394,25 @@ void dshape_hex(const point &in_rst, matrix<double> &out_dshape, int nNodes)
       double MU[8]  = {-1,-1,-1,-1,1,1,1,1};
       // Corner Nodes
       for (int i=0; i<8; i++) {
-        out_dshape(i,0) = .125*XI[i] *(1+eta*ETA[i])*(1 + mu*MU[i])*(2*xi*XI[i] +   eta*ETA[i] +   mu*MU[i]-1);
-        out_dshape(i,1) = .125*ETA[i]*(1 + xi*XI[i])*(1 + mu*MU[i])*(  xi*XI[i] + 2*eta*ETA[i] +   mu*MU[i]-1);
-        out_dshape(i,2) = .125*MU[i] *(1 + xi*XI[i])*(1+eta*ETA[i])*(  xi*XI[i] +   eta*ETA[i] + 2*mu*MU[i]-1);
+        out_dshape[3*i+0] = .125*XI[i] *(1+eta*ETA[i])*(1 + mu*MU[i])*(2*xi*XI[i] +   eta*ETA[i] +   mu*MU[i]-1);
+        out_dshape[3*i+1] = .125*ETA[i]*(1 + xi*XI[i])*(1 + mu*MU[i])*(  xi*XI[i] + 2*eta*ETA[i] +   mu*MU[i]-1);
+        out_dshape[3*i+2] = .125*MU[i] *(1 + xi*XI[i])*(1+eta*ETA[i])*(  xi*XI[i] +   eta*ETA[i] + 2*mu*MU[i]-1);
       }
       // Edge Nodes, xi = 0
-      out_dshape( 8,0) = -.5*xi*(1-eta)*(1-mu);  out_dshape( 8,1) = -.25*(1-xi*xi)*(1-mu);  out_dshape( 8,2) = -.25*(1-xi*xi)*(1-eta);
-      out_dshape(10,0) = -.5*xi*(1+eta)*(1-mu);  out_dshape(10,1) =  .25*(1-xi*xi)*(1-mu);  out_dshape(10,2) = -.25*(1-xi*xi)*(1+eta);
-      out_dshape(16,0) = -.5*xi*(1-eta)*(1+mu);  out_dshape(16,1) = -.25*(1-xi*xi)*(1+mu);  out_dshape(16,2) =  .25*(1-xi*xi)*(1-eta);
-      out_dshape(18,0) = -.5*xi*(1+eta)*(1+mu);  out_dshape(18,1) =  .25*(1-xi*xi)*(1+mu);  out_dshape(18,2) =  .25*(1-xi*xi)*(1+eta);
+      out_dshape[ 3*8+0] = -.5*xi*(1-eta)*(1-mu);  out_dshape[ 3*8+1] = -.25*(1-xi*xi)*(1-mu);  out_dshape[ 3*8+2] = -.25*(1-xi*xi)*(1-eta);
+      out_dshape[3*10+0] = -.5*xi*(1+eta)*(1-mu);  out_dshape[3*10+1] =  .25*(1-xi*xi)*(1-mu);  out_dshape[3*10+2] = -.25*(1-xi*xi)*(1+eta);
+      out_dshape[3*16+0] = -.5*xi*(1-eta)*(1+mu);  out_dshape[3*16+1] = -.25*(1-xi*xi)*(1+mu);  out_dshape[3*16+2] =  .25*(1-xi*xi)*(1-eta);
+      out_dshape[3*18+0] = -.5*xi*(1+eta)*(1+mu);  out_dshape[3*18+1] =  .25*(1-xi*xi)*(1+mu);  out_dshape[3*18+2] =  .25*(1-xi*xi)*(1+eta);
       // Edge Nodes, eta = 0
-      out_dshape( 9,1) = -.5*eta*(1+xi)*(1-mu);  out_dshape( 9,0) =  .25*(1-eta*eta)*(1-mu);  out_dshape( 9,2) = -.25*(1-eta*eta)*(1+xi);
-      out_dshape(11,1) = -.5*eta*(1-xi)*(1-mu);  out_dshape(11,0) = -.25*(1-eta*eta)*(1-mu);  out_dshape(11,2) = -.25*(1-eta*eta)*(1-xi);
-      out_dshape(17,1) = -.5*eta*(1+xi)*(1+mu);  out_dshape(17,0) =  .25*(1-eta*eta)*(1+mu);  out_dshape(17,2) =  .25*(1-eta*eta)*(1+xi);
-      out_dshape(19,1) = -.5*eta*(1-xi)*(1+mu);  out_dshape(19,0) = -.25*(1-eta*eta)*(1+mu);  out_dshape(19,2) =  .25*(1-eta*eta)*(1-xi);
+      out_dshape[ 3*9+1] = -.5*eta*(1+xi)*(1-mu);  out_dshape[ 3*9+0] =  .25*(1-eta*eta)*(1-mu);  out_dshape[ 3*9+2] = -.25*(1-eta*eta)*(1+xi);
+      out_dshape[3*11+1] = -.5*eta*(1-xi)*(1-mu);  out_dshape[3*11+0] = -.25*(1-eta*eta)*(1-mu);  out_dshape[3*11+2] = -.25*(1-eta*eta)*(1-xi);
+      out_dshape[3*17+1] = -.5*eta*(1+xi)*(1+mu);  out_dshape[3*17+0] =  .25*(1-eta*eta)*(1+mu);  out_dshape[3*17+2] =  .25*(1-eta*eta)*(1+xi);
+      out_dshape[3*19+1] = -.5*eta*(1-xi)*(1+mu);  out_dshape[3*19+0] = -.25*(1-eta*eta)*(1+mu);  out_dshape[3*19+2] =  .25*(1-eta*eta)*(1-xi);
       // Edge Nodes, mu = 0;
-      out_dshape(12,2) = -.5*mu*(1-xi)*(1-eta);  out_dshape(12,0) = -.25*(1-mu*mu)*(1-eta);  out_dshape(12,1) = -.25*(1-mu*mu)*(1-xi);
-      out_dshape(13,2) = -.5*mu*(1+xi)*(1-eta);  out_dshape(13,0) =  .25*(1-mu*mu)*(1-eta);  out_dshape(13,1) = -.25*(1-mu*mu)*(1+xi);
-      out_dshape(14,2) = -.5*mu*(1+xi)*(1+eta);  out_dshape(14,0) =  .25*(1-mu*mu)*(1+eta);  out_dshape(14,1) =  .25*(1-mu*mu)*(1+xi);
-      out_dshape(15,2) = -.5*mu*(1-xi)*(1+eta);  out_dshape(15,0) = -.25*(1-mu*mu)*(1+eta);  out_dshape(15,1) =  .25*(1-mu*mu)*(1-xi);
+      out_dshape[3*12+2] = -.5*mu*(1-xi)*(1-eta);  out_dshape[3*12+0] = -.25*(1-mu*mu)*(1-eta);  out_dshape[3*12+1] = -.25*(1-mu*mu)*(1-xi);
+      out_dshape[3*13+2] = -.5*mu*(1+xi)*(1-eta);  out_dshape[3*13+0] =  .25*(1-mu*mu)*(1-eta);  out_dshape[3*13+1] = -.25*(1-mu*mu)*(1+xi);
+      out_dshape[3*14+2] = -.5*mu*(1+xi)*(1+eta);  out_dshape[3*14+0] =  .25*(1-mu*mu)*(1+eta);  out_dshape[3*14+1] =  .25*(1-mu*mu)*(1+xi);
+      out_dshape[3*15+2] = -.5*mu*(1-xi)*(1+eta);  out_dshape[3*15+0] = -.25*(1-mu*mu)*(1+eta);  out_dshape[3*15+1] =  .25*(1-mu*mu)*(1-xi);
       break;
     }
   }
@@ -729,9 +721,12 @@ void getBoundingBox(double *pts, int nPts, int nDims, double *bbox)
   }
 }
 
-vector<double> calcError(const vector<double> &U, const point &pos, input *params)
+vector<double> calcError(const double* const U, const point &pos, input *params)
 {
-  if (params->testCase == 0) return U;
+  if (params->testCase == 0) {
+    vector<double> U_out(U,U+params->nFields);
+    return U_out;
+  }
 
   int nDims = params->nDims;
   int nFields = params->nFields;
@@ -801,7 +796,7 @@ vector<double> calcError(const vector<double> &U, const point &pos, input *param
       double Minf = .3;
       double Uinf = 1;
       double rhoInf = 1;
-      double theta = atan(0.5);
+      double theta = params->vortexAngle;
       double Pinf = pow(Minf,-2)/gamma;
 
       double eM = (eps*Minf)*(eps*Minf);
@@ -814,8 +809,8 @@ vector<double> calcError(const vector<double> &U, const point &pos, input *param
         ymax = params->ymax;
       } else {
         // Assuming a 'standard' mesh for the test case
-        xmin = -5;  xmax = 5;
-        ymin = -5;  ymax = 5;
+        xmin = params->vortexXmin;  xmax = params->vortexXmax;
+        ymin = params->vortexYmin;  ymax = params->vortexYmax;
       }
 
       double advX = Uinf*cos(theta)*params->time;
@@ -882,68 +877,6 @@ vector<double> calcError(const vector<double> &U, const point &pos, input *param
     for (auto &val:err) val *= val;     // L2 norm
 
   return err;
-}
-
-void calcSolutionFromFlux(matrix<double> &F, vector<double> &U, input *params)
-{
-  // Use Newton iterations to converge to U(F) such that F(U) = F
-  int nFields = params->nFields;
-  int nDims = params->nDims;
-
-  matrix<double> A,B;
-  matrix<double> tempF(nDims,nFields);
-  vector<double> dF(nFields), dG(nFields), dH;
-  if (nDims==3) dH.resize(nFields);
-
-  inviscidFlux(U.data(),tempF,params);
-
-  for (int i=0; i<nFields; i++) {
-    dF[i] = F(0,i) - tempF(0,i);
-    dG[i] = F(1,i) - tempF(1,i);
-    if (nDims==3) dH[i] = F(2,i) - tempF(2,i);
-  }
-
-  // Magnitude of difference between current and desired flux vector
-  double norm = 0.;
-  for (auto &val:dF) norm += val*val;
-  for (auto &val:dG) norm += val*val;
-  for (auto &val:dH) norm += val*val;
-
-  // Hackish, yeah...
-  vector<double> maxDU = U;
-  for (auto &val:maxDU) val = std::max(.25*std::abs(val),.1);
-
-  int iter = 0;
-  double tol = 1e-10;
-  if (nDims == 2) {
-    while (norm > tol) {
-      calcFluxJacobian2D(U,A,B,params);
-
-      auto du1 = A.solve(dF);
-      auto du2 = B.solve(dG);
-
-      for (int i=0; i<nFields; i++) {
-        U[i] += (du1[i]+du2[i])/2.;
-      }
-
-      inviscidFlux(U.data(),tempF,params);
-
-      for (int i=0; i<nFields; i++) {
-        dF[i] = F(0,i) - tempF(0,i);
-        dG[i] = F(1,i) - tempF(1,i);
-      }
-
-      norm = 0.;
-      for (auto &val:dF) norm += val*val;
-      for (auto &val:dG) norm += val*val;
-
-      iter++;
-      if (iter>10) break;
-    }
-  }
-  else {
-
-  }
 }
 
 void calcFluxJacobian2D(const vector<double> &U, matrix<double> &dFdU, matrix<double> &dGdU, input *params)
@@ -1238,4 +1171,163 @@ void refineGrid2D(geo &grid_c, geo &grid_f, int nLevels, int nNodes_c, int shape
   grid_f.ctype.assign(nEles_f, QUAD);
   grid_f.c2nv.assign(nEles_f, nNodes_f);
   grid_f.c2nf.assign(nEles_f, 4);
+}
+
+
+bool getRefLocNewton(double *xv, double *in_xyz, double *out_rst, int nNodes, int nDims)
+{
+  // First, do a quick check to see if the point is even close to being in the element
+  double xmin, ymin, zmin;
+  double xmax, ymax, zmax;
+  xmin = ymin = zmin =  1e15;
+  xmax = ymax = zmax = -1e15;
+  double eps = 1e-10;
+
+  vector<double> box(6);
+  getBoundingBox(xv, nNodes, nDims, box.data());
+  xmin = box[0];  ymin = box[1];  zmin = box[2];
+  xmax = box[3];  ymax = box[4];  zmax = box[5];
+
+  point pos = point(in_xyz);
+  if (pos.x < xmin-eps || pos.y < ymin-eps || pos.z < zmin-eps ||
+      pos.x > xmax+eps || pos.y > ymax+eps || pos.z > zmax+eps) {
+    // Point does not lie within cell - return an obviously bad ref position
+    for (int i = 0; i < nDims; i++) out_rst[i] = 99.;
+    return false;
+  }
+
+  // Use a relative tolerance to handle extreme grids
+  double h = min(xmax-xmin,ymax-ymin);
+  if (nDims==3) h = min(h,zmax-zmin);
+
+  double tol = 1e-12*h;
+
+  vector<double> shape(nNodes);
+  matrix<double> dshape(nNodes,nDims);
+  matrix<double> grad(nDims,nDims);
+
+  int iter = 0;
+  int iterMax = 20;
+  double norm = 1;
+
+  // Starting location: {0,0,0}
+  for (int i = 0; i < nDims; i++) out_rst[i] = 0;
+  point loc = point(out_rst,nDims);
+
+  while (norm > tol && iter<iterMax) {
+    if (nDims == 2) {
+      shape_quad(loc,shape,nNodes);
+      dshape_quad(loc,dshape,nNodes);
+    } else {
+      shape_hex(loc,shape,nNodes);
+      dshape_hex(loc,dshape,nNodes);
+    }
+
+    point dx = pos;
+    grad.initializeToZero();
+
+    for (int n=0; n<nNodes; n++) {
+      for (int i=0; i<nDims; i++) {
+        for (int j=0; j<nDims; j++) {
+          grad(i,j) += xv[n*nDims+i]*dshape(n,j);
+        }
+        dx[i] -= shape[n]*xv[n*nDims+i];
+      }
+    }
+
+    double detJ = grad.det();
+
+    auto ginv = grad.adjoint();
+
+    point delta = {0,0,0};
+    for (int i=0; i<nDims; i++)
+      for (int j=0; j<nDims; j++)
+        delta[i] += ginv(i,j)*dx[j]/detJ;
+
+    norm = 0;
+    for (int i=0; i<nDims; i++) {
+      norm += dx[i]*dx[i];
+      loc[i] += delta[i];
+      loc[i] = max(min(loc[i],1.01),-1.01);
+    }
+
+    iter++;
+  }
+
+  if (max( abs(loc[0]), max( abs(loc[1]), abs(loc[2]) ) ) <= 1. + 1e-10)
+    return true;
+  else
+    return false;
+}
+
+
+double computeVolume(double *xv, int nNodes, int nDims)
+{
+  int order;
+  vector<point> locSpts;
+
+  if (nDims == 2)
+  {
+    order = max((int)sqrt(nNodes)-1, 0);
+    locSpts = getLocSpts(QUAD,order,string("Legendre"));
+  }
+  else
+  {
+    order = max((int)cbrt(nNodes)-1, 0);
+    locSpts = getLocSpts(HEX,order,string("Legendre"));
+  }
+
+  auto weights = getQptWeights(order, nDims);
+
+  uint nSpts = locSpts.size();
+
+  matrix<double> shape(nSpts,nNodes);
+  Array<double,3> dshape(nSpts,nNodes,nDims);
+
+  if (nDims == 2)
+  {
+    for (uint spt = 0; spt < nSpts; spt++)
+    {
+      shape_quad(locSpts[spt], &shape(spt,0), nNodes);
+      dshape_quad(locSpts[spt], &dshape(spt,0,0), nNodes);
+    }
+  }
+  else
+  {
+    for (uint spt = 0; spt < nSpts; spt++)
+    {
+      shape_hex(locSpts[spt], &shape(spt,0), nNodes);
+      dshape_hex(locSpts[spt], &dshape(spt,0,0), nNodes);
+    }
+  }
+
+  matrix<double> jaco(nDims,nDims);
+  double vol = 0.;
+
+  for (uint spt = 0; spt < nSpts; spt++)
+  {
+    jaco.initializeToZero();
+    for (uint n = 0; n < nNodes; n++)
+      for (uint d1 = 0; d1 < nDims; d1++)
+        for (uint d2 = 0; d2 < nDims; d2++)
+          jaco(d1,d2) += dshape(spt,n,d2) * xv[n*nDims+d1];
+
+    double detJac = 0;
+    if (nDims == 2)
+    {
+      detJac = jaco(0,0)*jaco(1,1) - jaco(1,0)*jaco(0,1);
+    }
+    else
+    {
+      double xr = jaco(0,0);   double xs = jaco(0,1);   double xt = jaco(0,2);
+      double yr = jaco(1,0);   double ys = jaco(1,1);   double yt = jaco(1,2);
+      double zr = jaco(2,0);   double zs = jaco(2,1);   double zt = jaco(2,2);
+      detJac = xr*(ys*zt - yt*zs) - xs*(yr*zt - yt*zr) + xt*(yr*zs - ys*zr);
+    }
+    if (detJac<0) FatalError("Negative Jacobian at quadrature point.");
+
+    vol += detJac * weights[spt];
+  }
+
+  return vol;
 }

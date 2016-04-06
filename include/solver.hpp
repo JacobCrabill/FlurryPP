@@ -66,7 +66,7 @@ public:
   geo *Geo;
 
   //! Map from eType to order to element- & order-specific operator
-  map<int, map<int,oper> > opers;
+  map<int, oper> opers;
 
   //! Vector of all eles handled by this solver
   vector<shared_ptr<ele>> eles;
@@ -80,13 +80,44 @@ public:
   //! Vector of all MPI faces handled by this solver
   vector<shared_ptr<overFace>> overFaces;
 
-  //! Local supermesh of donor elements for each cell needing to be unblanked
-  vector<superMesh> donors;
-
 #ifndef _NO_MPI
   //! Pointer to Tioga object for processing overset grids
   shared_ptr<tioga> tg;
 #endif
+
+  /* === Solution Variables === */
+  uint nEles, nFaces;
+  uint nSpts, nFpts, nMpts, nPpts, nNodes;
+  uint nDims, nFields;
+
+  /* Solution Variables */
+  Array<double,3> U0, U_spts, U_fpts, U_mpts, U_ppts, U_qpts; //! Global solution arrays for solver
+  Array<double,4> F_spts, F_fpts, dU_spts, dU_fpts;   //! dim, spt/fpt, ele, field?
+  Array<double,3> disFn_fpts, Fn_fpts, dUc_fpts;  //! fpt, ele, field
+  Array2D<Array<double,3>> dF_spts; //! dim_grad, dim_flux, spt, ele, field
+
+  vector<Array<double,3>> divF_spts;
+
+  Array<double,3> tempVars_fpts, tempVars_spts;  //! Temporary/intermediate solution storage array
+  double tempF[3][5];                            //! Temporary flux-storage array
+  matrix<double> tempDU;
+
+  /* Multigrid Variables */
+  Array<double,3> sol_spts, corr_spts, src_spts;
+
+  /* Geometry Variables */
+
+  Array2D<double> detJac_spts, detJac_fpts, detJac_qpts, dA_fpts, tNorm_fpts;
+  matrix<double> shape_spts, shape_fpts, shape_ppts;
+  Array<double,3> dshape_spts, dshape_fpts;
+  Array<double,3> gridV_spts, gridV_fpts, gridV_mpts, gridV_ppts;
+  Array<double,3> norm_fpts;
+  Array<double,4> Jac_spts, Jac_fpts, JGinv_spts, JGinv_fpts;
+
+  vector<point> loc_spts, loc_fpts, loc_ppts;
+
+  Array<double,3> nodes, nodesRK; //! nNodes, nEles, nDims
+  Array<double,3> pos_spts, pos_fpts, pos_ppts;  //! nSpts/NFpts, nEles, nDims
 
   /* ==== Misc. Commonly-Used Variables ==== */
 
@@ -103,7 +134,7 @@ public:
   ~solver();
 
   //! Setup the solver with the given simulation parameters & geometry
-  void setup(input *params, int order, geo* _Geo = NULL);
+  void setup(input *params, int _order, geo* _Geo = NULL);
 
   //! Setup the FR operators for all ele types and polynomial orders which will be used in computation
   void setupOperators();
@@ -116,6 +147,12 @@ public:
 
   //! Finish setting up the MPI faces
   void finishMpiSetup(void);
+
+  //! Allocate memory for solution storage
+  void setupArrays(void);
+
+  //! Allocate memory for geometry-related variables & setup transforms
+  void setupGeometry(void);
 
   /* === Functions Related to Basic FR Process === */
 
@@ -130,10 +167,14 @@ public:
   //! Calculate the stable time step limit based upon given CFL
   void calcDt(void);
 
-  //! Advance solution in time - Generate intermediate RK stage
-  void timeStepA(int step, bool PMG_Source = false);
+  /*! Advance solution in time - Generate intermediate RK stage
+   * \param PMG_source: If true, add PMG source term
+   */
+  void timeStepA(int step, double RKval, bool PMG_Source = false);
 
-  //! Advance solution in time - Final RK stage [assemble intermediate stages]
+  /*! Advance solution in time - Final RK stage [assemble intermediate stages]
+   * \param PMG_source: If true, add PMG source term
+   */
   void timeStepB(int step, bool PMG_Source = false);
 
   //! For RK time-stepping - store solution at time 'n'
@@ -148,8 +189,11 @@ public:
   //! Extrapolate the solution to the mesh (corner) points (and edge points in 3D)
   void extrapolateUMpts(void);
 
-  //! Extrapolate the grid velocity to the mesh (corner) points (and edge points in 3D)
-  void extrapolateGridVelMpts(void);
+  //! Extrapolate the solution to all plotting points (spts, fpts, corners, edges)
+  void extrapolateUPpts(void);
+
+  //! Extrapolate the grid velocity to all plotting points (spts, fpts, corners, edges)
+  void extrapolateGridVelPpts(void);
 
   //! Extrapolate entropy error-estimate variable to the mesh (corner) points (and edge points in 3D)
   void extrapolateSMpts(void);
@@ -237,22 +281,6 @@ public:
   //! Calculate an entropy-adjoint-based error indicator
   void calcEntropyErr_spts();
 
-  // **All of the following functions are just food for thought at the moment**
-
-  void get_r_adapt_cells();
-
-  void get_p_adapt_cells();
-
-  void get_h_adapt_cells();
-
-  void setup_r_adaption();
-
-  void setup_h_adaptation();
-
-  void setup_p_adaptation();
-
-  void add_ele(int eType, int order);
-
   /* === Functions Related to Overset Grids === */
 
   //! Do initial preprocessing for overset grids
@@ -283,6 +311,9 @@ public:
 
   //! Integrate the solution error over the overset domain
   vector<double> integrateErrorOverset();
+
+  void insertElement(uint ele_ind);
+  void removeElement(uint ele_ind);
 
   /* ---- Callback functions specifically for TIOGA ---- */
 
@@ -316,6 +347,12 @@ public:
 
   shared_ptr<overComm> OComm;
 
+  void updatePosSptsFpts();
+  void setPosSptsFpts();
+  void updateGridVSptsFpts();
+  void updateTransforms();
+  void calcTransforms();
+
 private:
   //! Pointer to the parameters object for the current solution
   input *params;
@@ -330,10 +367,6 @@ private:
   vector<int> r_adapt_cells, h_adapt_cells, p_adapt_cells;
 
   /* ---- Overset Grid Variables / Functions ---- */
-
-  vector<double> U_spts; //! Global solution vector for solver (over all elements)
-
-  //shared_ptr<overComm> OComm;
 
   vector<int> iblankVert, iblankEle;
 };

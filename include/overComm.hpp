@@ -62,6 +62,7 @@ class overComm
 public:
   overComm();
 
+  int nDims;
   int nGrids;
   int nprocPerGrid;
   int gridID;
@@ -154,18 +155,18 @@ public:
    */
   void matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<int>& unblankCells, vector<int>& eleMap, int quadOrder);
 
-  void performGalerkinProjection(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, vector<int>& eleMap, int order);
+  void performGalerkinProjection(vector<shared_ptr<ele> >& eles, map<int, oper>& opers, vector<int>& eleMap, int order);
 
   void performProjection_static(vector<shared_ptr<ele> >& eles, vector<int>& eleMap, int order);
 
   //! Integrate the solution error over the entire domain, accounting for overset overlap
-  vector<double> integrateErrOverset(vector<shared_ptr<ele> >& eles, map<int, map<int, oper> >& opers, vector<int>& iblankCell, vector<int>& eleMap, int order, int quadOrder);
+  vector<double> integrateErrOverset(vector<shared_ptr<ele> >& eles, map<int, oper>& opers, vector<int>& iblankCell, vector<int>& eleMap, int order, int quadOrder);
 
   //! Perform the interpolation and communicate data across all grids
-  void exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap);
+  void exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>& opers, vector<int> &eleMap);
 
   //! Perform the interpolation and communicate gradient across all grids
-  void exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, map<int,oper> > &opers, vector<int> &eleMap);
+  void exchangeOversetGradient(vector<shared_ptr<ele>> &eles, map<int, oper>& opers, vector<int> &eleMap);
 
   /*!
    * \brief Gather a distributed dataset so that every rank has the full, organized dataset
@@ -205,7 +206,7 @@ public:
   void setupNPieces(vector<int> &nPiecesIn, vector<int> &nPiecesOut);
 
   //! Setup the list of overset-boundary flux points to interpolate data to
-  void setupOverFacePoints(vector<shared_ptr<overFace> >& overFaces);
+  void setupOverFacePoints(vector<shared_ptr<overFace> >& overFaces, int nFptsPerFace);
 
   //! Setup the list of fringe/receptor solution points to interpolate data to
   void setupFringeCellPoints(vector<shared_ptr<ele> >& eles, const unordered_set<int>& fringeCells, const vector<int>& eleMap);

@@ -36,7 +36,6 @@
 #endif
 
 /* --- Misc. Common Constants --- */
-double pi = 4.0*atan(1);
 
 //! Maps a boundary-condition string to its integer enum
 // NOTE: 'symmetry' is just a psuedonym for 'slip_wall' which will not be
@@ -45,17 +44,34 @@ map<string,int> bcStr2Num = {
   {"none", NONE},
   {"fluid", NONE},
   {"periodic", PERIODIC},
-  {"char", CHAR},
+  {"char", CHAR_INOUT},
   {"sup_in", SUP_IN},
   {"sup_out", SUP_OUT},
   {"sub_in", SUB_IN},
   {"sub_out", SUB_OUT},
   {"slip_wall", SLIP_WALL},
   {"isothermal_noslip", ISOTHERMAL_NOSLIP},
+  {"isothermal_noslip_moving", ISOTHERMAL_NOSLIP_MOVING},
   {"adiabatic_noslip", ADIABATIC_NOSLIP},
   {"overset", OVERSET},
   {"symmetry", SYMMETRY}
 };
+
+//map<int,string> bcNum2Str = {
+//  {NONE, "none"},
+//  {PERIODIC, "periodic"},
+//  {CHAR_INOUT, "char"},
+//  {SUP_IN, "sup_in"},
+//  {SUP_OUT,"sup_out"},
+//  {SUB_IN, "sub_in"},
+//  {SUB_OUT, "sub_out"},
+//  {SLIP_WALL, "slip_wall"},
+//  {ISOTHERMAL_NOSLIP, "isothermal_noslip"},
+//  {ISOTHERMAL_NOSLIP_MOVING, "isothermal_noslip_moving"},
+//  {ADIABATIC_NOSLIP, "adiabatic_noslip"},
+//  {OVERSET, "overset"},
+//  {SYMMETRY, "symmetry"}
+//};
 
 int factorial(int n)
 {
@@ -210,3 +226,45 @@ void simTimer::showTime(int precision)
     }
   }
 }
+
+#ifdef _OMP
+void omp_blocked_dgemm(CBLAS_ORDER mode, CBLAS_TRANSPOSE transA,
+    CBLAS_TRANSPOSE transB, int M, int N, int K, double alpha, double* A, int lda,
+    double* B, int ldb, double beta, double* C, int ldc)
+{
+  if (mode == CblasRowMajor)
+  {
+#pragma omp parallel
+    {
+      int nThreads = omp_get_num_threads();
+      int thread_idx = omp_get_thread_num();
+
+      int block_size = N / nThreads;
+      int start_idx = block_size * thread_idx;
+
+      if (thread_idx == nThreads-1)
+        block_size += N % (block_size);
+
+      cblas_dgemm(mode, transA, transB, M, block_size, K, alpha, A, lda,
+                  B + start_idx, ldb, beta, C + start_idx, ldc);
+    }
+  }
+  else
+  {
+#pragma omp parallel
+    {
+      int nThreads = omp_get_num_threads();
+      int thread_idx = omp_get_thread_num();
+
+      int block_size = N / nThreads;
+      int start_idx = block_size * thread_idx;
+
+      if (thread_idx == nThreads-1)
+        block_size += N % (block_size);
+
+      cblas_dgemm(mode, transA, transB, M, block_size, K, alpha, A, lda,
+          B + ldb * start_idx, ldb, beta, C + ldc * start_idx, ldc);
+    }
+  }
+}
+#endif

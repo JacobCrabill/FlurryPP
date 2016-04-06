@@ -52,7 +52,6 @@ void intFace::setupRightState(void)
   FnR.resize(nFptsR);
   normR.setup(nFptsR,nDims);
   dAR.resize(nFptsR);
-  detJacR.resize(nFptsL);
 
   /* --- Setup the L/R flux-point matching --- */
   fptR.resize(nFptsL);
@@ -96,7 +95,7 @@ void intFace::setupRightState(void)
   }
 
   if (params->viscous) {
-    UcR.resize(nFptsR);
+    dUcR.setup(nFptsR,nFields);
   }
 }
 
@@ -104,10 +103,11 @@ void intFace::getPointersRight(void)
 {
   // Get access to normal flux storage at right element [use look-up table to get right fpt]
   for (int i=0; i<nFptsL; i++) {
-    FnR[i] = (eR->Fn_fpts[fptR[i]]);
+    FnR[i] = &(eR->Fn_fpts(fptR[i],0));
 
     if (params->viscous)
-      UcR[i] = (eR->Uc_fpts[fptR[i]]);
+      for (int k = 0; k < nFields; k++)
+        dUcR(i,k) = &(eR->dUc_fpts(fptR[i],k));
   }
 }
 
@@ -119,15 +119,17 @@ void intFace::getRightState(void)
       UR(fpt,j) = (eR->U_fpts(fptR[fpt],j));
     }
 
-    // For dynamic grids, need to update geometry-related data
-    if ((params->iter == params->initIter+1) || (params->motion != 0)) {
+    /* For dynamic grids (besides rigid translation), need to update
+     * geometry-related data on every iteration, not just during setup */
+    if (isNew_R || (params->motion != 0 && params->motion != 4)) {
       for (int dim=0; dim<nDims; dim++) {
         normR(fpt,dim) = (eR->norm_fpts(fptR[fpt],dim));
       }
-      dAR[fpt] = (eR->dA_fpts[fptR[fpt]]);
-      detJacR[fpt] = (eR->detJac_fpts[fptR[fpt]]);
+      dAR[fpt] = (eR->dA_fpts(fptR[fpt]));
     }
   }
+
+  isNew_R = false;
 }
 
 void intFace::getRightGradient(void)
@@ -137,7 +139,7 @@ void intFace::getRightGradient(void)
     for (int fpt=0; fpt<nFptsL; fpt++) {
       for (int dim=0; dim<nDims; dim++)
         for (int j=0; j<nFields; j++)
-          gradUR[fpt](dim,j) = (eR->dU_fpts[dim](fptR[fpt],j));
+          gradUR[fpt](dim,j) = (eR->dU_fpts(dim,fptR[fpt],j));
     }
   }
 }
@@ -147,13 +149,15 @@ void intFace::setRightStateFlux(void)
   for (int i=0; i<nFptsR; i++)
     for (int j=0; j<nFields; j++)
       FnR[i][j] = -Fn(i,j)*dAR[i]; // opposite normal direction
+
+
 }
 
 void intFace::setRightStateSolution(void)
 {
   for (int i=0; i<nFptsR; i++)
     for (int j=0; j<nFields; j++)
-      UcR[i][j] = UC(i,j);
+      *dUcR(i,j) = UC(i,j) - UR(i,j);
 }
 
 vector<double> intFace::computeWallForce()

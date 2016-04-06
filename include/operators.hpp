@@ -46,17 +46,22 @@ public:
   void setupOperators(uint eType, uint order, geo* inGeo, input* inParams);
 
   //! Setup operator for extrapolation from solution points to flux points
-  void setupExtrapolateSptsFpts(vector<point> &loc_fpts);
+  void setupExtrapolateSptsFpts(void);
+
+  //! Setup operator for extrapolation from solution points to all plotting points
+  void setupExtrapolateSptsPpts(void);
 
   //! Setup operator for extrapolation from solution points to mesh (corner) points
-  void setupExtrapolateSptsMpts(vector<point> &loc_spts);
+  void setupExtrapolateSptsMpts(void);
+
+  void setupInterpolateSptsQpts(int quadOrder);
 
   //! Setup operator for calculation of gradient at the solution points
-  void setupGradSpts(vector<point> &loc_spts);
+  void setupGradSpts(void);
 
   /*! Setup operator to calculate divergence of correction function at solution points
    *  based upon the normal flux correction at the flux points */
-  void setupCorrection(vector<point> &loc_spts, vector<point> &loc_fpts);
+  void setupCorrection(void);
 
   //! Setup an interpolation operation between solution points and given points using solution basis
   matrix<double> setupInterpolateSptsIpts(matrix<double>& loc_ipts);
@@ -91,11 +96,11 @@ public:
 
   /*! For the standard FR method: extrapolate the transformed flux to the flux points
    *  and dot with the transformed outward unit normal */
-  void applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &tnorm_fpts, matrix<double> &Fn_fpts);
+  void applyExtrapolateFn(Array<double,3> &F_spts, matrix<double> &Fn_fpts);
 
   /*! For the modified space-time transformation method: Extrapolate the physical flux
    *  to the flux points and dott with the physical outward unit normal */
-  void applyExtrapolateFn(vector<matrix<double>> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts, vector<double> &dA_fpts);
+  void applyExtrapolateFn(Array<double,3> &F_spts, matrix<double> &norm_fpts, matrix<double> &Fn_fpts, vector<double> &dA_fpts);
 
 
   void applyCorrectDivF(matrix<double> &dFn_fpts, matrix<double> &divF_spts);
@@ -115,28 +120,36 @@ public:
   //! Calculate average density over an element (needed for negative-density correction)
   void calcAvgU(matrix<double>& U_spts, vector<double>& detJ_spts, vector<double>& Uavg);
 
-  matrix<double> interpolateCorrectedFlux(vector<matrix<double> >& F_spts, matrix<double>& dFn_fpts, point refLoc);
+  matrix<double> interpolateCorrectedFlux(Array<double, 3>& F_spts, matrix<double>& dFn_fpts, point refLoc);
 
   matrix<double> opp_prolong;   //! PMG Prolongation operator
   matrix<double> opp_restrict;  //! PMG Restriction operator
 
-private:
   geo *Geo;
   input *params;
-  uint nDims, nFields, eType, order, nSpts, nFpts;
+  uint nDims, nFields, eType, order, nSpts, nFpts, nPpts;
   string sptsType;
+
+  vector<point> loc_spts, loc_fpts, loc_ppts, loc_qpts;
 
   matrix<double> opp_spts_to_fpts;
   matrix<double> opp_spts_to_mpts;
+  matrix<double> opp_spts_to_ppts;
+  matrix<double> opp_spts_to_qpts;
   vector<matrix<double>> opp_grad_spts;
   matrix<double> opp_div_spts;
+  vector<matrix<double>> opp_extrapolateFn;
   matrix<double> opp_correction;
   vector<matrix<double>> opp_correctU;
   vector<matrix<double>> opp_correctF;
 
+private:
+  //! Flux at solution points to normal flux at fpts [Reference space]
+  void setupExtrapolateFn(void);
+
   matrix<double> tempFn;
 
-  void setupCorrectF(vector<point> &loc_spts);
+  void setupCorrectF(void);
 
   //! Evalulate the VCJH correction function at a solution point from a flux point */
   double VCJH_quad(uint fpt, point &loc, vector<double> &spts1D, uint vcjh, uint order);
@@ -153,7 +166,7 @@ private:
   matrix<double> inv_vandermonde2D;
   matrix<double> sensingMatrix;
   matrix<double> filterMatrix;
-  void setupVandermonde(vector<point> &loc_spts);
+  void setupVandermonde(void);
   void setupSensingMatrix(void);
   void setupFilterMatrix(void);
 
