@@ -166,6 +166,7 @@ public:
   int plotFreq;
   int plotType;
   int plotSurfaces;
+  int plotPolarCoords;
 
   bool calcEntropySensor;
 

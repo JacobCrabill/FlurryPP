@@ -827,6 +827,26 @@ void writeSurfaces(solver *Solver, input *params)
         dataFile << "				</DataArray>" << endl;
       }
 
+      if (params->plotPolarCoords) {
+        /* --- Polar/Spherical Coordinates (Useful for plotting) --- */
+        dataFile << "				<DataArray type=\"Float32\" NumberOfComponents=\"3\" Name=\"PolarCoords\" format=\"ascii\">" << endl;
+        for(int k=0; k<nPtsFace; k++) {
+          double x = posPpts(k,0);
+          double y = posPpts(k,1);
+          double z = 0;
+          if (nDims==3) z = posPpts(k,2);
+          double r = sqrt(x*x+y*y+z*z);
+          double theta = std::atan2(y,x);
+          double psi = 0;
+          if (nDims==3) psi = std::acos(z/r);
+          // Divide momentum components by density to obtain velocity components
+          dataFile << r << " " << theta << " " << psi << " ";
+        }
+
+        dataFile << endl;
+        dataFile << "				</DataArray>" << endl;
+      }
+
       /* --- End of Cell's Solution Data --- */
 
       dataFile << "			</PointData>" << endl;
@@ -956,6 +976,9 @@ void writeSurfaces(solver *Solver, input *params)
       }
       if (params->motion) {
         pVTU << "      <PDataArray type=\"Float32\" Name=\"GridVelocity\" NumberOfComponents=\"3\" />" << endl;
+      }
+      if (params->plotPolarCoords) {
+        pVTU << "      <PDataArray type=\"Float32\" Name=\"PolarCoords\" NumberOfComponents=\"3\" />" << endl;
       }
       if (params->meshType == OVERSET_MESH && params->writeIBLANK) {
         pVTU << "      <PDataArray type=\"Float32\" Name=\"IBLANK\" />" << endl;

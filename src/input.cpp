@@ -434,6 +434,7 @@ void input::readInputFile(char *filename)
   opts.getScalarValue("plotFreq",plotFreq,100);
   opts.getScalarValue("plotType",plotType,1);
   opts.getScalarValue("plotSurfaces",plotSurfaces,1);
+  opts.getScalarValue("plotPolarCoords",plotPolarCoords,1);
   opts.getScalarValue("restart_freq",restart_freq,100);
   opts.getScalarValue("dataFileName",dataFileName,string("simData"));
 

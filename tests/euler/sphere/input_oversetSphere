@@ -17,8 +17,8 @@ projection     0  (For volume interp: use LGP [1] or collocation [0]?)
 # Simulation Start/Run/Stop Conditions
 maxTime      500   (Non-dimensional time limit)
 iterMax      10000  (Total iteration limit)
-restart      1    (Start from restart file?)
-restartIter  5000    (Iteration of restart file)
+restart      0    (Start from restart file?)
+restartIter  0000    (Iteration of restart file)
 testCase     0    (Calculate error w.r.t. test case?)
 
 # =============================================================
