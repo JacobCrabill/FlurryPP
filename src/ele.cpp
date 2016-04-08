@@ -2172,7 +2172,8 @@ vector<point> ele::getPosSpts(void)
   vector<point> posSpts(nSpts);
 
   for (int spt=0; spt<nSpts; spt++)
-    posSpts[spt] = point(&pos_spts(spt,0),nDims);
+    for (int dim=0; dim<nDims; dim++)
+      posSpts[spt][dim] = pos_spts(spt,dim);
 
   return posSpts;
 }
