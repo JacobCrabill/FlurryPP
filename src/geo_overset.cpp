@@ -611,7 +611,7 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
   }
 
   //! ---- QUICK HACK FOR 3D SPHERE CASE ----
-  if (params->oversetMethod == 0 && nDims == 3) {
+  if (params->oversetMethod == 0 && params->motion==5 && nDims == 3) {
     for (int ic = 0; ic < nEles; ic++) {
       if (iblankEle[ic] == NORMAL && iblankEle1[ic] != NORMAL)
         iblankEle[ic] = iblankEle1[ic];
@@ -684,8 +684,7 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
   }
 
   ///! EVEN BIGGER HACK
-  if (gridID == 0) iblankEle.assign(nEles,NORMAL);
-
+  if (nDims == 3 && params->motion==5 && gridID == 0) iblankEle.assign(nEles,NORMAL);
 #endif
 }
 

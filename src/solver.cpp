@@ -458,11 +458,6 @@ void solver::calcDt(void)
 
 void solver::timeStepA(int step, double RKval, bool PMG_Source)
 {
-  //! TODO
-//  if (params->meshType==OVERSET_MESH && params->oversetMethod==2) {
-//    for (uint i=0; i<eles.size(); i++) {
-//      if (Geo->iblankCell[eles[i]->ID] == NORMAL)
-
   if (PMG_Source)
   {
     /* --- Include PMG Source Term --- */
@@ -1739,7 +1734,10 @@ void solver::initializeSolution(bool PMG)
         getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
       int nPtsFace = order+1;
       if (nDims==3) nPtsFace *= order+1;
-      OComm->setupOverFacePoints(overFaces, nPtsFace);
+      if (params->oversetMethod != 2)
+        OComm->setupOverFacePoints(overFaces, nPtsFace);
+      else
+        OComm->setupFringeCellPoints(eles,Geo->fringeCells,Geo->eleMap);
       OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
       OComm->exchangeOversetData(eles,opers,Geo->eleMap);
     }
