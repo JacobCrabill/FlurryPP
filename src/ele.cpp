@@ -1287,16 +1287,20 @@ void ele::calcWaveSpFpts(void)
       double w = 0.;
       if (nDims == 3) w = params->advectVz;
 
+      double vN = u*norm_fpts(fpt,0) + v*norm_fpts(fpt,1);
+      if (nDims == 3) vN += w*norm_fpts(fpt,2);
+
+      double vgN = 0;
       if (params->motion) {
-        u -= gridVel_fpts(fpt,0);
-        v -= gridVel_fpts(fpt,1);
-        if (nDims == 3)
-          w -= gridVel_fpts(fpt,2);
+        for (int dim = 0; dim <nDims; dim++)
+          vgN += gridVel_fpts(fpt,dim) * norm_fpts(fpt,dim);
       }
 
-      double csq = u*u + v*v + w*w;
+      double vTot = abs(vN - vgN);
+      vN = abs(vN);
+      vgN = abs(vgN);
 
-      waveSp_fpts[fpt] = sqrt(csq) / dA_fpts(fpt);
+      waveSp_fpts[fpt] = max(vTot,max(vN,vgN));
     }
   }
   else if (params->equation == NAVIER_STOKES) {
@@ -1327,12 +1331,22 @@ void ele::calcWaveSpFpts(void)
 
 double ele::calcDt(void)
 {
-  double waveSp = 1e-3;
-  for (int fpt=0; fpt<nFpts; fpt++)
-    if (dA_fpts(fpt) > 0) // ignore collapsed edges
-      waveSp = max(waveSp,waveSp_fpts[fpt]);
+  auto wts = getQptWeights(order, nDims);
+  auto wtsSurf = getQptWeights(order, nDims-1);
 
-  dt = (params->CFL) * getCFLLimit(order) * (2.0 / waveSp);
+  double vol = 0;
+  for (int spt = 0; spt < nSpts; spt++) {
+    vol += detJac_spts(spt) * wts[spt];
+  }
+
+  int nFpts_face = order + 1;
+  if (nDims == 3) nFpts_face *= order + 1;
+  double intWave = 0;
+  for (int fpt = 0; fpt < nFpts; fpt++) {
+    intWave += waveSp_fpts[fpt] * wtsSurf[fpt%nFpts_face] * dA_fpts(fpt);
+  }
+
+  dt = params->CFL * getCFLLimit(order) * 2 * vol / intWave;
   return dt;
 }
 

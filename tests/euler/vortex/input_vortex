@@ -12,7 +12,7 @@ nDims         2
 timeType      4       (0: Forward Euler, 4: RK44)
 dtType        1       (0: Constant, 1: Global CFL-based, 2: Local CFL-based)
 dt            1.25e-5 (Constant time step size)
-CFL           .4      (CFL number for time-step calculation)
+CFL           1      (CFL number for time-step calculation)
 
 # IC's for Advection: 0-Gaussian,     1-u=x+y+z test case,  2-u=cos(x)*cos(y)*cos(z) test case
 # IC's for N-S:       0-Uniform flow, 1-Vortex (Kui), 2-Vortex (Liang/Miyaji)

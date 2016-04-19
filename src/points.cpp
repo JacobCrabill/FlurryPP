@@ -363,6 +363,8 @@ vector<double> getQptWeights(int order, int nDims)
 {
   // Tensor-product elements
   vector<double> qwts1D = getQptWeights1D(order);
+  if (nDims == 1) return qwts1D;
+
   vector<double> outWts;
   if (nDims == 2) {
     outWts.resize((order+1)*(order+1));

@@ -185,12 +185,9 @@ void face::calcInviscidFlux(void)
   }
 
   // Transform normal flux using edge Jacobian and put into ele's memory
-  for (int i=0; i<nFptsL; i++) {
+  for (int i=0; i<nFptsL; i++)
     for (int j=0; j<nFields; j++)
       FnL[i][j] =  Fn(i,j)*dAL[i];
-
-    *waveSp[i] /= dAL[i];
-  }
 
   if (params->viscous) {
 
@@ -508,6 +505,16 @@ void face::laxFriedrichsFlux(void)
         vNorm += params->advectVz*normL(fpt,2);
 
       Fn(fpt,0) = vNorm*uAvg + 0.5*params->lambda*abs(vNorm)*uDiff;
+
+      vNorm = abs(vNorm);
+
+      if (params->motion) {
+        double vgN = Vg(fpt,0) * normL(fpt,0) + Vg(fpt,1) * normL(fpt,1);
+        if (nDims == 3) vgN += Vg(fpt,2) * normL(fpt,2);
+        double vTot = abs(vNorm - vgN);
+        vNorm = max(vTot,max(vNorm,abs(vgN)));
+      }
+
       *waveSp[fpt] = vNorm;
     }
     else if (params->equation == NAVIER_STOKES) {

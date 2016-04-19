@@ -968,7 +968,7 @@ void oper::setupFilterMatrix(void)
     for (uint i=0; i<nSpts; i++)
       filterWeights(i,i) = exponential_filter(i,order,exponent);
 
-    filterWeights.print();
+    // filterWeights.print();
 
     // Filter matrix is SigmaMatrix*V_inverse (so it can directly
     // operate on nodal solution)
