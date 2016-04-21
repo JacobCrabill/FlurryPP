@@ -1324,7 +1324,7 @@ void ele::calcWaveSpFpts(void)
       }
 
       double csq = std::max(params->gamma*p/rho,0.0);
-      waveSp_fpts[fpt] = (std::abs(vN - vgN) + std::sqrt(csq)) / dA_fpts(fpt);
+      waveSp_fpts[fpt] = (std::abs(vN - vgN) + std::sqrt(csq));
     }
   }
 }
