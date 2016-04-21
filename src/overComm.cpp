@@ -869,6 +869,8 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
     i++;
   }
 
+  if (params->errorNorm == 0) quadOrder = order;
+
   /* ---- Gather all cell bounding-box data on each grid ---- */
 
   int stride = nv*nDims;

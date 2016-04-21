@@ -562,6 +562,7 @@ void solver::extrapolateU(void)
 
 void solver::calcAvgSolution()
 {
+  //! TODO: Re-implement
 //#pragma omp parallel for
 //  for (uint i=0; i<eles.size(); i++) {
 //    opers[order].calcAvgU(eles[i]->U_spts,eles[i]->detJac_spts,eles[i]->Uavg);
@@ -1501,43 +1502,6 @@ vector<double> solver::computeMassFlux(void)
 {
   vector<double> flux(params->nFields);
 
-//  auto weights = getQptWeights1D(order);
-
-//  for (uint i = 0; i < faces.size(); i++) {
-//    auto iface = faces[i];
-//    if (iface->isBnd && abs(abs(iface->normL(0,0))-1.0) < 1e-10) {
-//      point pt1 = iface->eL->getPosFpt(iface->fptStartL);
-//      if (pt1.x > -1) continue;
-//      for (uint j = i+1; j < faces.size(); j++) {
-//        auto jface = faces[j];
-//        if (jface->isBnd && abs(abs(jface->normL(0,0))-1.0) < 1e-10) {
-//          point pt2 = jface->eL->getPosFpt(jface->fptStartL+order);
-//          if (pt2.x < 1) continue;
-
-//          int offset = order;
-//          int stride = -1;
-//          if (std::abs(pt1.y - pt2.y) > 1e-4) {
-//            pt2 = jface->eL->getPosFpt(jface->fptStartL);
-//            if (std::abs(pt1.y - pt2.y) > 1e-4) {
-//              continue;
-//            } else {
-//              offset = 0;
-//              stride = 1;
-//            }
-//          }
-
-//          for (uint fpt = 0; fpt < order+1; fpt++) {
-//            for (uint k = 0; k < params->nFields; k++) {
-//              double tmpf = (iface->Fn(fpt,k)*iface->dAL[fpt]*iface->normL(fpt,0) - jface->Fn(offset+stride*fpt,k)*jface->dAL[offset+stride*fpt]*jface->normL(offset+stride*fpt,0));
-//              flux[k] += tmpf*tmpf*weights[fpt];
-//            }
-//          }
-
-//        }
-//      }
-//    }
-//  }
-
   for (uint i=0; i<faces.size(); i++) {
     auto fTmp = faces[i]->computeMassFlux();
 
@@ -1758,53 +1722,75 @@ void solver::initializeSolution(bool PMG)
 
 vector<double> solver::integrateError(void)
 {
-  int quadOrder = params->quadOrder;
-  auto wts = getQptWeights(quadOrder,params->nDims);
-
-  /* Interpolate solution to quadrature points */
-
-  auto &qpts = opers[order].loc_qpts;
-  int nQpts = qpts.size();
-
-  U_qpts.setup(nQpts, nEles, nFields);
-  detJac_qpts.setup(nQpts, nEles);
-
-  int m = nQpts;
-  int n = nEles * nFields;
-  int k = nSpts;
-
-  auto &A = opers[order].opp_spts_to_qpts(0,0);
-  auto &B = U_spts(0,0,0);
-  auto &C = U_qpts(0,0,0);
-
-#ifdef _OMP
-  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
-              1.0, &A, k, &B, n, 0.0, &C, n);
-#else
-  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
-              1.0, &A, k, &B, n, 0.0, &C, n);
-#endif
-
-  n = nEles;
-  auto &B1 = detJac_spts(0,0);
-  auto &C1 = detJac_qpts(0,0);
-#ifdef _OMP
-  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
-              1.0, &A, k, &B1, n, 0.0, &C1, n);
-#else
-  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
-              1.0, &A, k, &B1, n, 0.0, &C1, n);
-#endif
-
-  /* Integrate error over each element */
-
   vector<double> LpErr(params->nFields);
-  for (uint ic = 0; ic < eles.size(); ic++) {
-    //if (params->meshType == OVERSET_MESH and Geo->iblankCell[eles[ic]->ID]!=NORMAL) continue;
-    for (uint qpt = 0; qpt < nQpts; qpt++) {
-      auto tmpErr = calcError(&U_qpts(qpt, ic, 0), eles[ic]->calcPos(qpts[qpt]), params);
-      for (uint j = 0; j < params->nFields; j++)
-        LpErr[j] += tmpErr[j] * wts[qpt] * detJac_qpts(qpt, ic);
+
+  if (params->errorNorm == 0)
+  {
+    /* Integrate error and solution over each element */
+
+    auto wts = getQptWeights(order, nDims);
+    vector<double> intU(params->nFields);
+    for (uint ic = 0; ic < eles.size(); ic++) {
+      auto tmpUE = eles[ic]->calcError();
+      for (uint spt = 0; spt < nSpts; spt++) {
+        for (uint k = 0; k < nFields; k++) {
+          LpErr[k] += tmpUE(spt,k) * wts[spt] * detJac_spts(spt, ic);
+          intU[k] += U_spts(spt,ic,k) * wts[spt] * detJac_spts(spt, ic);
+        }
+      }
+    }
+
+    for (uint k = 0; k < nFields; k++)
+      LpErr[k] = abs(LpErr[k] - intU[k]);
+  }
+  else
+  {
+    int quadOrder = params->quadOrder;
+    auto wts = getQptWeights(quadOrder,params->nDims);
+
+    /* Interpolate solution to quadrature points */
+
+    auto &qpts = opers[order].loc_qpts;
+    int nQpts = qpts.size();
+
+    U_qpts.setup(nQpts, nEles, nFields);
+    detJac_qpts.setup(nQpts, nEles);
+
+    int m = nQpts;
+    int n = nEles * nFields;
+    int k = nSpts;
+
+    auto &A = opers[order].opp_spts_to_qpts(0,0);
+    auto &B = U_spts(0,0,0);
+    auto &C = U_qpts(0,0,0);
+
+  #ifdef _OMP
+    omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 0.0, &C, n);
+  #else
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B, n, 0.0, &C, n);
+  #endif
+
+    n = nEles;
+    auto &B1 = detJac_spts(0,0);
+    auto &C1 = detJac_qpts(0,0);
+  #ifdef _OMP
+    omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B1, n, 0.0, &C1, n);
+  #else
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
+                1.0, &A, k, &B1, n, 0.0, &C1, n);
+  #endif
+
+    /* Integrate error over each element */
+
+    for (uint ic = 0; ic < eles.size(); ic++) {
+      for (uint qpt = 0; qpt < nQpts; qpt++) {
+        auto tmpErr = calcError(&U_qpts(qpt, ic, 0), eles[ic]->calcPos(qpts[qpt]), params);
+        for (uint j = 0; j < params->nFields; j++)
+          LpErr[j] += tmpErr[j] * wts[qpt] * detJac_qpts(qpt, ic);
+      }
     }
   }
 
@@ -1822,8 +1808,9 @@ vector<double> solver::integrateError(void)
 // Method for shock capturing
 void solver::shockCapture(void)
 {
-#pragma omp parallel for
-  for (uint i=0; i<eles.size(); i++) {
-/////    eles[i]->sensor = opers[order].shockCaptureInEle(eles[i]->U_spts,params->threshold);
-  }
+  //! TODO: Re-implement
+//#pragma omp parallel for
+//  for (uint i=0; i<eles.size(); i++) {
+//    eles[i]->sensor = opers[order].shockCaptureInEle(eles[i]->U_spts,params->threshold);
+//  }
 }
