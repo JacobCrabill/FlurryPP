@@ -40,6 +40,9 @@
 
 #include "funcs.hpp"
 #include "multigrid.hpp"
+#include "array"
+
+vector<double> CycleLGPTest(Array<double,3> &U_inout, input params, string Grid1, string Grid2, int iter, double exactVal = 0);
 
 int main(int argc, char *argv[]) {
   input params;
@@ -100,6 +103,12 @@ int main(int argc, char *argv[]) {
   /* Read input file & set simulation parameters */
   params.readInputFile(argv[1]);
 
+  bool DO_LGP_TEST = true;
+  if (DO_LGP_TEST) {
+    params.oversetGrids[0] = string("box7.msh");
+    params.oversetGrids[1] = string("box1.msh");
+  }
+
   if (params.PMG)
   {
     /* Setup the P-Multigrid class if requested */
@@ -113,6 +122,46 @@ int main(int argc, char *argv[]) {
     /* Apply the initial condition */
     Solver.initializeSolution();
   }
+
+#ifndef _NO_MPI
+  if (DO_LGP_TEST) {
+    writeData(&Solver,&params);
+
+    double EXACT_VAL = pi * erf(5) * erf(5);
+
+    params.errorNorm = 1;
+    params.testCase = 0;
+    params.quadOrder = 10;
+
+    // Calc Error Before Interpolation:
+    auto Error = Solver.integrateError();
+
+    if (params.rank == 0) {
+      cout.precision(6);
+      cout.setf(ios::scientific, ios::floatfield);
+      cout << endl;
+      cout << "******************************************************************" << endl;
+      cout << "Integrated error at start: ";
+      for (auto &val:Error) cout << val - EXACT_VAL << ",  ";
+      cout << endl;
+      cout << "******************************************************************" << endl;
+      cout << endl;
+    }
+
+    Array<double,3> U_inout;
+    U_inout = Solver.U_spts;
+    CycleLGPTest(U_inout, params, string("box7.msh"), string("box1.msh"), 1, EXACT_VAL);
+    CycleLGPTest(U_inout, params, string("box1.msh"), string("box2.msh"), 2, EXACT_VAL);
+    CycleLGPTest(U_inout, params, string("box2.msh"), string("box3.msh"), 3, EXACT_VAL);
+    CycleLGPTest(U_inout, params, string("box3.msh"), string("box4.msh"), 4, EXACT_VAL);
+    CycleLGPTest(U_inout, params, string("box4.msh"), string("box5.msh"), 5, EXACT_VAL);
+    CycleLGPTest(U_inout, params, string("box5.msh"), string("box6.msh"), 6, EXACT_VAL);
+    CycleLGPTest(U_inout, params, string("box6.msh"), string("box7.msh"), 7, EXACT_VAL);
+
+    MPI_Finalize();
+    return 0;
+  }
+#endif
 
   /* Write initial data file */
   writeData(&Solver,&params);
@@ -158,4 +207,74 @@ int main(int argc, char *argv[]) {
 #endif
 
  return 0;
+}
+
+
+vector<double> CycleLGPTest(Array<double,3> &U_inout, input params, string Grid1, string Grid2, int iter, double exactVal)
+{
+  /* --- Setup New Solver for Solution Projection from Grid1 to Grid 2 --- */
+
+  solver Solver;
+  params.oversetGrids[0] = Grid1;
+  params.oversetGrids[1] = Grid2;
+
+  Solver.setup(&params, params.order);
+  geo* Geo = Solver.Geo;
+
+  if (Geo->gridID == 0)
+    Solver.U_spts = U_inout;
+
+  Geo->fringeCells.clear();
+
+  if (Geo->gridID==1)
+    for (int ic=0; ic<Geo->nEles; ic++)
+      Geo->fringeCells.insert(ic);
+
+  // Interpolate IC to 2nd grid [from box1 to box2]
+  Solver.OComm->matchUnblankCells(Solver.eles,Geo->fringeCells,Geo->eleMap,params.quadOrder);
+  Solver.OComm->performGalerkinProjection(Solver.eles,Solver.opers,Geo->eleMap,params.order);
+
+  params.dataFileName = "LGP_Test" + to_string(iter);
+  writeData(&Solver,&params);
+
+  // Calc Error After 1st Interpolation:
+  auto Error = Solver.integrateError();
+
+  if (params.rank == 1) {
+    cout.precision(6);
+    cout.setf(ios::scientific, ios::floatfield);
+    cout << endl;
+    cout << "******************************************************************" << endl;
+    cout << "Integrated error for iter " << iter << ": ";
+    for (auto &val:Error) cout << val - exactVal << ",  ";
+    cout << endl;
+    cout << "******************************************************************" << endl;
+    cout << endl;
+  }
+
+  vector<uint> dims = {0,0,0};
+  MPI_Status status;
+
+  if (params.rank == 0) {
+    MPI_Recv(dims.data(),3,MPI_UNSIGNED,1,0,MPI_COMM_WORLD,&status);
+  } else {
+    U_inout = Solver.U_spts;
+    dims = {U_inout.dims[0], U_inout.dims[1], U_inout.dims[2]};
+    MPI_Send(dims.data(),3,MPI_UNSIGNED,0,0,MPI_COMM_WORLD);
+  }
+
+  if (params.rank == 0) {
+    U_inout.setup(dims[0],dims[1],dims[2]);
+    MPI_Recv(U_inout.getData(),U_inout.getSize(),MPI_DOUBLE,1,0,MPI_COMM_WORLD,&status);
+  } else {
+    MPI_Send(U_inout.getData(),U_inout.getSize(),MPI_DOUBLE,0,0,MPI_COMM_WORLD);
+  }
+
+  if (params.rank == 0) {
+    MPI_Recv(Error.data(),Error.size(),MPI_DOUBLE,1,0,MPI_COMM_WORLD,&status);
+  } else {
+    MPI_Send(Error.data(),Error.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD);
+  }
+
+  return Error;
 }
