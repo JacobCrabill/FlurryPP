@@ -728,55 +728,6 @@ bool ele::getRefLocNelderMead(point pos, point& loc)
     return false;
 }
 
-//void ele::calcPosSpts(void)
-//{
-//  for (int spt=0; spt<nSpts; spt++) {
-//    pos_spts(spt,2)ero();
-//    for (int iv=0; iv<nNodes; iv++) {
-//      for (int dim=0; dim<nDims; dim++) {
-//        pos_spts[spt][dim] += shape_spts(spt,iv)*nodes[iv][dim];
-//      }
-//    }
-//  }
-//}
-
-//void ele::calcPosFpts(void)
-//{
-//  for (int fpt=0; fpt<nFpts; fpt++) {
-//    pos_fpts[fpt].zero();
-//    for (int iv=0; iv<nNodes; iv++) {
-//      for (int dim=0; dim<nDims; dim++) {
-//        pos_fpts[fpt][dim] += shape_fpts(fpt,iv)*nodes[iv][dim];
-//      }
-//    }
-//  }
-//}
-
-//void ele::updatePosSpts(void)
-//{
-//  for (int spt=0; spt<nSpts; spt++) {
-//    pos_spts(spt,2)ero();
-//    for (int iv=0; iv<nNodes; iv++) {
-//      for (int dim=0; dim<nDims; dim++) {
-//        pos_spts[spt][dim] += shape_spts(spt,iv)*nodesRK[iv][dim];
-//      }
-//    }
-//  }
-//}
-
-//void ele::updatePosFpts(void)
-//{
-//  for (int fpt=0; fpt<nFpts; fpt++) {
-//    pos_fpts[fpt].zero();
-//    for (int iv=0; iv<nNodes; iv++) {
-//      for (int dim=0; dim<nDims; dim++) {
-//        pos_fpts[fpt][dim] += shape_fpts(fpt,iv)*nodesRK[iv][dim];
-//      }
-//    }
-//  }
-//}
-
-
 void ele::setInitialCondition()
 {
   if (params->equation == NAVIER_STOKES) {

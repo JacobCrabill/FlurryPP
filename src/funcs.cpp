@@ -724,6 +724,7 @@ void getBoundingBox(double *pts, int nPts, int nDims, double *bbox)
 vector<double> calcError(const double* const U, const point &pos, input *params)
 {
   if (params->testCase == 0) {
+    // Return solution instead of analytic value
     vector<double> U_out(U,U+params->nFields);
     return U_out;
   }
