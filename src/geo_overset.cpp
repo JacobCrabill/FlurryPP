@@ -86,10 +86,10 @@ void geo::splitGridProcs(void)
 
   /* --- Balance the processes across the grids --- */
 
-  vector<int> nProcsGrid(nGrids);
+  vector<int> nProcsGrid(nGrids,1);
   for (int i=0; i<nGrids; i++) {
     double eleRatio = (double)nElesGrid[i]/nElesTotal;
-    nProcsGrid[i] = round(eleRatio*nproc);
+    nProcsGrid[i] += round(eleRatio*(nproc-nGrids));
   }
 
   /* --- Get the final gridID for this rank --- */

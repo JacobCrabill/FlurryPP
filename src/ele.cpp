@@ -826,6 +826,17 @@ void ele::setInitialCondition()
       for (int spt=0; spt<nSpts; spt++)
         U_spts(spt,0) = cos(2*pi*pos_spts(spt,0)/6.)*cos(2*pi*pos_spts(spt,1)/6.)*cos(2*pi*pos_spts(spt,2)/6.);
     }
+    else if (params->icType == 3) {
+      /* --- LGP error test function - circular step --- */
+      for (int spt = 0; spt < nSpts; spt++) {
+        point pt = point(&pos_spts(spt,0),nDims);
+        double r2 = pt*pt;
+        if (r2 <= 9)
+          U_spts(spt,0) = 1;
+        else
+          U_spts(spt,0) = 0;
+      }
+    }
   }
 }
 

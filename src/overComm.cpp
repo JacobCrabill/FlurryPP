@@ -833,6 +833,10 @@ void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<in
         eles[ic]->U_spts(spt,k) = 0;
 
     auto unblankU = solveCholesky(ubLHS[i],ubRHS[i]);
+    if (unblankU.checkNan()) {
+      auto invMat = ubLHS[i].invertMatrix();
+      invMat.timesMatrix(ubRHS[i],unblankU);
+    }
     for (int spt=0; spt<nSpts; spt++)
       for (int k=0; k<nFields; k++)
         eles[ic]->U_spts(spt,k) += unblankU(spt,k);

@@ -50,7 +50,7 @@ vector<double> solveCholesky(matrix<double> A, vector<double> b)
       for (int i=0; i<n-j; i++) A(j+i,j) -= a1[i];
     }
 
-    if (A(j,j)<0) {
+    if (A(j,j)<=0) {
       A.print();
       FatalError("Negative factor in Cholesky!");
     }
@@ -100,7 +100,7 @@ matrix<double> solveCholesky(matrix<double> A, matrix<double> &B)
       for (int i=0; i<n-j; i++) A(j+i,j) -= a1[i];
     }
 
-    if (A(j,j)<0) {
+    if (A(j,j)<=0) {
       if (std::abs(A(j,j) < eps)) {
         A(j,j) = eps;
       } else {

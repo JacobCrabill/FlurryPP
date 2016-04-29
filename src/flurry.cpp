@@ -104,45 +104,65 @@ int main(int argc, char *argv[]) {
   params.readInputFile(argv[1]);
 
   bool DO_LGP_TEST = true;
-  if (DO_LGP_TEST) {
-    params.oversetGrids[0] = string("box7.msh");
-    params.oversetGrids[1] = string("box1.msh");
+  if (!DO_LGP_TEST) {
+    if (params.PMG)
+    {
+      /* Setup the P-Multigrid class if requested */
+      pmg.setup(params.order,&params,Solver);
+    }
+    else
+    {
+      /* Setup the solver, grid, all elements and faces, and all FR operators for computation */
+      Solver.setup(&params,params.order);
+
+      /* Apply the initial condition */
+      Solver.initializeSolution();
+    }
   }
 
-  if (params.PMG)
-  {
-    /* Setup the P-Multigrid class if requested */
-    pmg.setup(params.order,&params,Solver);
-  }
-  else
-  {
+#ifndef _NO_MPI
+  if (DO_LGP_TEST) {
+    params.oversetGrids[0] = string("box0.msh");
+    params.oversetGrids[1] = string("box1.msh");
+
+    params.projection = 1;  //! Use LGP or direct interpolation
+    params.errorNorm = 1;
+    params.testCase = 0;
+    params.quadOrder = 6;
+    params.icType = 3;      //! Smooth Gaussian (0), sine waves (1-2), or circular step (3)
+
     /* Setup the solver, grid, all elements and faces, and all FR operators for computation */
     Solver.setup(&params,params.order);
 
     /* Apply the initial condition */
     Solver.initializeSolution();
-  }
 
-#ifndef _NO_MPI
-  if (DO_LGP_TEST) {
     writeData(&Solver,&params);
 
-    double EXACT_VAL = pi * erf(5) * erf(5);
-
-    params.errorNorm = 1;
-    params.testCase = 0;
-    params.quadOrder = 10;
+    double EXACT_VAL = 0;
+    if (params.icType == 0)
+      EXACT_VAL = pi * erf(5) * erf(5);
+    else if (params.icType == 3)
+      EXACT_VAL = pi * 9;
 
     // Calc Error Before Interpolation:
     auto Error = Solver.integrateError();
+
+    if (params.rank==0) EXACT_VAL = Error[0];
+
+    MPI_Status status;
+    if (params.rank == 1)
+      MPI_Recv(&EXACT_VAL,1,MPI_DOUBLE,0,0,MPI_COMM_WORLD,&status);
+    else
+      MPI_Send(&EXACT_VAL,1,MPI_DOUBLE,1,0,MPI_COMM_WORLD);
 
     if (params.rank == 0) {
       cout.precision(6);
       cout.setf(ios::scientific, ios::floatfield);
       cout << endl;
       cout << "******************************************************************" << endl;
-      cout << "Integrated error at start: ";
-      for (auto &val:Error) cout << val - EXACT_VAL << ",  ";
+      cout << "Starting Integral Value: ";
+      for (auto &val:Error) cout << val << ",  ";
       cout << endl;
       cout << "******************************************************************" << endl;
       cout << endl;
@@ -150,13 +170,16 @@ int main(int argc, char *argv[]) {
 
     Array<double,3> U_inout;
     U_inout = Solver.U_spts;
-    CycleLGPTest(U_inout, params, string("box7.msh"), string("box1.msh"), 1, EXACT_VAL);
+    CycleLGPTest(U_inout, params, string("box0.msh"), string("box1.msh"), 1, EXACT_VAL);
     CycleLGPTest(U_inout, params, string("box1.msh"), string("box2.msh"), 2, EXACT_VAL);
     CycleLGPTest(U_inout, params, string("box2.msh"), string("box3.msh"), 3, EXACT_VAL);
     CycleLGPTest(U_inout, params, string("box3.msh"), string("box4.msh"), 4, EXACT_VAL);
     CycleLGPTest(U_inout, params, string("box4.msh"), string("box5.msh"), 5, EXACT_VAL);
     CycleLGPTest(U_inout, params, string("box5.msh"), string("box6.msh"), 6, EXACT_VAL);
     CycleLGPTest(U_inout, params, string("box6.msh"), string("box7.msh"), 7, EXACT_VAL);
+    CycleLGPTest(U_inout, params, string("box7.msh"), string("box8.msh"), 8, EXACT_VAL);
+    CycleLGPTest(U_inout, params, string("box8.msh"), string("box9.msh"), 9, EXACT_VAL);
+    CycleLGPTest(U_inout, params, string("box9.msh"), string("box0.msh"), 10, EXACT_VAL);
 
     MPI_Finalize();
     return 0;
@@ -231,8 +254,20 @@ vector<double> CycleLGPTest(Array<double,3> &U_inout, input params, string Grid1
       Geo->fringeCells.insert(ic);
 
   // Interpolate IC to 2nd grid [from box1 to box2]
-  Solver.OComm->matchUnblankCells(Solver.eles,Geo->fringeCells,Geo->eleMap,params.quadOrder);
-  Solver.OComm->performGalerkinProjection(Solver.eles,Solver.opers,Geo->eleMap,params.order);
+  if (params.projection)
+  {
+    /* --- Use Local Galerkin Projection --- */
+    Solver.OComm->matchUnblankCells(Solver.eles,Geo->fringeCells,Geo->eleMap,params.quadOrder);
+    Solver.OComm->performGalerkinProjection(Solver.eles,Solver.opers,Geo->eleMap,params.order);
+  }
+  else
+  {
+    /* --- Use collocation projection; Use for nonlinear shape funcs --- */
+    Solver.OComm->setupFringeCellPoints(Solver.eles,Geo->fringeCells,Geo->eleMap);
+    Solver.OComm->matchOversetPoints(Solver.eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
+    Solver.OComm->exchangeOversetData(Solver.eles,Solver.opers,Geo->eleMap);
+    Solver.OComm->transferEleData(Solver.eles,Geo->fringeCells,Geo->eleMap);
+  }
 
   params.dataFileName = "LGP_Test" + to_string(iter);
   writeData(&Solver,&params);
