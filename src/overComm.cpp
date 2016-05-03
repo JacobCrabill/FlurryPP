@@ -745,6 +745,12 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
         eles[ic]->U_spts(spt,k) = 0;
 
     auto unblankU = solveCholesky(ubLHS[i],ubRHS[i]);
+#ifdef _DEBUG
+    if (unblankU.checkNan() || getMax(unblankU.data) > 1e12) {
+      auto invMat = ubLHS[i].invertMatrix();
+      invMat.timesMatrix(ubRHS[i],unblankU);
+    }
+#endif
     for (int spt=0; spt<nSpts; spt++)
       for (int k=0; k<nFields; k++)
         eles[ic]->U_spts(spt,k) += unblankU(spt,k);
@@ -833,10 +839,12 @@ void overComm::performProjection_static(vector<shared_ptr<ele>> &eles, vector<in
         eles[ic]->U_spts(spt,k) = 0;
 
     auto unblankU = solveCholesky(ubLHS[i],ubRHS[i]);
-    if (unblankU.checkNan()) {
+#ifdef _DEBUG
+    if (unblankU.checkNan() || getMax(unblankU.data) > 1e12) {
       auto invMat = ubLHS[i].invertMatrix();
       invMat.timesMatrix(ubRHS[i],unblankU);
     }
+#endif
     for (int spt=0; spt<nSpts; spt++)
       for (int k=0; k<nFields; k++)
         eles[ic]->U_spts(spt,k) += unblankU(spt,k);
