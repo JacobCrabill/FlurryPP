@@ -92,6 +92,7 @@ void boundFace::applyBCs(void)
       array<double,3> vBound = {params->uBound,params->vBound,params->wBound};
 
       double gamma = params->gamma;
+      double gmo = gamma - 1.;
 
       /* --- Calcualte primitives on left side (interior) --- */
       double rhoL = UL(fpt,0);
@@ -281,63 +282,56 @@ void boundFace::applyBCs(void)
         ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
       }
 
-      // Characteristic [Copied from HiFiLES]
+      // Characteristic Riemann Invariant Far-Field [Copied from PyFR]
       else if (bcType == CHAR_INOUT) {
-        double one_over_s;
-        double h_free_stream;
-
         // Compute normal velocity on left side
         double vnL = 0.;
         for (uint i=0; i<nDims; i++)
           vnL += vL[i]*normL(fpt,i);
 
-        double vnBound = 0;
+        double vnB = 0.;
         for (uint i=0; i<nDims; i++)
-          vnBound += vBound[i]*normL(fpt,i);
+          vnB += vBound[i]*normL(fpt,i);
 
-        double r_plus  = vnL + 2./(gamma-1.)*sqrt(gamma*pL/rhoL);
-        double r_minus = vnBound - 2./(gamma-1.)*sqrt(gamma*params->pBound/params->rhoBound);
+        double cL = sqrt(gamma*pL/rhoL);
+        double cB = sqrt(gamma*params->pBound/params->rhoBound);
 
-        double cStar = 0.25*(gamma-1.)*(r_plus-r_minus);
-        double vn_star = 0.5*(r_plus+r_minus);
+        double R_L;
+        if (std::abs(vnB) >= cB && vnL >= 0)
+          R_L = vnB + 2./gmo*cB;
+        else
+          R_L = vnL + 2./gmo*cL;
 
-        // Inflow
-        if (vnL<0) {
-          // HACK
-          one_over_s = params->oneOverS;
+        double R_B;
+        if (std::abs(vnB) >= cB && vnL < 0)
+          R_B = vnL - 2./gmo*cL;
+        else
+          R_B = vnB - 2./gmo*cB;
 
-          // freestream total enthalpy
-          vSq = 0.;
-          for (uint i=0;i<nDims;i++)
-            vSq += vBound[i]*vBound[i];
-          h_free_stream = gamma/(gamma-1.)*params->pBound/params->rhoBound + 0.5*vSq;
+        double rhoFac = .25 * (gamma-1.) * (R_L-R_B);
+        double rhoBG = rhoFac * rhoFac / gamma;
+        if(vnL < 0)
+          rhoBG *= pow(params->rhoBound, gamma) / params->pBound;
+        else
+          rhoBG *= pow(rhoL, gamma) / pL;
 
-          rhoR = pow(1./gamma*(one_over_s*cStar*cStar),1./(gamma-1.));
+        rhoR = pow(rhoBG, 1. / gmo);
 
-          // Compute velocity on the right side
-          for (uint i=0; i<nDims; i++)
-            vR[i] = vn_star*normL(fpt,i) + (vBound[i] - vnBound*normL(fpt,i));
+        pR = rhoFac * rhoFac * rhoR / gamma;
 
-          pR = rhoR/gamma*cStar*cStar;
-          ER = rhoR*h_free_stream - pR;
+        double VB = 0.5 * (R_L + R_B);
+        for (int i = 0; i < nDims; i++) {
+          if (vnL < 0)
+            vR[i] = vBound[i] + (VB - vnB) * normL(fpt,i);
+          else
+            vR[i] = vL[i] + (VB - vnL) * normL(fpt,i);
         }
-        // Outflow
-        else {
-          one_over_s = pow(rhoL,gamma)/pL;
 
-          // freestream total enthalpy
-          rhoR = pow(1./gamma*(one_over_s*cStar*cStar), 1./(gamma-1.));
+        double vMag2 = 0;
+        for (int i = 0; i < nDims; i++)
+          vMag2 += vR[i]*vR[i];
 
-          // Compute velocity on the right side
-          for (uint i=0; i<nDims; i++)
-            vR[i] = vn_star*normL(fpt,i) + (vL[i] - vnL*normL(fpt,i));
-
-          pR = rhoR/gamma*cStar*cStar;
-          vSq = 0.;
-          for (uint i=0; i<nDims; i++)
-            vSq += (vR[i]*vR[i]);
-          ER = (pR/(gamma-1.0)) + 0.5*rhoR*vSq;
-        }
+        ER = pR / gmo + .5 * rhoR * vMag2;
       }
       else {
         cout << "Boundary Condition: " << bcType << endl;
