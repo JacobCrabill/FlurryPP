@@ -583,8 +583,9 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
         isInEle = eles[ic]->getRefLocNewton(point(qpts_tmp[j],nDims),refLoc);
 
         if (!isInEle) {
-          _(refLoc);
-          FatalError("Quadrature Point Reference Location not found in ele!");
+          _(point(qpts_tmp[j]));
+          FatalError("Quadrature Point Reference Location not found in ele!"
+                     "\nAre you using non-linear shape funcs perhaps?");
         }
 
         qptsD_ref[p].insertRow({refLoc.x,refLoc.x,refLoc.z});
@@ -638,7 +639,8 @@ void overComm::performGalerkinProjection(vector<shared_ptr<ele>> &eles, map<int,
 
       if (!isInEle) {
         cout << setprecision(16) << "qpt: " << pos << endl;
-        FatalError("Quadrature Point Reference Location not found in ele!");
+        FatalError("Quadrature Point Reference Location not found in ele!"
+                   "\nAre you using non-linear shape funcs perhaps?");
       }
 
       qpts_recv[p](i,0) = refLoc.x;
