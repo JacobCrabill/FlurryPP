@@ -888,6 +888,7 @@ void geo::processBlanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> 
 
 void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &faces, vector<shared_ptr<mpiFace>> &mFaces, vector<shared_ptr<overFace>> &oFaces, solver *Solver)
 {
+#ifndef _NO_MPI
   /* --- Check whether anything needs to be done --- */
 
   int nUB = unblankCells.size();
@@ -919,7 +920,6 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
     }
   }
 
-#ifndef _NO_MPI
   // Figure out whether MPI faces are to be unblanked as MPI or as overset
   // Need list of all possibly-unblanked MPI faces on this rank
   unordered_set<int> allMpiFaces = ubMpiFaces;
@@ -969,7 +969,6 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
       }
     }
   }
-#endif
 
   // Now, figure out what faces must be removed due to being replaced by other type
   // For cell unblanking, the only possibility for face blanking is overset faces
@@ -992,6 +991,7 @@ void geo::processUnblanks(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>
   }
   for (auto &mface:mFaces) mface->getPointers();
   for (auto &oface:oFaces) oface->getPointers();
+#endif
 }
 
 void geo::removeEles(vector<shared_ptr<ele>> &eles, unordered_set<int> &blankEles, solver *Solver)
