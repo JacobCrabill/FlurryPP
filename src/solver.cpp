@@ -117,7 +117,8 @@ void solver::setupArrays(void)
   U_spts.setup(nSpts, nEles, nFields);
   U_fpts.setup(nFpts, nEles, nFields);
   U_mpts.setup(nMpts, nEles, nFields);
-  U_ppts.setup(nPpts, nEles, nFields);
+  V_ppts.setup(nPpts, nEles, nFields);
+  V_spts.setup(nSpts,nEles,nFields); /// TEMP / DEBUGGING
 
   F_spts.setup(nDims, nSpts, nEles, nFields);
   F_fpts.setup(nDims, nFpts, nEles, nFields);
@@ -622,9 +623,34 @@ void solver::extrapolateUPpts(void)
   int n = nEles * nFields;
   int k = nSpts;
 
+#pragma omp parallel for collapse(2)
+  for (int spt = 0; spt < nSpts; spt++) {
+    for (int ele = 0; ele < nEles; ele++) {
+      if (params->equation == ADVECTION_DIFFUSION) {
+        V_spts(spt,ele,0) = U_spts(spt,ele,0);
+      }
+      else if (params->equation == NAVIER_STOKES) {
+        double rho = U_spts(spt,ele,0);
+        double u = U_spts(spt,ele,1) / rho;
+        double v = U_spts(spt,ele,2) / rho;
+        double w = 0;
+        double vMagSq = u*u + v*v;
+        if (nDims == 3) {
+          w = U_spts(spt,ele,3) / rho;
+          vMagSq += w*w;
+          V_spts(spt,ele,3) = w;
+        }
+        V_spts(spt,ele,0) = rho;
+        V_spts(spt,ele,1) = u;
+        V_spts(spt,ele,2) = v;
+        V_spts(spt,ele,nDims+1) = (params->gamma-1)*(U_spts(spt,ele,nDims+1) - 0.5*rho*vMagSq);
+      }
+    }
+  }
+
   auto &A = opers[order].opp_spts_to_ppts(0,0);
-  auto &B = U_spts(0,0,0);
-  auto &C = U_ppts(0,0,0);
+  auto &B = V_spts(0,0,0);
+  auto &C = V_ppts(0,0,0);
 #ifdef _OMP
   omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
               1.0, &A, k, &B, n, 0.0, &C, n);
@@ -827,6 +853,7 @@ void solver::transformGradF_spts(int step)
 
   if (nDims == 2)
   {
+#pragma omp parallel for collapse(2)
     for (uint spt = 0; spt < nSpts; spt++) {
       for (uint e = 0; e < nEles; e++) {
         double A = gridV_spts(spt,e,1)*Jac_spts(spt,e,0,1) - gridV_spts(spt,e,0)*Jac_spts(spt,e,1,1);
@@ -842,6 +869,7 @@ void solver::transformGradF_spts(int step)
   else
   {
     matrix<double> Jacobian(4,4);
+#pragma omp parallel for collapse(2) private(Jacobian)
     for (uint spt = 0; spt < nSpts; spt++) {
       for (uint e = 0; e < nEles; e++) {
         Jacobian(3,3) = 1;
@@ -1065,6 +1093,7 @@ void solver::correctGradU(void)
 
   if (nDims == 2)
   {
+#pragma omp parallel for collapse(2)
     for (uint spt = 0; spt < nSpts; spt++) {
       for (uint e = 0; e < nEles; e++) {
         double invDet = 1./detJac_spts(spt,e);
@@ -1079,6 +1108,7 @@ void solver::correctGradU(void)
   }
   else
   {
+#pragma omp parallel for collapse(2)
     for (uint spt = 0; spt < nSpts; spt++) {
       for (uint e = 0; e < nEles; e++) {
         double invDet = 1./detJac_spts(spt,e);

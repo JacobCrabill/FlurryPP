@@ -166,9 +166,9 @@ double& ele::U_mpts(int mpt, int field)
   return Solver->U_mpts(mpt, sID, field);
 }
 
-double& ele::U_ppts(int ppt, int field)
+double& ele::V_ppts(int ppt, int field)
 {
-  return Solver->U_ppts(ppt, sID, field);
+  return Solver->V_ppts(ppt, sID, field);
 }
 
 /* ---- Geometry-Variable Access ---- */
@@ -1373,22 +1373,7 @@ void ele::getPrimitivesPlot(matrix<double> &V)
 
   for (uint ppt = 0; ppt < Solver->nPpts; ppt++)
     for (uint k = 0; k < nFields; k++)
-      V(ppt,k) = U_ppts(ppt, k);
-
-  if (params->equation == NAVIER_STOKES) {
-    // Overwriting V, so be careful of order!
-    for (uint i = 0; i < V.getDim0(); i++) {
-      double u = V(i,1) / V(i,0);
-      double v = V(i,2) / V(i,0);
-      double w = 0.;
-      if (nDims == 3) w = V(i,3) / V(i,0);
-      double vSq = u*u + v*v + w*w;
-      V(i,nDims+1) = (params->gamma-1)*(V(i,nDims+1) - 0.5*V(i,0)*vSq);
-      V(i,1) = u;
-      V(i,2) = v;
-      if (nDims == 3) V(i,3) = w;
-    }
-  }
+      V(ppt,k) = V_ppts(ppt, k);
 }
 
 void ele::getGridVelPlot(matrix<double> &GV)

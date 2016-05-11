@@ -141,10 +141,12 @@ void solver::insertElement(uint ele_ind)
 {
   U_spts.add_dim_1(ele_ind, 0.);
   U_fpts.add_dim_1(ele_ind, 0.);
-  U_ppts.add_dim_1(ele_ind, 0.);
 
   F_spts.add_dim_2(ele_ind, 0.);
   F_fpts.add_dim_2(ele_ind, 0.);
+
+  V_spts.add_dim_1(ele_ind, 0.);
+  V_ppts.add_dim_1(ele_ind, 0.);
 
   if (params->viscous || params->motion)
   {
@@ -212,10 +214,12 @@ void solver::removeElement(uint ele_ind)
 {
   U_spts.remove_dim_1(ele_ind);
   U_fpts.remove_dim_1(ele_ind);
-  U_ppts.remove_dim_1(ele_ind);
 
   F_spts.remove_dim_2(ele_ind);
   F_fpts.remove_dim_2(ele_ind);
+
+  V_spts.remove_dim_1(ele_ind);
+  V_ppts.remove_dim_1(ele_ind);
 
   if (params->viscous || params->motion)
   {
