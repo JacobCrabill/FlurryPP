@@ -2421,7 +2421,30 @@ void geo::partitionMesh(void)
   options[METIS_OPTION_PTYPE] = METIS_PTYPE_KWAY;
   options[METIS_OPTION_NCUTS] = 5;  // Allows better partitioning (less cuts) to be found [at negligible expense for CFD grids]
 
-  METIS_PartMeshDual(&nEles,&nVerts,eptr.data(),eind.data(),NULL,NULL,
+  // Weight elements with boundary faces more heavily (more work to do at boundaries)
+  // TODO: adjust weight based on specific boundary type
+  int *vwgt = NULL;
+  bool useBcWeights = false; // Change to add BC-based element weighting
+  if (useBcWeights) {
+    vwgt = new int(nEles);
+    for (int ic = 0; ic < nEles; ic++) {
+      for (int ib = 0; ib < nBounds; ib++) {
+        int bcID = bcList[ib];
+        if (bcID == PERIODIC || bcID == NONE || bcID == SUP_IN || bcID == SUP_OUT) continue;
+        int wtVal = 1;
+        if (bcID == CHAR_INOUT) wtVal = 2;
+        for (int j = 0; j < c2nv[ic]; j++) {
+          int iv = c2v(ic,j);
+          if (findFirst(bndPts[ib],iv,bndPts.dims[1]) != -1) {
+            vwgt[ic] += wtVal;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  METIS_PartMeshDual(&nEles,&nVerts,eptr.data(),eind.data(),vwgt,NULL,
                      &ncommon,&nproc,NULL,options,&objval,epart.data(),npart.data());
 
   // Copy data to the global arrays & reset local arrays
@@ -2691,13 +2714,15 @@ void geo::moveMesh(double rkVal)
 
   switch (params->motion) {
     case 1: {
+      double DX = 0.5 * params->periodicDX;
+      double DY = 0.5 * params->periodicDY;
       #pragma omp parallel for
       for (int iv=0; iv<nVerts; iv++) {
         /// Taken from Kui, AIAA-2010-5031-661
-        xv(iv,0) = xv0[iv].x + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*rkTime/10.);
-        xv(iv,1) = xv0[iv].y + 2*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*sin(2*pi*rkTime/10.);
-        gridVel(iv,0) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*rkTime/10.);
-        gridVel(iv,1) = 4.*pi/10.*sin(pi*xv0[iv].x/10.)*sin(pi*xv0[iv].y/10.)*cos(2*pi*rkTime/10.);
+        xv(iv,0) = xv0[iv].x + sin(pi*xv0[iv].x/DX.)*sin(pi*xv0[iv].y/DY)*sin(2*pi*rkTime/10.);
+        xv(iv,1) = xv0[iv].y + sin(pi*xv0[iv].x/DX)*sin(pi*xv0[iv].y/DY)*sin(2*pi*rkTime/10.);
+        gridVel(iv,0) = 2.*pi/10.*sin(pi*xv0[iv].x/DX)*sin(pi*xv0[iv].y/DY)*cos(2*pi*rkTime/10.);
+        gridVel(iv,1) = 2.*pi/10.*sin(pi*xv0[iv].x/DX)*sin(pi*xv0[iv].y/DY)*cos(2*pi*rkTime/10.);
       }
       break;
     }
