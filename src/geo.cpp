@@ -2719,7 +2719,7 @@ void geo::moveMesh(double rkVal)
       #pragma omp parallel for
       for (int iv=0; iv<nVerts; iv++) {
         /// Taken from Kui, AIAA-2010-5031-661
-        xv(iv,0) = xv0[iv].x + sin(pi*xv0[iv].x/DX.)*sin(pi*xv0[iv].y/DY)*sin(2*pi*rkTime/10.);
+        xv(iv,0) = xv0[iv].x + sin(pi*xv0[iv].x/DX)*sin(pi*xv0[iv].y/DY)*sin(2*pi*rkTime/10.);
         xv(iv,1) = xv0[iv].y + sin(pi*xv0[iv].x/DX)*sin(pi*xv0[iv].y/DY)*sin(2*pi*rkTime/10.);
         gridVel(iv,0) = 2.*pi/10.*sin(pi*xv0[iv].x/DX)*sin(pi*xv0[iv].y/DY)*cos(2*pi*rkTime/10.);
         gridVel(iv,1) = 2.*pi/10.*sin(pi*xv0[iv].x/DX)*sin(pi*xv0[iv].y/DY)*cos(2*pi*rkTime/10.);
