@@ -1,40 +1,41 @@
 # =============================================================
 # Basic Options
 # =============================================================
-equation      1    (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
-order         2    (Polynomial order to use)
-timeType      4    (0: Forward Euler, 4: RK44)
-dtType        2    (0: Fixed, 1: Global CFL-based, 2: Local CFL-based)
-CFL           .2
-dt            .0005
-iterMax       15000
-maxTime       500
-restart       0
-restartIter   50000
-
+equation      1   (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
 viscous       0   (0: Inviscid, 1: Viscous)
 motion        0   (0: Static, 1: Perturbation test case)
-riemannType   0   (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
-oversetMethod 0
-testCase      2
 nDims         2
 
+# Discretization Options
+order         3    (Polynomial order to use)
+timeType      6    (0: Forward Euler, 4: RK44, 6: Tuned Steady-State RK4 scheme)
+dtType        2    (0: Fixed, 1: Global CFL, 2: Local CFL)
+CFL           .9
+oversetMethod 0
+
+# Simulation Start/Run/Stop Conditions
+maxTime      500   (Non-dimensional time limit)
+iterMax      4000  (Total iteration limit)
+restart      0     (Start from restart file?)
+restartIter  4000  (Iteration of restart file)
+testCase     2     (Calculate error w.r.t. test case?)
+
 # Multigrid Options
-PMG         1
-lowOrder    0
-smoothSteps 1
-HMG         0
-n_h_levels  2
-shapeOrder  4
+PMG         1   (Use P-multigrid?)
+lowOrder    0   (Lowest P order to use in PMG)
+smoothSteps 2   (Number of "smoothing steps" to apply to each P level)
+HMG         0   (Use H-multigrid?)
+n_h_levels  2   (Number of additional H levels to create)
+shapeOrder  4   (Order of shape functions to use when creating fine grids)
 
 # =============================================================
 # Plotting/Output Options
 # =============================================================
-plotFreq        500   (Frequency to write plot files)
-monitorResFreq  100    (Frequency to print residual to terminal)
-monitorErrFreq  2000
-errorNorm       2
-resType         2        (1: 1-norm, 2: 2-norm, 3: Inf-norm)
+plotFreq        2000   (Frequency to write plot files)
+monitorResFreq  200    (Frequency to print residual)
+monitorErrFreq  200    (Frequency to print test case error)
+errorNorm       2      (1-norm, 2-norm, 0: Conservation, 3: Mass-flux)
+resType         2      (1: 1-norm, 2: 2-norm, 3: Inf-norm)
 dataFileName    ChannelPMG  (Filename prefix for output files)
 entropySensor   0      (Calculate & plot entropy-error sensor)
 writeIBLANK     0      (Write cell iblank values in ParaView files)
@@ -50,8 +51,7 @@ icType       0
 # Mesh Options
 # =============================================================
 meshType      0    (0: Read mesh, 1: Create mesh, 2: Overset Mesh)
-#meshFileName  channelBump.msh
-meshFileName  channelBump_R3.msh
+meshFileName  channelBump.msh
 
 # =============================================================
 # Boundary Conditions
@@ -80,6 +80,9 @@ pBound   .7142857143
 # =============================================================
 # Numerics Options
 # =============================================================
+# Interface Flux Function
+riemannType  0  (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
+
 # Other FR-method parameters
 spts_type_quad  Legendre
 
