@@ -205,8 +205,6 @@ public:
   double TIC;
   double muIC;
 
-  bool slipPenalty;  //! Use "penalty method" on slip-wall boundary
-
   /* --- Misc. Physical/Equation Parameters --- */
   double gamma;
   double prandtl;
@@ -246,11 +244,6 @@ public:
 
   double exps0;     //! Minimum entropy bound for polynomial squeezing
   int squeeze;      //! Flag to turn on polynomial squeezing or not
-
-  /* --- PID Boundary Conditions --- */
-  double Kp;
-  double Kd;
-  double Ki;
 
   /* --- Other --- */
   int rank;

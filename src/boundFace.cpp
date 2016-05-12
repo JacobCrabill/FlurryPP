@@ -40,17 +40,6 @@ void boundFace::setupRightState(void)
 
   if (bcType == ADIABATIC_NOSLIP) // For LDG numerical fluxes
     isBnd = 2;
-
-  if (params->slipPenalty) {
-    // For PID-controlled BC
-    deltaU.setup(nFptsL,nDims);
-    deltaUdot.setup(nFptsL,nDims);
-    deltaUint.setup(nFptsL,nDims);
-    deltaU.initializeToZero();
-    deltaUdot.initializeToZero();
-    deltaUint.initializeToZero();
-    UR.initializeToZero();
-  }
 }
 
 void boundFace::getPointersRight(void)
@@ -73,7 +62,6 @@ void boundFace::getRightGradient(void)
   applyViscousBCs();
 }
 
-
 void boundFace::applyBCs(void)
 {
   uint nDims = params->nDims;
@@ -89,7 +77,7 @@ void boundFace::applyBCs(void)
         for (int dim=0; dim<nDims; dim++)
           vG[dim] = Vg(fpt,dim);
       }
-      array<double,3> vBound = {params->uBound,params->vBound,params->wBound};
+      double vBound[3] = {params->uBound,params->vBound,params->wBound};
 
       double gamma = params->gamma;
       double gmo = gamma - 1.;
@@ -103,16 +91,6 @@ void boundFace::applyBCs(void)
       double vSq = 0;
       for (uint i=0; i<nDims; i++)
         vSq += (vL[i]*vL[i]);
-
-      // --------- For PID b.c. controller -----------
-      if (params->slipPenalty && UR(fpt,0)==0) {
-        UR(fpt,0)= UL(fpt,0);
-        UR(fpt,1) = UL(fpt,1);
-        UR(fpt,2) = UL(fpt,2);
-      }
-      vR[0] = UR(fpt,1)/UR(fpt,0);
-      vR[1] = UR(fpt,2)/UR(fpt,0);
-      // ---------------------------------------------
 
       double pL = (gamma-1.0)*(eL - 0.5*rhoL*vSq);
 
@@ -191,23 +169,8 @@ void boundFace::applyBCs(void)
           vnL += (vL[i]-vG[i])*normL(fpt,i);
 
         // reflect normal velocity
-        if (params->slipPenalty) {
-          double duOld[2];
-          for (uint i=0; i<nDims; i++)
-            duOld[i] = deltaU(fpt,i);
-
-          for (uint i=0; i<nDims; i++) {
-            double u_bc = vL[i] - (2.0)*vnL*normL(fpt,i);
-            deltaU(fpt,i) = u_bc - vR[i];
-            deltaUdot(fpt,i) = (deltaU(fpt,i) - duOld[i]) / params->dt;
-            deltaUint(fpt,i)+= (deltaU(fpt,i) + duOld[i]) * params->dt/2.0;
-            vR[i] += params->dt*(params->Kp*20.*deltaU(fpt,i) + params->Kd/10.*deltaUdot(fpt,i) + params->Ki*deltaUint(fpt,i));
-          }
-        }
-        else {
-          for (uint i=0; i<nDims; i++) {
-            vR[i] = vL[i] - (2.0)*vnL*normL(fpt,i);
-          }
+        for (uint i=0; i<nDims; i++) {
+          vR[i] = vL[i] - (2.0)*vnL*normL(fpt,i);
         }
 
         // extrapolate energy

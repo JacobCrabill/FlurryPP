@@ -80,8 +80,6 @@ public:
 
   void transformGradF_spts(int step);
 
-  void calcDeltaUc(void);
-
   /*! Calculate the maximum stable time step based upon CFL */
   double calcDt(void);
 
@@ -148,16 +146,9 @@ public:
   bool getRefLocNelderMead(point pos, point &loc);
 
   uint getNDims() const;
-  void setNDims(int value);
-
   uint getNFields() const;
-  void setNFields(int value);
-
   uint getNSpts() const;
-  void setNSpts(int value);
-
   uint getNFpts() const;
-  void setNFpts(int value);
 
   double getSensor(void);
 
@@ -194,9 +185,6 @@ public:
   vector<double> waveSp_fpts;      //! Maximum wave speed at each flux point
 
   vector<double> Uavg;             //! Average solution over element
-
-  // Gradients
-  vector<matrix<double>> tdF_spts;  //! Transformed gradient of flux (dF_dxi and dG_deta) at solution points
 
   // Shock Capturing variables
   double sensor;

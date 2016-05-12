@@ -283,12 +283,6 @@ void input::readInputFile(char *filename)
     opts.getScalarValue("wBound",wBound,0.);
     opts.getScalarValue("pBound",pBound,.7142857143);
     opts.getScalarValue("entropySensor",calcEntropySensor,false);
-    opts.getScalarValue("slipPenalty",slipPenalty,false);
-    if (slipPenalty) {
-     opts.getScalarValue("Kp",Kp);
-     opts.getScalarValue("Kd",Kd);
-     opts.getScalarValue("Ki",Ki);
-    }
     if (icType == 0) {
       opts.getScalarValue("rhoIC",rhoIC,rhoBound);
       opts.getScalarValue("vxIC",vxIC,uBound);

@@ -82,7 +82,6 @@ void ele::setup(input *inParams, solver *inSolver, geo *inGeo, int in_order)
   /* --- Final Step: calculate physical->reference transforms
    * and store shape basis values for future use --- */
   calcTransforms();
-
 }
 
 void ele::setupArrays(void)
@@ -100,7 +99,6 @@ void ele::setupArrays(void)
     S_mpts.setup(nMpts,1);
   }
 
-  //tempF.setup(nDims,nFields);
   tempU.assign(nFields,0);
 }
 
@@ -831,7 +829,6 @@ void ele::setInitialCondition()
 
 matrix<double> ele::calcError(void)
 {
-
   matrix<double> err(nSpts,nFields);
 
   if (!params->testCase) {
@@ -1176,15 +1173,6 @@ void ele::transformGradF_spts(int step)
           divF_spts(step,spt,k) += dU_spts(dim,spt,k)*S(dim,3);
     }
   }
-}
-
-void ele::calcDeltaUc(void)
-{
-//  for (int fpt=0; fpt<nFpts; fpt++) {
-//    for (int k=0; k<nFields; k++) {
-//      dUc_fpts(fpt,k) = Uc_fpts(fpt,k) - U_fpts(fpt,k);
-//    }
-//  }
 }
 
 void ele::calcEntropyErr_spts(void)
@@ -1706,7 +1694,7 @@ void ele::restart(ifstream &file, input* _params, geo* _Geo)
   }
 
   matrix<double> opp_interp;
-  int nSpts_final;
+  int nSpts_final = nSpts;
   if (order != params->order) {
     /* Setup inter-order interpolation operator */
 
@@ -2133,36 +2121,19 @@ uint ele::getNDims() const
   return nDims;
 }
 
-void ele::setNDims(int value)
-{
-  nDims = value;
-}
 uint ele::getNFields() const
 {
   return nFields;
 }
 
-void ele::setNFields(int value)
-{
-  nFields = value;
-}
 uint ele::getNSpts() const
 {
   return nSpts;
 }
 
-void ele::setNSpts(int value)
-{
-  nSpts = value;
-}
 uint ele::getNFpts() const
 {
   return nFpts;
-}
-
-void ele::setNFpts(int value)
-{
-  nFpts = value;
 }
 
 double ele::getSensor(void)
