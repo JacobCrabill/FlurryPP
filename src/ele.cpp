@@ -188,12 +188,12 @@ double& ele::shape_ppts(int ppt, int node)
 
 double& ele::dshape_spts(int spt, int node, int dim)
 {
-  return Solver->dshape_spts(spt, node, dim);
+  return Solver->dshape_spts(dim, spt, node);
 }
 
 double& ele::dshape_fpts(int fpt, int node, int dim)
 {
-  return Solver->dshape_fpts(fpt, node, dim);
+  return Solver->dshape_fpts(dim, fpt, node);
 }
 
 double& ele::detJac_spts(int spt)
@@ -328,6 +328,18 @@ void ele::calcTransforms(bool moving)
       JGinv_spts(spt,2,0) = yr*zs - ys*zr;  JGinv_spts(spt,2,1) = xs*zr - xr*zs;  JGinv_spts(spt,2,2) = xr*ys - xs*yr;
     }
     if (detJac_spts(spt)<0) FatalError("Negative Jacobian at solution points.");
+    /// DEBUGGING CSC METRICS
+    double rx = JGinv_spts(spt,0,0); double sx = JGinv_spts(spt,1,0); double tx = JGinv_spts(spt,2,0);
+    double ry = JGinv_spts(spt,0,1); double sy = JGinv_spts(spt,1,1); double ty = JGinv_spts(spt,2,1);
+    double rz = JGinv_spts(spt,0,2); double sz = JGinv_spts(spt,1,2); double tz = JGinv_spts(spt,2,2);
+    cout.precision(6);
+    cout << fixed;
+//    cout << "spt " << spt << ", e " << sID << ", dj = " << detJac_spts(spt) << endl;
+    if (sID == 3) {
+    cout << "rx: " << setw(10) << rx << ", ry: "  << setw(10)<< ry << ", rz: " << setw(10) << rz << endl;
+    cout << "sx: " << setw(10) << sx << ", sy: " << setw(10) << sy << ", sz: " << setw(10) << sz << endl;
+    cout << "tx: " << setw(10) << tx << ", ty: " << setw(10) << ty << ", tz: " << setw(10) << tz << endl;
+    }
   }
 
   /* --- Calculate Transformation at Flux Points --- */

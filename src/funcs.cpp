@@ -259,6 +259,18 @@ void shape_hex(const point &in_rst, double* out_shape, int nNodes)
   }
 }
 
+void dshape_quad(const vector<point> loc_pts, Array<double,3> &out_dshape, int nNodes)
+{
+  vector<double> dshape_tmp(nNodes*2);
+
+  for (int i = 0; i < loc_pts.size(); i++) {
+    dshape_quad(loc_pts[i], dshape_tmp.data(), nNodes);
+    for (int j = 0; j < nNodes; j++)
+      for (int d = 0; d < 2; d++)
+        out_dshape(d, i, j) = dshape_tmp[j*2+d];
+  }
+}
+
 void dshape_quad(const point &in_rs, matrix<double> &out_dshape, int nNodes)
 {
   out_dshape.setup(nNodes,2);
@@ -342,6 +354,18 @@ void dshape_quad(const point &in_rs, double* out_dshape, int nNodes)
       out_dshape[2*(nNodes-1)+0] = dLagrange(xlist, xi, nSide/2) * Lagrange(xlist, eta, nSide/2);
       out_dshape[2*(nNodes-1)+1] = Lagrange(xlist, xi, nSide/2) * dLagrange(xlist, eta, nSide/2);
     }
+  }
+}
+
+void dshape_hex(const vector<point> loc_pts, Array<double,3> &out_dshape, int nNodes)
+{
+  vector<double> dshape_tmp(nNodes*3);
+
+  for (int i = 0; i < loc_pts.size(); i++) {
+    dshape_hex(loc_pts[i], dshape_tmp.data(), nNodes);
+    for (int j = 0; j < nNodes; j++)
+      for (int d = 0; d < 3; d++)
+        out_dshape(d, i, j) = dshape_tmp[j*3+d];
   }
 }
 

@@ -97,6 +97,7 @@ void solver::setup(input *params, int _order, geo *_Geo)
   nFpts = opers[order].nFpts;
   nPpts = opers[order].nPpts;
   nMpts = nPpts - nSpts - nFpts;
+  nCpts = nSpts;
 
   setupArrays();
 
@@ -167,13 +168,16 @@ void solver::setupGeometry(void)
   shape_spts.setup(nSpts,nNodes);
   shape_fpts.setup(nFpts,nNodes);
   shape_ppts.setup(nPpts,nNodes);
+  shape_cpts.setup(nCpts,nNodes);
 
-  dshape_spts.setup(nSpts,nNodes,nDims);
-  dshape_fpts.setup(nFpts,nNodes,nDims);
+  dshape_spts.setup(nDims,nSpts,nNodes);
+  dshape_fpts.setup(nDims,nFpts,nNodes);
+  dshape_cpts.setup(nDims,nCpts,nNodes);
 
   pos_spts.setup(nSpts, nEles, nDims);
   pos_fpts.setup(nFpts, nEles, nDims);
   pos_ppts.setup(nPpts, nEles, nDims);
+  pos_cpts.setup(nCpts, nEles, nDims);
 
   tNorm_fpts.setup(nFpts,nDims);
 
@@ -203,23 +207,25 @@ void solver::setupGeometry(void)
     loc_spts = getLocSpts(QUAD,order,params->sptsTypeQuad);
     loc_fpts = getLocFpts(QUAD,order,params->sptsTypeQuad);
     loc_ppts = getLocPpts(QUAD,order,params->sptsTypeQuad);
+    loc_cpts = getLocSpts(QUAD,order,string("Equidistant"));
+
+    dshape_quad(loc_spts, dshape_spts, nNodes);
+    dshape_quad(loc_fpts, dshape_fpts, nNodes);
+    dshape_quad(loc_cpts, dshape_cpts, nNodes);
 
     for (uint ppt = 0; ppt < nPpts; ppt++)
-    {
-      shape_quad(loc_ppts[ppt], &shape_ppts(ppt,0),nNodes);
-    }
+      shape_quad(loc_ppts[ppt], &shape_ppts(ppt,0), nNodes);
+
+    for (uint cpt = 0; cpt < nCpts; cpt++)
+      shape_quad(loc_cpts[cpt], &shape_cpts(cpt,0), nNodes);
 
     for (uint spt = 0; spt < nSpts; spt++)
-    {
       shape_quad(loc_spts[spt], &shape_spts(spt,0), nNodes);
-      dshape_quad(loc_spts[spt], &dshape_spts(spt,0,0), nNodes);
-    }
 
     // Setting unit normal vector in the parent domain
     for (uint fpt = 0; fpt < nFpts; fpt++)
     {
       shape_quad(loc_fpts[fpt], &shape_fpts(fpt,0), nNodes);
-      dshape_quad(loc_fpts[fpt], &dshape_fpts(fpt,0,0), nNodes);
 
       uint iFace = floor(fpt / (order+1));
       // Face ordering for quads: Bottom, Right, Top, Left
@@ -242,29 +248,30 @@ void solver::setupGeometry(void)
           break;
       }
     }
-
   }
   else
   {
     loc_spts = getLocSpts(HEX,order,params->sptsTypeQuad);
     loc_fpts = getLocFpts(HEX,order,params->sptsTypeQuad);
     loc_ppts = getLocPpts(HEX,order,params->sptsTypeQuad);
+    loc_cpts = getLocSpts(HEX,order,string("Equidistant"));
+
+    dshape_hex(loc_spts, dshape_spts, nNodes);
+    dshape_hex(loc_fpts, dshape_fpts, nNodes);
+    dshape_hex(loc_cpts, dshape_cpts, nNodes);
 
     for (uint ppt = 0; ppt < nPpts; ppt++)
-    {
       shape_hex(loc_ppts[ppt], &shape_ppts(ppt,0), nNodes);
-    }
+
+    for (uint cpt = 0; cpt < nCpts; cpt++)
+      shape_hex(loc_cpts[cpt], &shape_cpts(cpt,0), nNodes);
 
     for (uint spt = 0; spt < nSpts; spt++)
-    {
       shape_hex(loc_spts[spt], &shape_spts(spt,0), nNodes);
-      dshape_hex(loc_spts[spt], &dshape_spts(spt,0,0), nNodes);
-    }
 
     for (uint fpt = 0; fpt < nFpts; fpt++)
     {
       shape_hex(loc_fpts[fpt], &shape_fpts(fpt,0), nNodes);
-      dshape_hex(loc_fpts[fpt], &dshape_fpts(fpt,0,0), nNodes);
 
       // Setting unit normal vector in the parent domain
       uint iFace = floor(fpt / ((order+1)*(order+1)));
@@ -1248,6 +1255,7 @@ void solver::setPosSptsFpts(void)
   int ms = nSpts;
   int mf = nFpts;
   int mp = nPpts;
+  int mc = nCpts;
   int k = nNodes;
   int n = nEles * nDims;
 
@@ -1281,6 +1289,16 @@ void solver::setPosSptsFpts(void)
 #else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mp, n, k,
               1.0, &Ap, k, &B, n, 0.0, &Cp, n);
+#endif
+
+  auto &Ac = shape_cpts(0,0);
+  auto &Cc = pos_cpts(0,0,0);
+#ifdef _OMP
+  omp_blocked_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mp, n, k,
+              1.0, &Ap, k, &B, n, 0.0, &Cp, n);
+#else
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mc, n, k,
+              1.0, &Ac, k, &B, n, 0.0, &Cc, n);
 #endif
 
   /* Initialize storage of moving node positions */
@@ -1379,6 +1397,169 @@ void solver::updateGridVSptsFpts(void)
 #endif
 }
 
+void solver::calcCSCMetrics(void)
+{
+  /* --- Step 1: Calulcate Inner Terms --- */
+
+  Array<double,4> gradPos(nDims, nCpts, nEles, nDims);
+
+  int mc = nCpts;
+  int kc = nNodes;
+  int nc = nEles * nDims;
+
+  for (int dim = 0; dim < nDims; dim++) {
+    auto &A = dshape_cpts(dim, 0, 0);
+    auto &B = nodes(0, 0, 0);
+    auto &C = gradPos(dim, 0, 0, 0);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mc, nc, kc,
+                1.0, &A, kc, &B, nc, 0.0, &C, nc);
+  }
+
+  if (nDims == 3)
+  {
+    // Handy cross-product indices
+    int cross1[3] = {1,2,0};
+    int cross2[3] = {2,0,1};
+
+    //              xi,eta,zeta             x,y,z
+    Array<double,4> TA(nDims, nCpts, nEles, nDims); // TA for xi_x, xi_y, xi_z, eta_x, eta_y, ...
+    Array<double,4> TB(nDims, nCpts, nEles, nDims);
+    for (int d1 = 0; d1 < 3; d1++) {
+      for (int cpt = 0; cpt < nCpts; cpt++) {
+        for (int e = 0; e < nEles; e++) {
+          for (int d2 = 0; d2 < 3; d2++) {
+            TA(d1, cpt, e, d2) = gradPos(cross1[d1],cpt,e,cross1[d2]) * pos_cpts(cpt,e,cross2[d2]) - gradPos(cross1[d1],cpt,e,cross2[d2]) * pos_cpts(cpt,e,cross1[d2]);
+            TB(d1, cpt, e, d2) = gradPos(cross2[d1],cpt,e,cross1[d2]) * pos_cpts(cpt,e,cross2[d2]) - gradPos(cross2[d1],cpt,e,cross2[d2]) * pos_cpts(cpt,e,cross1[d2]);
+          }
+        }
+      }
+    }
+
+    /* --- Step 2.1: Calulcate Jacobian Entries at spts --- */
+
+    int ms = nSpts;
+    int ks = nCpts;
+    int ns = nEles * nDims;
+    Array<double,3> gradTA(nSpts, nEles, nDims);
+    Array<double,3> gradTB(nSpts, nEles, nDims);
+    for (int d1 = 0; d1 < 3; d1++) {
+      auto &AA = opers[order].gradCpts_spts[cross2[d1]](0, 0);
+      auto &BA = TA(d1, 0, 0, 0);
+      auto &CA = gradTA(0, 0, 0);
+      cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ms, ns, ks,
+                  0.5, &AA, ks, &BA, ns, 0.0, &CA, ns);
+
+      auto &AB = opers[order].gradCpts_spts[cross1[d1]](0, 0);
+      auto &BB = TB(d1, 0, 0, 0);
+      auto &CB = gradTB(0, 0, 0);
+      cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ms, ns, ks,
+                  0.5, &AB, ks, &BB, ns, 0.0, &CB, ns);
+
+      /*! !! ALTERNATIVE - REQUIRES RE-ARRANGING JGINV_SPTS !!
+     * Structure as JGinv_spts(d1,spt,e,d2)
+     * do dgemm on JGinv_spts(d1,0,0,0) and set beta = -1.0 for second call
+     auto &C = JGinv_spts(d1,0,0,0);
+     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ms, ns, ks,
+                 1.0, &AA, ks, &BA, ns, 0.0, &C, ns);
+     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ms, ns, ks,
+                 1.0, &AB, ks, &BB, ns, -1.0, &C, ns);
+     */
+
+      for (int spt = 0; spt < nSpts; spt++) {
+        for (int e = 0; e < nEles; e++) {
+          for (int d2 = 0; d2 < 3; d2++) {
+            JGinv_spts(spt,e,d1,d2) = gradTA(spt,e,d2) - gradTB(spt,e,d2);
+          }
+        }
+      }
+    }
+
+    /* --- Step 2.2: Calulcate Jacobian Entries at fpts --- */
+
+    int mf = nFpts;
+    int kf = nCpts;
+    int nf = nEles * nDims;
+    gradTA.setup(nFpts, nEles, nDims);
+    gradTB.setup(nFpts, nEles, nDims);
+    for (int d1 = 0; d1 < 3; d1++) {
+      auto &AA = opers[order].gradCpts_fpts[cross2[d1]](0, 0);
+      auto &BA = TA(d1, 0, 0, 0);
+      auto &CA = gradTA(0, 0, 0);
+      cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mf, nf, kf,
+                  1.0, &AA, kf, &BA, nf, 0.0, &CA, nf);
+
+      auto &AB = opers[order].gradCpts_fpts[cross1[d1]](0, 0);
+      auto &BB = TB(d1, 0, 0, 0);
+      auto &CB = gradTB(0, 0, 0);
+      cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mf, nf, kf,
+                  1.0, &AB, kf, &BB, nf, 0.0, &CB, nf);
+
+      for (int fpt = 0; fpt < nFpts; fpt++) {
+        for (int e = 0; e < nEles; e++) {
+          for (int d2 = 0; d2 < 3; d2++) {
+            JGinv_fpts(fpt,e,d1,d2) = gradTA(fpt,e,d2) - gradTB(fpt,e,d2);
+          }
+        }
+      }
+    }
+  }
+
+  /* --- Step 3: Calculate detJac and normals --- */
+
+  for (int spt = 0; spt < nSpts; spt++) {
+    for (int e = 0; e < nEles; e++) {
+      double rx = JGinv_spts(spt,e,0,0);   double ry = JGinv_spts(spt,e,0,1);   double rz = JGinv_spts(spt,e,0,2);
+      double sx = JGinv_spts(spt,e,1,0);   double sy = JGinv_spts(spt,e,1,1);   double sz = JGinv_spts(spt,e,1,2);
+      double tx = JGinv_spts(spt,e,2,0);   double ty = JGinv_spts(spt,e,2,1);   double tz = JGinv_spts(spt,e,2,2);
+      detJac_spts(spt,e) = sqrt((rx*(sy*tz - sz*ty) - ry*(sx*tz - sz*tx) + rz*(sx*ty - sy*tx))); // |JGinv| = |J|^(nDims-1)
+      /// DEBUGGING CSC METRICS
+      cout.precision(6);
+      cout << fixed;
+//      cout << " spt " << spt << ", e " << e << ", dj = " << detJac_spts(spt,e) << endl;
+      if (e == 3) {
+      cout << "csc rx: " << setw(10) << rx << ", ry: " << setw(10) << ry << ", rz: " << setw(10) << rz << endl;
+      cout << "csc sx: " << setw(10) << sx << ", sy: " << setw(10) << sy << ", sz: " << setw(10) << sz << endl;
+      cout << "csc tx: " << setw(10) << tx << ", ty: " << setw(10) << ty << ", tz: " << setw(10) << tz << endl;
+      }
+    }
+  }
+
+  for (int fpt = 0; fpt < nFpts; fpt++) {
+    for (int e = 0; e < nEles; e++) {
+      double rx = JGinv_fpts(fpt,e,0,0);   double ry = JGinv_fpts(fpt,e,0,1);   double rz = JGinv_fpts(fpt,e,0,2);
+      double sx = JGinv_fpts(fpt,e,1,0);   double sy = JGinv_fpts(fpt,e,1,1);   double sz = JGinv_fpts(fpt,e,1,2);
+      double tx = JGinv_fpts(fpt,e,2,0);   double ty = JGinv_fpts(fpt,e,2,1);   double tz = JGinv_fpts(fpt,e,2,2);
+      detJac_fpts(fpt,e) = sqrt(rx*(sy*tz - sz*ty) - ry*(sx*tz - sz*tx) + rz*(sx*ty - sy*tx)); // |JGinv| = |J|^(nDims-1)
+
+      /* --- Calculate outward unit normal vector at flux point --- */
+      // Transform face normal from reference to physical space [JGinv .dot. tNorm]
+      for (uint dim1 = 0; dim1 < nDims; dim1++) {
+        norm_fpts(fpt,e,dim1) = 0.;
+        for (uint dim2 = 0; dim2 < nDims; dim2++) {
+          norm_fpts(fpt,e,dim1) += JGinv_fpts(fpt,e,dim2,dim1) * tNorm_fpts(fpt,dim2);
+        }
+      }
+
+      // Store magnitude of face normal (equivalent to face area in finite-volume land)
+      dA_fpts(fpt,e) = 0;
+      for (uint dim = 0; dim < nDims; dim++)
+        dA_fpts(fpt,e) += norm_fpts(fpt,e,dim)*norm_fpts(fpt,e,dim);
+      dA_fpts(fpt,e) = sqrt(dA_fpts(fpt,e));
+
+      // Normalize
+      if (std::fabs(dA_fpts(fpt,e)) < 1e-10) {
+        dA_fpts(fpt,e) = 0.;
+        for (uint dim = 0; dim < nDims; dim++)
+          norm_fpts(fpt,e,dim) = 0;
+      }
+      else {
+        for (uint dim = 0; dim < nDims; dim++)
+          norm_fpts(fpt,e,dim) /= dA_fpts(fpt,e);
+      }
+    }
+  }
+}
+
 void solver::calcTransforms(void)
 {
   /* --- Calculate Transformation at Solution Points --- */
@@ -1396,14 +1577,14 @@ void solver::calcTransforms(void)
         for (uint i = 0; i < nNodes; i++)
           for (uint dim1 = 0; dim1 < nDims; dim1++)
             for (uint dim2 = 0; dim2 < nDims; dim2++)
-              Jac_spts(spt,e,dim1,dim2) += dshape_spts(spt,i,dim2)*nodesRK(i,e,dim1);
+              Jac_spts(spt,e,dim1,dim2) += dshape_spts(dim2,spt,i)*nodesRK(i,e,dim1);
       }
       else
       {
         for (uint i = 0; i < nNodes; i++)
           for (uint dim1 = 0; dim1 < nDims; dim1++)
             for (uint dim2 = 0; dim2 < nDims; dim2++)
-              Jac_spts(spt,e,dim1,dim2) += dshape_spts(spt,i,dim2)*nodes(i,e,dim1);
+              Jac_spts(spt,e,dim1,dim2) += dshape_spts(dim2,spt,i)*nodes(i,e,dim1);
       }
 
       if (nDims == 2) {
@@ -1423,7 +1604,7 @@ void solver::calcTransforms(void)
         JGinv_spts(spt,e,1,0) = yt*zr - yr*zt;  JGinv_spts(spt,e,1,1) = xr*zt - xt*zr;  JGinv_spts(spt,e,1,2) = xt*yr - xr*yt;
         JGinv_spts(spt,e,2,0) = yr*zs - ys*zr;  JGinv_spts(spt,e,2,1) = xs*zr - xr*zs;  JGinv_spts(spt,e,2,2) = xr*ys - xs*yr;
       }
-      if (detJac_spts(spt)<0) FatalError("Negative Jacobian at solution points.");
+      if (detJac_spts(spt,e)<0) FatalError("Negative Jacobian at solution points.");
     }
   }
 
@@ -1443,14 +1624,14 @@ void solver::calcTransforms(void)
         for (uint i = 0; i < nNodes; i++)
           for (uint dim1 = 0; dim1 < nDims; dim1++)
             for (uint dim2 = 0; dim2 < nDims; dim2++)
-              Jac_fpts(fpt,e,dim1,dim2) += dshape_fpts(fpt,i,dim2)*nodesRK(i,e,dim1);
+              Jac_fpts(fpt,e,dim1,dim2) += dshape_fpts(dim2,fpt,i)*nodesRK(i,e,dim1);
       }
       else
       {
         for (uint i = 0; i < nNodes; i++)
           for (uint dim1 = 0; dim1 < nDims; dim1++)
             for (uint dim2 = 0; dim2 < nDims; dim2++)
-              Jac_fpts(fpt,e,dim1,dim2) += dshape_fpts(fpt,i,dim2)*nodes(i,e,dim1);
+              Jac_fpts(fpt,e,dim1,dim2) += dshape_fpts(dim2,fpt,i)*nodes(i,e,dim1);
       }
 
       if (nDims == 2) {
@@ -1463,7 +1644,7 @@ void solver::calcTransforms(void)
         double xr = Jac_fpts(fpt,e,0,0);   double xs = Jac_fpts(fpt,e,0,1);   double xt = Jac_fpts(fpt,e,0,2);
         double yr = Jac_fpts(fpt,e,1,0);   double ys = Jac_fpts(fpt,e,1,1);   double yt = Jac_fpts(fpt,e,1,2);
         double zr = Jac_fpts(fpt,e,2,0);   double zs = Jac_fpts(fpt,e,2,1);   double zt = Jac_fpts(fpt,e,2,2);
-        detJac_fpts(fpt) = xr*(ys*zt - yt*zs) - xs*(yr*zt - yt*zr) + xt*(yr*zs - ys*zr);
+        detJac_fpts(fpt,e) = xr*(ys*zt - yt*zs) - xs*(yr*zt - yt*zr) + xt*(yr*zs - ys*zr);
         // Inverse of transformation matrix (times its determinant)
         JGinv_fpts(fpt,e,0,0) = ys*zt - yt*zs;  JGinv_fpts(fpt,e,0,1) = xt*zs - xs*zt;  JGinv_fpts(fpt,e,0,2) = xs*yt - xt*ys;
         JGinv_fpts(fpt,e,1,0) = yt*zr - yr*zt;  JGinv_fpts(fpt,e,1,1) = xr*zt - xt*zr;  JGinv_fpts(fpt,e,1,2) = xt*yr - xr*yt;

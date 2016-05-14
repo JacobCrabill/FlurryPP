@@ -272,6 +272,7 @@ obj/flurry.o: src/flurry.cpp include/flurry.hpp \
 obj/solver.o: src/solver.cpp include/solver.hpp \
 		include/global.hpp \
 		include/error.hpp \
+    include/funcs.hpp \
 		include/matrix.hpp \
 		include/ele.hpp \
 		include/geo.hpp \

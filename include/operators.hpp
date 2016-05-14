@@ -59,6 +59,13 @@ public:
   //! Setup operator for calculation of gradient at the solution points
   void setupGradSpts(void);
 
+  /*! Setup operator for gradient at nSpts tensor-product points
+   *  basisType: Which set of basis points to define Lagrange basis at
+   *  ptsType: Which set of points to evaluate basis derivative at
+   */
+  void setupGradPts(vector<matrix<double>> &opp_grad, string basisType, int basisOrder, string ptsType, int ptsOrder);
+  void setupGradPts(vector<matrix<double>>& opp_grad, string basisType, int basisOrder, vector<point> loc_pts);
+
   /*! Setup operator to calculate divergence of correction function at solution points
    *  based upon the normal flux correction at the flux points */
   void setupCorrection(void);
@@ -130,13 +137,14 @@ public:
   uint nDims, nFields, eType, order, nSpts, nFpts, nPpts;
   string sptsType;
 
-  vector<point> loc_spts, loc_fpts, loc_ppts, loc_qpts;
+  vector<point> loc_spts, loc_fpts, loc_ppts, loc_qpts, loc_cpts;
 
   matrix<double> opp_spts_to_fpts;
   matrix<double> opp_spts_to_mpts;
   matrix<double> opp_spts_to_ppts;
   matrix<double> opp_spts_to_qpts;
   vector<matrix<double>> opp_grad_spts;
+  vector<matrix<double>> gradCpts_cpts, gradCpts_spts, gradCpts_fpts; //! Consistent grid points
   matrix<double> opp_div_spts;
   vector<matrix<double>> opp_extrapolateFn;
   matrix<double> opp_correction;

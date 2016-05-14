@@ -804,6 +804,23 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
     cout << "Geo: Setting up elements" << endl;
   }
 
+  //! DEBUGGING FOR CSC METRICS
+  if (params->iter == params->initIter) {
+    xv0.resize(nVerts);
+    for (int i=0; i<nVerts; i++) xv0[i] = point(xv[i],nDims);
+  }
+cout << "Deforming mesh" << endl;
+  double rkTime = 2.5;
+  double DX = 0.5 * params->periodicDX;
+  double DY = 0.5 * params->periodicDY;
+  #pragma omp parallel for
+  for (int iv=0; iv<nVerts; iv++) {
+    /// Taken from Kui, AIAA-2010-5031-661
+    xv(iv,0) = xv0[iv].x + sin(pi*xv0[iv].x/DX)*sin(pi*xv0[iv].y/DY)*sin(2*pi*rkTime/10.);
+    xv(iv,1) = xv0[iv].y + sin(pi*xv0[iv].x/DX)*sin(pi*xv0[iv].y/DY)*sin(2*pi*rkTime/10.);
+  }
+  //! ---------------------------
+
   eles.resize(0);
   faces.resize(0);
   mpiFacesVec.resize(0);

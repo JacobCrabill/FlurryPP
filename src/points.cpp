@@ -30,6 +30,40 @@
 
 #include <sstream>
 
+vector<point> getLocCGPts(int order, int nDims)
+{
+  int nPts = (order+1) * (order+1);
+  if (nDims == 3) nPts *= (order+1);
+
+  vector<point> outPts(nPts);
+
+  double dxi = 2. / order;
+
+  if (nDims == 2)
+  {
+    for (int i = 0; i < order+1; i++) {
+      for (int j = 0; j < order+1; j++) {
+        outPts[j+i*(order+1)].x = -1 + dxi*j;
+        outPts[j+i*(order+1)].y = -1 + dxi*i;
+      }
+    }
+  }
+  else
+  {
+    for (int k = 0; k < order+1; k++) {
+      for (int j = 0; j < order+1; j++) {
+        for (int i = 0; i < order+1; i++) {
+          outPts[i+(order+1)*(j+(order+1)*k)].x = -1 + dxi*i;
+          outPts[i+(order+1)*(j+(order+1)*k)].y = -1 + dxi*j;
+          outPts[i+(order+1)*(j+(order+1)*k)].z = -1 + dxi*k;
+        }
+      }
+    }
+  }
+
+  return outPts;
+}
+
 vector<point> getLocSpts(int eType, int order, string sptsType)
 {
   vector<point> outPts;
@@ -165,7 +199,12 @@ vector<double> getPts1D(string ptsType, int order)
 {
   vector<double> outPts(order+1);
 
-  if (!ptsType.compare("Legendre")) { // Gauss-Legendre
+  if (!ptsType.compare("Equidistant")) {
+    double dxi = 2. / order;
+    for (int i = 0; i < order+1; i++)
+      outPts[i] = -1 + dxi*i;
+  }
+  else if (!ptsType.compare("Legendre")) { // Gauss-Legendre
     if (order == 0) {
       outPts[0] =  0.0;
     }
@@ -354,6 +393,10 @@ vector<double> getPts1D(string ptsType, int order)
       string errMsg = "Gauss-Lobatto point locations for order " + ss.str() + " not implemented.";
       FatalError(errMsg.c_str());
     }
+  }
+  else {
+    string str = "Points type not recognized: " + ptsType;
+    FatalError(str.c_str());
   }
 
   return outPts;
