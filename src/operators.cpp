@@ -701,7 +701,7 @@ void oper::setupGradPts(vector<matrix<double>>& opp_grad, string basisType, int 
             opp_grad[dim](pt,bpt) = dLagrange(loc_basis,loc_pts[pt].y,jbpt) * Lagrange(loc_basis,loc_pts[pt].x,ibpt) * Lagrange(loc_basis,loc_pts[pt].z,kbpt);
           }
           else if (dim == 2) {
-            opp_grad[dim](pt,bpt) = dLagrange(loc_basis,loc_pts[pt].z,kbpt) * Lagrange(loc_basis,loc_pts[pt].y,ibpt) * Lagrange(loc_basis,loc_pts[pt].y,jbpt);
+            opp_grad[dim](pt,bpt) = dLagrange(loc_basis,loc_pts[pt].z,kbpt) * Lagrange(loc_basis,loc_pts[pt].x,ibpt) * Lagrange(loc_basis,loc_pts[pt].y,jbpt);
           }
         }
       }
