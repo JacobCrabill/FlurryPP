@@ -78,10 +78,6 @@ void ele::setup(input *inParams, solver *inSolver, geo *inGeo, int in_order)
 
   /* --- Setup all data arrays --- */
   setupArrays();
-
-  /* --- Final Step: calculate physical->reference transforms
-   * and store shape basis values for future use --- */
-  calcTransforms();
 }
 
 void ele::setupArrays(void)
@@ -213,22 +209,22 @@ double& ele::dA_fpts(int fpt)
 
 double& ele::Jac_spts(int spt, int dim1, int dim2)
 {
-  return Solver->Jac_spts(spt, sID, dim1, dim2);
+  return Solver->Jac_spts(dim2, spt, sID, dim1);
 }
 
 double& ele::Jac_fpts(int fpt, int dim1, int dim2)
 {
-  return Solver->Jac_fpts(fpt, sID, dim1, dim2);
+  return Solver->Jac_fpts(dim2, fpt, sID, dim1);
 }
 
 double& ele::JGinv_spts(int spt, int dim1, int dim2)
 {
-  return Solver->JGinv_spts(spt, sID, dim1, dim2);
+  return Solver->JGinv_spts(dim1, spt, sID, dim2);
 }
 
 double& ele::JGinv_fpts(int fpt, int dim1, int dim2)
 {
-  return Solver->JGinv_fpts(fpt, sID, dim1, dim2);
+  return Solver->JGinv_fpts(dim1, fpt, sID, dim2);
 }
 
 double& ele::norm_fpts(int fpt, int dim)
@@ -328,18 +324,6 @@ void ele::calcTransforms(bool moving)
       JGinv_spts(spt,2,0) = yr*zs - ys*zr;  JGinv_spts(spt,2,1) = xs*zr - xr*zs;  JGinv_spts(spt,2,2) = xr*ys - xs*yr;
     }
     if (detJac_spts(spt)<0) FatalError("Negative Jacobian at solution points.");
-    /// DEBUGGING CSC METRICS
-    double rx = JGinv_spts(spt,0,0); double sx = JGinv_spts(spt,1,0); double tx = JGinv_spts(spt,2,0);
-    double ry = JGinv_spts(spt,0,1); double sy = JGinv_spts(spt,1,1); double ty = JGinv_spts(spt,2,1);
-    double rz = JGinv_spts(spt,0,2); double sz = JGinv_spts(spt,1,2); double tz = JGinv_spts(spt,2,2);
-    cout.precision(6);
-    cout << fixed;
-//    cout << "spt " << spt << ", e " << sID << ", dj = " << detJac_spts(spt) << endl;
-    if (sID == 3) {
-    cout << "rx: " << setw(10) << rx << ", ry: "  << setw(10)<< ry << ", rz: " << setw(10) << rz << endl;
-    cout << "sx: " << setw(10) << sx << ", sy: " << setw(10) << sy << ", sz: " << setw(10) << sz << endl;
-    cout << "tx: " << setw(10) << tx << ", ty: " << setw(10) << ty << ", tz: " << setw(10) << tz << endl;
-    }
   }
 
   /* --- Calculate Transformation at Flux Points --- */

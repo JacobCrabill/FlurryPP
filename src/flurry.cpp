@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
   {
     /* Setup the solver, grid, all elements and faces, and all FR operators for computation */
     Solver.setup(&params,params.order);
-Solver.calcCSCMetrics();  /// DEBUGGING CSC METRICS
+
     /* Apply the initial condition */
     Solver.initializeSolution();
   }

@@ -363,7 +363,7 @@ public:
   void updateTransforms();
   void calcTransforms();
 
-  void calcCSCMetrics();
+  void calcCSCMetrics(void);
 private:
   //! Pointer to the parameters object for the current solution
   input *params;

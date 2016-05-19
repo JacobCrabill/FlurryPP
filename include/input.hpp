@@ -131,6 +131,7 @@ public:
   int dtType;
   int timeType;
   double rkTime;
+  double prevRkTime;
   double time;
   double maxTime;
   int iterMax;
