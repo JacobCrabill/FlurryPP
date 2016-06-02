@@ -294,8 +294,14 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, const vector<in
   foundPts.resize(nproc);
   foundEles.resize(nproc);
   foundLocs.resize(nproc);
-  if (params->oversetMethod==1)
+  if (params->oversetMethod==1) {
     foundNorm.resize(nproc);
+    if (!params->motion) {
+      foundJaco.resize(nproc);
+      foundDetJac.resize(nproc);
+    }
+  }
+
   int offset = 0;
   double tol = 1e-6;
   for (int p=0; p<nproc; p++) {
@@ -333,8 +339,16 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, const vector<in
             foundPts[p].push_back(i);
             foundEles[p].push_back(ic); // Local ele id for this grid
             foundLocs[p].push_back(refLoc);
-            if (params->oversetMethod==1)
+            if (params->oversetMethod==1) {
               foundNorm[p].push_back(point(norm_ptr));
+              if (!params->motion) {
+                matrix<double> jacobian, invJaco;
+                double detJac;
+                eles[eleMap[ic]]->calcTransforms_point(jacobian,invJaco,detJac,refLoc);
+                foundJaco[p].push_back(jacobian);
+                foundDetJac[p].push_back(detJac);
+              }
+            }
             break;
           }
         }
@@ -999,8 +1013,9 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
           cout << "qpt: " << qpts_tmp(j,0) << ", " << qpts_tmp(j,1) << endl;
           auto box = eles[ic]->getBoundingBox();
           cout << "ele box: " << box[0] << ", " << box[1] << "; " << box[3] << ", " << box[4] << endl;
-          cout << "ref loc: " << refLoc.x << ", " << refLoc.y << ", " << refLoc.z << endl;
-          FatalError("Quadrature Point Reference Location not found in ele!");
+          cout << "ref loc: " << refLoc << endl;
+          FatalError("Quadrature Point Reference Location not found in ele!  "
+                     "Are you using non-linear elements?");
         }
 
         vector<double> tmpErr(nFields);
@@ -1016,7 +1031,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
         if (params->errorNorm == 0)
         {
           /* Calculate 'relative' error [\int(u(T) - u(0)) dV] */
-          matrix<double> tmpErrSpts = eles[ic]->calcError();
+          matrix<double> tmpErrSpts = eles[ic]->calcEleError();
           opers[eles[ic]->order].interpolateToPoint(tmpErrSpts, tmpErr.data(), refLoc);  
           superU[offset+i].insertRow(tmpU);
         }
@@ -1064,7 +1079,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
 
     if (params->errorNorm == 0)
     {
-      matrix<double> tmpErr = eles[ic]->calcError();
+      matrix<double> tmpErr = eles[ic]->calcEleError();
       for (uint i=0; i<eles[ic]->nSpts; i++) {
         for (uint j=0; j<nFields; j++) {
           intErr[j] += tmpErr(i,j) * wts[i] * eles[ic]->detJac_spts(i);
@@ -1210,20 +1225,29 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>
 
         // NOW we can transform flux vector back to physical space
         // [Recall: F_phys = (G/|G|) * F_ref]
-        matrix<double> jacobian, invJaco;
-        double detJac;
-        eles[ic]->calcTransforms_point(jacobian,invJaco,detJac,refPos);
-
         matrix<double> tempF(nDims,nFields);
-        for (int dim1=0; dim1<nDims; dim1++)
-          for (int dim2=0; dim2<nDims; dim2++)
-            for (int k=0; k<nFields; k++)
-              tempF(dim1,k) += jacobian(dim1,dim2) * tempF_ref(dim2,k) / detJac;
+        if (params->motion)
+        {
+          matrix<double> jacobian, invJaco;
+          double detJac;
+          eles[ic]->calcTransforms_point(jacobian,invJaco,detJac,refPos);
 
-        if (params->motion) {
+          for (int dim1=0; dim1<nDims; dim1++)
+            for (int dim2=0; dim2<nDims; dim2++)
+              for (int k=0; k<nFields; k++)
+                tempF(dim1,k) += jacobian(dim1,dim2) * tempF_ref(dim2,k) / detJac;
+
           for (int dim=0; dim<nDims; dim++)
             for (int k=0; k<nFields; k++)
               tempF(dim,k) += jacobian(dim,nDims) * tempU[k];
+        }
+        else
+        {
+          // Use stored transform data for speed (esp. with high-order shape basis)
+          for (int dim1=0; dim1<nDims; dim1++)
+            for (int dim2=0; dim2<nDims; dim2++)
+              for (int k=0; k<nFields; k++)
+                tempF(dim1,k) += foundJaco[p][i](dim1,dim2) * tempF_ref(dim2,k) / foundDetJac[p][i];
         }
 
         Vec3 outNorm = foundNorm[p][i];

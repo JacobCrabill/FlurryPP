@@ -152,58 +152,47 @@ void shape_quad(const point &in_rs, double* out_shape, int nNodes)
 {
   double xi  = in_rs.x;
   double eta = in_rs.y;
-  if (nNodes == 8) {
-      out_shape[0] = -0.25*(1-xi)*(1-eta)*(1+eta+xi);
-      out_shape[1] = -0.25*(1+xi)*(1-eta)*(1+eta-xi);
-      out_shape[2] = -0.25*(1+xi)*(1+eta)*(1-eta-xi);
-      out_shape[3] = -0.25*(1-xi)*(1+eta)*(1-eta+xi);
-      out_shape[4] = 0.5*(1-xi)*(1+ xi)*(1-eta);
-      out_shape[5] = 0.5*(1+xi)*(1+eta)*(1-eta);
-      out_shape[6] = 0.5*(1-xi)*(1+ xi)*(1+eta);
-      out_shape[7] = 0.5*(1-xi)*(1+eta)*(1-eta);
-  }
-  else {
-    int nSide = sqrt(nNodes);
 
-    if (nSide*nSide != nNodes)
-      FatalError("For Lagrange quad of order N, must have (N+1)^2 shape points.");
+  int nSide = sqrt(nNodes);
 
-    vector<double> xlist(nSide);
-    double dxi = 2./(nSide-1);
+  if (nSide*nSide != nNodes)
+    FatalError("For Lagrange quad of order N, must have (N+1)^2 shape points.");
 
-    for (int i=0; i<nSide; i++)
-      xlist[i] = -1. + i*dxi;
+  vector<double> xlist(nSide);
+  double dxi = 2./(nSide-1);
 
-    int nLevels = nSide / 2;
-    int isOdd = nSide % 2;
+  for (int i=0; i<nSide; i++)
+    xlist[i] = -1. + i*dxi;
 
-    /* Recursion for all high-order Lagrange elements:
+  int nLevels = nSide / 2;
+  int isOdd = nSide % 2;
+
+  /* Recursion for all high-order Lagrange elements:
      * 4 corners, each edge's points, interior points */
-    int nPts = 0;
-    for (int i = 0; i < nLevels; i++) {
-      // Corners
-      int i2 = (nSide-1) - i;
-      out_shape[nPts+0] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i);
-      out_shape[nPts+1] = Lagrange(xlist, xi, i2) * Lagrange(xlist, eta, i);
-      out_shape[nPts+2] = Lagrange(xlist, xi, i2) * Lagrange(xlist, eta, i2);
-      out_shape[nPts+3] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i2);
-      nPts += 4;
+  int nPts = 0;
+  for (int i = 0; i < nLevels; i++) {
+    // Corners
+    int i2 = (nSide-1) - i;
+    out_shape[nPts+0] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i);
+    out_shape[nPts+1] = Lagrange(xlist, xi, i2) * Lagrange(xlist, eta, i);
+    out_shape[nPts+2] = Lagrange(xlist, xi, i2) * Lagrange(xlist, eta, i2);
+    out_shape[nPts+3] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i2);
+    nPts += 4;
 
-      // Edges: Bottom, right, top, left
-      int nSide2 = nSide - 2 * (i+1);
-      for (int j = 0; j < nSide2; j++) {
-        out_shape[nPts+0*nSide2+j] = Lagrange(xlist, xi, i+1+j) * Lagrange(xlist, eta, i);
-        out_shape[nPts+1*nSide2+j] = Lagrange(xlist, xi, i2) * Lagrange(xlist, eta, i+1+j);
-        out_shape[nPts+2*nSide2+j] = Lagrange(xlist, xi, i2-1-j) * Lagrange(xlist, eta, i2);
-        out_shape[nPts+3*nSide2+j] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i2-1-j);
-      }
-      nPts += 4*nSide2;
+    // Edges: Bottom, right, top, left
+    int nSide2 = nSide - 2 * (i+1);
+    for (int j = 0; j < nSide2; j++) {
+      out_shape[nPts+0*nSide2+j] = Lagrange(xlist, xi, i+1+j) * Lagrange(xlist, eta, i);
+      out_shape[nPts+1*nSide2+j] = Lagrange(xlist, xi, i2) * Lagrange(xlist, eta, i+1+j);
+      out_shape[nPts+2*nSide2+j] = Lagrange(xlist, xi, i2-1-j) * Lagrange(xlist, eta, i2);
+      out_shape[nPts+3*nSide2+j] = Lagrange(xlist, xi, i) * Lagrange(xlist, eta, i2-1-j);
     }
+    nPts += 4*nSide2;
+  }
 
-    // Center node for even-ordered Lagrange quads (odd value of nSide)
-    if (isOdd) {
-      out_shape[nNodes-1] = Lagrange(xlist, xi, nSide/2) * Lagrange(xlist, eta, nSide/2);
-    }
+  // Center node for even-ordered Lagrange quads (odd value of nSide)
+  if (isOdd) {
+    out_shape[nNodes-1] = Lagrange(xlist, xi, nSide/2) * Lagrange(xlist, eta, nSide/2);
   }
 }
 
@@ -501,78 +490,57 @@ void dshape_quad(const point &in_rs, double* out_dshape, int nNodes)
   double xi  = in_rs.x;
   double eta = in_rs.y;
 
-  if (nNodes == 8) {
-    out_dshape[0*2+0] = -0.25*(-1+eta)*(2*xi+eta);
-    out_dshape[1*2+0] =  0.25*(-1+eta)*(eta - 2*xi);
-    out_dshape[2*2+0] =  0.25*( 1+eta)*(2*xi+eta);
-    out_dshape[3*2+0] = -0.25*( 1+eta)*(eta-2*xi);
-    out_dshape[4*2+0] =    xi*(-1+eta);
-    out_dshape[5*2+0] = -0.5 *( 1+eta)*(-1+eta);
-    out_dshape[6*2+0] =   -xi*( 1+eta);
-    out_dshape[7*2+0] =  0.5 *( 1+eta)*(-1+eta);
+  int nSide = sqrt(nNodes);
 
-    out_dshape[0*2+1] = -0.25*(-1+xi)*(2*eta+xi);
-    out_dshape[1*2+1] =  0.25*( 1+xi)*(2*eta - xi);
-    out_dshape[2*2+1] =  0.25*( 1+xi)*(2*eta+xi);
-    out_dshape[3*2+1] = -0.25*(-1+xi)*(2*eta-xi);
-    out_dshape[4*2+1] =  0.5 *( 1+xi)*(-1+xi);
-    out_dshape[5*2+1] =  -eta*( 1+xi);
-    out_dshape[6*2+1] = -0.5 *( 1+xi)*(-1+xi);
-    out_dshape[7*2+1] =   eta*(-1+xi);
-  }
-  else {
-    int nSide = sqrt(nNodes);
+  if (nSide*nSide != nNodes)
+    FatalError("For Lagrange quad of order N, must have (N+1)^2 shape points.");
 
-    if (nSide*nSide != nNodes)
-      FatalError("For Lagrange quad of order N, must have (N+1)^2 shape points.");
+  vector<double> xlist(nSide);
+  double dxi = 2./(nSide-1);
 
-    vector<double> xlist(nSide);
-    double dxi = 2./(nSide-1);
+  for (int i=0; i<nSide; i++)
+    xlist[i] = -1. + i*dxi;
 
-    for (int i=0; i<nSide; i++)
-      xlist[i] = -1. + i*dxi;
+  int nLevels = nSide / 2;
+  int isOdd = nSide % 2;
 
-    int nLevels = nSide / 2;
-    int isOdd = nSide % 2;
-
-    /* Recursion for all high-order Lagrange elements:
+  /* Recursion for all high-order Lagrange elements:
      * 4 corners, each edge's points, interior points */
-    int nPts = 0;
-    for (int i = 0; i < nLevels; i++) {
-      // Corners
-      int i2 = (nSide-1) - i;
-      out_dshape[2*(nPts+0)+0] = dLagrange(xlist, xi, i)  * Lagrange(xlist, eta, i);
-      out_dshape[2*(nPts+1)+0] = dLagrange(xlist, xi, i2) * Lagrange(xlist, eta, i);
-      out_dshape[2*(nPts+2)+0] = dLagrange(xlist, xi, i2) * Lagrange(xlist, eta, i2);
-      out_dshape[2*(nPts+3)+0] = dLagrange(xlist, xi, i)  * Lagrange(xlist, eta, i2);
+  int nPts = 0;
+  for (int i = 0; i < nLevels; i++) {
+    // Corners
+    int i2 = (nSide-1) - i;
+    out_dshape[2*(nPts+0)+0] = dLagrange(xlist, xi, i)  * Lagrange(xlist, eta, i);
+    out_dshape[2*(nPts+1)+0] = dLagrange(xlist, xi, i2) * Lagrange(xlist, eta, i);
+    out_dshape[2*(nPts+2)+0] = dLagrange(xlist, xi, i2) * Lagrange(xlist, eta, i2);
+    out_dshape[2*(nPts+3)+0] = dLagrange(xlist, xi, i)  * Lagrange(xlist, eta, i2);
 
-      out_dshape[2*(nPts+0)+1] = Lagrange(xlist, xi, i)  * dLagrange(xlist, eta, i);
-      out_dshape[2*(nPts+1)+1] = Lagrange(xlist, xi, i2) * dLagrange(xlist, eta, i);
-      out_dshape[2*(nPts+2)+1] = Lagrange(xlist, xi, i2) * dLagrange(xlist, eta, i2);
-      out_dshape[2*(nPts+3)+1] = Lagrange(xlist, xi, i)  * dLagrange(xlist, eta, i2);
-      nPts += 4;
+    out_dshape[2*(nPts+0)+1] = Lagrange(xlist, xi, i)  * dLagrange(xlist, eta, i);
+    out_dshape[2*(nPts+1)+1] = Lagrange(xlist, xi, i2) * dLagrange(xlist, eta, i);
+    out_dshape[2*(nPts+2)+1] = Lagrange(xlist, xi, i2) * dLagrange(xlist, eta, i2);
+    out_dshape[2*(nPts+3)+1] = Lagrange(xlist, xi, i)  * dLagrange(xlist, eta, i2);
+    nPts += 4;
 
-      // Edges
-      int nSide2 = nSide - 2 * (i+1);
-      for (int j = 0; j < nSide2; j++) {
-        out_dshape[2*(nPts+0*nSide2+j)] = dLagrange(xlist, xi, i+1+j)  * Lagrange(xlist, eta, i);
-        out_dshape[2*(nPts+1*nSide2+j)] = dLagrange(xlist, xi, i2)   * Lagrange(xlist, eta, i+1+j);
-        out_dshape[2*(nPts+2*nSide2+j)] = dLagrange(xlist, xi, i2-1-j) * Lagrange(xlist, eta, i2);
-        out_dshape[2*(nPts+3*nSide2+j)] = dLagrange(xlist, xi, i)    * Lagrange(xlist, eta, i2-1-j);
+    // Edges
+    int nSide2 = nSide - 2 * (i+1);
+    for (int j = 0; j < nSide2; j++) {
+      out_dshape[2*(nPts+0*nSide2+j)] = dLagrange(xlist, xi, i+1+j)  * Lagrange(xlist, eta, i);
+      out_dshape[2*(nPts+1*nSide2+j)] = dLagrange(xlist, xi, i2)   * Lagrange(xlist, eta, i+1+j);
+      out_dshape[2*(nPts+2*nSide2+j)] = dLagrange(xlist, xi, i2-1-j) * Lagrange(xlist, eta, i2);
+      out_dshape[2*(nPts+3*nSide2+j)] = dLagrange(xlist, xi, i)    * Lagrange(xlist, eta, i2-1-j);
 
-        out_dshape[2*(nPts+0*nSide2+j)+1] = Lagrange(xlist, xi, i+1+j)  * dLagrange(xlist, eta, i);
-        out_dshape[2*(nPts+1*nSide2+j)+1] = Lagrange(xlist, xi, i2)   * dLagrange(xlist, eta, i+1+j);
-        out_dshape[2*(nPts+2*nSide2+j)+1] = Lagrange(xlist, xi, i2-1-j) * dLagrange(xlist, eta, i2);
-        out_dshape[2*(nPts+3*nSide2+j)+1] = Lagrange(xlist, xi, i)    * dLagrange(xlist, eta, i2-1-j);
-      }
-      nPts += 4*nSide2;
+      out_dshape[2*(nPts+0*nSide2+j)+1] = Lagrange(xlist, xi, i+1+j)  * dLagrange(xlist, eta, i);
+      out_dshape[2*(nPts+1*nSide2+j)+1] = Lagrange(xlist, xi, i2)   * dLagrange(xlist, eta, i+1+j);
+      out_dshape[2*(nPts+2*nSide2+j)+1] = Lagrange(xlist, xi, i2-1-j) * dLagrange(xlist, eta, i2);
+      out_dshape[2*(nPts+3*nSide2+j)+1] = Lagrange(xlist, xi, i)    * dLagrange(xlist, eta, i2-1-j);
     }
+    nPts += 4*nSide2;
+  }
 
-    // Center node for even-ordered Lagrange quads (odd value of nSide)
-    if (isOdd) {
-      out_dshape[2*(nNodes-1)+0] = dLagrange(xlist, xi, nSide/2) * Lagrange(xlist, eta, nSide/2);
-      out_dshape[2*(nNodes-1)+1] = Lagrange(xlist, xi, nSide/2) * dLagrange(xlist, eta, nSide/2);
-    }
+  // Center node for even-ordered Lagrange quads (odd value of nSide)
+  if (isOdd) {
+    out_dshape[2*(nNodes-1)+0] = dLagrange(xlist, xi, nSide/2) * Lagrange(xlist, eta, nSide/2);
+    out_dshape[2*(nNodes-1)+1] = Lagrange(xlist, xi, nSide/2) * dLagrange(xlist, eta, nSide/2);
   }
 }
 
@@ -1364,20 +1332,15 @@ vector<double> calcError(const double* const U, const point &pos, input *params)
     double gamma = params->gamma;
 
     if (params->icType == 0) {
-      /* --- Uniform "Freestream" solution --- */
-      double rho = params->rhoIC;
-      double vx = params->vxIC;
-      double vy = params->vyIC;
-      double vz = 0.;
-      if (nDims == 3)
-        vz = params->vzIC;
-
-      double p = params->pIC;
-      err[0] = rho;
-      err[1] = rho * vx;
-      err[2] = rho * vy;
-      if (nDims == 3) err[3] = rho * vz;
-      err[nDims+1] = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy + vz*vz));
+      /* --- Uniform "Freestream" solution; calculate entropy error --- */
+      double pfs = params->pIC;
+      double rhofsg = pow(params->rhoIC, gamma);
+      double rho = U[0];
+      double u = U[1] / rho;
+      double v = U[2] / rho;
+      double w = (nDims==2) ? 0 : U[3] / rho;
+      double p = (gamma-1.) * (U[nDims+1] - .5*rho*(u*u + v*v + w*w));
+      err[0] = p * rhofsg / (pow(rho,gamma) * pfs) - 1.;
     }
     else if (params->icType == 1) {
       /* --- Isentropic Vortex of strength eps centered at (0,0) --- */
@@ -1415,6 +1378,9 @@ vector<double> calcError(const double* const U, const point &pos, input *params)
       err[2] = rho * vy;
       if (nDims == 3) err[3] = 0.;
       err[nDims+1] = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+
+      for (int i=0; i<nFields; i++)
+        err[i] = U[i] - err[i];
     }
     else if (params->icType == 2) {
       /* --- Isentropic Vortex of strength eps centered at (0,0) (Liang version) --- */
@@ -1461,6 +1427,9 @@ vector<double> calcError(const double* const U, const point &pos, input *params)
       err[2] = rho * vy;
       if (nDims == 3) err[3] = 0.;
       err[nDims+1] =  p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
+
+      for (int i=0; i<nFields; i++)
+        err[i] = U[i] - err[i];
     }
   }
   else if (params->equation == ADVECTION_DIFFUSION) {
@@ -1493,10 +1462,10 @@ vector<double> calcError(const double* const U, const point &pos, input *params)
       /* --- Test case for debugging - cos(x)*cos(y)*cos(z) over domain --- */
       err[0] = cos(2*pi*pos.x/6.)*cos(2*pi*pos.y/6.)*cos(2*pi*pos.z/6.);
     }
-  }
 
-  for (int i=0; i<nFields; i++)
-    err[i] = U[i] - err[i];
+    for (int i=0; i<nFields; i++)
+      err[i] = U[i] - err[i];
+  }
 
   if (params->errorNorm == 1)
     for (auto &val:err) val = std::abs(val); // L1 norm

@@ -193,7 +193,7 @@ void Array<T,N>::add_dim_3(uint ind, const T &val)
 template <typename T, uint N>
 void Array<T,N>::remove_dim_0(uint ind)
 {
-  /* Insert new 'book' of memory */
+  /* Remove 'book' of memory */
   uint bookSize = dims[3]*dims[2]*dims[1];
   auto it = data.begin() + bookSize*ind;
   data.erase(it, it+bookSize);
@@ -203,7 +203,7 @@ void Array<T,N>::remove_dim_0(uint ind)
 template <typename T, uint N>
 void Array<T,N>::remove_dim_1(uint ind)
 {
-  /* Insert new 'page' of memory */
+  /* Remove 'page' of memory */
   uint stride = dims[3]*dims[2]*dims[1];
   uint pageSize = dims[2]*dims[3];
   uint offset = ind*pageSize;
@@ -218,7 +218,7 @@ void Array<T,N>::remove_dim_1(uint ind)
 template <typename T, uint N>
 void Array<T,N>::remove_dim_2(uint ind)
 {
-  /* Insert new 'column' of memory */
+  /* Remove 'column' of memory */
   uint stride0 = dims[3]*dims[2]*dims[1];
   uint stride1 = dims[3]*dims[2];
   uint colSize = dims[3];
@@ -236,7 +236,7 @@ void Array<T,N>::remove_dim_2(uint ind)
 template <typename T, uint N>
 void Array<T,N>::remove_dim_3(uint ind)
 {
-  /* Insert new 'row' of memory */
+  /* Remove 'row' of memory */
   uint stride0 = dims[3]*dims[2]*dims[1];
   uint stride1 = dims[3]*dims[2];
   uint stride2 = dims[3];

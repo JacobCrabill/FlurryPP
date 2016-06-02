@@ -166,7 +166,7 @@ public:
   void checkEntropyPlot();
 
   //! Calculate the error of the solution w.r.t. several test cases
-  matrix<double> calcError();
+  matrix<double> calcEleError();
 
   /* --- Simulation/Mesh Parameters --- */
   solver* Solver;

@@ -559,6 +559,14 @@ bool ele::getRefLocNewton(point pos, point &loc)
       for (int j=0; j<nDims; j++)
         delta[i] += ginv(i,j)*dx[j]/detJ;
 
+    bool shrink = false;
+    for (int i = 0; i < nDims; i++)
+      if (abs(delta[i]) > .5) shrink = true;
+
+    if (shrink)
+      for (int i = 0; i < nDims; i++)
+        delta[i] *= .5;
+
     norm = 0;
     for (int i=0; i<nDims; i++) {
       norm += dx[i]*dx[i];
@@ -823,7 +831,7 @@ void ele::setInitialCondition()
   }
 }
 
-matrix<double> ele::calcError(void)
+matrix<double> ele::calcEleError(void)
 {
   matrix<double> err(nSpts,nFields);
 
@@ -834,160 +842,12 @@ matrix<double> ele::calcError(void)
     return err;
   }
 
-  if (params->equation == NAVIER_STOKES) {
-    double gamma = params->gamma;
-
-    if (params->icType == 0) {
-      /* --- Uniform "Freestream" solution --- */
-      double rho = params->rhoIC;
-      double vx = params->vxIC;
-      double vy = params->vyIC;
-      double vz = 0.;
-      if (nDims == 3)
-        vz = params->vzIC;
-
-      double p = params->pIC;
-      for (int spt=0; spt<nSpts; spt++) {
-        err(spt,0) = rho;
-        err(spt,1) = rho * vx;
-        err(spt,2) = rho * vy;
-        if (nDims == 3) err(spt,3) = rho * vz;
-        err(spt,nDims+1) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy + vz*vz));
-      }
-    }
-    else if (params->icType == 1) {
-      /* --- Isentropic Vortex of strength eps centered at (0,0) --- */
-      double eps = 5.0;
-
-      double xmin, xmax, ymin, ymax;
-      if (params->meshType == CREATE_MESH) {
-        xmin = params->xmin;
-        xmax = params->xmax;
-        ymin = params->ymin;
-        ymax = params->ymax;
-      } else {
-        // Assuming a 'standard' mesh for the test case
-        xmin = -5;  xmax = 5;
-        ymin = -5;  ymax = 5;
-      }
-
-      for (int spt=0; spt<nSpts; spt++) {
-        double x = fmod( (pos_spts(spt,0) - params->time), (xmax-xmin) );
-        double y = fmod( (pos_spts(spt,1) - params->time), (ymax-ymin) );
-        if (x > xmax) x -= (xmax-xmin);
-        if (y > ymax) y -= (ymax-ymin);
-        if (x < xmin) x += (xmax-xmin);
-        if (y < ymin) y += (ymax-ymin);
-
-        double f = 1.0 - (x*x + y*y);
-
-        // Limiting rho to 1e-3 to avoid negative density/pressure issues
-        double rho = max(pow(1. - eps*eps*(gamma-1.)/(8.*gamma*pi*pi)*exp(f), 1.0/(gamma-1.0) + 1e-5), 1e-3);
-        double vx = 1. - eps*y / (2.*pi) * exp(f/2.);
-        double vy = 1. + eps*x / (2.*pi) * exp(f/2.);
-        double p = pow(rho,gamma);
-
-        err(spt,0) = rho;
-        err(spt,1) = rho * vx;
-        err(spt,2) = rho * vy;
-        if (nDims == 3) err(spt,3) = 0.;
-        err(spt,nDims+1) = p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
-      }
-    }
-    else if (params->icType == 2) {
-      /* --- Isentropic Vortex of strength eps centered at (0,0) (Liang version) --- */
-      double eps = 1.0;  // See paper by Liang and Miyaji, CPR Deforming Domains
-      double rc  = 1.0;
-      double Minf = .3;
-      double Uinf = 1;
-      double rhoInf = 1;
-      double theta = params->vortexAngle;
-      double Pinf = pow(Minf,-2)/gamma;
-
-      double eM = (eps*Minf)*(eps*Minf);
-
-      double xmin, xmax, ymin, ymax;
-      if (params->meshType == CREATE_MESH) {
-        xmin = params->xmin;
-        xmax = params->xmax;
-        ymin = params->ymin;
-        ymax = params->ymax;
-      } else {
-        // Assuming a 'standard' mesh for the test case
-        xmin = params->vortexXmin;  xmax = params->vortexXmax;
-        ymin = params->vortexYmin;  ymax = params->vortexYmax;
-      }
-
-      for (int spt=0; spt<nSpts; spt++) {
-        double x = fmod( (pos_spts(spt,0) - Uinf*cos(theta)*params->time), (xmax-xmin) );
-        double y = fmod( (pos_spts(spt,1) - Uinf*sin(theta)*params->time), (ymax-ymin) );
-        if (x > xmax) x -= (xmax-xmin);
-        if (y > ymax) y -= (ymax-ymin);
-        if (x < xmin) x += (xmax-xmin);
-        if (y < ymin) y += (ymax-ymin);
-
-        double f = -(x*x + y*y) / (rc*rc);
-
-        double vx = Uinf*(cos(theta) - y*eps/rc * exp(f/2.));
-        double vy = Uinf*(sin(theta) + x*eps/rc * exp(f/2.));
-        double rho = rhoInf*pow(1. - (gamma-1.)/2. * eM * exp(f), gamma/(gamma-1.0));
-        double p   = Pinf  *pow(1. - (gamma-1.)/2. * eM * exp(f), gamma/(gamma-1.0));
-
-        err(spt,0) = rho;
-        err(spt,1) = rho * vx;
-        err(spt,2) = rho * vy;
-        if (nDims == 3) err(spt,3) = 0.;
-        err(spt,nDims+1) =  p/(gamma - 1) + (0.5*rho*(vx*vx + vy*vy));
-      }
-    }
+  for (int spt = 0; spt < nSpts; spt++) {
+    point pt = point(&pos_spts(spt, 0), nDims);
+    auto spt_err = calcError(&U_spts(spt,0), pt, params);
+    for (int k = 0; k < nFields; k++)
+      err(spt, k) = spt_err[k];
   }
-  else if (params->equation == ADVECTION_DIFFUSION) {
-    double xmin, xmax, ymin, ymax;
-    if (params->meshType == CREATE_MESH) {
-      xmin = params->xmin;
-      xmax = params->xmax;
-      ymin = params->ymin;
-      ymax = params->ymax;
-    } else {
-      // Assuming a 'standard' mesh for the test case
-      xmin = -5;  xmax = 5;
-      ymin = -5;  ymax = 5;
-    }
-
-    if (params->icType == 0) {
-      /* --- Simple Gaussian bump centered at (0,0) --- */
-      for (int spt=0; spt<nSpts; spt++) {
-        double x = std::abs(fmod( (pos_spts(spt,0) - params->time), (xmax-xmin) ));
-        double y = std::abs(fmod( (pos_spts(spt,1) - params->time), (ymax-ymin) ));
-        if (x > xmax) x -= (xmax-xmin);
-        if (y > ymax) y -= (ymax-ymin);
-
-        double r2 = x*x + y*y;
-        err(spt,0) = exp(-r2);
-      }
-    }
-    else if (params->icType == 1) {
-      /* --- Test case equivalent to 1D test - Advection of sine wave --- */
-      for (int spt=0; spt<nSpts; spt++)
-        err(spt,0) = 1 + sin(2*pi*(pos_spts(spt,0)+5-params->time)/10.);
-    }
-    else if (params->icType == 2) {
-      /* --- Test case for debugging - cos(x)*cos(y)*cos(z) over domain --- */
-      for (int spt=0; spt<nSpts; spt++)
-        err(spt,0) = cos(2*pi*pos_spts(spt,0)/6.)*cos(2*pi*pos_spts(spt,1)/6.)*cos(2*pi*pos_spts(spt,2)/6.);
-    }
-  }
-
-  if (params->errorNorm > 0) {
-    for (int spt=0; spt<nSpts; spt++)
-      for (int j=0; j<nFields; j++)
-        err(spt,j) = U_spts(spt,j) - err(spt,j);
-  }
-
-  if (params->errorNorm == 1)
-    for (auto &val:err.data) val = abs(val); // L1 norm
-  else if (params->errorNorm == 2)
-    for (auto &val:err.data) val *= val;     // L2 norm
 
   return err;
 }

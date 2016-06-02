@@ -881,23 +881,23 @@ void solver::transformGradF_spts(int step)
 #pragma omp parallel for collapse(2)
     for (uint spt = 0; spt < nSpts; spt++) {
       for (uint e = 0; e < nEles; e++) {
-        matrix<double> Jacobian(4,4);
-        Jacobian(3,3) = 1;
-        for (uint i = 0; i < 3; i++) {
-          for (uint j = 0; j < 3; j++)
+        matrix<double> Jacobian(nDims+1,nDims+1);
+        Jacobian(nDims,nDims) = 1;
+        for (uint i = 0; i < nDims; i++) {
+          for (uint j = 0; j < nDims; j++)
             Jacobian(i,j) = Jac_spts(j,spt,e,i);
-          Jacobian(i,3) = gridV_spts(spt,e,i);
+          Jacobian(i,nDims) = gridV_spts(spt,e,i);
         }
         matrix<double> S = Jacobian.adjoint();
 
-        for (uint dim1 = 0; dim1 < 3; dim1++)
-          for (uint dim2 = 0; dim2 < 3; dim2++)
+        for (uint dim1 = 0; dim1 < nDims; dim1++)
+          for (uint dim2 = 0; dim2 < nDims; dim2++)
             for (uint k = 0; k < nFields; k++)
               divF_spts[step](spt,e,k) += dF_spts(dim2,dim1)(spt,e,k)*S(dim2,dim1);
 
-        for (uint dim = 0; dim < 3; dim++)
+        for (uint dim = 0; dim < nDims; dim++)
           for (uint k = 0; k < nFields; k++)
-            divF_spts[step](spt,e,k) += dU_spts(dim,spt,e,k)*S(dim,3);
+            divF_spts[step](spt,e,k) += dU_spts(dim,spt,e,k)*S(dim,nDims);
       }
     }
   }
@@ -1405,9 +1405,6 @@ void solver::calcCSCMetrics(void)
 {
   if (nDims == 2)
   {
-    Array<double,4> gradPos_spts(nDims, nSpts, nEles, nDims);
-    Array<double,4> gradPos_fpts(nDims, nFpts, nEles, nDims);
-
     int ms = nSpts;
     int mf = nFpts;
     int k = nNodes;
@@ -1420,29 +1417,29 @@ void solver::calcCSCMetrics(void)
       else
         B = &nodes(0, 0, 0);
       auto &As = dshape_spts(dim, 0, 0);
-      auto &Cs = gradPos_spts(dim, 0, 0, 0);
+      auto &Cs = Jac_spts(dim, 0, 0, 0);
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ms, n, k,
                   1.0, &As, k, B, n, 0.0, &Cs, n);
 
       auto &Af = dshape_fpts(dim, 0, 0);
-      auto &Cf = gradPos_fpts(dim, 0, 0, 0);
+      auto &Cf = Jac_fpts(dim, 0, 0, 0);
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mf, n, k,
                   1.0, &Af, k, B, n, 0.0, &Cf, n);
     }
 
     for (int spt = 0; spt < nSpts; spt++) {
       for (int e = 0; e < nEles; e++) {
-        detJac_spts(spt,e) = gradPos_spts(0,spt,e,0)*gradPos_spts(1,spt,e,1) - gradPos_spts(0,spt,e,1)*gradPos_spts(1,spt,e,0);
-        JGinv_spts(0,spt,e,0) =  gradPos_spts(1,spt,e,1);  JGinv_spts(0,spt,e,1) = -gradPos_spts(0,spt,e,1);
-        JGinv_spts(1,spt,e,0) = -gradPos_spts(1,spt,e,0);  JGinv_spts(1,spt,e,1) =  gradPos_spts(0,spt,e,0);
+        detJac_spts(spt,e) = Jac_spts(0,spt,e,0)*Jac_spts(1,spt,e,1) - Jac_spts(0,spt,e,1)*Jac_spts(1,spt,e,0);
+        JGinv_spts(0,spt,e,0) =  Jac_spts(1,spt,e,1);  JGinv_spts(0,spt,e,1) = -Jac_spts(0,spt,e,1);
+        JGinv_spts(1,spt,e,0) = -Jac_spts(1,spt,e,0);  JGinv_spts(1,spt,e,1) =  Jac_spts(0,spt,e,0);
       }
     }
 
     for (int fpt = 0; fpt < nFpts; fpt++) {
       for (int e = 0; e < nEles; e++) {
-        detJac_fpts(fpt,e) = gradPos_fpts(0,fpt,e,0)*gradPos_fpts(1,fpt,e,1) - gradPos_fpts(0,fpt,e,1)*gradPos_fpts(1,fpt,e,0);
-        JGinv_fpts(0,fpt,e,0) =  gradPos_fpts(1,fpt,e,1);  JGinv_fpts(0,fpt,e,1) = -gradPos_fpts(0,fpt,e,1);
-        JGinv_fpts(1,fpt,e,0) = -gradPos_fpts(1,fpt,e,0);  JGinv_fpts(1,fpt,e,1) =  gradPos_fpts(0,fpt,e,0);
+        detJac_fpts(fpt,e) = Jac_fpts(0,fpt,e,0)*Jac_fpts(1,fpt,e,1) - Jac_fpts(0,fpt,e,1)*Jac_fpts(1,fpt,e,0);
+        JGinv_fpts(0,fpt,e,0) =  Jac_fpts(1,fpt,e,1);  JGinv_fpts(0,fpt,e,1) = -Jac_fpts(0,fpt,e,1);
+        JGinv_fpts(1,fpt,e,0) = -Jac_fpts(1,fpt,e,0);  JGinv_fpts(1,fpt,e,1) =  Jac_fpts(0,fpt,e,0);
       }
     }
   }
@@ -1956,7 +1953,7 @@ vector<double> solver::integrateError(void)
     auto wts = getQptWeights(order, nDims);
     vector<double> intU(params->nFields);
     for (uint ic = 0; ic < eles.size(); ic++) {
-      auto tmpUE = eles[ic]->calcError();
+      auto tmpUE = eles[ic]->calcEleError();
       for (uint spt = 0; spt < nSpts; spt++) {
         for (uint k = 0; k < nFields; k++) {
           LpErr[k] += tmpUE(spt,k) * wts[spt] * detJac_spts(spt, ic);
@@ -2021,7 +2018,7 @@ vector<double> solver::integrateError(void)
 
 #ifndef _NO_MPI
   vector<double> tmpErr = LpErr;
-  MPI_Allreduce(tmpErr.data(), LpErr.data(), params->nFields, MPI_DOUBLE, MPI_SUM, Geo->gridComm);
+  MPI_Allreduce(tmpErr.data(), LpErr.data(), params->nFields, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); //Geo->gridComm);
 #endif
 
   if (params->errorNorm==2)
