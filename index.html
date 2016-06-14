@@ -12,7 +12,7 @@
   <body>
     <section class="page-header">
       <h1 class="project-name">Flurry++</h1>
-      <h2 class="project-tagline">A 2D Flux Reconstruction Code in C++</h2>
+      <h2 class="project-tagline">A 2D/3D Overset Flux Reconstruction Code in C++</h2>
       <a href="https://github.com/JacobCrabill/FlurryPP" class="btn">View on GitHub</a>
       <a href="https://github.com/JacobCrabill/FlurryPP/zipball/master" class="btn">Download .zip</a>
       <a href="https://github.com/JacobCrabill/FlurryPP/tarball/master" class="btn">Download .tar.gz</a>
@@ -22,7 +22,7 @@
       <h1>
 <a id="flurrypp" class="anchor" href="#flurrypp" aria-hidden="true"><span class="octicon octicon-link"></span></a>Flurry++</h1>
 
-<p>A 2D &amp; 3D Flux Reconstruction Code in C++</p>
+<p>An Unstructured 2D &amp; 3D Overset-Grid Flux Reconstruction Code in C++</p>
 
 <p>Written by <a xmlns:cc="http://creativecommons.org/ns#" href="http://jcrabill.weebly.com/" property="cc:attributionName" rel="cc:attributionURL"> Jacob Crabill </a> </p>
 
@@ -34,16 +34,20 @@
 <h1>
 <a id="current-capabilities" class="anchor" href="#current-capabilities" aria-hidden="true"><span class="octicon octicon-link"></span></a>Current Capabilities</h1>
 
-<p>The code is currently capable of running scalar advection/diffusion or Euler/Navier-Stokes cases on unstructured mixed grids of quadrilaterals and triangles (2D) or hexahedrons (3D) in the Gmsh format.  Both linear and quadratic elements are supported, allowing for accurate representations of curved boundaries.</p>
+<p>The code is currently capable of running scalar advection/diffusion or Euler/Navier-Stokes cases on unstructured mixed grids of quadrilaterals and triangles (2D) or hexahedrons (3D) in the Gmsh format.  Up to 10th-order quadrilaterals and hexaderons are supported, allowing for accurate representations of curved boundaries.</p>
 
-<p>CFL-based time stepping is available for ease (and safety) of use, along with both Forward Euler and RK45 time-stepping.</p>
+<p>Compilation with OpenMP and/or MPI is supported, enabling computation on both shared an distributed memory architectures</p>
+
+<p>CFL-based time stepping is available for ease (and safety) of use for inviscid calculations, along with both Forward Euler and RK44 time-stepping.</p>
+
+<p>Convergence acceleration via both <i>h</i>- and <i>p</i>-multigrid is available, along with a tuned 4-stage high-damping explicit RK scheme. Note that the <i>h</i>-multigrid levels are produced through successive refinement of a coarse mesh with high-order boundaries.</p>
 
 <p>Shock capturing has been implemented, but is still under development and is not fully tested yet. Additionally, a highly robust stabilization procedure invented by Chi-Wang Shu and further developed by Yu Lv is available; however, its usage tends to disrupt convergence of steady-state problems.</p>
 
 <p>Moving grids are supported by the solver, but there are not yet any grid-motion functions implemented beyond a few basic test cases.</p>
 
 <p>Lastly, overset grids in 2D and 3D are supported, utilizing Jay Sitaraman's TIOGA library for hole-blanking whenever solid bodies are embedded inside a mesh.
-   Moving overset grids are also supported for 2D with dynamic blanking/unblanking of elements, with 3D near completion as well.</p>
+   Moving overset grids are also supported for 2D and 3D with dynamic blanking/unblanking of elements.</p>
 
 <h1>
 <a id="background--goals-of-the-project" class="anchor" href="#background--goals-of-the-project" aria-hidden="true"><span class="octicon octicon-link"></span></a>Background / Goals of the Project</h1>
@@ -69,23 +73,11 @@ time (it is a research code, after all).</p>
 
 <p>To compile Flurry, you can either use QT Creator (<a href="https://www.qt.io/download-open-source/">https://www.qt.io/download-open-source/</a>), 
 which is an excellent C++ IDE that I use for development, or you can use the provided makefile to compile using GNU make.  For the make option, 
-just open a terminal and run the following:</p>
+just edit the supplied config file as needed and type <code>make -j</code>.</p>
 
-<p><code>make <em>build_type</em></code></p>
-
-<p>Where <em>build_type</em> is one of the following options:
-
-<p><code>debug mpi=n</code></p>
-<p><code>release mpi=n</code></p>
-<p><code>openmp mpi=n</code></p>
-<p><code>mpidebug</code></p>
-<p><code>mpi2</code></p>
-<p><code>mpi</code></p>
-
-<p><em>release</em> and the basic <em>mpi</em> builds turn on full optimization, while the <em>debug</em> and <em>mpidebug</em> builds removes all 
-optimization and add flags for both debugging and profiling. The <em>openmp</em> build uses OpenMP to take advantage of easy parallelization on desktop computers, or while the <em>mpi</em> build use MPI to completely parallelize 
-on both shared- and distributed-memory systems. Note that compiling with MPI requires several external libraries and header files (metis.h/metis.a, mpi.h), the location of which must be specified in the makefile.
-The code is known to work with OpenMPI &gt;= 1.6.5.</p>
+The <em>openmp</em> build uses OpenMP to take advantage of easy parallelization on desktop computers, or while the <em>mpi</em> build use MPI to completely parallelize 
+on both shared- and distributed-memory systems. Note that compiling with MPI requires several external libraries and header files (metis.h/metis.a, mpi.h), the location of which must be specified in the config file.
+The code is known to work with OpenMPI &gt;= 1.6.5.  BLAS linking is also required; the location of cblas.h must also be supplied in the config file.</p>
 
 <h2>
 <a id="test-cases" class="anchor" href="#test-cases" aria-hidden="true"><span class="octicon octicon-link"></span></a>Test Cases</h2>
