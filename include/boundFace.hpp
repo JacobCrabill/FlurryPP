@@ -28,15 +28,17 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA..
  *
  */
-#pragma once
+#ifndef _boundface_hpp
+#define _boundface_hpp
 
-class face;
+#include "global.hpp"
 
 #include "face.hpp"
 
 class boundFace : public face
 {
 public:
+  boundFace();
 
   /*! Assign boundary-condition type */
   void setupRightState(void);
@@ -71,6 +73,9 @@ public:
   /*! For inlet/outlet boundary conditions, compute the force on the wall */
   vector<double> computeMassFlux(void);
 
+  /*! Callback function for use with TIOGA */
+  void get_U_index(int fpt, int& ind, int& stride);
+
 private:
   //int bcType;  //! Boundary condition to apply to this face
 
@@ -78,3 +83,5 @@ private:
   matrix<double> deltaUdot;
   matrix<double> deltaUint;
 };
+
+#endif

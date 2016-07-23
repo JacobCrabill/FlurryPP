@@ -40,14 +40,15 @@
 #include "global.hpp"
 
 class ele;
+class solver;
 
+//#include "ele.hpp"
 #include "matrix.hpp"
 #include "input.hpp"
+//#include "solver.hpp"
 
 //! Struct to pass into each face; values assigned as needed based on face type
 struct faceInfo {
-  int isMPI = 0;  //! Flag for whether face is an MPI-boundary face
-  int isBnd = 0;  //! Flag for whether face is a boundary-condition face
   int IDR;
 
   //! Relative orientation between 3D faces
@@ -132,6 +133,12 @@ public:
   /*! Calculate a biased-average solution for LDG viscous flux */
   void ldgSolution(void);
 
+  point getPosFpt(int fpt);
+
+  /*! Callback function for use with TIOGA */
+  virtual void get_U_index(int fpt, int& ind, int& stride) =0;
+
+
   int ID; //! Global ID of face
 
   input *params; //! Input parameters for simulation
@@ -146,6 +153,8 @@ public:
 //protected:
   shared_ptr<ele> eL;
   shared_ptr<ele> eR;
+
+  solver *Solver;
 
   /* --- Storage for all solution/geometry data at flux points [left state] --- */
   matrix<double> UL;      //! Discontinuous solution at left ele [nFpts, nFields]
@@ -166,8 +175,8 @@ public:
   double tempFL[3][5], tempFR[3][5];
   vector<double> tempUL;
 
-  int isMPI;  //! Flag for MPI faces to separate communication from flux calculation
-  int isBnd;  //! Flag for boundary faces for use in LDG routines
+  int isMPI = 0;  //! Flag for MPI faces to separate communication from flux calculation
+  int isBnd = 0;  //! Flag for boundary faces for use in LDG routines
 
   bool isNew = true; //! Flag for initialization (esp. due to unblanking)
 

@@ -30,8 +30,69 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <mpi.h>
 
 #include "global.hpp"
+
+class Timer
+{
+private:
+  std::chrono::high_resolution_clock::time_point tStart;
+  std::chrono::high_resolution_clock::time_point tStop;
+  std::string prefix = "Execution time = ";
+  double duration = 0; // Time in milliseconds
+public:
+
+  void setPrefix(const std::string &prefix) { this->prefix = prefix; }
+
+  void startTimer(void)
+  {
+    tStart = std::chrono::high_resolution_clock::now();
+  }
+
+  void stopTimer(void)
+  {
+    tStop = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>( tStop - tStart ).count();
+    duration += (double)elapsed/1000.;
+  }
+
+  void resetTimer(void)
+  {
+    duration = 0;
+    tStart = std::chrono::high_resolution_clock::now();
+  }
+
+  double getTime(void)
+  {
+    return duration;
+  }
+
+  void showTime(int precision = 2)
+  {
+    int rank = 0;
+#ifndef _NO_MPI
+    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+#endif
+    cout.setf(ios::fixed, ios::floatfield);
+    double seconds = duration/1000.;
+    if (seconds > 60) {
+      int minutes = floor(seconds/60);
+      seconds -= (minutes*60);
+#ifndef _NO_MPI
+      cout << "Rank " << rank << ": ";
+#endif
+      cout << prefix << minutes << "min " << setprecision(precision) << seconds << "s" << endl;
+    }
+    else
+    {
+#ifndef _NO_MPI
+      cout << "Rank " << rank << ": ";
+#endif
+      cout << setprecision(precision) << prefix << seconds << "s" << endl;
+    }
+  }
+};
 
 class fileReader
 {
@@ -97,6 +158,8 @@ public:
   void nonDimensionalize(void);
 
   simTimer timer;
+
+  Timer runTime, interpTime;
 
   /* --- Basic Problem Variables --- */
   int equation;  //! {0 | Advection/diffusion} {1 | Euler/Navier-Stokes}
@@ -219,6 +282,7 @@ public:
   double lambda;   //! Lax-Friedrichs upwind coefficient (0: Central, 1: Upwind)
 
   /* --- Mesh Parameters --- */
+  bool overset;
   string meshFileName;          //! Gmsh file name for standard run
   vector<string> oversetGrids;  //! Gmsh file names of all overset grids being used
   int meshType;     //! Type of mesh being used: Single Gmsh, create a mesh, or read multiple overset grids
@@ -249,6 +313,9 @@ public:
   /* --- Other --- */
   int rank;
   int nproc;
+
+  Timer time1;
+  Timer time2;
 
 private:
   fileReader opts;

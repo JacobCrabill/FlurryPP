@@ -8,9 +8,9 @@
 
 extern "C" {
 void cellvolume_(double* vol, double xv[8][3], int numverts[4][6], int faceInfo[4][24], int* nfaces, int* nvert);
-}
 
 extern void kaiser_wrap_(double *,int *,int *,double *,double *,double *,int *);
+}
 
 /*!
  * find oriented bounding box for a given set of points

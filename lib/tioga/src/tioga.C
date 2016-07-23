@@ -774,7 +774,6 @@ void tioga::exchangePointSearchData(void)
     mb->getExtraQueryPoints(&obblist[k],
           &sndPack[k].nints,&sndPack[k].intData,
           &sndPack[k].nreals,&sndPack[k].realData);
-  MPI_Barrier(MPI_COMM_WORLD);
 
   // exchange the data
   pc->sendRecvPackets(sndPack,rcvPack);
@@ -845,7 +844,6 @@ void tioga::getHoleMap(void)
   int existWall;
   int meshtag,maxtag;
   double ds[3],dsmax,dsbox;
-  int bufferSize;
 
  // get the local bounding box
  mb->getWallBounds(meshtag,&existWall,wbox);
@@ -859,8 +857,6 @@ void tioga::getHoleMap(void)
 
  std::vector<int> existHoleLocal(maxtag);
  std::vector<int> existHole(maxtag);
-
- for (int i = 0; i < maxtag; i++) existHole[i] = existHoleLocal[i] = 0;
 
  existHoleLocal[meshtag-1] = existWall;
 
@@ -909,7 +905,7 @@ void tioga::getHoleMap(void)
        holeMap[i].extents[j+3] += (2*dsbox);
        holeMap[i].nx[j] = floor((double)max((holeMap[i].extents[j+3]-holeMap[i].extents[j])/dsbox,1.));
      }
-     bufferSize = holeMap[i].nx[0]*holeMap[i].nx[1]*holeMap[i].nx[2];
+     int bufferSize = holeMap[i].nx[0]*holeMap[i].nx[1]*holeMap[i].nx[2];
      holeMap[i].sam.resize(bufferSize);
      holeMap[i].samLocal.resize(bufferSize);
      for (int j = 0; j < bufferSize; j++) holeMap[i].sam[j] = holeMap[i].samLocal[j] = 0;
@@ -926,7 +922,7 @@ void tioga::getHoleMap(void)
  {
    if (holeMap[i].existWall)
    {
-     bufferSize = holeMap[i].nx[0] * holeMap[i].nx[1] * holeMap[i].nx[2];
+     int bufferSize = holeMap[i].nx[0] * holeMap[i].nx[1] * holeMap[i].nx[2];
      MPI_Allreduce(holeMap[i].samLocal.data(),holeMap[i].sam.data(),bufferSize,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
    }
  }

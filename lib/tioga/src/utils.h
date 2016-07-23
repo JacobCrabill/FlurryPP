@@ -1,12 +1,11 @@
-#pragma once
+#ifndef _utils_h
+#define _utils_h
 
 #include "codetypes.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-extern void kaiser_wrap_(double *,int *,int *,double *,double *,double *,int *);
 
 extern void median_(int *,double *,int *,double *);
 
@@ -54,4 +53,6 @@ double computeCellVolume(double xv[8][3],int nvert);
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

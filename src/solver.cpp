@@ -329,9 +329,16 @@ void solver::update(bool PMG_Source)
 
     if (step == 0) copyUspts_U0(); // Store starting values for RK method
 
+    params->interpTime.startTimer();
+    if (nEles > 0 && params->meshType == OVERSET_MESH)
+      oversetInterp();
+    params->interpTime.stopTimer();
+
+    params->runTime.startTimer();
     calcResidual(step);
 
     timeStepA(step, params->RKa[step+1], PMG_Source);
+    params->runTime.stopTimer();
   }
 
   /* Final Runge-Kutta time advancement step */
@@ -340,6 +347,12 @@ void solver::update(bool PMG_Source)
 
   moveMesh(nRKSteps-1);
 
+  params->interpTime.startTimer();
+  if (nEles > 0 && params->meshType == OVERSET_MESH)
+    oversetInterp();
+  params->interpTime.stopTimer();
+
+  params->runTime.startTimer();
   calcResidual(nRKSteps-1);
 
   if (params->timeType < 5)
@@ -358,7 +371,7 @@ void solver::update(bool PMG_Source)
     // Jameson-style RK update
     timeStepA(nRKSteps-1, params->RKa[nRKSteps], PMG_Source);
   }
-
+  params->runTime.stopTimer();
   params->time += params->dt;
 }
 
@@ -406,7 +419,7 @@ void solver::calcResidual(int step)
 
   if (params->meshType == OVERSET_MESH) {
 
-    oversetInterp();
+//    oversetInterp();
 
     calcInviscidFlux_overset();
 

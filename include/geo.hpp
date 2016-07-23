@@ -103,8 +103,6 @@ public:
 
   /* ---- My Overset Functions ---- */
 
-  void matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &donors);
-
   //! Update nodal and cell iblank values using current mesh using Tioga (3D)
   void updateBlankingTioga(void);
 

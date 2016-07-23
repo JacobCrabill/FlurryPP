@@ -299,9 +299,9 @@ void ADT::searchADT_point(MeshBlock *mb, int* cellIndex, double *xsearch)
 
   // check if the given point is in the bounds of the ADT
   int flag=1;
-  for(int i=0;i<ndim/2;i++)
+  for(int i = 0; i < ndim/2; i++)
     flag = (flag && (xsearch[i] >= adtExtents[2*i]-TOL));
-  for(int i=0;i<ndim/2;i++)
+  for(int i = 0; i < ndim/2; i++)
     flag= (flag && (xsearch[i] <= adtExtents[2*i+1]+TOL));
 
   // call recursive routine to check intersections with ADT nodes
@@ -316,7 +316,7 @@ void ADT::searchADT_box(int *elementList, std::unordered_set<int> &icells, doubl
 
   // Check if the given bounding box intersects with the the bounds of the ADT
   bool flag = true;
-  for(int i=0;i<ndim/2;i++) {
+  for(int i = 0; i < ndim/2; i++) {
     flag = (flag && (bbox[i+ndim/2] >= adtExtents[2*i]  -TOL));
     flag = (flag && (bbox[i]   <= adtExtents[2*i+1]+TOL));
   }
@@ -324,86 +324,4 @@ void ADT::searchADT_box(int *elementList, std::unordered_set<int> &icells, doubl
   // Call recursive routine to check intersections with ADT nodes
   if (flag) searchBoxIntersections(elementList,icells,adtIntegers,adtReals,
         coord,0,rootNode,bbox,nelem,ndim);
-}
-
-void ADT::searchADT_box_debug(int *elementList, std::unordered_set<int> &icells, double *bbox)
-{
-  int rootNode=0;
-  icells.clear();
-
-  cout << "ADT: Search box: " << bbox[0] << ", " << bbox[1] << ", " << bbox[2] << ", " << bbox[3] << " | ndim = " << ndim << endl;
-
-  for (int i=0; i<nelem; i++) {
-    cout << i << ": " << coord[ndim*i+0] << ", " << coord[ndim*i+1] << ", " << coord[ndim*i+2] << ", " << coord[ndim*i+3] << endl;
-  }
-  for (int i=0; i<nelem; i++) {
-    cout << "adt i " << i << ": ele " << adtIntegers[4*i] << endl;
-  }
-
-  // Check if the given bounding box intersects with the the bounds of the ADT
-  bool flag = true;
-  for(int i=0;i<ndim/2;i++) {
-    flag = (flag && (bbox[i+ndim/2] >= adtExtents[2*i]  -TOL));
-    flag = (flag && (bbox[i]   <= adtExtents[2*i+1]+TOL));
-  }
-
-  // Call recursive routine to check intersections with ADT nodes
-  if (flag) searchBoxIntersections_debug(elementList,icells,adtIntegers,adtReals,
-        coord,0,rootNode,bbox,nelem,ndim);
-}
-
-void searchBoxIntersections_debug(int *elementList,std::unordered_set<int> &icells,int *adtIntegers,double *adtReals,
-       double *coord,int level,int node,double *bbox,int nelem,int ndim)
-{
-  double eleBox[ndim];
-  for(int i=0;i<ndim;i++)
-    eleBox[i] = coord[ndim*(adtIntegers[4*node])+i];
-
-  cout << "ADT bbox for ele " << adtIntegers[4*node] << ": ";
-  for (int i=0; i<ndim; i++)
-    cout << eleBox[i] << ", ";
-  cout << endl;
-  int e1 = adtIntegers[4*node+1];
-  int e2 = adtIntegers[4*node+2];
-  int a1 = adtIntegers[4*e1+3];
-  int a2 = adtIntegers[4*e2+3];
-  cout << "  Children: ele IDs " << e1 << ", " << e2 << "; adt IDs " << a1 << ", " << a2 << endl;
-
-  // Check if bbox intersects with bounding box of current mesh element in ADT
-  bool flag = true;
-  for (int i=0; i<ndim/2; i++) {
-    flag = (flag && (bbox[i+ndim/2] >= eleBox[i]  -TOL));
-    flag = (flag && (bbox[i]   <= eleBox[i+ndim/2]+TOL));
-  }
-
-  if (flag) {
-    int ind = elementList[adtIntegers[4*node]];
-    icells.insert(ind);
-    cout << "  Found in ADT: ind " << ind << endl;
-  }
-
-  // check the left and right children
-  // now
-  for (int d=1; d<3; d++)
-  {
-    int nodeChild=adtIntegers[4*node+d];
-    if (nodeChild > -1) {
-      nodeChild = adtIntegers[4*nodeChild+3];
-
-      double adtBox[ndim];
-      for (int i=0; i<ndim; i++)
-        adtBox[i]=adtReals[ndim*nodeChild+i];
-
-      flag = true;
-      for (int i=0; i<ndim/2; i++) {
-        flag = (flag && (bbox[i+ndim/2] >= adtBox[i]  -TOL));
-        flag = (flag && (bbox[i] <= adtBox[i+ndim/2]+TOL));
-      }
-
-      if (flag) {
-        searchBoxIntersections_debug(elementList,icells,adtIntegers,adtReals,coord,level+1,
-                               nodeChild,bbox,nelem,ndim);
-      }
-    }
-  }
 }

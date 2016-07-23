@@ -793,6 +793,8 @@ void geo::matchMPIFaces(void)
 
   if (gridRank == 0)
     cout << "Geo: Grid " << gridID << ": All MPI faces matched!  nMpiFaces = " << nFacesTotalGrid/2 << endl;
+
+  cout << "Geo:   On rank " << rank << ": nMpiFaces = " << nMpiFaces << endl;
 #endif
 }
 
@@ -914,7 +916,6 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
     }else{
       struct faceInfo info;
       info.bcType = bcType[i];
-      info.isBnd = 1;
       ic = eleMap[ic];
       shared_ptr<ele> nullEle;  // Since just giving the funciton 'NULL' isn't possible
       bface->initialize(eles[ic],nullEle,ff,fid1,info,params);
@@ -966,7 +967,6 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
         info.relRot = relRot;
         info.procL = gridRank;
         info.procR = procR[i];
-        info.isMPI = 1;
         info.gridComm = gridComm;  // Note that this is equivalent to MPI_COMM_WORLD if non-overset (ngrids = 1)
         ic = eleMap[ic];
         shared_ptr<ele> nullEle;  // Since just giving the funciton 'NULL' isn't possible
@@ -1158,7 +1158,7 @@ void geo::readGmsh(string fileName)
       meshFile >> tmp;
 
     if (bcid == -1) {
-      // NOTE: Currently, only quads are supported
+      // NOTE: Currently, only hexas are supported for 3D
       switch(eType) {
         case 2:
           // linear triangle -> linear quad
@@ -2443,10 +2443,9 @@ void geo::partitionMesh(void)
 
   // Weight elements with boundary faces more heavily (more work to do at boundaries)
   // TODO: adjust weight based on specific boundary type
-  int *vwgt = NULL;
+  vector<int> vwgt(nEles,1);
   bool useBcWeights = false; // Change to add BC-based element weighting
   if (useBcWeights) {
-    vwgt = new int(nEles);
     for (int ic = 0; ic < nEles; ic++) {
       for (int ib = 0; ib < nBounds; ib++) {
         int bcID = bcList[ib];
@@ -2464,7 +2463,7 @@ void geo::partitionMesh(void)
     }
   }
 
-  METIS_PartMeshDual(&nEles,&nVerts,eptr.data(),eind.data(),vwgt,NULL,
+  METIS_PartMeshDual(&nEles,&nVerts,eptr.data(),eind.data(),vwgt.data(),NULL,
                      &ncommon,&nproc,NULL,options,&objval,epart.data(),npart.data());
 
   // Copy data to the global arrays & reset local arrays

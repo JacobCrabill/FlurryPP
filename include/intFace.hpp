@@ -30,7 +30,7 @@
  */
 #pragma once
 
-class face;
+#include "global.hpp"
 
 #include "face.hpp"
 
@@ -60,6 +60,8 @@ public:
 
   //! Do nothing [not an inlet/outlet boundary]
   vector<double> computeMassFlux(void);
+
+  void get_U_index(int fpt, int& ind, int& stride);
 
 private:
   int faceID_R;              //! Right element's face ID

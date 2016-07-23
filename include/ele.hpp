@@ -38,6 +38,9 @@
 #include "matrix.hpp"
 #include "points.hpp"
 
+class face;
+class solver;
+
 class ele
 {
 friend class face;

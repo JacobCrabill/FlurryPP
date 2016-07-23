@@ -30,7 +30,10 @@
 
 #include <iomanip>
 
+class geo;
+
 #include "global.hpp"
+#include "geo.hpp"
 #include "input.hpp"
 
 /* --- Linear-Algebra Routines --- */

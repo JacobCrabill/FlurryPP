@@ -37,10 +37,9 @@
 #include "mpi.h"
 #endif
 
-#include "matrix.hpp"
-#include "face.hpp"
+#include "global.hpp"
 
-class face;
+#include "face.hpp"
 
 class mpiFace : public face
 {
@@ -79,9 +78,14 @@ public:
   //! Send the right-state gradient data across the processor boundary using MPI
   void communicateGrad();
 
+  /*! Callback function for use with TIOGA */
+  void get_U_index(int fpt, int& ind, int& stride);
+
   int procL;               //! Processor ID on left  [this face]
   int procR;               //! Processor ID on right [opposite face]
   int IDR;                 //! Local face ID of face on right processor
+
+  mpiFace(void);
 
 private:
   int faceID_R;              //! Right element's element-local face ID

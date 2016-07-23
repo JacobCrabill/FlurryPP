@@ -30,12 +30,10 @@
  */
 #pragma once
 
-class face;
-class overComm;
-
 #include "face.hpp"
 
-#include "overComm.hpp"
+//#include "overComm.hpp"
+class overComm;
 
 class overFace : public face
 {
@@ -75,6 +73,9 @@ public:
 
   //! Override normal version when using flux-interp method
   void rusanovFlux(void);
+
+  /*! Callback function for use with TIOGA */
+  void get_U_index(int fpt, int& ind, int& stride);
 
   int fptOffset;         //! Offset within Solver's mesh block-global interp point list
   vector<point> posFpts; //! Physical locations of left ele's flux points

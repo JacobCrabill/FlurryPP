@@ -32,6 +32,12 @@
 
 #include "flux.hpp"
 #include "points.hpp"
+#include "solver.hpp"
+
+boundFace::boundFace(void)
+{
+  isBnd = 1;
+}
 
 void boundFace::setupRightState(void)
 {
@@ -494,4 +500,10 @@ vector<double> boundFace::computeMassFlux(void)
   }
 
   return flux;
+}
+
+void boundFace::get_U_index(int fpt, int& ind, int& stride)
+{
+  ind    = std::distance(&Solver->U_fpts(0,0,0), &eL->U_fpts(fptStartL+fpt,0));
+  stride = std::distance(&eL->U_fpts(fptStartL+fpt,0), &eL->U_fpts(fptStartL+fpt,1));
 }

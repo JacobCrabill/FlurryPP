@@ -190,3 +190,8 @@ void overFace::rusanovFlux(void)
     face::rusanovFlux();
   }
 }
+
+void overFace::get_U_index(int fpt, int& ind, int& stride)
+{
+
+}

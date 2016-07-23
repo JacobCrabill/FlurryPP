@@ -173,3 +173,27 @@ vector<double> intFace::computeMassFlux()
   vector<double> force(nFields);
   return force;
 }
+
+
+void intFace::get_U_index(int fpt, int& ind, int& stride)
+{
+  /* U : nFpts x nVars x 2 */
+  int ic1 = eL->ID;
+  int ic2 = eR->ID;
+
+  if (ic1 > 0 && Solver->Geo->iblankCell[ic1] == NORMAL)
+  {
+    ind    = std::distance(&Solver->U_fpts(0,0,0), &eR->U_fpts(fptStartL+fpt,0));
+    stride = std::distance(&eR->U_fpts(fptStartL+fpt,0), &eR->U_fpts(fptStartL+fpt,1));
+  }
+  else if (ic2 > 0 && Solver->Geo->iblankCell[ic2] == NORMAL)
+  {
+    ind    = std::distance(&Solver->U_fpts(0,0,0), &eL->U_fpts(fptStartL+fpt,0));
+    stride = std::distance(&eL->U_fpts(fptStartL+fpt,0), &eL->U_fpts(fptStartL+fpt,1));
+  }
+  else
+  {
+    //printf("face %d: ibf %d | ic1,2: %d,%d, ibc1,2: %d,%d\n",faceID,geo->iblank_face[faceID],ic1,ic2,geo->iblank_cell[ic1],geo->iblank_cell[ic2]);
+    FatalError("get_U_index : Face not blanked but both elements are!");
+  }
+}

@@ -28,10 +28,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "../include/face.hpp"
+#include "face.hpp"
 
-#include "../include/flux.hpp"
-#include "../include/ele.hpp"
+#include "flux.hpp"
+#include "ele.hpp"
 
 void face::initialize(shared_ptr<ele> &eL, shared_ptr<ele> &eR, int gID, int locF_L, faceInfo myInfo, input *params)
 {
@@ -50,10 +50,6 @@ void face::initialize(shared_ptr<ele> &eL, shared_ptr<ele> &eR, int gID, int loc
   //tempFL.setup(nDims,nFields);
   //tempFR.setup(nDims,nFields);
   tempUL.resize(nFields);
-
-  // Needed for MPI faces to separate communication from flux calculation
-  isMPI = myInfo.isMPI;
-  isBnd = myInfo.isBnd;
 }
 
 void face::setupFace(void)
@@ -612,4 +608,9 @@ void face::ldgSolution()
         UC(fpt,k) = 0.5*(UL(fpt,k) + UR(fpt,k)) - penFact*(UL(fpt,k) - UR(fpt,k));
     }
   }
+}
+
+point face::getPosFpt(int fpt)
+{
+  return eL->getPosFpt(fptStartL+fpt);
 }

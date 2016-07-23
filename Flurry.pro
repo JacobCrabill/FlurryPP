@@ -37,7 +37,8 @@ SOURCES += src/global.cpp \
     src/points.cpp \
     src/superMesh.cpp \
     src/overComm.cpp \
-    src/multigrid.cpp
+    src/multigrid.cpp \
+    src/flurry_interface.cpp
 		   
 HEADERS += include/global.hpp \
     include/matrix.hpp \
@@ -68,7 +69,9 @@ HEADERS += include/global.hpp \
     include/points.hpp \
     include/superMesh.hpp \
     include/overComm.hpp \
-    include/multigrid.hpp
+    include/multigrid.hpp \
+    include/flurry_interface.hpp \
+    swig/flurry.i
 
 DISTFILES += \
     README.md \
@@ -77,7 +80,8 @@ DISTFILES += \
     lib/tioga/src/computeCellVolume.f90 \
     lib/tioga/src/kaiser.f \
     lib/tioga/src/median.F90 \
-    lib/tioga/src/makefile
+    lib/tioga/src/makefile \
+    Makefile
 
 OTHER_FILES += \
     bin/input_supwall \

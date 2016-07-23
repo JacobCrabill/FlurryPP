@@ -2,10 +2,10 @@
 # Basic Options
 # =============================================================
 equation      1    (0: Advection-Diffusion;  1: Euler/Navier-Stokes)
-order         2    (Polynomial order to use)
+order         1    (Polynomial order to use)
 timeType      6    (0: Forward Euler, 4: RK44)
-dtType        2    (0: Fixed, 1: CFL-based)
-CFL           .3
+dtType        1    (0: Fixed, 1: CFL-based)
+CFL           .01
 dt            .0001
 iterMax       5000
 maxTime       1000
@@ -13,11 +13,16 @@ restart       0
 restartIter   3000
 
 viscous       1   (0: Inviscid, 1: Viscous)
-motion        0   (0: Static, 1: Perturbation test case)
+motion        4   (0: Static, 1: Perturbation test case)
 riemannType   0   (Advection: use 0  | N-S: 0: Rusanov, 1: Roe)
 nDims         2
 
-PMG         1
+moveAx  0
+moveAy  .5
+moveFx  0
+moveFy  .2
+
+PMG         0
 smoothSteps 2
 
 # =============================================================

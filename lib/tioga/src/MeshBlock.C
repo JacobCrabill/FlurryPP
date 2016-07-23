@@ -140,6 +140,7 @@ void MeshBlock::tagBoundary(void)
     for (int n = 0; n < ntypes; n++)
     {
       int nvert = nv[n];
+      inode.resize(nvert);
       for (int i = 0; i < nc[n]; i++)
       {
         int itag = 0;
@@ -759,7 +760,7 @@ void MeshBlock::checkContainment(int *cellIndex, int adtElement, double *xsearch
     else
     {
       /* --- Linear shape functions --- */
-      // now collect all the vertices in the array xv
+
       for (int m = 0; m < nvert; m++)
       {
         int i3 = 3*(vconn[N][nvert*ic+m]-BASE);

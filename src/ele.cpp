@@ -571,16 +571,19 @@ bool ele::getRefLocNewton(point pos, point &loc)
     for (int i=0; i<nDims; i++) {
       norm += dx[i]*dx[i];
       loc[i] += delta[i];
-      loc[i] = max(min(loc[i],1.01),-1.01);
+//      loc[i] = max(min(loc[i],1.01),-1.01);
+      loc[i] = max(min(loc[i],1.),-1.);
     }
 
     iter++;
+    if (iter == iterMax)
+      return false;
   }
 
-  if (max( abs(loc[0]), max( abs(loc[1]), abs(loc[2]) ) ) <= 1 + 1e-10)
+//  if (max( abs(loc[0]), max( abs(loc[1]), abs(loc[2]) ) ) <= 1 + 1e-10)
     return true;
-  else
-    return false;
+//  else
+//    return false;
 }
 
 double ele::getDxNelderMead(point refLoc, point physPos)

@@ -42,6 +42,12 @@
 #include <stdio.h>
 #include <algorithm>
 
+#ifndef _NO_MPI // This is kinda hacky, but it works and keeps things simple
+#define _mpi_comm MPI_Comm
+#else
+#define _mpi_comm int
+#endif
+
 #ifdef _OMP
 #include <omp.h>
 #ifdef _MKL_BLAS
@@ -58,10 +64,10 @@ template<typename T> class matrix;
 
 #include "matrix.hpp"
 
-// Forward declarations of basic Flurry classes
-class geo;
-class ele;
-class solver;
+//// Forward declarations of basic Flurry classes
+//class geo;
+//class ele;
+//class solver;
 
 using namespace std;
 
@@ -289,9 +295,9 @@ struct point
 
   point cross(point b) {
     point v;
-    v.z = x*b.y - y*b.x;
-    v.y = x*b.z - z*b.x;
     v.x = y*b.z - z*b.y;
+    v.y = z*b.x - x*b.z;
+    v.z = x*b.y - y*b.x;
     return v;
   }
 

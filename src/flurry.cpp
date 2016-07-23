@@ -30,15 +30,19 @@
 
 #include "flurry.hpp"
 
+#include <valgrind/callgrind.h>
+#include <chrono>
+
 #ifndef _NO_MPI
 #include <mpi.h>
 #endif
 
-#ifdef _MPI_DEBUG
+#ifndef _NO_MPI_DEBUG
 #include <unistd.h>  // for getpid()
 #endif
 
 #include "funcs.hpp"
+#include "input.hpp"
 #include "multigrid.hpp"
 
 int main(int argc, char *argv[]) {
@@ -55,7 +59,7 @@ int main(int argc, char *argv[]) {
 #endif
   params.rank = rank;
   params.nproc = nproc;
-
+CALLGRIND_STOP_INSTRUMENTATION;
 #ifdef _OMP
   /* This will work, but appears to operate much less efficiently than setting
    * OMP_NUM_THREADS = # manually before run */
@@ -81,7 +85,7 @@ int main(int argc, char *argv[]) {
 
   if (argc<2) FatalError("No input file specified.");
 
-#ifdef _MPI_DEBUG
+#ifndef _NO_MPI_DEBUG
   /*// Uncomment for use with GDB or other debugger
   {
     // Useful for debugging in parallel with GDB or similar debugger
@@ -131,6 +135,10 @@ int main(int argc, char *argv[]) {
   int &iter = params.iter;
   iter = initIter;
 
+  params.time1.setPrefix("MPI Wait Time: ");
+  params.time2.setPrefix("Overset MPI Time: ");
+
+  CALLGRIND_START_INSTRUMENTATION;
   /* --- Calculation Loop --- */
   while (params.iter < iterMax and params.time < maxTime) {
     iter++;
@@ -145,13 +153,25 @@ int main(int argc, char *argv[]) {
     if ((iter)%params.monitorErrFreq==0 or iter==initIter+1) writeError(&Solver,&params);
     if ((iter)%params.plotFreq==0 or iter==iterMax or params.time>=maxTime) writeData(&Solver,&params);
   }
-
+  CALLGRIND_STOP_INSTRUMENTATION;
   /* Calculate the integral / L1 / L2 error for the final time */
   writeAllError(&Solver,&params);
+MPI_Barrier(MPI_COMM_WORLD);
+
+//if (rank == 0)
+//{
+  std::cout << "Interp Time: ";
+  params.interpTime.showTime(2);
+  std::cout << "Computation Time: ";
+  params.runTime.showTime(2);
+//}
 
   // Get simulation wall time
   params.timer.stopTimer();
   params.timer.showTime();
+
+  params.time1.showTime(6);
+  params.time2.showTime(6);
 
 #ifndef _NO_MPI
  MPI_Finalize();
@@ -159,3 +179,233 @@ int main(int argc, char *argv[]) {
 
  return 0;
 }
+
+
+
+/* ==== Add in interface functions for use from external code ==== */
+//#define _BUILD_LIB  // for QT editing
+//#ifdef _BUILD_LIB
+
+#ifndef _NO_MPI
+Flurry::Flurry(MPI_Comm comm_in, int n_grids, int grid_id)
+#else
+Flurry::Flurry(void)
+#endif
+{
+  // Basic constructor
+#ifndef _MPI
+  myComm = 0;
+  myGrid = 0;
+#else
+  mpi_init(comm_in, n_grids, grid_id);
+#endif
+
+  /* Print out cool ascii art header */
+  if (myGrid == 0 && rank == 0)
+  {
+    cout << endl;
+    cout << R"(  ========================================================  )" << endl;
+    cout << R"(   _______   _                                     /\       )" << endl;
+    cout << R"(  |   ____| | |                               __   \/   __  )" << endl;
+    cout << R"(  |  |___   | |  _   _   _     _     _    _   \_\_\/\/_/_/  )" << endl;
+    cout << R"(  |   ___|  | | | | | | | |/| | |/| | |  | |    _\_\/_/_    )" << endl;
+    cout << R"(  |  |      | | | |_| | |  /  |  /  \  \/  /   __/_/\_\__   )" << endl;
+    cout << R"(  |__|      |_| \_____/ |_|   |_|    \    /   /_/  \/  \_\  )" << endl;
+    cout << R"(                                      |  /         /\       )" << endl;
+    cout << R"(                                      /_/          \/       )" << endl;
+    cout << R"(  ---------      Flux Reconstruction in C++      ---------  )" << endl;
+    cout << R"(  ========================================================  )" << endl;
+    cout << endl;
+  }
+
+  Solver = NULL;
+}
+
+#ifndef _NO_MPI
+void Flurry::mpi_init(MPI_Comm comm_in, int n_grids, int grid_id)
+{
+  myComm = comm_in;
+  nGrids = n_grids;
+  myGrid = grid_id;
+
+  MPI_Comm_rank(myComm, &rank);
+  MPI_Comm_size(myComm, &nRanks);
+
+#ifdef _GPU
+  int nDevices;
+  cudaGetDeviceCount(&nDevices);
+  /// TODO
+  if (nDevices < nRanks)
+  {
+    //ThrowException("Not enough GPUs for this run. Allocate more!");
+  }
+
+  cudaSetDevice(rank%6); // Hardcoded for ICME nodes for now.
+#endif
+}
+#endif
+
+void Flurry::read_input(char *inputfile)
+{
+  if (rank == 0) std::cout << "Reading input file: " << inputfile <<  std::endl;
+  params.readInputFile(inputfile);
+
+  params.rank = rank;
+  params.nproc = nRanks;
+  if (nGrids > 1) params.overset = true;
+
+  if (params.meshType == OVERSET_MESH)
+  {
+    params.meshFileName = params.oversetGrids[myGrid];
+    Solver->gridID = myGrid;
+  }
+}
+
+void Flurry::setup_solver(void)
+{
+
+}
+
+void Flurry::do_step(void)
+{
+
+}
+
+void Flurry::do_n_steps(int n)
+{
+  for (int i = 0; i < n; i++)
+    do_step();
+}
+
+void Flurry::extrapolate_u(void)
+{
+  Solver->extrapolateU();
+}
+
+void Flurry::write_residual(void)
+{
+  writeResidual(Solver.get(), &params);
+}
+
+void Flurry::write_solution(void)
+{
+  writeData(Solver.get(), &params);
+}
+
+void Flurry::write_error(void)
+{
+  writeError(Solver.get(), &params);
+}
+
+void Flurry::get_basic_geo_data(int& btag, int& nnodes, double*& xyz, int*& iblank,
+                              int& nwall, int& nover, int*& wallNodes,
+                              int*& overNodes, int& nCellTypes, int &nvert_cell,
+                              int &nCells_type, int*& c2v)
+{
+  btag = myGrid;
+  nnodes = Geo->nVerts;
+  xyz = Geo->xv.getData();
+  iblank = Geo->iblank.data();
+  nwall = Geo->wallFaceNodes.getDim0();
+  nover = Geo->overFaceNodes.getDim0();
+  wallNodes = Geo->wallFaceNodes.getData(); /// TODO - fix
+  overNodes = Geo->overFaceNodes.getData(); /// TODO - fix
+  nCellTypes = 1;
+  nvert_cell = Geo->c2nv[0];
+  nCells_type = Geo->nEles;
+  c2v = (int *)&Geo->c2v.data;
+}
+
+void Flurry::get_extra_geo_data(int& nFaceTypes, int& nvert_face,
+                              int& nFaces_type, int*& f2v, int*& f2c, int*& c2f,
+                              int*& iblank_face, int*& iblank_cell,
+                              int &nOver, int*& overFaces, int &nMpiFaces, int*& mpiFaces, int*& procR,
+                              int*& faceIdR)
+{
+  nFaceTypes = 1;
+  nvert_face = Geo->f2nv[0];
+  nFaces_type = Geo->nFaces;
+  f2v = (int *)Geo->f2v.getData();
+  f2c = Geo->f2c.getData();
+  c2f = Geo->c2f.getData();
+  iblank_face = Geo->iblankFace.data();
+  iblank_cell = Geo->iblankCell.data();
+  nOver = Geo->overFaces.size();
+  //overFaces = Geo->overFaceList.data(); /// TODO
+  nMpiFaces = Geo->nMpiFaces;
+  mpiFaces = Geo->mpiFaces.data();
+  procR = Geo->procR.data();
+  faceIdR = Geo->faceID_R.data();
+}
+
+double Flurry::get_u_spt(int ele, int spt, int var)
+{
+  return Solver->U_spts(spt, ele, var);
+}
+
+double *Flurry::get_u_spts(void)
+{
+  return Solver->U_spts.getData();
+}
+
+double *Flurry::get_u_fpts(void)
+{
+  return Solver->U_fpts.getData();
+}
+
+void Flurry::get_nodes_per_cell(int &nNodes)
+{
+  nNodes = (int)Solver->nSpts;
+}
+
+void Flurry::get_nodes_per_face(int& nNodes)
+{
+  nNodes = (int) (Solver->nFpts / Geo->c2nf[0]);
+}
+
+void Flurry::get_receptor_nodes(int cellID, int& nNodes, double* xyz)
+{
+  nNodes = (int)Solver->nSpts;
+
+  for (int spt = 0; spt < nNodes; spt++)
+    for (int dim = 0; dim < Geo->nDims; dim++)
+      xyz[3*spt+dim] = Solver->pos_spts(spt, cellID, dim);
+}
+
+void Flurry::get_face_nodes(int faceID, int &nNodes, double* xyz)
+{
+  nNodes = (int)(Solver->nFpts / Geo->c2nf[0]);
+
+  for (int fpt = 0; fpt < nNodes; fpt++)
+  {
+    auto pt = Solver->faces[faceID]->getPosFpt(fpt);
+    for (int dim = 0; dim < Geo->nDims; dim++)
+      xyz[3*fpt+dim] = pt[dim];
+  }
+}
+
+void Flurry::get_q_index_face(int faceID, int fpt, int& ind, int& stride)
+{
+  Solver->faces[faceID]->get_U_index(fpt,ind,stride);
+}
+
+void Flurry::donor_inclusion_test(int cellID, double* xyz, int& passFlag, double* rst)
+{
+  point pos = point(xyz);
+  point loc;
+
+  passFlag = Solver->eles[cellID]->getRefLocNewton(pos,loc);
+
+  rst[0] = loc.x;
+  rst[1] = loc.y;
+  rst[2] = loc.z;
+}
+
+void Flurry::donor_frac(int cellID, int &nweights, int* inode, double* weights,
+                      double* rst, int buffsize)
+{
+  Solver->opers[Solver->eles[cellID]->order].getBasisValues(rst, weights);
+  nweights = Solver->eles[cellID]->nSpts;
+}
+
+//#endif /* _BUILD_LIB */

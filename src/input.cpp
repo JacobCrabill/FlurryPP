@@ -352,7 +352,7 @@ void input::readInputFile(char *filename)
       opts.getScalarValue("nxBound",nxBound,1.);
       opts.getScalarValue("nyBound",nyBound,0.);
       opts.getScalarValue("nzBound",nzBound,0.);
-      opts.getScalarValue("MachWall",MachWall);
+      opts.getScalarValue("MachWall",MachWall,0.);
       opts.getScalarValue("nxWall",nxWall,1.);
       opts.getScalarValue("nyWall",nyWall,0.);
       opts.getScalarValue("nzWall",nzWall,0.);

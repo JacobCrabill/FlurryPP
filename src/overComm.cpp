@@ -237,6 +237,9 @@ void overComm::setupOverFacePoints(vector<shared_ptr<overFace>> &overFaces, int 
       }
     }
   }
+
+//  if (rank == 0) /// DEBUGGING
+//    overPts.print(6);
 }
 
 void overComm::setupFringeCellPoints(vector<shared_ptr<ele>> &eles, const unordered_set<int> &fringeCells, const vector<int> &eleMap)
@@ -1012,7 +1015,7 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
         if (!isInEle) {
           cout << "qpt: " << qpts_tmp(j,0) << ", " << qpts_tmp(j,1) << endl;
           auto box = eles[ic]->getBoundingBox();
-          cout << "ele box: " << box[0] << ", " << box[1] << "; " << box[3] << ", " << box[4] << endl;
+          cout << "ele box: " << box[0] << ", " << box[1] << ", " << box[2] << "; " << box[3] << ", " << box[4] << ", " << box[5] << endl;
           cout << "ref loc: " << refLoc << endl;
           FatalError("Quadrature Point Reference Location not found in ele!  "
                      "Are you using non-linear elements?");
@@ -1313,7 +1316,11 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>
   int nVars = nFields;
   if (params->oversetMethod == 1) nVars *= 2;
 
+  if (params->iter==params->initIter+1)
+    cout << "Rank " << rank << ": nPtsSend = " << nPtsSend << endl; /// DEBUGGING
+  params->time2.startTimer();
   sendRecvData(nPtsSend,nPtsRecv,foundPts,recvPts,U_out,U_in,nVars,true);
+  params->time2.stopTimer();
 #endif
 }
 
@@ -1513,6 +1520,15 @@ void overComm::sendRecvData(vector<int> &nPiecesSend, vector<int> &nPiecesRecv, 
     recvInds[p].resize(nPiecesRecv[p]);
     recvVals[p].setup(nPiecesRecv[p],stride);
   }
+
+//  int sum = 0;
+//  for (int p = 0; p < nproc; p++)
+//  {
+//    sum += nPiecesSend[p] + nPiecesRecv[p];
+////    cout << "rank " << params->rank << ": nInts[" << p << "] send/recv = " << nPiecesRecv[p] + nPiecesSend[p] << endl;
+////    cout << "rank " << params->rank << ": nDbls[" << p << "] send/recv = " << nPiecesRecv[p]*stride + nPiecesSend[p]*stride << endl;
+//  }
+//  cout << "rank " << params->rank << ": nInts send/recv = " << sum << endl;
 
   vector<MPI_Request> IndsRecvs(nproc);
   vector<MPI_Request> IndsSends(nproc);

@@ -38,6 +38,11 @@
 #include "../include/flux.hpp"
 #include "../include/ele.hpp"
 
+mpiFace::mpiFace(void)
+{
+  isMPI = 1;
+}
+
 void mpiFace::setupRightState(void)
 {
 #ifdef _NO_MPI
@@ -158,9 +163,11 @@ void mpiFace::communicateGrad(void)
 void mpiFace::getRightState(void)
 {
 #ifndef _NO_MPI
+  params->time1.startTimer();
   // Make sure the communication is complete & transfer from buffer
   MPI_Wait(&UL_out,&status);
   MPI_Wait(&UR_in,&status);
+  params->time1.stopTimer();
 
   // Copy UR from the buffer to the proper matrix [note that the order of the
   // fpts is reversed between the two faces]
@@ -223,4 +230,21 @@ vector<double> mpiFace::computeMassFlux()
   // Not an inlet/outlet boundary - return 0
   vector<double> force(nFields);
   return force;
+}
+
+
+void mpiFace::get_U_index(int fpt, int& ind, int& stride)
+{
+  int ic1 = eL->ID;
+
+  if (ic1 > 0 && Solver->Geo->iblankCell[ic1] == NORMAL)
+  {
+    ind    = std::distance(&Solver->U_fpts(0,0,0), &UR(fpt,0)); /// UBER-HACK
+    stride = std::distance(&UR(0,0), &UR(0,1));
+  }
+  else
+  {
+    ind    = std::distance(&Solver->U_fpts(0,0,0), &eL->U_fpts(fptStartL+fpt,0));
+    stride = std::distance(&eL->U_fpts(fptStartL+fpt,0), &eL->U_fpts(fptStartL+fpt,1));
+  }
 }

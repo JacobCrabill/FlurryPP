@@ -39,6 +39,9 @@
 
 #include "ele.hpp"
 #include "face.hpp"
+#include "intFace.hpp"
+#include "boundFace.hpp"
+#include "mpiFace.hpp"
 #include "overFace.hpp"
 #include "overComm.hpp"
 #include "superMesh.hpp"
@@ -343,12 +346,12 @@ void geo::setIterIblanks(void)
     iblankVert1 = iblank;
   }
 
-  //! TODO: in 3D - need better hole blanking...
-  if (nDims == 3) {
-    for (int iv = 0; iv < nVerts; iv++)
-      if (nodeType[iv] == OVERSET_NODE && iblankVert1[iv] != HOLE)
-        iblankVert1[iv] = NORMAL;
-  }
+//  //! TODO: in 3D - need better hole blanking...
+//  if (nDims == 3) {
+//    for (int iv = 0; iv < nVerts; iv++)
+//      if (nodeType[iv] == OVERSET_NODE && iblankVert1[iv] != HOLE)
+//        iblankVert1[iv] = NORMAL;
+//  }
 
   /* ---- Get iblank data for beginning of iteration ---- */
 
@@ -362,22 +365,24 @@ void geo::setIterIblanks(void)
     tg->performConnectivity();
   }
 
-  //! TODO: in 3D - need better hole blanking...
-  if (nDims == 3) {
-    for (int iv = 0; iv < nVerts; iv++) {
-      if (nodeType[iv] == OVERSET_NODE && iblank[iv] != HOLE)
-        iblank[iv] = NORMAL;
-    }
-  }
+//  //! TODO: in 3D - need better hole blanking...
+//  if (nDims == 3) {
+//    for (int iv = 0; iv < nVerts; iv++) {
+//      if (nodeType[iv] == OVERSET_NODE && iblank[iv] != HOLE)
+//        iblank[iv] = NORMAL;
+//    }
+//  }
 
   // Take the union of the hole and normal regions, leaving the intersection of
   // the fringe regions
-  for (int iv=0; iv<nVerts; iv++) {
-    if (iblankVert1[iv] == HOLE || iblank[iv] == HOLE)
-      iblank[iv] = HOLE;
+  if (nDims == 2) {
+    for (int iv=0; iv<nVerts; iv++) {
+      if (iblankVert1[iv] == HOLE || iblank[iv] == HOLE)
+        iblank[iv] = HOLE;
 
-    if (iblankVert1[iv] == NORMAL || iblank[iv] == NORMAL)
-      iblank[iv] = NORMAL;
+      if (iblankVert1[iv] == NORMAL || iblank[iv] == NORMAL)
+        iblank[iv] = NORMAL;
+    }
   }
 
   setIblankEles(iblank,iblankCell);
@@ -421,6 +426,25 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
         break;
       }
     }
+  }
+
+  if (nDims == 3)
+  {
+    for (int ic=0; ic<nEles; ic++) {
+      if (iblankEle[ic] == NORMAL) {
+        int nfringe = 0;
+        for (int j=0; j<c2nv[ic]; j++) {
+          if (iblankVert[c2v(ic,j)] == FRINGE) {
+            nfringe++;
+          }
+        }
+        if (nfringe == c2nv[ic]) {
+          iblankEle[ic]  = HOLE;
+        }
+      }
+    }
+
+    return;
   }
 
   vector<int> mpiFringeFaces;
@@ -684,7 +708,8 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
   }
 
   ///! EVEN BIGGER HACK
-  if (nDims == 3 && params->motion==5 && gridID == 0) iblankEle.assign(nEles,NORMAL);
+//  if (nDims == 3 && params->motion==5 && gridID == 0) iblankEle.assign(nEles,NORMAL);
+  if (nDims == 3 && gridID == 0) iblankEle.assign(nEles,NORMAL);
 #endif
 }
 
@@ -770,13 +795,6 @@ void geo::setFaceIblanks(void)
       }
     }
   }
-
-#endif
-}
-
-void geo::matchOversetDonors(vector<shared_ptr<ele>> &eles, vector<superMesh> &donors)
-{
-#ifndef _NO_MPI
 
 #endif
 }
@@ -1098,7 +1116,6 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
         struct faceInfo info;
         info.IDR = fid2;
         info.relRot = relRot;
-        info.isBnd = 0;
         ic1 = eleMap[ic1];
         ic2 = eleMap[ic2];
         if (ic1<0 || ic2<0) {
@@ -1143,7 +1160,6 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
         }else{
           struct faceInfo info;
           info.bcType = bcType[ind];
-          info.isBnd = 1;
           ic = eleMap[ic];
           if (ic<0) FatalError("Unblanking a boundary face, but ele remains blanked!");
           shared_ptr<ele> nullEle;
@@ -1201,7 +1217,6 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
       info.relRot = relRot;
       info.procL = gridRank;
       info.procR = procR[ind];
-      info.isMPI = 1;
       info.gridComm = gridComm;  // Note that this is equivalent to MPI_COMM_WORLD if non-overset (ngrids = 1)
       ic = eleMap[ic];
       if (ic<0) FatalError("Unblanking an MPI face, but ele remains blanked!");
