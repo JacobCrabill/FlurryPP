@@ -182,7 +182,7 @@ void fileReader::getMap(string optName, map<T,U> &opt) {
         // This could happen if, for example, trying to assign a string to a double
         cerr << "WARNING: Unable to assign value to option " << optName << endl;
         string errMsg = "Required option not set: " + optName;
-        FatalError(errMsg.c_str())
+        FatalError(errMsg.c_str());
       }
 
       opt[tmpT] = tmpU;

@@ -232,7 +232,7 @@ void geo::processConn2D(void)
         // Collapsed edge - ignore
         continue;
       }
-      else if (c2v[e][ie] < c2v(e,iep1)) {
+      else if (c2v(e,ie) < c2v(e,iep1)) {
         edge[0] = c2v(e,ie);
         edge[1] = c2v(e,iep1);
       }

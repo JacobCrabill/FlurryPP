@@ -132,6 +132,7 @@ void Array<T,N>::add_dim_0(uint ind, const T &val)
   /* Insert new 'book' of memory */
   uint bookSize = dims[3]*dims[2]*dims[1];
   auto it = data.begin() + bookSize*ind;
+  data.reserve(data.size() + bookSize);
   data.insert(it, bookSize, val);
   dims[0]++;
 }
@@ -143,6 +144,7 @@ void Array<T,N>::add_dim_1(uint ind, const T &val)
   uint stride = dims[3]*dims[2]*dims[1];
   uint pageSize = dims[2]*dims[3];
   uint offset = ind*pageSize;
+  data.reserve(data.size() + dims[0]*dims[2]*dims[3]);
   for (int i = dims[0]-1; i >= 0; i--) {
     auto it = data.begin() + i*stride + offset;
     data.insert(it, pageSize, val);
@@ -159,6 +161,7 @@ void Array<T,N>::add_dim_2(uint ind, const T &val)
   uint stride1 = dims[3]*dims[2];
   uint colSize = dims[3];
   uint offset = ind*colSize;
+  data.reserve(data.size() + dims[0]*dims[1]*dims[3]);
   for (int i = dims[0]-1; i >= 0; i--) {
     for (int j = dims[1]-1; j >= 0; j--) {
       auto it = data.begin() + i*stride0 + j*stride1 + offset;
@@ -178,6 +181,7 @@ void Array<T,N>::add_dim_3(uint ind, const T &val)
   uint stride2 = dims[3];
   uint rowSize = 1;
   uint offset = ind*rowSize;
+  data.reserve(data.size() + dims[0]*dims[1]*dims[2]);
   for (int i = dims[0]-1; i >= 0; i--) {
     for (int j = dims[1]-1; j >= 0; j--) {
       for (int k = dims[2]-1; k >= 0; k--) {
