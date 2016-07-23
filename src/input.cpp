@@ -473,6 +473,12 @@ void input::readInputFile(char *filename)
       RKa = {0};
       RKb = {1};
       break;
+    case 2:
+      // RK2 (Heun's method)
+      nRKSteps = 2;
+      RKa = {0, 1.};
+      RKb = {1./2., 1./2.};
+      break;
     case 4:
       // RK44
       nRKSteps = 4;

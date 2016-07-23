@@ -62,6 +62,9 @@ public:
   /*! No right element at a boundary - do nothing. */
   void setRightStateSolution(void);
 
+  /*! Do correct / "strong" 'weak' BC enforcement using flux */
+  //void rusanovFlux(void);
+
   /*! For wall boundary conditions, compute the force on the wall */
   vector<double> computeWallForce(void);
 

@@ -92,6 +92,9 @@ public:
   vector<vector<point>> foundLocs; //! Reference location within donor ele of each matched receptor point
   vector<vector<point>> foundNorm; //! For corrected-flux method: Outward unit normal at fringe boundary point
 
+  vector<vector<matrix<double>>> foundJaco; //! For static cases with flux-interp, store transformation matrix for each point
+  vector<vector<double>> foundDetJac;       //! For static cases with flux-interp, store Jacobian det. for each point
+
   int nOverPts;                 //! Number of overset (receptor) points on this grid
   matrix<double> overPts;       //! Physical locations of the receptor points on this grid
   matrix<double> overNorm;      //! Outward unit normals at fringe-boundary points on this grid [corrected-flux interp method]

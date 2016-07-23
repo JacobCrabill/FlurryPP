@@ -1257,7 +1257,7 @@ void writeError(solver *Solver, input *params)
   {
     /* --- Standard error calculation wrt analytical solution --- */
 
-    if (params->meshType == OVERSET_MESH)
+    if (params->meshType == OVERSET_MESH && params->projection)
       err = Solver->integrateErrorOverset();
     else
       err = Solver->integrateError();

@@ -46,6 +46,7 @@ void shape_quad(const point &in_rs, vector<double> &out_shape, int nNodes);
 void shape_quad(const point &in_rs, double* out_shape, int nNodes);
 
 //! Derivative of shape functions for linear or quadratic quad
+void dshape_quad(const vector<point> loc_pts, Array<double,3> &out_dshape, int nNodes);
 void dshape_quad(const point &in_rs, matrix<double> &out_dshape, int nNodes);
 void dshape_quad(const point &in_rs, double* out_dshape, int nNodes);
 
@@ -57,6 +58,7 @@ void shape_hex(const point &in_rst, vector<double> &out_shape, int nNodes);
 void shape_hex(const point &in_rst, double* out_shape, int nNodes);
 
 //! Derivative of shape functions for linear or quadratic hexahedron
+void dshape_hex(const vector<point>& loc_pts, Array<double,3> &out_dshape, int nNodes);
 void dshape_hex(const point &in_rst, matrix<double> &out_dshape, int nNodes);
 void dshape_hex(const point &in_rst, double* out_dshape, int nNodes);
 

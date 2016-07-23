@@ -32,8 +32,12 @@ ifeq ($(strip $(BLAS_TYPE)),MKL)
   endif
 	CXX_BLAS += -D_MKL_BLAS
 else
+ifeq ($(strip $(BLAS_TYPE)),OPEN)
+  LD_BLAS = -L$(BLAS_LIB_DIR) -lopenblas
+else
 	# --- Other BLAS ---
   LD_BLAS = -L$(BLAS_LIB_DIR) -lcblas
+endif
 endif
 endif
 
@@ -272,6 +276,7 @@ obj/flurry.o: src/flurry.cpp include/flurry.hpp \
 obj/solver.o: src/solver.cpp include/solver.hpp \
 		include/global.hpp \
 		include/error.hpp \
+    include/funcs.hpp \
 		include/matrix.hpp \
 		include/ele.hpp \
 		include/geo.hpp \

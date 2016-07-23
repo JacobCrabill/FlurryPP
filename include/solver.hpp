@@ -120,6 +120,15 @@ public:
   Array<double,3> nodes, nodesRK; //! nNodes, nEles, nDims
   Array<double,3> pos_spts, pos_fpts, pos_ppts;  //! nSpts/NFpts, nEles, nDims
 
+
+  /* CSC Metric Variables */
+  int nCpts;
+  vector<point> loc_cpts;       //! 'Consistent Grid Points' for CSC metrics (Abe et al, 2016)
+  matrix<double> shape_cpts;    //! Interpolation values at cpts
+  Array<double,3> dshape_cpts;  //! Derivative values at cpts
+  Array<double,3> gradCpts_cpts, gradCpts_spts, gradCpts_fpts;
+  Array<double,3> pos_cpts;
+
   /* ==== Misc. Commonly-Used Variables ==== */
 
   int nRKSteps;
@@ -354,6 +363,7 @@ public:
   void updateTransforms();
   void calcTransforms();
 
+  void calcCSCMetrics(void);
 private:
   //! Pointer to the parameters object for the current solution
   input *params;

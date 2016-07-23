@@ -63,6 +63,7 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
   loc_spts = getLocSpts(eType,order,sptsType);
   loc_fpts = getLocFpts(eType,order,sptsType);
   loc_ppts = getLocPpts(eType,order,sptsType);
+  loc_cpts = getLocSpts(eType,order,string("Equidistant"));
 
   nSpts = loc_spts.size();
   nFpts = loc_fpts.size();
@@ -77,7 +78,12 @@ void oper::setupOperators(uint eType, uint order, geo *inGeo, input *inParams)
 
   setupExtrapolateSptsMpts();
 
-  setupGradSpts();
+//  setupGradSpts();
+  setupGradPts(opp_grad_spts, sptsType, order, sptsType, order);
+
+  setupGradPts(gradCpts_cpts, string("Equidistant"), order, loc_cpts);
+  setupGradPts(gradCpts_spts, string("Equidistant"), order, loc_spts);
+  setupGradPts(gradCpts_fpts, string("Equidistant"), order, loc_fpts);
 
   setupExtrapolateFn();
 
@@ -577,6 +583,125 @@ void oper::setupGradSpts(void)
           }
           else if (dim == 2) {
             opp_grad_spts[dim](spt1,spt2) = dLagrange(loc_spts_1D,loc_spts_1D[kspt1],kspt2) * Lagrange(loc_spts_1D,loc_spts_1D[ispt1],ispt2) * Lagrange(loc_spts_1D,loc_spts_1D[jspt1],jspt2);
+          }
+        }
+      }
+    }
+  }
+  else {
+    FatalError("Element type not yet supported.");
+  }
+}
+
+void oper::setupGradPts(vector<matrix<double>>& opp_grad, string basisType, int basisOrder, string ptsType, int ptsOrder)
+{
+  auto loc_basis = getPts1D(basisType, basisOrder); // Locations defining Lagrange basis
+  auto loc_pts   = getPts1D(ptsType,   ptsOrder);   // Locations to evaluate basis derivative at
+
+  opp_grad.resize(nDims);
+
+  uint nBasis1D = loc_basis.size();
+  uint nPts1D = loc_pts.size();
+  uint nBasis = nBasis1D * nBasis1D;
+  uint nPts = nPts1D * nPts1D;
+
+  if (nDims == 3) {
+    nBasis *= nBasis1D;
+    nPts *= nPts1D;
+  }
+
+  for (auto& dim:opp_grad) dim.setup(nPts,nBasis);
+
+  if (nDims == 2) {
+    for (uint dim = 0; dim < nDims; dim++) {
+      for (uint pt1 = 0; pt1 < nPts; pt1++) {
+        uint ipt1 = pt1 % nPts1D;      // col index - also = to (spt1 - (order+1)*row)
+        uint jpt1 = floor(pt1/nPts1D);       // row index
+        for (uint pt2 = 0; pt2 < nBasis; pt2++) {
+          uint ipt2 = pt2 % nBasis1D;
+          uint jpt2 = floor(pt2/nBasis1D);
+          if (dim == 0) {
+            opp_grad[dim](pt1,pt2) = dLagrange(loc_basis,loc_pts[ipt1],ipt2) * Lagrange(loc_basis,loc_pts[jpt1],jpt2);
+          } else {
+            opp_grad[dim](pt1,pt2) = dLagrange(loc_basis,loc_pts[jpt1],jpt2) * Lagrange(loc_basis,loc_pts[ipt1],ipt2);
+          }
+        }
+      }
+    }
+  }
+  else if (eType == HEX) {
+    for (uint dim = 0; dim < nDims; dim++) {
+      for (uint gpt = 0; gpt < nPts; gpt++) {
+        uint kgpt = gpt/(nPts1D*nPts1D);                    // col index - also = to (gpt - nPts1D*row)
+        uint jgpt = (gpt-nPts1D*nPts1D*kgpt)/nPts1D;        // row index
+        uint igpt = gpt - nPts1D*jgpt - nPts1D*nPts1D*kgpt; // page index
+        for (uint bpt = 0; bpt < nBasis; bpt++) {
+          uint kbpt = bpt/(nBasis1D*nBasis1D);                     // col index - also = to (bpt - nBasis1D*row)
+          uint jbpt = (bpt-nBasis1D*nBasis1D*kbpt)/nBasis1D;        // row index
+          uint ibpt = bpt - nBasis1D*jbpt - nBasis1D*nBasis1D*kbpt; // page index
+          if (dim == 0) {
+            opp_grad[dim](gpt,bpt) = dLagrange(loc_basis,loc_pts[igpt],ibpt) * Lagrange(loc_basis,loc_pts[jgpt],jbpt) * Lagrange(loc_basis,loc_pts[kgpt],kbpt);
+          }
+          else if (dim == 1) {
+            opp_grad[dim](gpt,bpt) = dLagrange(loc_basis,loc_pts[jgpt],jbpt) * Lagrange(loc_basis,loc_pts[igpt],ibpt) * Lagrange(loc_basis,loc_pts[kgpt],kbpt);
+          }
+          else if (dim == 2) {
+            opp_grad[dim](gpt,bpt) = dLagrange(loc_basis,loc_pts[kgpt],kbpt) * Lagrange(loc_basis,loc_pts[igpt],ibpt) * Lagrange(loc_basis,loc_pts[jgpt],jbpt);
+          }
+        }
+      }
+    }
+  }
+  else {
+    FatalError("Element type not yet supported.");
+  }
+}
+
+void oper::setupGradPts(vector<matrix<double>>& opp_grad, string basisType, int basisOrder, vector<point> loc_pts)
+{
+  auto loc_basis = getPts1D(basisType, basisOrder); // Locations defining Lagrange basis
+
+  opp_grad.resize(nDims);
+
+  uint nBasis1D = loc_basis.size();
+  uint nPts = loc_pts.size();
+  uint nBasis = nBasis1D * nBasis1D;
+
+  if (nDims == 3)
+    nBasis *= nBasis1D;
+
+  for (auto& dim:opp_grad) dim.setup(nPts,nBasis);
+
+  if (nDims == 2) {
+    for (uint dim = 0; dim < nDims; dim++) {
+      for (uint pt = 0; pt < nPts; pt++) {
+        for (uint bpt = 0; bpt < nBasis; bpt++) {
+          uint ipt2 = bpt % nBasis1D;
+          uint jpt2 = floor(bpt/nBasis1D);
+          if (dim == 0) {
+            opp_grad[dim](pt,bpt) = dLagrange(loc_basis,loc_pts[pt].x,ipt2) * Lagrange(loc_basis,loc_pts[pt].y,jpt2);
+          } else {
+            opp_grad[dim](pt,bpt) = dLagrange(loc_basis,loc_pts[pt].y,jpt2) * Lagrange(loc_basis,loc_pts[pt].x,ipt2);
+          }
+        }
+      }
+    }
+  }
+  else if (eType == HEX) {
+    for (uint dim = 0; dim < nDims; dim++) {
+      for (uint pt = 0; pt < nPts; pt++) {
+        for (uint bpt = 0; bpt < nBasis; bpt++) {
+          uint kbpt = bpt/(nBasis1D*nBasis1D);                     // col index - also = to (bpt - nBasis1D*row)
+          uint jbpt = (bpt-nBasis1D*nBasis1D*kbpt)/nBasis1D;        // row index
+          uint ibpt = bpt - nBasis1D*jbpt - nBasis1D*nBasis1D*kbpt; // page index
+          if (dim == 0) {
+            opp_grad[dim](pt,bpt) = dLagrange(loc_basis,loc_pts[pt].x,ibpt) * Lagrange(loc_basis,loc_pts[pt].y,jbpt) * Lagrange(loc_basis,loc_pts[pt].z,kbpt);
+          }
+          else if (dim == 1) {
+            opp_grad[dim](pt,bpt) = dLagrange(loc_basis,loc_pts[pt].y,jbpt) * Lagrange(loc_basis,loc_pts[pt].x,ibpt) * Lagrange(loc_basis,loc_pts[pt].z,kbpt);
+          }
+          else if (dim == 2) {
+            opp_grad[dim](pt,bpt) = dLagrange(loc_basis,loc_pts[pt].z,kbpt) * Lagrange(loc_basis,loc_pts[pt].x,ibpt) * Lagrange(loc_basis,loc_pts[pt].y,jbpt);
           }
         }
       }

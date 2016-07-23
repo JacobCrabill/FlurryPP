@@ -1278,7 +1278,7 @@ void geo::readGmsh(string fileName)
           c2nv.push_back(8);
           c2nf.push_back(6);
           ctype.push_back(HEX);
-          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
+          for (int i = 0; i < 8; i++) meshFile >> c2v_tmp[i];
           break;
 
         case 17:
@@ -1294,16 +1294,39 @@ void geo::readGmsh(string fileName)
           break;
 
         case 12:
-          // Quadratic (27-Node Lagrange) Hexahedron (read as 20-node serendipity)
-          c2nv.push_back(20);
+          // Quadratic (27-Node Lagrange) Hexahedron
+          c2nv.push_back(27);
           c2nf.push_back(6);
           ctype.push_back(HEX);
-          c2v_tmp.resize(20);
-          // Corner Nodes
-          meshFile >> c2v_tmp[0] >> c2v_tmp[1] >> c2v_tmp[2] >> c2v_tmp[3] >> c2v_tmp[4] >> c2v_tmp[5] >> c2v_tmp[6] >> c2v_tmp[7];
-          // Edge Nodes
-          meshFile >> c2v_tmp[8] >> c2v_tmp[11] >> c2v_tmp[12] >> c2v_tmp[9] >> c2v_tmp[13] >> c2v_tmp[10];
-          meshFile >> c2v_tmp[14] >> c2v_tmp[15] >> c2v_tmp[16] >> c2v_tmp[19] >> c2v_tmp[17] >> c2v_tmp[18];
+          c2v_tmp.resize(27);
+          for (int i = 0; i < c2nv.back(); i++) meshFile >> c2v_tmp[i];
+          break;
+
+        case 92:
+          // Cubic Hexahedron
+          c2nv.push_back(64);
+          c2nf.push_back(6);
+          ctype.push_back(HEX);
+          c2v_tmp.resize(64);
+          for (int i = 0; i < c2nv.back(); i++) meshFile >> c2v_tmp[i];
+          break;
+
+        case 93:
+          // Quartic Hexahedron
+          c2nv.push_back(125);
+          c2nf.push_back(6);
+          ctype.push_back(HEX);
+          c2v_tmp.resize(125);
+          for (int i = 0; i < c2nv.back(); i++) meshFile >> c2v_tmp[i];
+          break;
+
+        case 94:
+          // Quintic Hexahedron
+          c2nv.push_back(216);
+          c2nf.push_back(6);
+          ctype.push_back(HEX);
+          c2v_tmp.resize(216);
+          for (int i = 0; i < c2nv.back(); i++) meshFile >> c2v_tmp[i];
           break;
 
         case 4:
@@ -1367,14 +1390,11 @@ void geo::readGmsh(string fileName)
           break;
 
         case 3: // Linear quad
-          nPtsFace = 4;
-          break;
-
         case 10: // Quadratic (Lagrange) quad
-          nPtsFace = 4;
-          break;
-
         case 16: // Quadratic (Serendipity) quad
+        case 36: // Cubic quad
+        case 37: // Quartic quad
+        case 38: // Quintic quad
           nPtsFace = 4;
           break;
 

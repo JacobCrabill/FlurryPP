@@ -361,6 +361,54 @@ void boundFace::setRightStateSolution(void)
   // No right state; do nothing
 }
 
+/*
+void boundFace::rusanovFlux(void)
+{
+  if (bcType == SLIP_WALL)
+  {
+    // Do "strong-weak" enforcement
+    double vL[3] = {0,0,0};
+    double vR[3] = {0,0,0};
+    for (int fpt = 0; fpt < nFptsL; fpt++) {
+      // Get primitive variables
+      double rho = UL(fpt,0);
+      vL[0] = UL(fpt,1) / rho;
+      vL[1] = UL(fpt,2) / rho;
+      vL[2] = (nDims==2) ? 0 : UL(fpt,3) / rho;
+      double e = UL(fpt,nDims+1);
+      double p = (params->gamma-1.0)*(e-0.5*rho*(vL[0]*vL[0]+vL[1]*vL[1]+vL[2]*vL[2]));
+
+      double vnL = 0;
+      if (params->motion)
+        for (int dim = 0; dim < nDims; dim++)
+          vnL += (vL[dim]-Vg(fpt,dim))*normL(fpt,dim);
+      else
+        for (int dim = 0; dim < nDims; dim++)
+          vnL += vL[dim]*normL(fpt,dim);
+
+      for (int dim = 0; dim < nDims; dim++)
+        vR[dim] = vL[dim] - vnL*normL(fpt,dim);
+
+      Fn(fpt,0) = 0;
+      for (int dim = 0; dim < nDims; dim++)
+        Fn(fpt,dim+1) = p*normL(fpt,dim);
+      Fn(fpt,nDims+1) = 0;
+
+      // Store wave speed for calculation of allowable dt
+      double csq = max(params->gamma*p/rho,0.0);
+      double vgn = 0;
+      if (params->motion)
+        for (int dim = 0; dim < nDims; dim++)
+          vgn += Vg(fpt,dim)*normL(fpt,dim);
+      *waveSp[fpt] = std::fabs(vnL-vgn) + sqrt(csq);
+    }
+  }
+  else
+  {
+    this->centralFluxBound();
+  }
+}*/
+
 vector<double> boundFace::computeWallForce(void)
 {
   vector<double> force = {0,0,0,0,0,0};

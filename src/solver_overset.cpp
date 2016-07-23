@@ -186,10 +186,10 @@ void solver::insertElement(uint ele_ind)
   pos_fpts.add_dim_1(ele_ind, 0.);
   pos_ppts.add_dim_1(ele_ind, 0.);
 
-  Jac_spts.add_dim_1(ele_ind, 0.);
-  Jac_fpts.add_dim_1(ele_ind, 0.);
-  JGinv_spts.add_dim_1(ele_ind, 0.);
-  JGinv_fpts.add_dim_1(ele_ind, 0.);
+  Jac_spts.add_dim_2(ele_ind, 0.);
+  Jac_fpts.add_dim_2(ele_ind, 0.);
+  JGinv_spts.add_dim_2(ele_ind, 0.);
+  JGinv_fpts.add_dim_2(ele_ind, 0.);
   detJac_spts.add_dim_1(ele_ind, 0.);
   detJac_fpts.add_dim_1(ele_ind, 0.);
   dA_fpts.add_dim_1(ele_ind, 0.);
@@ -259,10 +259,10 @@ void solver::removeElement(uint ele_ind)
   pos_fpts.remove_dim_1(ele_ind);
   pos_ppts.remove_dim_1(ele_ind);
 
-  Jac_spts.remove_dim_1(ele_ind);
-  Jac_fpts.remove_dim_1(ele_ind);
-  JGinv_spts.remove_dim_1(ele_ind);
-  JGinv_fpts.remove_dim_1(ele_ind);
+  Jac_spts.remove_dim_2(ele_ind);
+  Jac_fpts.remove_dim_2(ele_ind);
+  JGinv_spts.remove_dim_2(ele_ind);
+  JGinv_fpts.remove_dim_2(ele_ind);
   detJac_spts.remove_dim_1(ele_ind);
   detJac_fpts.remove_dim_1(ele_ind);
   dA_fpts.remove_dim_1(ele_ind);

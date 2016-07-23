@@ -32,6 +32,10 @@
 
 #include "global.hpp"
 
+/*! Get the locations of the Consistent Grid Points for the CSC metrics
+ *  (just an equi-spaced grid containing the corners of the element; see Abe et al 2016) */
+vector<point> getLocCGPts(int order, int nDims);
+
 //! Get the reference-domain location of the solution points for the given element & polynomial order
 vector<point> getLocSpts(int eType, int order, string sptsType);
 
