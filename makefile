@@ -82,7 +82,7 @@ endif
 ####### Output directory - these do nothing currently
 
 OBJDIR        = $(CURDIR)/obj
-DESTDIR       = $(CURDIR)/bin
+BINDIR       = $(CURDIR)/bin
 SWIGDIR       = $(CURDIR)/swig
 
 ####### Files
@@ -112,16 +112,17 @@ OBJECTS = 	$(OBJDIR)/global.o \
 		$(OBJDIR)/overComm.o
 
 ifeq ($(strip $(MPI)),YES)
-OBJECTS+= $(OBJDIR)/ADT.o \
-		$(OBJDIR)/MeshBlock.o \
-		$(OBJDIR)/parallelComm.o \
-		$(OBJDIR)/utils.o \
-		$(OBJDIR)/tioga.o \
-		$(OBJDIR)/kaiser.o \
-		$(OBJDIR)/median.o \
-		$(OBJDIR)/cellVolume.o
+OBJECTS+= $(OBJDIR)/ADT.o
+#		$(OBJDIR)/tioga.o 
+#		$(OBJDIR)/MeshBlock.o \
+#		$(OBJDIR)/parallelComm.o \
+#		$(OBJDIR)/utils.o \
+#		$(OBJDIR)/kaiser.o \
+#		$(OBJDIR)/median.o \
+#		$(OBJDIR)/cellVolume.o
 endif
 
+WRAP_OBJS = $(OBJECTS) $(OBJDIR)/flurry_interface.o
 SWIG_OBJS = $(OBJECTS) $(OBJDIR)/flurry_interface.o $(SWIGDIR)/flurry_wrap.o
 SWIG_INCS = -I/usr/include/python2.7 -I/usr/local/lib/python2.7/dist-packages/mpi4py/include/
 SWIG_LIBS =
@@ -132,13 +133,25 @@ TARGET        = Flurry
 ####### Implicit rules
 $(TARGET): $(OBJECTS)
 
-	$(LINK) $(INCS) $(LFLAGS) -o $(DESTDIR)/$(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS) $(DBG)
+	$(LINK) $(INCS) $(LFLAGS) -o $(BINDIR)/$(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS) $(DBG)
 
-.PHONY: Swig
+.PHONY: swig
 swig: CXXFLAGS += -fPIC -D_BUILD_LIB $(INCS)
 swig: FFLAGS += -fPIC
 swig: $(SWIG_OBJS)
 	$(CXX) $(FLAGS) $(CXXFLAGS) $(INCS) $(SWIG_INCS) -shared -o $(SWIGDIR)/_flurry.so $(SWIG_OBJS) $(LIBS) $(SWIG_LIBS)
+
+.PHONY: lib
+lib: CXXFLAGS += -fPIC -D_BUILD_LIB
+lib: FFLAGS += -fPIC
+lib: $(WRAP_OBJS)
+	$(CXX) $(FLAGS) $(CXXFLAGS) $(INCS) $(SWIG_INCS) -shared -o $(BINDIR)/libflurry.so $(WRAP_OBJS) $(LIBS) $(SWIG_LIBS)
+
+.PHONY: test
+test: INCS += -I~/tioga/src/
+test: lib
+	$(CXX) $(CXXFLAGS) $(FLAGS) $(INCS) $(SWIGDIR)/testFlurry.cpp $(BINDIR)/libflurry.so -L$(SWIGDIR)/lib -ltioga -Wl,-rpath=$(SWIGDIR)/lib/ -o $(SWIGDIR)/testFlurry
+	cp $(BINDIR)/libflurry.so $(SWIGDIR)/lib/
 
 ####### Implicit Rules
 
@@ -170,6 +183,6 @@ $(SWIGDIR)/%_wrap.cpp: $(SWIGDIR)/%.i
 
 clean:
 	cd $(OBJDIR) && rm -f *.o && cd .. && rm -f bin/Flurry
-	rm lib/tioga/src/*.o
+	rm -f lib/tioga/src/*.o
 
 

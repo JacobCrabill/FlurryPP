@@ -81,6 +81,9 @@ public:
   /*! Callback function for use with TIOGA */
   void get_U_index(int fpt, int& ind, int& stride);
 
+  //! Get/set solution at a flux point (for TIOGA) */
+  double &get_U_fpt(int fpt, int field);
+
   int procL;               //! Processor ID on left  [this face]
   int procR;               //! Processor ID on right [opposite face]
   int IDR;                 //! Local face ID of face on right processor

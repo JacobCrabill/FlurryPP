@@ -108,6 +108,8 @@ public:
   double *get_u_spts(void);
   double *get_u_fpts(void);
 
+  double& get_u_fpt(int faceID, int fpt, int field);
+
   // Callback Functions for TIOGA
   void get_nodes_per_cell(int& nNodes);
   void get_nodes_per_face(int& nNodes);

@@ -40,7 +40,7 @@
 #include "global.hpp"
 
 class ele;
-class solver;
+class geo;
 
 //#include "ele.hpp"
 #include "matrix.hpp"
@@ -71,7 +71,8 @@ class face
 public:
 
   /*! Assign basic parameters to boundary */
-  void initialize(shared_ptr<ele> &eL, shared_ptr<ele> &eR, int gID, int locF_L, struct faceInfo myInfo, input* params);
+  void initialize(shared_ptr<ele> &eL, shared_ptr<ele> &eR, int gID, int locF_L,
+                  geo *Geo, struct faceInfo myInfo, input* params);
 
   /*! Setup arrays and access to the left elements' data */
   void setupFace(void);
@@ -138,6 +139,9 @@ public:
   /*! Callback function for use with TIOGA */
   virtual void get_U_index(int fpt, int& ind, int& stride) =0;
 
+  //! Get/set solution at a flux point (for TIOGA) */
+  virtual double& get_U_fpt(int fpt, int field) =0;
+
 
   int ID; //! Global ID of face
 
@@ -154,7 +158,7 @@ public:
   shared_ptr<ele> eL;
   shared_ptr<ele> eR;
 
-  solver *Solver;
+  geo *Geo;
 
   /* --- Storage for all solution/geometry data at flux points [left state] --- */
   matrix<double> UL;      //! Discontinuous solution at left ele [nFpts, nFields]

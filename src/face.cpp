@@ -33,7 +33,7 @@
 #include "flux.hpp"
 #include "ele.hpp"
 
-void face::initialize(shared_ptr<ele> &eL, shared_ptr<ele> &eR, int gID, int locF_L, faceInfo myInfo, input *params)
+void face::initialize(shared_ptr<ele> &eL, shared_ptr<ele> &eR, int gID, int locF_L, geo *Geo, faceInfo myInfo, input *params)
 {
   ID = gID;
 
@@ -42,6 +42,7 @@ void face::initialize(shared_ptr<ele> &eL, shared_ptr<ele> &eR, int gID, int loc
   this->locF_L = locF_L;
   this->myInfo = myInfo;
   this->params = params;
+  this->Geo = Geo;
 
   nDims = params->nDims;
   nFields = params->nFields;
@@ -114,15 +115,10 @@ void face::getPointers(void)
 
 void face::getLeftState()
 {
-  // Get data from left element
+  /* For dynamic grids (besides rigid translation), need to update
+   * geometry-related data on every iteration, not just during setup */
   int fpt = 0;
   for (int i=fptStartL; i<fptEndL; i++) {
-    for (int j=0; j<nFields; j++) {
-      UL(fpt,j) = (eL->U_fpts(i,j));
-    }
-
-    /* For dynamic grids (besides rigid translation), need to update
-     * geometry-related data on every iteration, not just during setup */
     if (isNew || (params->motion != 0 && params->motion != 4)) {
       for (int dim=0; dim<nDims; dim++) {
         normL(fpt,dim) = (eL->norm_fpts(i,dim));
@@ -139,6 +135,21 @@ void face::getLeftState()
   }
 
   isNew = false;
+
+  if (params->overset && Geo->iblankFace[ID] != NORMAL)
+  {
+    if (Geo->iblankCell[Geo->f2c(ID,0)] != NORMAL)
+      return;
+  }
+
+  // Get data from left element
+  fpt = 0;
+  for (int i=fptStartL; i<fptEndL; i++) {
+    for (int j=0; j<nFields; j++) {
+      UL(fpt,j) = (eL->U_fpts(i,j));
+    }
+    fpt++;
+  }
 }
 
 void face::getLeftGradient()
@@ -158,6 +169,8 @@ void face::getLeftGradient()
 
 void face::calcInviscidFlux(void)
 {
+  if (params->overset && Geo->iblankFace[ID] == HOLE) return;
+
   if (!isMPI)
     getLeftState();
   this->getRightState(); // <-- makes this more general for all face types, and allows face memory to be contiguous
@@ -205,6 +218,8 @@ void face::calcInviscidFlux(void)
 
 void face::calcViscousFlux(void)
 {
+  if (params->overset && Geo->iblankFace[ID] == HOLE) return;
+
   if (!isMPI)
     getLeftGradient();
   this->getRightGradient();

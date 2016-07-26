@@ -74,7 +74,7 @@ void solver::setupOverset(void)
 
     OComm->setup(params,nGrids,gridID,gridRank,nprocPerGrid,Geo->gridIdList);
 
-    OComm->tg = Geo->tg;
+////    OComm->tg = Geo->tg;
   }
   else {
     OComm = Geo->OComm;

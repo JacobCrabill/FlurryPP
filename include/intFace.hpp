@@ -63,6 +63,9 @@ public:
 
   void get_U_index(int fpt, int& ind, int& stride);
 
+  //! Get/set solution at a flux point (for TIOGA) */
+  double& get_U_fpt(int fpt, int field);
+
 private:
   int faceID_R;              //! Right element's face ID
   int relRot;              //! Relative rotation of right element's face (for 3D)

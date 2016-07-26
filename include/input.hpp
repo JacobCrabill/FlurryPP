@@ -43,6 +43,10 @@ private:
   double duration = 0; // Time in milliseconds
 public:
 
+  Timer(void) {}
+
+  Timer(const std::string &prefix) { this->prefix = prefix; }
+
   void setPrefix(const std::string &prefix) { this->prefix = prefix; }
 
   void startTimer(void)
@@ -288,6 +292,7 @@ public:
   int meshType;     //! Type of mesh being used: Single Gmsh, create a mesh, or read multiple overset grids
   int nx, ny, nz;   //! For creating a structured mesh: Number of cells in each direction
   int nGrids;       //! # of grids in overset calculation
+  int gridID;
   int writeIBLANK;  //! Write IBLANK in ParaView output?
   int oversetMethod;   //! Interp. dis. sol'n (0) or corr. flux (1) at overset bounds, or use Galerkin proj. (2) on fringe cells
   int projection;   //! Use Local Galerkin Projection (1) or simple collocation (0)
@@ -316,6 +321,10 @@ public:
 
   Timer time1;
   Timer time2;
+
+#ifndef _NO_MPI
+  MPI_Comm myComm;
+#endif
 
 private:
   fileReader opts;

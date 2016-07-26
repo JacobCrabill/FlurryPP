@@ -70,7 +70,7 @@ void solver::setup(input *params, int _order, geo *_Geo)
   }
 
 #ifndef _NO_MPI
-  this->tg = Geo->tg; // Geo will have initialized this already if needed
+////  this->tg = Geo->tg; // Geo will have initialized this already if needed
 #endif
 
   params->time = 0.;
@@ -106,8 +106,8 @@ void solver::setup(input *params, int _order, geo *_Geo)
 
   setupElesFaces();
 
-  if (params->meshType == OVERSET_MESH)
-    setupOverset();
+//  if (params->meshType == OVERSET_MESH)
+//    setupOverset();
 
 #ifndef _NO_MPI
   finishMpiSetup();
@@ -348,8 +348,8 @@ void solver::update(bool PMG_Source)
   moveMesh(nRKSteps-1);
 
   params->interpTime.startTimer();
-  if (nEles > 0 && params->meshType == OVERSET_MESH)
-    oversetInterp();
+////  if (nEles > 0 && params->meshType == OVERSET_MESH)
+////    oversetInterp();
   params->interpTime.stopTimer();
 
   params->runTime.startTimer();
@@ -421,7 +421,7 @@ void solver::calcResidual(int step)
 
 //    oversetInterp();
 
-    calcInviscidFlux_overset();
+////    calcInviscidFlux_overset();
 
   }
 
@@ -469,12 +469,13 @@ void solver::calcDt(void)
 
 #pragma omp parallel for reduction(min:dt)
   for (uint i=0; i<eles.size(); i++) {
+    if (params->overset && Geo->iblankCell[eles[i]->ID] != NORMAL) continue;
     dt = min(dt, eles[i]->calcDt());
   }
 
 #ifndef _NO_MPI
   double dtTmp = dt;
-  MPI_Allreduce(&dtTmp, &dt, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+  MPI_Allreduce(&dtTmp, &dt, 1, MPI_DOUBLE, MPI_MIN, myComm);
 #endif
 
   params->dt = dt;
@@ -723,6 +724,7 @@ void solver::calcInviscidFlux_spts(void)
 #pragma omp parallel for collapse(2) private(tempF)
   for (uint spt = 0; spt < nSpts; spt++) {
     for (uint e = 0; e < nEles; e++) {
+      if (params->overset && Geo->iblankCell[e] != NORMAL) continue;
       inviscidFlux(&U_spts(spt,e,0), tempF, params);
 
       if (params->motion || params->viscous)
@@ -1053,6 +1055,29 @@ void solver::correctDivFlux(int step)
     for (uint e = 0; e < nEles; e++)
       for (uint k = 0; k < nFields; k++)
         disFn_fpts(fpt, e, k) = Fn_fpts(fpt, e, k) - disFn_fpts(fpt, e, k);
+
+//  MPI_Barrier(MPI_COMM_WORLD);
+//  if (params->rank==1)
+//  {
+//    cout << endl;
+
+//    int ff = Geo->c2f(2172,0);
+//    printf("Bad face ID = %d\n",ff);
+//    printf("Bad face type = %d\n",Geo->faceType[ff]);
+//    printf("Face index = %d\n",Geo->faceMap[ff]);
+//    printf("Double-check face ID: %d\n",mpiFaces[Geo->faceMap[ff]]->ID);
+//    printf("U_fpts = %f, %f\n",U_fpts(0,2172,0),U_fpts(0,2172,4));
+//    int ic1 = Geo->f2c(ff,0);
+//    int ic2 = Geo->f2c(ff,1);
+//    printf("IC 1/2 %d, %d\n",ic1,ic2);
+//    printf("IBLANK 1/2 %d, %d\n",Geo->iblankCell[ic1],Geo->iblankCell[ic2]);
+//    cout << "iblank face for ele 2172 = " << Geo->iblankFace[Geo->c2v(2172,0)]
+//         << endl;
+//    cout << "Fn / divF_spts[ele 2172] = " << Fn_fpts(0,2172,0)
+//         << ", " << divF_spts[0](0,2172,0) << endl;
+
+//    cout << endl;
+//  }
 
   int m = nSpts;
   int n = nEles * nFields;
@@ -1746,7 +1771,7 @@ vector<double> solver::computeMassFlux(void)
 
 #ifndef _NO_MPI
     auto fTmp = flux;
-    MPI_Reduce(fTmp.data(), flux.data(), params->nFields, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(fTmp.data(), flux.data(), params->nFields, MPI_DOUBLE, MPI_SUM, 0, myComm);
 #endif
 
   return flux;
@@ -1923,24 +1948,24 @@ void solver::initializeSolution(bool PMG)
 
   }
 
-  if (params->meshType == OVERSET_MESH && params->motion == 0) {
-    // Perform initial LGP to setup connectivity / arrays for remainder of computations [Field-interp method]
-    if (params->projection) {
-      OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->quadOrder);
-      OComm->performGalerkinProjection(eles,opers,Geo->eleMap,order);
-    } else {
-      if (params->nDims==2)
-        getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
-      int nPtsFace = order+1;
-      if (nDims==3) nPtsFace *= order+1;
-      if (params->oversetMethod != 2)
-        OComm->setupOverFacePoints(overFaces, nPtsFace);
-      else
-        OComm->setupFringeCellPoints(eles,Geo->fringeCells,Geo->eleMap);
-      OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
-      OComm->exchangeOversetData(eles,opers,Geo->eleMap);
-    }
-  }
+//  if (params->meshType == OVERSET_MESH && params->motion == 0) {
+//    // Perform initial LGP to setup connectivity / arrays for remainder of computations [Field-interp method]
+//    if (params->projection) {
+//      OComm->matchUnblankCells(eles,Geo->fringeCells,Geo->eleMap,params->quadOrder);
+//      OComm->performGalerkinProjection(eles,opers,Geo->eleMap,order);
+//    } else {
+//      if (params->nDims==2)
+//        getBoundingBox(Geo->xv,Geo->minPt,Geo->maxPt);
+//      int nPtsFace = order+1;
+//      if (nDims==3) nPtsFace *= order+1;
+//      if (params->oversetMethod != 2)
+//        OComm->setupOverFacePoints(overFaces, nPtsFace);
+//      else
+//        OComm->setupFringeCellPoints(eles,Geo->fringeCells,Geo->eleMap);
+//      OComm->matchOversetPoints(eles,Geo->eleMap,Geo->minPt,Geo->maxPt);
+//      OComm->exchangeOversetData(eles,opers,Geo->eleMap);
+//    }
+//  }
 
   /* If using CFL-based time-stepping, calc wave speed in each
    * ele for initial dt calculation */
@@ -2031,7 +2056,7 @@ vector<double> solver::integrateError(void)
 
 #ifndef _NO_MPI
   vector<double> tmpErr = LpErr;
-  MPI_Allreduce(tmpErr.data(), LpErr.data(), params->nFields, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); //Geo->gridComm);
+  MPI_Allreduce(tmpErr.data(), LpErr.data(), params->nFields, MPI_DOUBLE, MPI_SUM, myComm); //Geo->gridComm);
 #endif
 
   if (params->errorNorm==2)

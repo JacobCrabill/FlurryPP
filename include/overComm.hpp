@@ -47,7 +47,7 @@ class overFace;
 #include "superMesh.hpp"
 
 #ifndef _NO_MPI
-#include "tioga.h"
+////#include "tioga.h"
 #include "ADT.h"
 #include "mpi.h"
 #endif
@@ -79,7 +79,7 @@ public:
 #ifndef _NO_MPI
   MPI_Comm gridComm;
 
-  shared_ptr<tioga> tg;  //! TIOGA object in use for simulation
+  ////shared_ptr<tioga> tg;  //! TIOGA object in use for simulation
   shared_ptr<ADT> adt;   //! Alternating Digital Tree for searching
 #endif
 

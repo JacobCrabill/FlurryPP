@@ -48,14 +48,14 @@ void initialize(char *input_file)
 }
 #endif
 
-void set_Flurry_object(Flurry *_Flurry)
+void set_flurry_object(Flurry *_Flurry)
 {
   delete fr;
 
   fr = _Flurry;
 }
 
-Flurry* get_Flurry_object(void)
+Flurry* get_flurry_object(void)
 {
   return fr;
 }
@@ -119,6 +119,7 @@ CallbackFuncs get_callback_funcs(void)
   call.donor_frac = donor_frac;
   call.convert_to_modal = convert_to_modal;
   call.get_q_spt = get_q_spt;
+  call.get_q_fpt = get_u_fpt;
 
   return call;
 }
@@ -167,6 +168,11 @@ void convert_to_modal(int* cellID, int* nSpts, double* q_in, int* npts, int* ind
   *index_out = (*cellID) * (*nSpts);
   for (int spt = 0; spt < (*nSpts); spt++)
     q_out[spt] = q_in[spt];
+}
+
+double &get_u_fpt(int faceID, int fpt, int field)
+{
+  return fr->get_u_fpt(faceID, fpt, field);
 }
 
 } /* namespace flurry */

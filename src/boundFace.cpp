@@ -70,6 +70,8 @@ void boundFace::getRightGradient(void)
 
 void boundFace::applyBCs(void)
 {
+  if (params->overset && Geo->iblankFace[ID] != NORMAL) return;
+
   uint nDims = params->nDims;
   for (int fpt=0; fpt<nFptsL; fpt++) {
 
@@ -101,7 +103,7 @@ void boundFace::applyBCs(void)
       double pL = (gamma-1.0)*(eL - 0.5*rhoL*vSq);
 
       // Subsonic inflow simple (free pressure) //CONSIDER DELETING
-      if(bcType == SUB_IN) {
+      if (bcType == SUB_IN) {
         // fix density and velocity
         rhoR = params->rhoBound;
         for (uint i=0; i<nDims; i++)
@@ -118,7 +120,7 @@ void boundFace::applyBCs(void)
       }
 
       // Subsonic outflow simple (fixed pressure) //CONSIDER DELETING
-      else if(bcType == SUB_OUT) {
+      else if (bcType == SUB_OUT) {
         // extrapolate density and velocity
         rhoR = rhoL;
         for (uint i=0; i<nDims; i++)
@@ -136,7 +138,7 @@ void boundFace::applyBCs(void)
       }
 
       // Supersonic inflow
-      else if(bcType == SUP_IN) {
+      else if (bcType == SUP_IN) {
         // fix density and velocity
         rhoR = params->rhoBound;
         vR[0] = params->uBound;
@@ -156,7 +158,7 @@ void boundFace::applyBCs(void)
 
 
       // Supersonic outflow
-      else if(bcType == SUP_OUT) {
+      else if (bcType == SUP_OUT) {
         // extrapolate density, velocity, energy
         rhoR = rhoL;
         for (uint i=0; i<nDims; i++)
@@ -165,7 +167,7 @@ void boundFace::applyBCs(void)
       }
 
       // Slip wall
-      else if(bcType == SLIP_WALL || bcType == SYMMETRY) {
+      else if (bcType == SLIP_WALL || bcType == SYMMETRY) {
         // extrapolate density
         rhoR = rhoL;
 
@@ -184,7 +186,7 @@ void boundFace::applyBCs(void)
       }
 
       // Isothermal, no-slip wall (fixed)
-      else if(bcType == ISOTHERMAL_NOSLIP_MOVING) {
+      else if (bcType == ISOTHERMAL_NOSLIP_MOVING) {
         // extrapolate pressure
         pR = pL;
 
@@ -209,7 +211,7 @@ void boundFace::applyBCs(void)
       }
 
       // Isothermal, no-slip wall (fixed)
-      else if(bcType == ISOTHERMAL_NOSLIP) {
+      else if (bcType == ISOTHERMAL_NOSLIP) {
         // extrapolate pressure
         pR = pL;
 
@@ -232,7 +234,7 @@ void boundFace::applyBCs(void)
       }
 
       // Adiabatic, no-slip wall (fixed)
-      else if(bcType == ADIABATIC_NOSLIP) {
+      else if (bcType == ADIABATIC_NOSLIP) {
         // extrapolate density
         rhoR = rhoL; // only useful part
 
@@ -301,6 +303,10 @@ void boundFace::applyBCs(void)
           vMag2 += vR[i]*vR[i];
 
         ER = pR / gmo + .5 * rhoR * vMag2;
+      }
+      else if (bcType == OVERSET)
+      {
+        // Do nothing
       }
       else {
         cout << "Boundary Condition: " << bcType << endl;
@@ -504,6 +510,11 @@ vector<double> boundFace::computeMassFlux(void)
 
 void boundFace::get_U_index(int fpt, int& ind, int& stride)
 {
-  ind    = std::distance(&Solver->U_fpts(0,0,0), &eL->U_fpts(fptStartL+fpt,0));
+  ind    = std::distance(&eL->Solver->U_fpts(0,0,0), &eL->U_fpts(fptStartL+fpt,0));
   stride = std::distance(&eL->U_fpts(fptStartL+fpt,0), &eL->U_fpts(fptStartL+fpt,1));
+}
+
+double& boundFace::get_U_fpt(int fpt, int field)
+{
+  return UR(fpt, field); //eL->U_fpts(fptStartL+fpt, field);
 }

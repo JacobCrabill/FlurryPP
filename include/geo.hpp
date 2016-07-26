@@ -36,7 +36,7 @@
 #include "global.hpp"
 
 #ifndef _NO_MPI
-class tioga;
+////class tioga;
 #endif
 
 #include "ele.hpp"
@@ -49,7 +49,7 @@ class tioga;
 #include "superMesh.hpp"
 
 #ifndef _NO_MPI
-#include "tioga.h"
+////#include "tioga.h"
 #include "ADT.h"
 #endif
 
@@ -184,6 +184,7 @@ public:
   vector<int> iwall;      //! List of nodes on wall boundaries
   vector<int> iover;      //! List of nodes on overset boundaries
   vector<int> nodeType;   //! For each node: normal interior, normal boundary, or overset
+  vector<int> fringeFaces;//! List of all artificial boundary faces
 
   matrix<int> wallFaceNodes;  //! For 2D: All the wall-boundary faces for hole cutting
   matrix<int> overFaceNodes;  //! For 2D: All the input-specified overset-boundary faces for hole cutting
@@ -210,7 +211,7 @@ public:
 
 #ifndef _NO_MPI
   shared_ptr<overComm> OComm;
-  shared_ptr<tioga> tg;  //! Pointer to Tioga object for processing overset grids
+////  shared_ptr<tioga> tg;  //! Pointer to Tioga object for processing overset grids
   shared_ptr<ADT> adt;
 #endif
   int* nodesPerCell;   //! Pointer for Tioga to know # of nodes for each element type

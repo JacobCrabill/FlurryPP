@@ -51,8 +51,8 @@ class overFace;
 #include "superMesh.hpp"
 
 #ifndef _NO_MPI
-class tioga;
-#include "tioga.h"
+////class tioga;
+////#include "tioga.h"
 #endif
 
 class solver
@@ -82,7 +82,8 @@ public:
 
 #ifndef _NO_MPI
   //! Pointer to Tioga object for processing overset grids
-  shared_ptr<tioga> tg;
+////  shared_ptr<tioga> tg;
+  MPI_Comm myComm;
 #endif
 
   /* === Solution Variables === */

@@ -113,14 +113,9 @@ void intFace::getPointersRight(void)
 
 void intFace::getRightState(void)
 {
-  // Get data from right element [order reversed to match left ele]
+  /* For dynamic grids (besides rigid translation), need to update
+   * geometry-related data on every iteration, not just during setup */
   for (int fpt=0; fpt<nFptsL; fpt++) {
-    for (int j=0; j<nFields; j++) {
-      UR(fpt,j) = (eR->U_fpts(fptR[fpt],j));
-    }
-
-    /* For dynamic grids (besides rigid translation), need to update
-     * geometry-related data on every iteration, not just during setup */
     if (isNew_R || (params->motion != 0 && params->motion != 4)) {
       for (int dim=0; dim<nDims; dim++) {
         normR(fpt,dim) = (eR->norm_fpts(fptR[fpt],dim));
@@ -130,6 +125,19 @@ void intFace::getRightState(void)
   }
 
   isNew_R = false;
+
+  if (params->overset && Geo->iblankFace[ID] != NORMAL)
+  {
+    if (Geo->iblankCell[Geo->f2c(ID,1)] != NORMAL)
+      return;
+  }
+
+  // Get data from right element [order reversed to match left ele]
+  for (int fpt=0; fpt<nFptsL; fpt++) {
+    for (int j=0; j<nFields; j++) {
+      UR(fpt,j) = (eR->U_fpts(fptR[fpt],j));
+    }
+  }
 }
 
 void intFace::getRightGradient(void)
@@ -149,8 +157,6 @@ void intFace::setRightStateFlux(void)
   for (int i=0; i<nFptsR; i++)
     for (int j=0; j<nFields; j++)
       FnR[i][j] = -Fn(i,j)*dAR[i]; // opposite normal direction
-
-
 }
 
 void intFace::setRightStateSolution(void)
@@ -177,23 +183,42 @@ vector<double> intFace::computeMassFlux()
 
 void intFace::get_U_index(int fpt, int& ind, int& stride)
 {
-  /* U : nFpts x nVars x 2 */
   int ic1 = eL->ID;
   int ic2 = eR->ID;
 
-  if (ic1 > 0 && Solver->Geo->iblankCell[ic1] == NORMAL)
+  if (ic1 > 0 && eL->Geo->iblankCell[ic1] == NORMAL)
   {
-    ind    = std::distance(&Solver->U_fpts(0,0,0), &eR->U_fpts(fptStartL+fpt,0));
-    stride = std::distance(&eR->U_fpts(fptStartL+fpt,0), &eR->U_fpts(fptStartL+fpt,1));
+    ind    = std::distance(&eR->Solver->U_fpts(0,0,0), &eR->U_fpts(fptR[fpt],0));
+    stride = std::distance(&eR->U_fpts(fptR[fpt],0), &eR->U_fpts(fptR[fpt],1));
   }
-  else if (ic2 > 0 && Solver->Geo->iblankCell[ic2] == NORMAL)
+  else if (ic2 > 0 && eL->Solver->Geo->iblankCell[ic2] == NORMAL)
   {
-    ind    = std::distance(&Solver->U_fpts(0,0,0), &eL->U_fpts(fptStartL+fpt,0));
+    ind    = std::distance(&eL->Solver->U_fpts(0,0,0), &eL->U_fpts(fptStartL+fpt,0));
     stride = std::distance(&eL->U_fpts(fptStartL+fpt,0), &eL->U_fpts(fptStartL+fpt,1));
   }
   else
   {
-    //printf("face %d: ibf %d | ic1,2: %d,%d, ibc1,2: %d,%d\n",faceID,geo->iblank_face[faceID],ic1,ic2,geo->iblank_cell[ic1],geo->iblank_cell[ic2]);
+    FatalError("get_U_index : Face not blanked but both elements are!");
+  }
+}
+
+double& intFace::get_U_fpt(int fpt, int field)
+{
+  int ic1 = eL->ID;
+  int ic2 = eR->ID;
+
+  if (eR->Geo->iblankCell[ic2] == HOLE)
+  {
+    //return eR->U_fpts(fptR[fpt], field);
+    return UR(fpt,field);
+  }
+  else if (eL->Geo->iblankCell[ic1] == HOLE)
+  {
+    //return eL->U_fpts(fptStartL+fpt, field);
+    return UL(fpt,field);
+  }
+  else
+  {
     FatalError("get_U_index : Face not blanked but both elements are!");
   }
 }

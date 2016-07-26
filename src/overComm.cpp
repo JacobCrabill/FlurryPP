@@ -237,9 +237,6 @@ void overComm::setupOverFacePoints(vector<shared_ptr<overFace>> &overFaces, int 
       }
     }
   }
-
-//  if (rank == 0) /// DEBUGGING
-//    overPts.print(6);
 }
 
 void overComm::setupFringeCellPoints(vector<shared_ptr<ele>> &eles, const unordered_set<int> &fringeCells, const vector<int> &eleMap)
@@ -357,7 +354,8 @@ void overComm::matchOversetPoints(vector<shared_ptr<ele>> &eles, const vector<in
         }
       }
       else {
-        int ic = tg->findPointDonor(pt_ptr);
+        int ic = 0;
+////        int ic = tg->findPointDonor(pt_ptr);
         if (ic>=0 && eleMap[ic]>=0) {
           int ie = eleMap[ic];
           point refLoc;
@@ -503,7 +501,7 @@ void overComm::matchUnblankCells(vector<shared_ptr<ele>> &eles, unordered_set<in
         adt->searchADT_box(eleList.data(),cellIDs,targetBox.data());
       }
       else {
-        cellIDs = tg->findCellDonors(targetBox.data());
+////        cellIDs = tg->findCellDonors(targetBox.data());
       }
 
       if (cellIDs.size() > 0) {
@@ -940,8 +938,8 @@ vector<double> overComm::integrateErrOverset(vector<shared_ptr<ele>> &eles, map<
       unordered_set<int> cellIDs;
       if (nDims == 2)
         adt->searchADT_box(eleList.data(),cellIDs,targetBox.data());
-      else
-        cellIDs = tg->findCellDonors(targetBox.data());
+////      else
+////        cellIDs = tg->findCellDonors(targetBox.data());
 
       // Remove interpolated field / fringe cells from integration
       set<int> fringeCells;
@@ -1316,8 +1314,6 @@ void overComm::exchangeOversetData(vector<shared_ptr<ele>> &eles, map<int, oper>
   int nVars = nFields;
   if (params->oversetMethod == 1) nVars *= 2;
 
-  if (params->iter==params->initIter+1)
-    cout << "Rank " << rank << ": nPtsSend = " << nPtsSend << endl; /// DEBUGGING
   params->time2.startTimer();
   sendRecvData(nPtsSend,nPtsRecv,foundPts,recvPts,U_out,U_in,nVars,true);
   params->time2.stopTimer();

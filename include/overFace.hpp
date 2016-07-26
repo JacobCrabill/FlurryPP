@@ -77,6 +77,9 @@ public:
   /*! Callback function for use with TIOGA */
   void get_U_index(int fpt, int& ind, int& stride);
 
+  //! Get/set solution at a flux point (for TIOGA) */
+  double& get_U_fpt(int fpt, int field);
+
   int fptOffset;         //! Offset within Solver's mesh block-global interp point list
   vector<point> posFpts; //! Physical locations of left ele's flux points
 

@@ -144,10 +144,12 @@ void writeParaview(solver *Solver, input *params)
 
 #ifndef _NO_MPI
   /* --- All processors write their solution to their own .vtu file --- */
-  if (params->meshType == OVERSET_MESH)
-    sprintf(fileNameC,"%s_%.09d/%s%d_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],Solver->gridID,iter,Solver->gridRank);
+  if (params->overset || params->meshType == OVERSET_MESH)
+    sprintf(fileNameC,"%s_%.09d/%s%d_%.09d_%d.vtu",&fileName[0],iter,
+        &fileName[0],Solver->gridID,iter,Solver->gridRank);
   else
-    sprintf(fileNameC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,params->rank);
+    sprintf(fileNameC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,
+        &fileName[0],iter,params->rank);
 #else
   /* --- Filename to write to --- */
   sprintf(fileNameC,"%s_%.09d.vtu",&fileName[0],iter);
@@ -169,7 +171,7 @@ void writeParaview(solver *Solver, input *params)
   if (Solver->gridRank == 0) {
     ofstream pVTU;
     char pvtuC[256];
-    if (params->meshType == OVERSET_MESH)
+    if (params->overset || params->meshType == OVERSET_MESH)
       sprintf(pvtuC,"%s%d_%.09d.pvtu",&fileName[0],Solver->gridID,iter);
     else
       sprintf(pvtuC,"%s_%.09d.pvtu",&fileName[0],iter);
@@ -210,7 +212,7 @@ void writeParaview(solver *Solver, input *params)
 
     char filnameTmpC[256];
     for (int p=0; p<Solver->nprocPerGrid; p++) {
-      if (params->meshType == OVERSET_MESH)
+      if (params->overset || params->meshType == OVERSET_MESH)
         sprintf(filnameTmpC,"%s_%.09d/%s%d_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],Solver->gridID,iter,p);
       else
         sprintf(filnameTmpC,"%s_%.09d/%s_%.09d_%d.vtu",&fileName[0],iter,&fileName[0],iter,p);
@@ -237,7 +239,7 @@ void writeParaview(solver *Solver, input *params)
 
   /* --- Wait for all processes to get here, otherwise there won't be a
    *     directory to put .vtus into --- */
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(Solver->myComm);
 #endif
 
   /* --- Move onto the rank-specific data file --- */
@@ -255,7 +257,7 @@ void writeParaview(solver *Solver, input *params)
   dataFile << "<!-- ITER " << params->iter << " -->" << endl;
 
   // Write the cell iblank data for restarting purposes
-  if (params->meshType == OVERSET_MESH) {
+  if (params->overset || params->meshType == OVERSET_MESH) {
     dataFile << "<!-- IBLANK_CELL ";
     for (int i=0; i<Solver->Geo->nEles; i++) {
       dataFile << Solver->Geo->iblankCell[i] << " ";
@@ -287,7 +289,7 @@ void writeParaview(solver *Solver, input *params)
     Solver->updatePosSptsFpts();
 
   for (auto& e:Solver->eles) {
-    if (params->meshType == OVERSET_MESH && Solver->Geo->iblankCell[e->ID]!=NORMAL) continue;
+    if ((params->overset || params->meshType == OVERSET_MESH) && Solver->Geo->iblankCell[e->ID]!=NORMAL) continue;
 
     // The combination of spts + fpts will be the plot points
     matrix<double> vPpts, gridVelPpts, errPpts;
@@ -541,7 +543,7 @@ void writeSurfaces(solver *Solver, input *params)
 
   /* --- Wait for all processes to get here, otherwise there won't be a
    *     directory to put .vtus into --- */
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(Solver->myComm);
 #endif
 
   /* --- Write out each boundary surface into separate .vtu file --- */
@@ -552,7 +554,7 @@ void writeSurfaces(solver *Solver, input *params)
 
 #ifndef _NO_MPI
     /* --- All processors write their solution to their own .vtu file --- */
-    if (params->meshType == OVERSET_MESH)
+    if (params->meshType == OVERSET_MESH || params->overset)
       sprintf(fileNameC,"%s_%.09d/surf_%s_%d_%d.vtu",&fileName[0],iter,&bndName[0],Solver->gridID,Solver->gridRank);
     else
       sprintf(fileNameC,"%s_%.09d/surf_%s_%d.vtu",&fileName[0],iter,&bndName[0],params->rank);
@@ -946,7 +948,7 @@ void writeSurfaces(solver *Solver, input *params)
     if (Solver->gridRank == 0) {
       ofstream pVTU;
       char pvtuC[256];
-      if (params->meshType == OVERSET_MESH)
+      if (params->meshType == OVERSET_MESH || params->overset)
         sprintf(pvtuC,"%s%d_surf_%s_%.09d.pvtu",&fileName[0],Solver->gridID,&bndName[0],iter);
       else
         sprintf(pvtuC,"%s_surf_%s_%.09d.pvtu",&fileName[0],&bndName[0],iter);
@@ -991,7 +993,7 @@ void writeSurfaces(solver *Solver, input *params)
       char filnameTmpC[256];
       for (int p=0; p<Solver->nprocPerGrid; p++) {
         if (nFaces_rank[p] == 0) continue;
-        if (params->meshType == OVERSET_MESH)
+        if (params->meshType == OVERSET_MESH || params->overset)
           sprintf(filnameTmpC,"%s_%.09d/surf_%s_%d_%d.vtu",&fileName[0],iter,&bndName[0],Solver->gridID,p);
         else
           sprintf(filnameTmpC,"%s_%.09d/surf_%s_%d.vtu",&fileName[0],iter,&bndName[0],p);
@@ -1018,12 +1020,12 @@ void writeResidual(solver *Solver, input *params)
 
   if (params->resType == 3) {
     // Infinity Norm
-    for (uint e=0; e<Solver->eles.size(); e++) {
-      if (params->meshType == OVERSET_MESH && Solver->Geo->iblankCell[Solver->eles[e]->ID]!=NORMAL) continue;
-      auto resTmp = Solver->eles[e]->getNormResidual(params->resType);
+    for (auto &e:Solver->eles) {
+      if ((params->overset || params->meshType == OVERSET_MESH) && Solver->Geo->iblankCell[e->ID]!=NORMAL) continue;
+      auto resTmp = e->getNormResidual(params->resType);
       if(checkNaN(resTmp)) {
-        cout << "Iter " << params->iter << ", rank " << params->rank << ", ele " << e << ": ";
-        auto box = Solver->eles[e]->getBoundingBox();
+        cout << "Iter " << params->iter << ", rank " << params->rank << ", ele " << e->ID << ": ";
+        auto box = e->getBoundingBox();
         cout << " minPt = " << box[0] << "," << box[1] << "," << box[2] << ", maxPt = " << box[3] << "," << box[4] << "," << box[5] << endl;
         FatalError("NaN Encountered in Solution Residual!");
       }
@@ -1034,12 +1036,12 @@ void writeResidual(solver *Solver, input *params)
   }
   else if (params->resType == 1 || params->resType == 2) {
     // 1-Norm or 2-Norm
-    for (uint e=0; e<Solver->eles.size(); e++) {
-      if (params->meshType == OVERSET_MESH && Solver->Geo->iblankCell[Solver->eles[e]->ID]!=NORMAL) continue;
-      auto resTmp = Solver->eles[e]->getNormResidual(params->resType);
+    for (auto &e:Solver->eles) {
+      if ((params->overset || params->meshType == OVERSET_MESH) && Solver->Geo->iblankCell[e->ID]!=NORMAL) continue;
+      auto resTmp = e->getNormResidual(params->resType);
       if(checkNaN(resTmp)) {
-        cout << "Iter " << params->iter << ", rank " << params->rank << ", ele " << e << ": " << flush;
-        auto box = Solver->eles[e]->getBoundingBox();
+        cout << "Iter " << params->iter << ", rank " << params->rank << ", ele " << e->ID << ": " << flush;
+        auto box = e->getBoundingBox();
         cout << " minPt = " << box[0] << "," << box[1] << "," << box[2] << ", maxPt = " << box[3] << "," << box[4] << "," << box[5] << endl;
         FatalError("NaN Encountered in Solution Residual!");
       }
@@ -1053,7 +1055,7 @@ void writeResidual(solver *Solver, input *params)
   if (params->equation == NAVIER_STOKES) {
     auto fTmp = Solver->computeWallForce();
 #ifndef _NO_MPI
-    MPI_Reduce(fTmp.data(), force.data(), 6, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(fTmp.data(), force.data(), 6, MPI_DOUBLE, MPI_SUM, 0, Solver->myComm);
 #else
     force = fTmp;
 #endif
@@ -1073,11 +1075,11 @@ void writeResidual(solver *Solver, input *params)
   if (params->nproc > 1) {
     if (params->resType == 3) {
       vector<double> resTmp = res;
-      MPI_Reduce(resTmp.data(), res.data(), params->nFields, MPI_DOUBLE, MPI_MAX, 0,MPI_COMM_WORLD);
+      MPI_Reduce(resTmp.data(), res.data(), params->nFields, MPI_DOUBLE, MPI_MAX, 0,Solver->myComm);
     }
     else if (params->resType == 1 || params->resType == 2) {
       vector<double> resTmp = res;
-      MPI_Reduce(resTmp.data(), res.data(), params->nFields, MPI_DOUBLE, MPI_SUM, 0,MPI_COMM_WORLD);
+      MPI_Reduce(resTmp.data(), res.data(), params->nFields, MPI_DOUBLE, MPI_SUM, 0,Solver->myComm);
     }
   }
 #endif

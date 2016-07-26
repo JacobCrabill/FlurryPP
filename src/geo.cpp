@@ -67,11 +67,17 @@ void geo::setup(input* params, bool HMG)
   nDims = params->nDims;
   nFields = params->nFields;
   meshType = params->meshType;
-  gridID = 0;
+  gridID = params->gridID;
   gridRank = params->rank;
   nProcGrid = params->nproc;
   rank = params->rank;
   nproc = params->nproc;
+  gridComm = params->myComm;
+
+  MPI_Comm_rank(gridComm, &rank);
+  MPI_Comm_size(gridComm, &nproc);
+  gridRank = rank;
+  nProcGrid = nproc;
 
   switch(meshType) {
     case READ_MESH:
@@ -86,7 +92,7 @@ void geo::setup(input* params, bool HMG)
     case OVERSET_MESH:
       // Find out which grid this process will be handling
       nGrids = params->nGrids;
-      splitGridProcs();
+//      splitGridProcs();
       readGmsh(params->oversetGrids[gridID]);
       break;
 #endif
@@ -137,7 +143,7 @@ void geo::setup_hmg(input *params, int _gridID, int _gridRank, int _nProcGrid, i
     // Apperently MPI_Comm objects don't like being copied?  Whatever, just re-create.
     MPI_Comm_split(MPI_COMM_WORLD, gridID, params->rank, &gridComm);
   } else {
-    gridComm = MPI_COMM_WORLD;
+//    gridComm = MPI_COMM_WORLD;
   }
 
   if (nProcGrid > 1 && _epart[0] != -1)
@@ -165,7 +171,7 @@ void geo::processConnectivity(int HMG_nSplit)
 
 #ifndef _NO_MPI
   /* --- Use TIOGA to find all hole nodes, then setup overset-face connectivity --- */
-  if (meshType == OVERSET_MESH) {
+  if (params->overset) { // || meshType == OVERSET_MESH) {
     if (nDims == 3)
       setupOverset3D();
     else
@@ -191,7 +197,7 @@ void geo::processConnectivity(int HMG_nSplit)
       }
     }
 
-    setFaceIblanks();
+//    setFaceIblanks();
 
     // Since this is initial pre-processing, clear blank/unblanks
     blankCells.clear();
@@ -818,7 +824,7 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
   int nc = 0;
   for (int ic=0; ic<nEles; ic++) {
     // Skip any hole cells
-    if (meshType == OVERSET_MESH && iblankCell[ic] == HOLE) continue;
+//    if (meshType == OVERSET_MESH && iblankCell[ic] == HOLE) continue;
 
     shared_ptr<ele> e = make_shared<ele>();
     e->ID = ic;
@@ -841,13 +847,13 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
 
   /* --- Setup the faces --- */
 
-  if (meshType == OVERSET_MESH ) {
-    /* --- Get a unique, sorted list of all overset faces (either from Gmsh
-     * boundary condition, or from TIOGA-based cell blanking) --- */
+////  if (meshType == OVERSET_MESH ) {
+////    /* --- Get a unique, sorted list of all overset faces (either from Gmsh
+////     * boundary condition, or from TIOGA-based cell blanking) --- */
 
-    for (int ff=0; ff<nFaces; ff++) if (iblankFace[ff] == FRINGE) overFaces.insert(ff);
-    for (int ff=0; ff<nBndFaces; ff++) if (bcType[ff] == OVERSET) overFaces.insert(bndFaces[ff]);
-  }
+////    for (int ff=0; ff<nFaces; ff++) if (iblankFace[ff] == FRINGE) overFaces.insert(ff);
+////    for (int ff=0; ff<nBndFaces; ff++) if (bcType[ff] == OVERSET) overFaces.insert(bndFaces[ff]);
+////  }
 
   vector<int> cellFaces;
 
@@ -861,7 +867,7 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
   // Internal Faces
   for (auto &ff: intFaces) {
     // Skip any hole faces
-    if (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) continue;
+////    if (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) continue;
 
     shared_ptr<face> iface = make_shared<intFace>();
 
@@ -883,7 +889,7 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
       ic1 = eleMap[ic1];
       ic2 = eleMap[ic2];
       if (ic2==-1) FatalError("Internal face has right cell blanked.");
-      iface->initialize(eles[ic1],eles[ic2],ff,fid1,info,params);
+      iface->initialize(eles[ic1],eles[ic2],ff,fid1,this,info,params);
     }
 
     faces.push_back(iface);
@@ -902,8 +908,8 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
     // Find global face ID of current boundary face
     int ff = bndFaces[i];
 
-    if ( (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) || bcType[i] == OVERSET)
-      continue;
+////    if ( (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) || bcType[i] == OVERSET)
+////      continue;
 
     shared_ptr<face> bface = make_shared<boundFace>();
 
@@ -918,7 +924,7 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
       info.bcType = bcType[i];
       ic = eleMap[ic];
       shared_ptr<ele> nullEle;  // Since just giving the funciton 'NULL' isn't possible
-      bface->initialize(eles[ic],nullEle,ff,fid1,info,params);
+      bface->initialize(eles[ic],nullEle,ff,fid1,this,info,params);
     }
 
     faces.push_back(bface);
@@ -940,7 +946,7 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
       // Find global face ID of current boundary face
       int ff = mpiFaces[i];
 
-      if (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) continue;
+//      if (meshType == OVERSET_MESH && iblankFace[ff] != NORMAL) continue;
 
       shared_ptr<mpiFace> mface = make_shared<mpiFace>();
 
@@ -970,7 +976,7 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
         info.gridComm = gridComm;  // Note that this is equivalent to MPI_COMM_WORLD if non-overset (ngrids = 1)
         ic = eleMap[ic];
         shared_ptr<ele> nullEle;  // Since just giving the funciton 'NULL' isn't possible
-        mface->initialize(eles[ic],nullEle,ff,fid1,info,params);
+        mface->initialize(eles[ic],nullEle,ff,fid1,this,info,params);
       }
 
       mpiFacesVec.push_back(mface);
@@ -1007,7 +1013,7 @@ void geo::setupElesFaces(input *params, vector<shared_ptr<ele>> &eles, vector<sh
       struct faceInfo info;
       ic = eleMap[ic];
       shared_ptr<ele> nullEle;  // Since just giving the funciton 'NULL' isn't possible
-      oface->initialize(eles[ic],nullEle,ff,fid,info,params);
+      oface->initialize(eles[ic],nullEle,ff,fid,this,info,params);
 
       overFacesVec.push_back(oface);
       faceMap[ff] = overFacesVec.size()-1;
@@ -2383,7 +2389,7 @@ void geo::partitionMesh(void)
 
   if (nproc <= 1) {
     cout << "Geo: Number of elements globally: " << nEles << endl;
-    gridComm = MPI_COMM_WORLD;
+//    gridComm = MPI_COMM_WORLD;
     return;
   }
 
@@ -2402,7 +2408,7 @@ void geo::partitionMesh(void)
     if (rank == 0) cout << "Geo: Number of elements globally: " << nEles << endl;
     if (rank == 0) cout << "     Partitioning mesh across " << nproc << " processes" << endl;
 
-    gridComm = MPI_COMM_WORLD;
+//    gridComm = MPI_COMM_WORLD;
   }
 
   vector<idx_t> eptr(nEles+1);
@@ -2558,7 +2564,7 @@ void geo::getMpiPartitions(void)
 #ifndef _NO_MPI
 
   if (nproc <= 1) {
-    gridComm = MPI_COMM_WORLD;
+//    gridComm = MPI_COMM_WORLD;
     return;
   }
 
@@ -2576,7 +2582,7 @@ void geo::getMpiPartitions(void)
     if (rank == 0) cout << "Geo: Partitioning mesh across " << nproc << " processes" << endl;
     if (rank == 0) cout << "Geo:   Number of elements globally: " << nEles << endl;
 
-    gridComm = MPI_COMM_WORLD;
+//    gridComm = MPI_COMM_WORLD;
   }
 
   vector<idx_t> eptr(nEles+1);
@@ -2625,7 +2631,7 @@ void geo::partitionFromEpart(const vector<int>& _epart)
 #ifndef _NO_MPI
   epart = _epart;
   if (params->nproc <= 1) {
-    gridComm = MPI_COMM_WORLD;
+//    gridComm = MPI_COMM_WORLD;
     return;
   }
 
@@ -2636,7 +2642,7 @@ void geo::partitionFromEpart(const vector<int>& _epart)
     if (nproc <= 1) return; // No additional partitioning needed
   }
   else {
-    gridComm = MPI_COMM_WORLD;
+//    gridComm = MPI_COMM_WORLD;
   }
 
   // Copy data to the global arrays & reset local arrays

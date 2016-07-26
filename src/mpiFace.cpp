@@ -129,10 +129,13 @@ void mpiFace::communicate(void)
   getLeftState();
 
 #ifndef _NO_MPI
+  if (params->overset && Geo->iblankFace[ID] != NORMAL) return;
+
   /* Send/Get data to/from right element [order reversed to match left ele] */
 
   // The send/receive pairs are tagged by the processor-local face ID of the
   // face on the receiving end of the call
+
   MPI_Irecv(bufUR.getData(),UR.getSize(),MPI_DOUBLE,procR,ID,myComm,&UR_in);
   MPI_Isend(UL.getData(),UL.getSize(),MPI_DOUBLE,procR,IDR,myComm,&UL_out);
 #endif
@@ -141,6 +144,8 @@ void mpiFace::communicate(void)
 void mpiFace::communicateGrad(void)
 {
 #ifndef _NO_MPI
+  if (params->overset && Geo->iblankFace[ID] != NORMAL) return;
+
   /* Send/Get data to/from right element [order reversed to match left ele] */
 
   // The send/receive pairs are tagged by the processor-local face ID of the
@@ -163,6 +168,8 @@ void mpiFace::communicateGrad(void)
 void mpiFace::getRightState(void)
 {
 #ifndef _NO_MPI
+  if (params->overset && Geo->iblankFace[ID] != NORMAL) return;
+
   params->time1.startTimer();
   // Make sure the communication is complete & transfer from buffer
   MPI_Wait(&UL_out,&status);
@@ -184,6 +191,8 @@ void mpiFace::getRightState(void)
 void mpiFace::getRightGradient(void)
 {
 #ifndef _NO_MPI
+  if (params->overset && Geo->iblankFace[ID] != NORMAL) return;
+
   // Make sure the communication is complete & transfer from buffer
   if (params->viscous) {
     MPI_Wait(&gradUL_out,&status);
@@ -237,14 +246,18 @@ void mpiFace::get_U_index(int fpt, int& ind, int& stride)
 {
   int ic1 = eL->ID;
 
-  if (ic1 > 0 && Solver->Geo->iblankCell[ic1] == NORMAL)
+  if (ic1 > 0 && Geo->iblankCell[ic1] == NORMAL)
   {
-    ind    = std::distance(&Solver->U_fpts(0,0,0), &UR(fpt,0)); /// UBER-HACK
+    ind    = std::distance(&eL->Solver->U_fpts(0,0,0), &UR(fpt,0)); /// UBER-HACK
     stride = std::distance(&UR(0,0), &UR(0,1));
   }
   else
   {
-    ind    = std::distance(&Solver->U_fpts(0,0,0), &eL->U_fpts(fptStartL+fpt,0));
-    stride = std::distance(&eL->U_fpts(fptStartL+fpt,0), &eL->U_fpts(fptStartL+fpt,1));
+    FatalError("Bad MPI face blanking!");
   }
+}
+
+double &mpiFace::get_U_fpt(int fpt, int field)
+{
+  return UR(fpt,field);
 }

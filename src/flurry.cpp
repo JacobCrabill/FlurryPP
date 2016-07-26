@@ -193,7 +193,7 @@ Flurry::Flurry(void)
 #endif
 {
   // Basic constructor
-#ifndef _MPI
+#ifdef _NO_MPI
   myComm = 0;
   myGrid = 0;
 #else
@@ -252,23 +252,57 @@ void Flurry::read_input(char *inputfile)
 
   params.rank = rank;
   params.nproc = nRanks;
+  params.gridID = myGrid;
+  params.nGrids = nGrids;
+  params.meshType = READ_MESH;
+  params.myComm = myComm;
   if (nGrids > 1) params.overset = true;
 
-  if (params.meshType == OVERSET_MESH)
+  if (params.overset)
   {
     params.meshFileName = params.oversetGrids[myGrid];
-    Solver->gridID = myGrid;
   }
 }
 
 void Flurry::setup_solver(void)
 {
+  if (!Solver)
+    Solver = make_shared<solver>();
 
+  Solver->myComm = myComm;
+  Solver->gridID = myGrid;
+
+  if (params.PMG)
+  {
+    /* Setup the P-Multigrid class if requested */
+    pmg = make_shared<multiGrid>();
+    pmg->setup(params.order,&params,*Solver);
+  }
+  else
+  {
+    /* Setup the solver, grid, all elements and faces, and all FR operators for computation */
+    Solver->setup(&params,params.order);
+
+    /* Apply the initial condition */
+    Solver->initializeSolution();
+  }
+
+  Geo = Solver->Geo;
 }
 
 void Flurry::do_step(void)
 {
+  params.iter++;
 
+  params.timer.startTimer();
+
+  Solver->update();
+
+  /* If using multigrid, perform correction cycle */
+  if (params.PMG)
+    pmg->cycle(*Solver);
+
+  params.timer.stopTimer();
 }
 
 void Flurry::do_n_steps(int n)
@@ -306,14 +340,14 @@ void Flurry::get_basic_geo_data(int& btag, int& nnodes, double*& xyz, int*& ibla
   nnodes = Geo->nVerts;
   xyz = Geo->xv.getData();
   iblank = Geo->iblank.data();
-  nwall = Geo->wallFaceNodes.getDim0();
-  nover = Geo->overFaceNodes.getDim0();
-  wallNodes = Geo->wallFaceNodes.getData(); /// TODO - fix
-  overNodes = Geo->overFaceNodes.getData(); /// TODO - fix
+  nwall = Geo->iwall.size();
+  nover = Geo->iover.size();
+  wallNodes = Geo->iwall.data();
+  overNodes = Geo->iover.data();
   nCellTypes = 1;
-  nvert_cell = Geo->c2nv[0];
+  nvert_cell = *Geo->nodesPerCell;
   nCells_type = Geo->nEles;
-  c2v = (int *)&Geo->c2v.data;
+  c2v = Geo->c2v.getData();
 }
 
 void Flurry::get_extra_geo_data(int& nFaceTypes, int& nvert_face,
@@ -325,13 +359,13 @@ void Flurry::get_extra_geo_data(int& nFaceTypes, int& nvert_face,
   nFaceTypes = 1;
   nvert_face = Geo->f2nv[0];
   nFaces_type = Geo->nFaces;
-  f2v = (int *)Geo->f2v.getData();
+  f2v = Geo->f2v.getData();
   f2c = Geo->f2c.getData();
   c2f = Geo->c2f.getData();
   iblank_face = Geo->iblankFace.data();
   iblank_cell = Geo->iblankCell.data();
-  nOver = Geo->overFaces.size();
-  //overFaces = Geo->overFaceList.data(); /// TODO
+  nOver = Geo->fringeFaces.size();
+  overFaces = Geo->fringeFaces.data();
   nMpiFaces = Geo->nMpiFaces;
   mpiFaces = Geo->mpiFaces.data();
   procR = Geo->procR.data();
@@ -376,9 +410,16 @@ void Flurry::get_face_nodes(int faceID, int &nNodes, double* xyz)
 {
   nNodes = (int)(Solver->nFpts / Geo->c2nf[0]);
 
+  int ff = Geo->faceMap[faceID];
+
   for (int fpt = 0; fpt < nNodes; fpt++)
   {
-    auto pt = Solver->faces[faceID]->getPosFpt(fpt);
+    point pt;
+    if (Geo->faceType[faceID] == MPI_FACE)
+      pt = Solver->mpiFaces[ff]->getPosFpt(fpt);
+    else
+      pt = Solver->faces[ff]->getPosFpt(fpt);
+
     for (int dim = 0; dim < Geo->nDims; dim++)
       xyz[3*fpt+dim] = pt[dim];
   }
@@ -386,7 +427,26 @@ void Flurry::get_face_nodes(int faceID, int &nNodes, double* xyz)
 
 void Flurry::get_q_index_face(int faceID, int fpt, int& ind, int& stride)
 {
-  Solver->faces[faceID]->get_U_index(fpt,ind,stride);
+  int ff = Geo->faceMap[faceID];
+//cout << "rank " << params.rank << " ff = " << ff << endl;
+
+  if (Geo->faceType[faceID] == MPI_FACE)
+  {
+//    cout << "nMpiFaces = " << Solver->mpiFaces.size() << endl;
+    Solver->mpiFaces[ff]->get_U_index(fpt,ind,stride);
+  }else{
+//    cout << "nFaces = " << Solver->faces.size() << endl;
+    Solver->faces[ff]->get_U_index(fpt,ind,stride);
+  }
+}
+
+double& Flurry::get_u_fpt(int faceID, int fpt, int field)
+{
+  int ff = Geo->faceMap[faceID];
+  if (Geo->faceType[faceID] == MPI_FACE)
+    return Solver->mpiFaces[ff]->get_U_fpt(fpt,field);
+  else
+    return Solver->faces[ff]->get_U_fpt(fpt,field);
 }
 
 void Flurry::donor_inclusion_test(int cellID, double* xyz, int& passFlag, double* rst)

@@ -79,6 +79,7 @@ struct CallbackFuncs
   void (*convert_to_modal)(int *cellID, int *nSpts, double *q_in, int *npts,
                            int *index_out, double *q_out);
   double (*get_q_spt)(int cellID, int spt, int var);
+  double& (*get_q_fpt)(int faceID, int fpt, int var);
 };
 
 namespace flurry {
@@ -89,9 +90,9 @@ void initialize(MPI_Comm comm_in, char* inputFile, int nGrids=1, int gridID=0);
 void initialize(char* input_file);
 #endif
 
-void set_Flurry_object(Flurry *_Flurry);
+void set_flurry_object(Flurry *_Flurry);
 
-Flurry* get_Flurry_object(void);
+Flurry* get_flurry_object(void);
 
 void finalize(void);
 
@@ -121,6 +122,8 @@ void donor_frac(int* cellID, double* xyz, int* nweights, int* inode,
                 double* weights, double* rst, int* buffsize);
 void convert_to_modal(int *cellID, int *nSpts, double *q_in, int *npts,
                       int *index_out, double *q_out);
+
+double &get_u_fpt(int faceID, int fpt, int field);
 
 } /* namespace Flurry */
 

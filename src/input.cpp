@@ -365,6 +365,7 @@ void input::readInputFile(char *filename)
   }
 
   opts.getScalarValue("meshType",meshType);
+  opts.getScalarValue("overset",overset,false);
 
   if (meshType == CREATE_MESH) {
     opts.getScalarValue("nx",nx,10);

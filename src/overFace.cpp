@@ -195,3 +195,10 @@ void overFace::get_U_index(int fpt, int& ind, int& stride)
 {
 
 }
+
+double& overFace::get_U_fpt(int fpt, int field)
+{
+
+}
+
+

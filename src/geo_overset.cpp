@@ -122,13 +122,13 @@ void geo::setupOverset3D(void)
 #ifndef _NO_MPI
   /* Note that this function should only be needed once during preprocessing */
 
-  if (gridRank == 0)
-    cout << "Geo: Grid " << gridID << ": Setting up TIOGA interface" << endl;
+////  if (gridRank == 0)
+////    cout << "Geo: Grid " << gridID << ": Setting up TIOGA interface" << endl;
 
-  // Allocate TIOGA grid processor
-  tg = make_shared<tioga>();
+////  // Allocate TIOGA grid processor
+////  tg = make_shared<tioga>();
 
-  tg->setCommunicator(MPI_COMM_WORLD,params->rank,params->nproc);
+////  tg->setCommunicator(MPI_COMM_WORLD,params->rank,params->nproc);
 
   // Setup iwall, iover (nodes on wall & overset boundaries)
   iover.resize(0);
@@ -154,6 +154,14 @@ void geo::setupOverset3D(void)
     }
   }
 
+  overFaces.clear();
+  for (int bf=0; bf<nBndFaces; bf++)
+    if (bcType[bf] == OVERSET)
+      overFaces.insert(bndFaces[bf]);
+
+  fringeFaces.reserve(overFaces.size());
+  for (auto &ff:overFaces) fringeFaces.push_back(ff);
+
   int nwall = iwall.size();
   int nover = iover.size();
   int ntypes = 1;                  //! Number of element types in grid block
@@ -163,29 +171,29 @@ void geo::setupOverset3D(void)
   iblankCell.resize(nEles);
   iblankFace.resize(nFaces);
 
-  // Need an int**, even if only have one element type
-  conn[0] = c2v.getData();
+//  // Need an int**, even if only have one element type
+//  conn[0] = c2v.getData();
 
-  tg->registerGridData(gridID,nVerts,xv.getData(),iblank.data(),nwall,nover,iwall.data(),
-                       iover.data(),ntypes,nodesPerCell,&nEles,&conn[0]);
+//  tg->registerGridData(gridID,nVerts,xv.getData(),iblank.data(),nwall,nover,iwall.data(),
+//                       iover.data(),ntypes,nodesPerCell,&nEles,&conn[0]);
 
-  tg->set_cell_iblank(iblankCell.data());
+//  tg->set_cell_iblank(iblankCell.data());
 
-  // Get a list of all cells which have an overset-boundary face (for later use with blanking)
-  for (int i=0; i<nBndFaces; i++) {
-    if (bcType[i]==OVERSET) {
-      overCells.insert(f2c(bndFaces[i],0));
-    }
-  }
+//  // Get a list of all cells which have an overset-boundary face (for later use with blanking)
+//  for (int i=0; i<nBndFaces; i++) {
+//    if (bcType[i]==OVERSET) {
+//      overCells.insert(f2c(bndFaces[i],0));
+//    }
+//  }
 
-  // Pre-process the grids
-  tg->profile();
+//  // Pre-process the grids
+//  tg->profile();
 
-  // Have TIOGA perform the nodal overset connectivity (set nodal iblanks)
-  tg->performConnectivity();
+//  // Have TIOGA perform the nodal overset connectivity (set nodal iblanks)
+//  tg->performConnectivity();
 
-  // Now use new nodal iblanks to set cell and face iblanks
-  setIblankEles(iblank,iblankCell);
+//  // Now use new nodal iblanks to set cell and face iblanks
+//  setIblankEles(iblank,iblankCell);
 #endif
 }
 
@@ -255,13 +263,15 @@ void geo::setNodeTypes2D(void)
     }
   }
 
-  unordered_set<int> overNodes;
   overFaceNodes.setup(0,0);
   wallFaceNodes.setup(0,0);
+  set<int> overNodes, wallNodes;
   for (int bf=0; bf<nBndFaces; bf++) {
     if (bcType[bf] == SLIP_WALL || bcType[bf] == ADIABATIC_NOSLIP || bcType[bf] == ISOTHERMAL_NOSLIP) {
       int ff = bndFaces[bf];
       wallFaceNodes.insertRow({f2v(ff,0),f2v(ff,1)});
+      wallNodes.insert(f2v(ff,0));
+      wallNodes.insert(f2v(ff,1));
     }
     else if (bcType[bf] == OVERSET) {
       int ff = bndFaces[bf];
@@ -274,6 +284,13 @@ void geo::setNodeTypes2D(void)
       }
     }
   }
+
+  iover.resize(overNodes.size());
+  iwall.resize(wallNodes.size());
+  fringeFaces.reserve(overFaces.size());
+  for (auto &iv:overNodes) iover.push_back(iv);
+  for (auto &iv:wallNodes) iwall.push_back(iv);
+  for (auto &ff:overFaces) fringeFaces.push_back(ff);
 
   if (params->oversetMethod != 0) {
     unordered_set<int> newOverFaces;
@@ -302,13 +319,14 @@ void geo::setNodeTypes2D(void)
 
 void geo::updateADT(void)
 {
+  return;
 #ifndef _NO_MPI
   if (nDims == 3) {
     // Pre-process the grids
-    tg->profile();
+////    tg->profile();
 
     // Have TIOGA perform the nodal overset connectivity (set nodal iblanks)
-    tg->performConnectivity();
+////    tg->performConnectivity();
   } else {
     for (int i=0; i<nEles; i++) {
       matrix<double> epts;
@@ -324,6 +342,7 @@ void geo::updateADT(void)
 
 void geo::setIterIblanks(void)
 {
+  return;
 #ifndef _NO_MPI
   if (params->iter==params->initIter) {
     holeCells.clear();
@@ -341,8 +360,8 @@ void geo::setIterIblanks(void)
     OComm->setIblanks2D(xv,overFaceNodes,wallFaceNodes,iblankVert1);
   } else {
     // Pre-process the grids, then have TIOGA set nodal iblank values
-    tg->profile();
-    tg->performConnectivity();
+////    tg->profile();
+////    tg->performConnectivity();
     iblankVert1 = iblank;
   }
 
@@ -361,8 +380,8 @@ void geo::setIterIblanks(void)
     OComm->setIblanks2D(xv,overFaceNodes,wallFaceNodes,iblank);
   } else {
     // Pre-process the grids, then have TIOGA set nodal iblank values
-    tg->profile();
-    tg->performConnectivity();
+////    tg->profile();
+////    tg->performConnectivity();
   }
 
 //  //! TODO: in 3D - need better hole blanking...
@@ -410,6 +429,7 @@ void geo::setIterIblanks(void)
 void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
 {
 #ifndef _NO_MPI
+  return;
   // Use the TIOGA-supplied nodal iblank values, set iblank values for all cells and faces
 
   // Only needed for moving grids: List of current hole cells
@@ -715,16 +735,17 @@ void geo::setIblankEles(vector<int> &iblankVert, vector<int> &iblankEle)
 
 void geo::updateBlankingTioga(void)
 {
+  return;
 #ifndef _NO_MPI
   if (nDims == 3) {
     // Pre-process the grids
-    tg->profile();
+////    tg->profile();
 
     // Have TIOGA perform the nodal overset connectivity (set nodal iblanks)
-    tg->performConnectivity();
+////    tg->performConnectivity();
 
     // Now use new nodal iblanks to set cell and face iblanks
-    setIblankEles(iblank,iblankCell);
+////    setIblankEles(iblank,iblankCell);
   }
 #endif
 }
@@ -1121,7 +1142,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
         if (ic1<0 || ic2<0) {
           FatalError("Unblanking an internal face, but an ele remains blanked!");
         }
-        iface->initialize(eles[ic1],eles[ic2],ff,fid1,info,params);
+        iface->initialize(eles[ic1],eles[ic2],ff,fid1,this,info,params);
         iface->setupFace();
       }
 
@@ -1163,7 +1184,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
           ic = eleMap[ic];
           if (ic<0) FatalError("Unblanking a boundary face, but ele remains blanked!");
           shared_ptr<ele> nullEle;
-          bface->initialize(eles[ic],nullEle,ff,fid1,info,params);
+          bface->initialize(eles[ic],nullEle,ff,fid1,this,info,params);
           bface->setupFace();
         }
 
@@ -1221,7 +1242,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
       ic = eleMap[ic];
       if (ic<0) FatalError("Unblanking an MPI face, but ele remains blanked!");
       shared_ptr<ele> nullEle;
-      mface->initialize(eles[ic],nullEle,ff,fid1,info,params);
+      mface->initialize(eles[ic],nullEle,ff,fid1,this,info,params);
       mface->setupFace();
       ubMFaces.insert(ff);
     }
@@ -1269,7 +1290,7 @@ void geo::insertFaces(vector<shared_ptr<ele>> &eles, vector<shared_ptr<face>> &f
     ic = eleMap[ic];
     if (ic<0) FatalError("Unblanking an Overset face, but ele remains blanked!");
     shared_ptr<ele> nullEle;
-    oface->initialize(eles[ic],nullEle,ff,fid,info,params);
+    oface->initialize(eles[ic],nullEle,ff,fid,this,info,params);
     oface->setupFace();
 
     // Find the next-lowest index for insertion into vector

@@ -38,7 +38,8 @@ SOURCES += src/global.cpp \
     src/superMesh.cpp \
     src/overComm.cpp \
     src/multigrid.cpp \
-    src/flurry_interface.cpp
+    src/flurry_interface.cpp \
+    swig/testFlurry.cpp
 		   
 HEADERS += include/global.hpp \
     include/matrix.hpp \
@@ -80,8 +81,7 @@ DISTFILES += \
     lib/tioga/src/computeCellVolume.f90 \
     lib/tioga/src/kaiser.f \
     lib/tioga/src/median.F90 \
-    lib/tioga/src/makefile \
-    Makefile
+    lib/tioga/src/makefile
 
 OTHER_FILES += \
     bin/input_supwall \

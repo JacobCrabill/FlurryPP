@@ -76,6 +76,9 @@ public:
   /*! Callback function for use with TIOGA */
   void get_U_index(int fpt, int& ind, int& stride);
 
+  //! Get/set solution at a flux point (for TIOGA) */
+  double& get_U_fpt(int fpt, int field);
+
 private:
   //int bcType;  //! Boundary condition to apply to this face
 
