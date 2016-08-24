@@ -20,7 +20,7 @@ Shock capturing has been implemented, but is still under development and is not 
 
 Moving grids are supported by the solver, but there are not yet any grid-motion functions implemented beyond several simple test-case functions.
 
-Lastly, overset grids in 3D are supported by using the "artificial boundary" method, with Jay Sitaraman's TIOGA library being used for hole-blanking whenever solid bodies are embedded inside a mesh.  Moving overset grids are also supported now for 2D and 3D.
+Lastly, overset grids in 2D and 3D are supported by using the "artificial boundary" method, with Jay Sitaraman's TIOGA library being used for hole-blanking whenever solid bodies are embedded inside a mesh.  Moving overset grids are also supported now for 2D and 3D.
 
 Background / Goals of the Project
 =================================
@@ -39,24 +39,16 @@ Quick Start
 Compilation Instructions
 -------------------------
 
-To compile Flurry, you can either use QT Creator (https://www.qt.io/download-open-source/), which is an excellent C++ IDE that I use for development, or you can use the provided makefile to compile using GNU make.  For the make option,
-just open a terminal and run the following:</p>
+To compile Flurry, you can use the provided makefile to compile using GNU make.  First modify 
+the config file (configfiles/default.config) or create your own with your desired compilation 
+options, then from FlurryPP directory, type `make`.</p>
 
-`make build_type`
-
-Where `build_type` is one of the following options:
-
-* `debug mpi=n`
-* `release mpi=n`
-* `openmp mpi=n`
-* `mpidebug`
-* `mpi2`
-* `mpi`
-
-
-Both the serial `release` and the parallel `mpi` builds turn on full optimization, while the `debug` and `mpidebug` builds remove all
-optimization and add flags for both debugging and profiling. The `openmp` build uses OpenMP to take advantage of easy parallelization on desktop computers, and the `mpi` builds use MPI to completely parallelize the program on both shared- and distributed-memory systems. Note that compiling with MPI requires several external libraries and header files (metis.h/metis.a, mpi.h), the location of which must be specified in the makefile.
+See the default config file for details on all compilation options. Note that compiling with MPI 
+requires several external libraries and header files (metis.h/metis.a, mpi.h), the location of 
+which must be specified in the makefile.
 The code is known to work with OpenMPI >= 1.6.5.
+Additionally, you should have some form of BLAS installed, and ensure that the location of cblas.h 
+is properly specified in the config file.
 
 
 Test Cases
